@@ -1,0 +1,126 @@
+{
+  "name": "faah",
+  "displayName": "FAAH - Error Sound Effect",
+  "description": "Play the iconic 'FAAH!' sound effect when VS Code detects errors, warnings, build failures, and more.",
+  "version": "1.0.0",
+  "publisher": "faah-dev",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Arnav1771/fahh-ide.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Arnav1771/fahh-ide/issues"
+  },
+  "homepage": "https://github.com/Arnav1771/fahh-ide#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other",
+    "Fun",
+    "Formatters",
+    "Snippets"
+  ],
+  "keywords": [
+    "error",
+    "sound",
+    "notification",
+    "diagnostic",
+    "faah"
+  ],
+  "icon": "media/icon.png",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "FAAH",
+      "properties": {
+        "faah.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable the FAAH sound effect on errors and warnings"
+        },
+        "faah.cooldown": {
+          "type": "number",
+          "default": 3,
+          "minimum": 0,
+          "maximum": 30,
+          "description": "Cooldown period in seconds between sound plays (prevents audio spam)"
+        },
+        "faah.volume": {
+          "type": "number",
+          "default": 1,
+          "minimum": 0,
+          "maximum": 1,
+          "step": 0.1,
+          "description": "Volume level for the sound effect (0 = silent, 1 = full volume)"
+        },
+        "faah.enableRandomPitch": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable random pitch variation for comedic effect"
+        },
+        "faah.detectionEvents": {
+          "type": "array",
+          "default": [
+            "errors",
+            "warnings",
+            "buildFailures",
+            "taskFailures",
+            "debugFailures"
+          ],
+          "items": {
+            "type": "string",
+            "enum": [
+              "errors",
+              "warnings",
+              "buildFailures",
+              "taskFailures",
+              "debugFailures"
+            ]
+          },
+          "description": "Which types of events should trigger the sound effect"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "faah.testSound",
+        "title": "FAAH: Test Sound",
+        "description": "Manually play the FAAH sound effect"
+      },
+      {
+        "command": "faah.toggleEnabled",
+        "title": "FAAH: Toggle Extension",
+        "description": "Enable or disable the FAAH extension"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run esbuild-base -- --minify",
+    "esbuild-base": "esbuild ./src/extension.ts --bundle --outfile=out/extension.js --external:vscode --format=cjs --platform=node --target=node20",
+    "compile": "npm run esbuild-base",
+    "watch": "npm run esbuild-base -- --watch",
+    "build": "npm run compile",
+    "lint": "eslint src --ext ts",
+    "pretest": "npm run compile && npm run lint",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/test-electron": "^2.3.8",
+    "esbuild": "^0.19.10",
+    "eslint": "^8.54.0",
+    "typescript": "^5.3.2"
+  },
+  "dependencies": {},
+  "telemetry": {
+    "enabled": false
+  }
+}

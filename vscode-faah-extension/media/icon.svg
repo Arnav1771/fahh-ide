@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Background -->
+  <rect width="128" height="128" fill="#2d2d2d" rx="24"/>
+  
+  <!-- Speaker icon with sound waves -->
+  <g transform="translate(35, 35)">
+    <!-- Speaker cone -->
+    <path d="M 10 20 L 10 40 L 20 50 L 20 10 Z" fill="#FF6B35" stroke="#FFD166" stroke-width="2"/>
+    
+    <!-- Sound waves -->
+    <circle cx="30" cy="30" r="8" fill="none" stroke="#FFD166" stroke-width="2"/>
+    <circle cx="35" cy="30" r="14" fill="none" stroke="#FFD166" stroke-width="2"/>
+    <circle cx="40" cy="30" r="20" fill="none" stroke="#FFD166" stroke-width="2"/>
+  </g>
+  
+  <!-- FAAH Text -->
+  <text x="64" y="110" font-size="14" font-weight="bold" text-anchor="middle" fill="#FFD166" font-family="Arial, sans-serif">
+    FAAH
+  </text>
+</svg>
