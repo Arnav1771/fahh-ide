@@ -1,0 +1,39 @@
+[package]
+name = "fahh-editor"
+version = "0.1.0"
+edition = "2021"
+description = "Fahh Editor — a Tauri 2 desktop IDE"
+license = "MIT"
+
+[lib]
+name = "fahh_editor_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+notify = "6"
+notify-debouncer-mini = "0.4"
+dirs = "5"
+walkdir = "2"
+
+[features]
+custom-protocol = ["tauri/custom-protocol"]
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
