@@ -16,7 +16,14 @@ export function useTerminal() {
           addLine(`[exit ${result.exit_code}]`, "stderr");
         }
       } catch (err) {
-        addLine(String(err), "stderr");
+        const msg = String(err);
+        const isTauriMissing = msg.includes("invoke") || msg.includes("__TAURI__") || msg.includes("transformCallback");
+        addLine(
+          isTauriMissing
+            ? "Not available in browser preview — run via `pnpm tauri dev` for full terminal support."
+            : msg,
+          "stderr"
+        );
       }
     },
     [addLine, cwd]
