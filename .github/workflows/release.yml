@@ -7,67 +7,80 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v0.2.1)"
+        description: "Release tag (e.g. v0.2.0)"
         required: true
-
-concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
-  # Step 1: create the GitHub Release first so all build jobs upload to
-  # the same release ID — avoids the "already_exists" race condition when
-  # multiple matrix runners try to create it simultaneously.
+  # Create the GitHub Release once. Uses find-or-create so re-runs are safe.
   create-release:
     runs-on: ubuntu-latest
     outputs:
-      release_id: ${{ steps.create.outputs.release_id }}
+      release_id: ${{ steps.find-or-create.outputs.release_id }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Create GitHub Release
-        id: create
+      - name: Find or create GitHub Release
+        id: find-or-create
         uses: actions/github-script@v7
         with:
           script: |
-            const tag = context.ref.replace('refs/tags/', '') || '${{ inputs.tag }}';
+            const tag = context.ref.startsWith('refs/tags/')
+              ? context.ref.replace('refs/tags/', '')
+              : '${{ inputs.tag }}';
+
+            // Try to find an existing release for this tag
+            try {
+              const existing = await github.rest.repos.getReleaseByTag({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                tag,
+              });
+              core.setOutput('release_id', existing.data.id);
+              console.log('Found existing release id', existing.data.id);
+              return;
+            } catch (e) {
+              if (e.status !== 404) throw e;
+            }
+
+            // No existing release — create one
+            const body = [
+              '## Fahh Editor ' + tag,
+              '',
+              'A Tauri 2 desktop IDE with Monaco editor, LSP support, step-through debugger, one-click code execution, 5 built-in themes — and the fahhhh.mp3.',
+              '',
+              '### Downloads',
+              '| Platform | File |',
+              '|----------|------|',
+              '| Windows 10/11 (x64) | `.msi` installer |',
+              '| macOS Apple Silicon | `.dmg` |',
+              '| macOS Intel | `.dmg` |',
+              '| Linux x64 | `.AppImage` · `.deb` |',
+              '',
+              '### What\'s new',
+              '- Full LSP (rust-analyzer, tsserver, pylsp, gopls, clangd auto-detected)',
+              '- DAP debugger: Python (debugpy), Node.js/TypeScript (--inspect), Go (Delve)',
+              '- Run panel: one-click execution for 18+ languages with streaming output',
+              '- 5 built-in themes, formatter integration, plugin registry',
+              '- Fahh SFX: plays on every error, 3-second cooldown, always',
+              '',
+              'See the [full docs](https://arnav1771.github.io/fahh-ide/docs.html).',
+            ].join('\n');
+
             const release = await github.rest.repos.createRelease({
               owner: context.repo.owner,
               repo:  context.repo.repo,
               tag_name:   tag,
-              name:       `Fahh Editor ${tag}`,
+              name:       'Fahh Editor ' + tag,
               draft:      false,
               prerelease: false,
-              body: `## Fahh Editor ${tag}
-
-A Tauri 2 desktop IDE with Monaco editor, LSP support, step-through debugger, one-click code execution, 5 built-in themes — and the fahhhh.mp3.
-
-### Downloads
-| Platform | File |
-|----------|------|
-| Windows 10/11 (x64) | \`.msi\` installer |
-| macOS Apple Silicon | \`.dmg\` |
-| macOS Intel | \`.dmg\` |
-| Linux x64 | \`.AppImage\` · \`.deb\` |
-
-### What's new
-- Full LSP (rust-analyzer, tsserver, pylsp, gopls, clangd auto-detected on PATH)
-- DAP debugger: Python (debugpy), Node.js/TypeScript (--inspect), Go (Delve)
-- Run panel: one-click execution for 18+ languages with streaming output
-- 5 built-in themes (Fahh Dark/Light, GitHub Dark, Dracula, Solarized)
-- Formatter integration (Prettier, Black, gofmt, rustfmt, clang-format)
-- Plugin registry with language packs and snippet sets
-- Fahh SFX: plays on every error, 3-second cooldown, always
-
-See the [full docs](https://arnav1771.github.io/fahh-ide/docs.html).`
+              body,
             });
             core.setOutput('release_id', release.data.id);
             console.log('Created release id', release.data.id);
 
-  # Step 2: build on all platforms and upload artifacts to the release.
   build:
     needs: create-release
     strategy:
