@@ -1,3 +1,7 @@
+// Phase 2 modules contain WIP stub implementations — suppress lint noise
+// until each feature is fully wired. Remove these as features land.
+#![allow(dead_code, unused_imports, unused_variables, unused_mut)]
+
 mod core;
 mod app;
 
