@@ -2,7 +2,12 @@ import Editor from "@monaco-editor/react";
 import { useEditorStore } from "../../store/editorStore";
 import { writeFile } from "../../lib/tauri";
 
-export function EditorPane() {
+interface EditorPaneProps {
+  /** Monaco editor theme name — pass from themeStore to keep in sync */
+  monacoTheme?: string;
+}
+
+export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   const { activeTab, fileContents, openTabs, setContent, markDirty } =
     useEditorStore();
 
@@ -49,7 +54,7 @@ export function EditorPane() {
         language={activeDoc?.language ?? "plaintext"}
         value={content}
         onChange={handleChange}
-        theme="vs-dark"
+        theme={monacoTheme}
         options={{
           fontSize: 14,
           fontFamily: "JetBrains Mono, Fira Code, monospace",

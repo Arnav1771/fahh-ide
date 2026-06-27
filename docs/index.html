@@ -678,21 +678,19 @@ footer {
   <div class="wrap">
     <div class="hero-inner">
       <div class="hero-left">
-        <span class="hero-kicker">Tauri 2 · Rust · Monaco · React 18</span>
+        <span class="hero-kicker">v0.2.0 · LSP · Debugger · 5 Themes · 3 Platforms</span>
         <h1 class="hero-h1">
           When your<br>
           code <span class="crack">breaks</span>,<br>
           you'll hear it.
         </h1>
         <p class="hero-sub">
-          A desktop IDE that doesn't stay quiet about your errors.
-          Full Monaco editor, integrated terminal, file tree —
-          and one feature your colleagues will ask about.
+          A real desktop IDE — Monaco editor, step-through debugger, LSP for 15+ languages, one-click code execution, built-in themes — and one feature your colleagues will not stop asking about.
         </p>
         <div class="hero-actions">
-          <a href="https://github.com/Arnav1771/fahh-ide/releases" class="btn-dl">
+          <a href="#download" class="btn-dl">
             <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Download v0.1.0
+            Download v0.2.0
           </a>
           <a href="https://github.com/Arnav1771/fahh-ide" class="btn-gh" target="_blank">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
@@ -701,9 +699,9 @@ footer {
         </div>
         <div class="hero-badges">
           <span class="badge badge-green">✓ Not Electron</span>
-          <span class="badge">Rust backend</span>
-          <span class="badge">TypeScript strict</span>
           <span class="badge">Windows · macOS · Linux</span>
+          <span class="badge">LSP + DAP built-in</span>
+          <span class="badge">5 built-in themes</span>
         </div>
       </div>
 
@@ -741,8 +739,8 @@ footer {
     <div class="stat-l">Languages</div>
   </div>
   <div class="stat">
-    <div class="stat-n">0</div>
-    <div class="stat-l">Docker deps</div>
+    <div class="stat-n">3</div>
+    <div class="stat-l">Platforms</div>
   </div>
   <div class="stat">
     <div class="stat-n">3<span style="color:var(--text-3);font-size:1.2rem">s</span></div>
@@ -795,32 +793,32 @@ footer {
       <div class="feat reveal">
         <div class="feat-label">Editor</div>
         <div class="feat-title">Monaco — the VS Code engine</div>
-        <div class="feat-desc">Full IntelliSense-style completions, multi-cursor, minimap, and syntax highlighting for 15+ languages. Ctrl+S writes to disk via Rust.</div>
+        <div class="feat-desc">Full completions, multi-cursor, minimap, and syntax highlighting for 15+ languages. Ctrl+S writes to disk via Rust. 5 built-in themes.</div>
       </div>
       <div class="feat reveal reveal-m">
-        <div class="feat-label">File system</div>
-        <div class="feat-title">Workspace tree + file ops</div>
-        <div class="feat-desc">Recursive directory explorer up to 5 levels deep. Open, create, rename, and delete files via native OS dialogs. Git status icons in Phase 2.</div>
+        <div class="feat-label">LSP</div>
+        <div class="feat-title">Language servers, auto-detected</div>
+        <div class="feat-desc">rust-analyzer, tsserver, pylsp, gopls, clangd, jdtls — auto-found on PATH. Full go-to-definition, hover, and error diagnostics in Monaco.</div>
       </div>
       <div class="feat reveal reveal-r">
-        <div class="feat-label">Terminal</div>
-        <div class="feat-title">Integrated command runner</div>
-        <div class="feat-desc">Execute build, test, and run commands without leaving the editor. stdout and stderr streamed back with per-line color coding.</div>
+        <div class="feat-label">Run</div>
+        <div class="feat-title">One-click code execution</div>
+        <div class="feat-desc">▶ Run the current file in one click. Python, Node.js, Go, Rust, Java, C++, and more — streamed stdout/stderr in the Run panel. No config needed.</div>
       </div>
       <div class="feat reveal">
-        <div class="feat-label">Sound</div>
-        <div class="feat-title">fahhhh.mp3 — the core feature</div>
-        <div class="feat-desc">Plays when errors are detected. 3-second cooldown. Web Audio API. The filename has 4 h's. Do not rename it. This is non-negotiable.</div>
+        <div class="feat-label">Debug</div>
+        <div class="feat-title">Step-through DAP debugger</div>
+        <div class="feat-desc">Breakpoints, step over, step in, continue, variables, call stack. Python via debugpy. Node.js/TypeScript via --inspect. Go via Delve.</div>
       </div>
       <div class="feat reveal reveal-m">
-        <div class="feat-label">AI &amp; automation</div>
-        <div class="feat-title">Optional tools, locally</div>
-        <div class="feat-desc">One-click installer for n8n, Flowise, browser-use, GitHub CLI, and Claude Code. All run as local processes. No Docker. No cloud accounts required.</div>
+        <div class="feat-label">Sound</div>
+        <div class="feat-title">fahhhh.mp3 — the core feature</div>
+        <div class="feat-desc">Plays on LSP errors and build failures. 3-second atomic cooldown. Web Audio API. The filename has 4 h's. Do not rename it. This is non-negotiable.</div>
       </div>
       <div class="feat reveal reveal-r">
-        <div class="feat-label">Config</div>
-        <div class="feat-title">Persistent workspace state</div>
-        <div class="feat-desc">Last folder, theme, SFX cooldown, and installed tools written to <code style="font-family:var(--code);font-size:.85em">~/.fahh/config.json</code> after every session.</div>
+        <div class="feat-label">Themes &amp; plugins</div>
+        <div class="feat-title">5 built-in themes, formatters</div>
+        <div class="feat-desc">Fahh Dark (Catppuccin), Fahh Light, GitHub Dark, Dracula, Solarized. Prettier, Black, gofmt, rustfmt, clang-format integrated as formatters.</div>
       </div>
     </div>
   </div>
@@ -843,14 +841,133 @@ footer {
   </div>
 </section>
 
+<!-- Download -->
+<section id="download" style="padding:120px 0;background:var(--bg-1);border-top:1px solid var(--border);border-bottom:1px solid var(--border);position:relative;z-index:2">
+  <div class="wrap">
+    <div class="reveal" style="text-align:center;margin-bottom:56px">
+      <div class="section-eyebrow">// download</div>
+      <h2 class="section-title" style="font-family:var(--mono);font-size:clamp(1.8rem,3vw,2.8rem);font-weight:700;letter-spacing:-.04em;line-height:1.1;color:var(--text);margin-bottom:12px">Available on every platform.</h2>
+      <p style="color:var(--text-2);font-size:1rem;font-weight:300">Built with Tauri 2 — native installers, no Electron, no runtime required.</p>
+    </div>
+    <div class="reveal" style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border-md);border:1px solid var(--border-md);border-radius:12px;overflow:hidden">
+
+      <!-- Windows -->
+      <div style="background:var(--bg-2);padding:40px 32px;display:flex;flex-direction:column;gap:20px">
+        <div style="font-size:2.5rem">🪟</div>
+        <div>
+          <div style="font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px">Windows</div>
+          <div style="font-family:var(--code);font-size:.7rem;color:var(--text-3);letter-spacing:.08em">x64 · Windows 10/11</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+          <a href="https://github.com/Arnav1771/fahh-ide/releases/latest/download/fahh-editor_0.2.0_x64_en-US.msi"
+             style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--v);color:#fff;border-radius:7px;font-size:.85rem;font-weight:600;transition:background .15s"
+             onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='var(--v)'">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download .msi
+          </a>
+          <a href="https://github.com/Arnav1771/fahh-ide/releases"
+             style="font-family:var(--code);font-size:.7rem;color:var(--text-3);text-align:center;padding:4px">
+            All Windows releases →
+          </a>
+        </div>
+        <div style="font-family:var(--code);font-size:.68rem;color:var(--text-3)">
+          Requires WebView2 (pre-installed on Win 11)
+        </div>
+      </div>
+
+      <!-- macOS -->
+      <div style="background:var(--bg-2);padding:40px 32px;display:flex;flex-direction:column;gap:20px;border-left:1px solid var(--border-md);border-right:1px solid var(--border-md)">
+        <div style="font-size:2.5rem">🍎</div>
+        <div>
+          <div style="font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px">macOS</div>
+          <div style="font-family:var(--code);font-size:.7rem;color:var(--text-3);letter-spacing:.08em">Apple Silicon · Intel · macOS 11+</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+          <a href="https://github.com/Arnav1771/fahh-ide/releases/latest/download/fahh-editor_0.2.0_aarch64.dmg"
+             style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--v);color:#fff;border-radius:7px;font-size:.85rem;font-weight:600;transition:background .15s"
+             onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='var(--v)'">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download .dmg (Apple Silicon)
+          </a>
+          <a href="https://github.com/Arnav1771/fahh-ide/releases/latest/download/fahh-editor_0.2.0_x64.dmg"
+             style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:transparent;color:var(--text-2);border:1px solid var(--border-md);border-radius:7px;font-size:.82rem;font-weight:500;transition:border-color .15s"
+             onmouseover="this.style.borderColor='var(--vl)'" onmouseout="this.style.borderColor='var(--border-md)'">
+            <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download .dmg (Intel)
+          </a>
+          <a href="https://github.com/Arnav1771/fahh-ide/releases"
+             style="font-family:var(--code);font-size:.7rem;color:var(--text-3);text-align:center;padding:4px">
+            All macOS releases →
+          </a>
+        </div>
+        <div style="font-family:var(--code);font-size:.68rem;color:var(--text-3)">
+          Right-click → Open on first launch (Gatekeeper)
+        </div>
+      </div>
+
+      <!-- Linux -->
+      <div style="background:var(--bg-2);padding:40px 32px;display:flex;flex-direction:column;gap:20px">
+        <div style="font-size:2.5rem">🐧</div>
+        <div>
+          <div style="font-family:var(--mono);font-size:1.1rem;font-weight:700;color:var(--text);margin-bottom:4px">Linux</div>
+          <div style="font-family:var(--code);font-size:.7rem;color:var(--text-3);letter-spacing:.08em">x64 · Ubuntu 22.04+ · Debian · Arch</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:auto">
+          <a href="https://github.com/Arnav1771/fahh-ide/releases/latest/download/fahh-editor_0.2.0_amd64.AppImage"
+             style="display:flex;align-items:center;gap:8px;padding:10px 16px;background:var(--v);color:#fff;border-radius:7px;font-size:.85rem;font-weight:600;transition:background .15s"
+             onmouseover="this.style.background='#6d28d9'" onmouseout="this.style.background='var(--v)'">
+            <svg width="14" height="14" viewBox="0 0 15 15" fill="none"><path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download .AppImage
+          </a>
+          <a href="https://github.com/Arnav1771/fahh-ide/releases/latest/download/fahh-editor_0.2.0_amd64.deb"
+             style="display:flex;align-items:center;gap:8px;padding:8px 16px;background:transparent;color:var(--text-2);border:1px solid var(--border-md);border-radius:7px;font-size:.82rem;font-weight:500;transition:border-color .15s"
+             onmouseover="this.style.borderColor='var(--vl)'" onmouseout="this.style.borderColor='var(--border-md)'">
+            <svg width="13" height="13" viewBox="0 0 15 15" fill="none"><path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            Download .deb (Debian/Ubuntu)
+          </a>
+          <a href="https://github.com/Arnav1771/fahh-ide/releases"
+             style="font-family:var(--code);font-size:.7rem;color:var(--text-3);text-align:center;padding:4px">
+            All Linux releases →
+          </a>
+        </div>
+        <div style="font-family:var(--code);font-size:.68rem;color:var(--text-3)">
+          chmod +x fahh*.AppImage &amp;&amp; ./fahh*.AppImage
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Language support table -->
+    <div class="reveal" style="margin-top:64px">
+      <div style="font-family:var(--code);font-size:.65rem;letter-spacing:.18em;text-transform:uppercase;color:var(--vl);margin-bottom:16px">// language support</div>
+      <div style="overflow-x:auto;border:1px solid var(--border-md);border-radius:8px">
+        <table style="width:100%;border-collapse:collapse;font-size:.83rem">
+          <thead>
+            <tr style="background:var(--bg-3)">
+              <th style="padding:10px 16px;text-align:left;font-family:var(--code);font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border-md)">Language</th>
+              <th style="padding:10px 16px;text-align:center;font-family:var(--code);font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border-md)">Syntax</th>
+              <th style="padding:10px 16px;text-align:center;font-family:var(--code);font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border-md)">LSP</th>
+              <th style="padding:10px 16px;text-align:center;font-family:var(--code);font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border-md)">Run</th>
+              <th style="padding:10px 16px;text-align:center;font-family:var(--code);font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border-md)">Debug</th>
+              <th style="padding:10px 16px;text-align:center;font-family:var(--code);font-size:.65rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);border-bottom:1px solid var(--border-md)">Format</th>
+            </tr>
+          </thead>
+          <tbody id="langtable"></tbody>
+        </table>
+      </div>
+      <p style="font-family:var(--code);font-size:.68rem;color:var(--text-3);margin-top:10px">LSP/Debug requires the server to be installed separately and available on PATH.</p>
+    </div>
+  </div>
+</section>
+
 <!-- CTA -->
 <section id="cta">
   <div class="wrap">
     <div class="reveal">
       <h2 class="cta-h2">Ready to be<br><span style="color:var(--rose-l)">loudly judged</span><br>by your IDE?</h2>
-      <p class="cta-sub">Download Fahh Editor and start writing code that talks back.</p>
+      <p class="cta-sub">Download for your platform and start writing code that talks back.</p>
       <div class="cta-btns">
-        <a href="https://github.com/Arnav1771/fahh-ide/releases" class="btn-dl" style="padding:14px 32px;font-size:1rem;border-radius:10px">
+        <a href="#download" class="btn-dl" style="padding:14px 32px;font-size:1rem;border-radius:10px">
           <svg width="16" height="16" viewBox="0 0 15 15" fill="none"><path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Download Fahh Editor
         </a>
@@ -1033,6 +1150,48 @@ const io = new IntersectionObserver(entries => {
   });
 }, { threshold: .12 });
 document.querySelectorAll('.reveal').forEach(el => io.observe(el));
+
+/* ── Language support table ─────────────────────────────────────────────── */
+const LANGS = [
+  {name:'Python',       syntax:1, lsp:'pylsp / pyright', run:'python3', debug:'debugpy', fmt:'Black'},
+  {name:'JavaScript',   syntax:1, lsp:'tsserver',         run:'node',    debug:'--inspect', fmt:'Prettier'},
+  {name:'TypeScript',   syntax:1, lsp:'tsserver',         run:'tsx / ts-node', debug:'--inspect', fmt:'Prettier'},
+  {name:'Go',           syntax:1, lsp:'gopls',            run:'go run',  debug:'Delve',    fmt:'gofmt'},
+  {name:'Rust',         syntax:1, lsp:'rust-analyzer',    run:'cargo run', debug:'LLDB',  fmt:'rustfmt'},
+  {name:'Java',         syntax:1, lsp:'jdtls',            run:'javac+java', debug:'java-debug', fmt:'google-java-format'},
+  {name:'C / C++',      syntax:1, lsp:'clangd',           run:'gcc/g++', debug:'LLDB',    fmt:'clang-format'},
+  {name:'HTML/CSS',     syntax:1, lsp:'vscode-html',      run:'-',       debug:'-',       fmt:'Prettier'},
+  {name:'JSON',         syntax:1, lsp:'vscode-json',      run:'-',       debug:'-',       fmt:'Prettier'},
+  {name:'Markdown',     syntax:1, lsp:'-',                run:'-',       debug:'-',       fmt:'Prettier'},
+  {name:'YAML',         syntax:1, lsp:'yaml-language-server', run:'-',   debug:'-',       fmt:'-'},
+  {name:'Shell / Bash', syntax:1, lsp:'bash-language-server', run:'bash', debug:'-',     fmt:'shfmt'},
+  {name:'Ruby',         syntax:1, lsp:'solargraph',       run:'ruby',    debug:'-',       fmt:'-'},
+  {name:'PHP',          syntax:1, lsp:'-',                run:'php',     debug:'-',       fmt:'-'},
+  {name:'Lua',          syntax:1, lsp:'lua-language-server', run:'lua',  debug:'-',       fmt:'stylua'},
+];
+
+const yes = '<span style="color:#34d399;font-family:var(--code)">✓</span>';
+const no  = '<span style="color:#3d3b52;font-family:var(--code)">—</span>';
+const tbl = document.getElementById('langtable');
+if (tbl) {
+  LANGS.forEach((l, i) => {
+    const tr = document.createElement('tr');
+    tr.style.borderBottom = i < LANGS.length-1 ? '1px solid var(--border)' : 'none';
+    tr.style.transition = 'background .1s';
+    tr.onmouseover = () => tr.style.background = 'rgba(124,58,237,.04)';
+    tr.onmouseout  = () => tr.style.background = '';
+    const cell = (v, center) => `<td style="padding:9px 16px;color:var(--text-2);font-size:.82rem;font-weight:300;${center?'text-align:center':''}">${v}</td>`;
+    const chip = (v) => v === '-' ? no : `<span style="font-family:var(--code);font-size:.7rem;color:var(--vl)">${v}</span>`;
+    tr.innerHTML =
+      `<td style="padding:9px 16px;font-weight:500;color:var(--text);font-size:.85rem">${l.name}</td>` +
+      `<td style="padding:9px 16px;text-align:center">${yes}</td>` +
+      cell(chip(l.lsp), true) +
+      cell(chip(l.run), true) +
+      cell(chip(l.debug), true) +
+      cell(chip(l.fmt), true);
+    tbl.appendChild(tr);
+  });
+}
 </script>
 </body>
 </html>
