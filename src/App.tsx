@@ -99,6 +99,28 @@ export default function App() {
     THEME_DEFINITIONS.find((d) => d.id === activeTheme)?.monacoTheme ??
     "vs-dark";
 
+  // Disable WebView2 browser context menu (prevents Reload/Share/More Tools)
+  useEffect(() => {
+    const block = (e: MouseEvent) => e.preventDefault();
+    document.addEventListener("contextmenu", block);
+    return () => document.removeEventListener("contextmenu", block);
+  }, []);
+
+  // Disable F5 / Ctrl+R page reload (would wipe all editor state)
+  useEffect(() => {
+    const blockReload = (e: KeyboardEvent) => {
+      if (
+        e.key === "F5" ||
+        ((e.ctrlKey || e.metaKey) && e.key === "r") ||
+        ((e.ctrlKey || e.metaKey) && e.key === "R")
+      ) {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("keydown", blockReload);
+    return () => window.removeEventListener("keydown", blockReload);
+  }, []);
+
   // Toggle bottom panel via keyboard shortcut (Ctrl+`)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {

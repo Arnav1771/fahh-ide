@@ -120,6 +120,12 @@ export function applyThemeCssVars(def: ThemeDef): void {
   for (const [key, value] of Object.entries(def.cssVars)) {
     root.style.setProperty(key, value);
   }
+  // Notify Monaco (and any other listener) that the theme changed so they can
+  // update their own theme API — CSS variables alone don't reach Monaco's
+  // internal renderer in the native Tauri build.
+  window.dispatchEvent(
+    new CustomEvent("fahh-theme-change", { detail: def })
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
