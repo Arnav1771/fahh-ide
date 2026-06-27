@@ -122,7 +122,12 @@ export function ExtensionsPanel() {
       })
       .catch((err: unknown) => {
         if (mounted) {
-          setError(String(err));
+          const msg = String(err);
+          const isTauri = msg.includes("invoke") || msg.includes("__TAURI__") || msg.includes("transformCallback");
+          setError(isTauri
+            ? "Plugin registry available in the desktop app — run via `pnpm tauri dev` or install from the release."
+            : msg
+          );
           setLoading(false);
         }
       });
