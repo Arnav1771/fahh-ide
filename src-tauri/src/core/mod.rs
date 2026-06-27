@@ -8,3 +8,7 @@ pub mod runtime;
 pub mod quality;
 pub mod error_detector;
 pub mod installer;
+pub mod runner;
+pub mod lsp_client;
+pub mod debugger;
+pub mod formatter;
