@@ -1,6 +1,6 @@
 [package]
 name = "fahh-editor"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 description = "Fahh Editor — a Tauri 2 desktop IDE"
 license = "MIT"
