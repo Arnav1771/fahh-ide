@@ -1,7 +1,11 @@
 # Fahh Editor — Installation Guide
 
 **Version:** v0.3.0  
-**Last updated:** 2026-06-28
+**Last updated:** 2026-06-28  
+**Download page:** https://arnav1771.github.io/fahh-ide/download.html  
+**Landing page:** https://arnav1771.github.io/fahh-ide/  
+**Web IDE (try without installing):** https://arnav1771.github.io/fahh-ide/play.html  
+**GitHub Releases:** https://github.com/Arnav1771/fahh-ide/releases/tag/v0.3.0
 
 ---
 
