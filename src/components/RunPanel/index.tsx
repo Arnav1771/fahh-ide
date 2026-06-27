@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useEditorStore } from "../../store/editorStore";
 import { useRunnerStore } from "../../store/runnerStore";
-import { runFile, stopRun as stopRunCmd } from "../../lib/tauri";
+import { runFile, stopRun as stopRunCmd, writeFile } from "../../lib/tauri";
 import type { RunOutputEvent } from "../../lib/types";
 
 // ─── Language metadata ────────────────────────────────────────────────────────
@@ -69,7 +69,7 @@ function detectLanguage(filePath: string, docLanguage: string): string {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function RunPanel() {
-  const { activeTab, openTabs } = useEditorStore();
+  const { activeTab, openTabs, fileContents, markDirty } = useEditorStore();
   const {
     isRunning,
     pid,
@@ -163,6 +163,14 @@ export function RunPanel() {
     addOutput(info, "info");
 
     try {
+      // Flush any unsaved content to disk before running so the interpreter
+      // always sees the latest edits even when the file has not been saved yet.
+      const currentContent = fileContents[activeDoc.path];
+      if (activeDoc.dirty && currentContent !== undefined) {
+        await writeFile(activeDoc.path, currentContent);
+        markDirty(activeDoc.path, false);
+      }
+
       const result = await runFile({
         path: activeDoc.path,
         language: effectiveLanguage,

@@ -31,9 +31,32 @@
     ],
     "resources": {
       "assets/fahhhh.mp3": "assets/fahhhh.mp3"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": "",
+      "tsp": false,
+      "wix": {},
+      "nsis": {
+        "template": null,
+        "headerImage": null,
+        "sidebarImage": null,
+        "installerIcon": null,
+        "installMode": "currentUser",
+        "languages": ["English"],
+        "displayLanguageSelector": false,
+        "shortcuts": {
+          "desktop": true,
+          "startMenu": true
+        },
+        "allowElevation": true,
+        "minimumWebview2Version": "0.1.0"
+      }
     }
   },
   "app": {
+    "userAgentSuffix": "FahhEditor/0.2.0",
     "security": {
       "csp": null
     },
