@@ -25,7 +25,7 @@ export function TerminalPanel() {
       <div className="flex items-center px-3 py-1 bg-fahh-sidebar border-b border-fahh-surface shrink-0">
         <span className="text-xs text-fahh-muted uppercase tracking-wider">Terminal</span>
       </div>
-      <div className="flex-1 overflow-y-auto px-3 py-2 text-fahh-text">
+      <div id="terminal-output" className="flex-1 overflow-y-auto px-3 py-2 text-fahh-text">
         {lines.map((line, i) => (
           <div
             key={i}
