@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import { useEditorStore } from "../../store/editorStore";
 import { writeFile } from "../../lib/tauri";
+import { defineMonacoThemes } from "../ThemePanel";
 
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
@@ -72,6 +73,9 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   ) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    // Register custom Monaco themes so GitHub Dark, Dracula, Solarized
+    // are available for setTheme() calls from the theme switcher
+    defineMonacoThemes(monaco);
   };
 
   return (
