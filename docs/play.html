@@ -461,6 +461,53 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 }
 .term-clear-btn:hover { color: var(--text-2); border-color: var(--border-md); }
 
+/* ─── pip install bar ────────────────────────────────────────────────────── */
+#pip-bar {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  background: var(--bg-1);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.pip-label {
+  font-family: var(--code); font-size: .65rem; color: var(--text-3);
+  white-space: nowrap; letter-spacing: .04em;
+  background: var(--bg-3); border: 1px solid var(--border-md);
+  padding: 2px 7px; border-radius: 3px;
+  flex-shrink: 0;
+}
+#pip-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: var(--code); font-size: .72rem; color: var(--text);
+  min-width: 0;
+}
+#pip-input::placeholder { color: var(--text-3); }
+.pip-btn {
+  font-family: var(--code); font-size: .65rem; font-weight: 700;
+  letter-spacing: .06em; color: var(--vl);
+  padding: 2px 10px; border-radius: 3px;
+  border: 1px solid rgba(167,139,250,.25);
+  background: rgba(124,58,237,.1);
+  transition: background .1s, border-color .1s;
+  flex-shrink: 0;
+}
+.pip-btn:hover { background: rgba(124,58,237,.2); border-color: var(--vl); }
+.pip-btn:disabled { opacity: .4; cursor: default; }
+.pip-spinner {
+  width: 10px; height: 10px; border-radius: 50%;
+  border: 1.5px solid rgba(167,139,250,.2);
+  border-top-color: var(--vl);
+  animation: spin .7s linear infinite;
+  display: none; flex-shrink: 0;
+}
+.pip-spinner.active { display: block; }
+
+/* ─── Error line highlight ───────────────────────────────────────────────── */
+.error-line-highlight {
+  background: rgba(225,29,72,.07);
+  border-left: 2px solid var(--rose) !important;
+}
+
 #terminal-output {
   flex: 1;
   overflow-y: auto;
@@ -705,6 +752,14 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
     <div id="terminal-header">
       <span class="term-title">Terminal</span>
       <button class="term-clear-btn" onclick="clearTerminal()">Clear</button>
+    </div>
+    <!-- pip install bar — only shown for Python -->
+    <div id="pip-bar" style="display:none">
+      <span class="pip-label">pip install</span>
+      <input id="pip-input" type="text" placeholder="requests pandas numpy…" spellcheck="false"
+             onkeydown="if(event.key==='Enter')pipInstall()">
+      <div class="pip-spinner" id="pip-spinner"></div>
+      <button class="pip-btn" id="pip-btn" onclick="pipInstall()">Install</button>
     </div>
     <div id="terminal-output">
       <div class="term-line">
@@ -1134,6 +1189,7 @@ async function runCode() {
 
   setStatusError('');
   clearTerminal();
+  clearEditorErrors();
   setRunning(true);
 
   const langLabel = { javascript: 'node', python: 'python3', typescript: 'tsx' };
@@ -1208,6 +1264,9 @@ function runJavaScript(code) {
       const msg = err.message || String(err);
       termAppend(msg, 'stderr');
       setStatusError('1 error — ' + (err.name || 'RuntimeError'));
+      // Highlight the error line in Monaco
+      const line = parseErrorLine(currentLang, msg, err.stack || '');
+      if (line) highlightErrorLine(line, msg);
       triggerFahh(err.name + ': ' + msg);
       resolve();
     }
@@ -1288,6 +1347,9 @@ sys.stderr = _stderr_buf
     // Pull out the last line for the status bar
     const lastLine = lines.filter(Boolean).pop() || msg;
     setStatusError(lastLine.length > 60 ? lastLine.slice(0, 57) + '…' : lastLine);
+    // Highlight the error line in Monaco
+    const line = parseErrorLine('python', msg, '');
+    if (line) highlightErrorLine(line, lastLine);
     triggerFahh(lastLine);
 
   } finally {
@@ -1303,6 +1365,8 @@ sys.stderr = _stderr_buf
    ═══════════════════════════════════════════════════════════════════════════ */
 function onLangChange(lang) {
   currentLang = lang;
+  // Show pip bar only for Python
+  document.getElementById('pip-bar').style.display = lang === 'python' ? 'flex' : 'none';
 
   // Find a matching sample file
   const match = SAMPLE_FILES.find(f => f.lang === lang);
@@ -1363,6 +1427,112 @@ function toggleMobileTree() {
     document.body.style.cursor = '';
   });
 })();
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ERROR LINE HIGHLIGHTING
+   ═══════════════════════════════════════════════════════════════════════════ */
+let errorDecorations = [];
+
+function clearEditorErrors() {
+  if (!monacoEditor) return;
+  errorDecorations = monacoEditor.deltaDecorations(errorDecorations, []);
+  monaco.editor.setModelMarkers(monacoEditor.getModel(), 'fahh-errors', []);
+}
+
+function highlightErrorLine(lineNumber, message) {
+  if (!monacoEditor || !lineNumber) return;
+  const model = monacoEditor.getModel();
+  const totalLines = model.getLineCount();
+  const line = Math.min(Math.max(1, lineNumber), totalLines);
+
+  // Monaco marker (squiggly + tooltip)
+  monaco.editor.setModelMarkers(model, 'fahh-errors', [{
+    startLineNumber: line,
+    startColumn: 1,
+    endLineNumber: line,
+    endColumn: model.getLineMaxColumn(line),
+    message: message,
+    severity: monaco.MarkerSeverity.Error,
+  }]);
+
+  // Gutter decoration (red left-border highlight)
+  errorDecorations = monacoEditor.deltaDecorations(errorDecorations, [{
+    range: new monaco.Range(line, 1, line, 1),
+    options: {
+      isWholeLine: true,
+      className: 'error-line-highlight',
+      glyphMarginClassName: 'codicon codicon-error',
+    },
+  }]);
+
+  // Scroll to the error line with some padding
+  monacoEditor.revealLineInCenter(line);
+}
+
+function parseErrorLine(lang, errMsg, errStack) {
+  if (lang === 'python') {
+    // Python traceback: File "<exec>", line N  OR  line N, in ...
+    const m = errMsg.match(/File "(?:<exec>|exec|<string>)", line (\d+)/);
+    return m ? parseInt(m[1], 10) : null;
+  }
+  if (lang === 'javascript' || lang === 'typescript') {
+    // V8 stack: at eval (<anonymous>:N:C) or <anonymous>:N:C
+    const m = (errStack || '').match(/<anonymous>:(\d+):(\d+)/);
+    if (m) {
+      const line = parseInt(m[1], 10);
+      // new Function wraps code — line 1 in stack = line 1 in user code
+      return line;
+    }
+  }
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   PIP INSTALL
+   ═══════════════════════════════════════════════════════════════════════════ */
+async function pipInstall() {
+  const input = document.getElementById('pip-input');
+  const btn = document.getElementById('pip-btn');
+  const spinner = document.getElementById('pip-spinner');
+  const raw = input.value.trim();
+  if (!raw) return;
+
+  // Support "pip install requests" prefix, or plain "requests pandas"
+  const packages = raw
+    .replace(/^pip\s+install\s+/i, '')
+    .split(/\s+/)
+    .filter(Boolean);
+
+  if (!packages.length) return;
+
+  if (!pyodideReady) {
+    termAppend('Python not ready. Loading…', 'warn');
+    await loadPyodide();
+    if (!pyodideReady) { termAppend('Failed to load Python runtime.', 'stderr'); return; }
+  }
+
+  btn.disabled = true;
+  spinner.classList.add('active');
+  termAppend(`pip install ${packages.join(' ')}`, 'cmd');
+
+  for (const pkg of packages) {
+    termAppend(`  Installing ${pkg}…`, 'info');
+    try {
+      const safePkg = pkg.replace(/['"\\]/g, '');
+      await pyodide.runPythonAsync(`import micropip; await micropip.install('${safePkg}')`);
+      termAppend(`  ✓ ${pkg} installed successfully`, 'stdout');
+    } catch (err) {
+      const msg = err.message || String(err);
+      const lastLine = msg.split('\n').filter(Boolean).pop() || msg;
+      termAppend(`  ✗ ${pkg}: ${lastLine}`, 'stderr');
+    }
+  }
+
+  btn.disabled = false;
+  spinner.classList.remove('active');
+  input.value = '';
+  input.focus();
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════
    KEYBOARD SHORTCUT
@@ -1464,6 +1634,8 @@ require(['vs/editor/editor.main'], function() {
   buildFileTree();
   buildTabs();
   updateStatusLang();
+  // Show pip bar if starting on Python
+  document.getElementById('pip-bar').style.display = currentFile.lang === 'python' ? 'flex' : 'none';
 
   // Set lang select default
   document.getElementById('lang-select').value = currentFile.lang;
