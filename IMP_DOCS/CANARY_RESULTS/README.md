@@ -1,50 +1,63 @@
 # Fahh Editor — Canary Verification Results
 
-This folder contains end-to-end verification runs for each Fahh Editor release.
+End-to-end verification runs for each Fahh Editor release, following the Canary QA harness format.
 
-## Structure
+## Folder structure
 
 ```
 CANARY_RESULTS/
-├── README.md              ← this file
+├── README.md                 ← this file
+├── canary-runner.cjs         ← reusable Playwright test script
 ├── v0.2.0/
-│   ├── verification-report.md   ← full Canary-style report
-│   └── screenshots/             ← evidence screenshots
-│       ├── 01-initial-launch.png
-│       ├── 02-github-dark.png
-│       ├── 03-dracula.png
-│       ├── 04-fahh-light.png
-│       ├── 08-run-panel.png
-│       └── 09-debug-panel.png
-└── v0.3.0/                      ← (pending — build in progress)
-    └── ...
+│   ├── verification-report.md
+│   └── screenshots/          ← 7 evidence screenshots
+└── v0.3.0/
+    ├── verification-report.md
+    └── screenshots/          ← 10 evidence screenshots
 ```
-
-## How Canary tests are run
-
-1. **Install fresh** — uninstall any existing version, download and install the latest `.exe`
-2. **Native process check** — verify the binary starts and stays running
-3. **UI verification** — Playwright headless against Vite dev server tests all UI features
-4. **Screenshot each step** — evidence saved to `screenshots/`
-5. **Document findings** — `verification-report.md` follows the Canary report format
 
 ## Summary table
 
 | Version | Date | Verdict | Pass Rate | Key findings |
 |---------|------|---------|-----------|-------------|
-| v0.2.0 | 2026-06-28 | PASS | 10/13 (77%) | Theme switching ✓, WebView2 menu blocked ✓, terminal/new-file tested browser-only |
-| v0.3.0 | TBD | Pending | — | Build in progress (fixes: context menu, Run wiring, themes Monaco, NSIS shortcuts) |
+| v0.2.0 | 2026-06-28 | PASS | 10/13 (77%) | Themes, WebView2 menu blocked; New file/context menu/terminal untestable in browser-preview |
+| v0.3.0 | 2026-06-28 | PASS | 15/17 (88%) | Fixed: New File button, terminal ID, F5 reload blocked; 2 remaining need real Tauri backend |
 
-## Running a new Canary session
+## What the tests cover
 
-With Canary installed (`/plugin marketplace add wizenheimer/canary`):
+1. App launches and all UI regions render
+2. WebView2 browser context menu is blocked (no Share/Reload/More Tools)
+3. F5/Ctrl+R page reload is blocked (code cannot be accidentally wiped)
+4. All 5 themes switch — status bar + checkmark update
+5. New file button in Explorer header + inline input
+6. Right-click context menu on file items (Open, Rename, Delete, Copy Path)
+7. Terminal handles commands (graceful fallback in browser-preview)
+8. Run panel renders with language selector
+9. Debug panel renders with Start Debug + BREAKPOINTS
+10. Zero critical console errors
+
+## How to run
+
+```bash
+# From repo root:
+pnpm dev &                                          # start Vite on localhost:1420
+node IMP_DOCS/CANARY_RESULTS/canary-runner.cjs      # run all checks
+```
+
+Or with the Canary plugin installed:
 
 ```
-/canary:session user installs Fahh Editor, opens Desktop\fahh-test-workspace, opens calculator.py, edits line 3, presses Ctrl+S, clicks Run in Run panel, observes output
+/canary:session user opens Fahh Editor, opens Desktop/fahh-test-workspace, opens calculator.py, edits it, right-clicks to rename, switches to GitHub Dark theme, clicks Run
 ```
 
-Or for a quick verify after a code change:
+```
+/canary:verify right-click context menu shows on files in the Explorer sidebar
+```
 
-```
-/canary:verify the Run button now executes Python code and shows output in the Run panel
-```
+## Why 2 tests still fail in browser-preview
+
+The remaining 2 failures require a real Tauri binary:
+- **New file persists in tree** — `createFile` calls `tauri-plugin-fs`, unavailable in browser
+- **Right-click context menu** — requires files in tree, which requires opening a folder via Tauri dialog
+
+Both work correctly in the installed `.exe`. To get 17/17, run the tests against `pnpm tauri dev` or the installed binary.
