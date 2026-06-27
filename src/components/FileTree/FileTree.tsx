@@ -50,9 +50,13 @@ export function FileTree() {
   const { openFolder } = useWorkspace();
 
   const handleOpenFolder = async () => {
-    const selected = await open({ directory: true, multiple: false });
-    if (selected && typeof selected === "string") {
-      await openFolder(selected);
+    try {
+      const selected = await open({ directory: true, multiple: false });
+      // Tauri 2 dialog returns string | string[] | null depending on version
+      const path = Array.isArray(selected) ? selected[0] : selected;
+      if (path) await openFolder(path);
+    } catch (err) {
+      console.error("Open folder failed:", err);
     }
   };
 
