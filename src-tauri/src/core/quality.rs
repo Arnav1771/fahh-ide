@@ -8,10 +8,7 @@ pub struct QualityGate {
 }
 
 pub fn run_startup_checks() -> Vec<QualityGate> {
-    let mut gates = Vec::new();
-
-    gates.push(check_home_dir());
-    gates.push(check_config_writable());
+    let gates = vec![check_home_dir(), check_config_writable()];
 
     for gate in &gates {
         if !gate.passed {
