@@ -57,7 +57,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
   {
     id: "github-dark",
     name: "GitHub Dark",
-    monacoTheme: "vs-dark",
+    monacoTheme: "fahh-github-dark",
     description: "Familiar GitHub dark palette.",
     cssVars: {
       "--fahh-bg": "#0d1117",
@@ -76,7 +76,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
   {
     id: "dracula",
     name: "Dracula",
-    monacoTheme: "vs-dark",
+    monacoTheme: "fahh-dracula",
     description: "The beloved Dracula colour scheme.",
     cssVars: {
       "--fahh-bg": "#282a36",
@@ -95,7 +95,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
   {
     id: "solarized-dark",
     name: "Solarized Dark",
-    monacoTheme: "vs-dark",
+    monacoTheme: "fahh-solarized-dark",
     description: "Precision colours for machines and people.",
     cssVars: {
       "--fahh-bg": "#002b36",
@@ -112,6 +112,76 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
     swatches: ["#002b36", "#073642", "#073642", "#268bd2"],
   },
 ];
+
+// ─── Monaco custom theme registration ────────────────────────────────────────
+// Call once after Monaco is ready. Registers fahh-* theme IDs so setTheme() works.
+
+export function defineMonacoThemes(monaco: { editor: { defineTheme: (id: string, def: unknown) => void } }): void {
+  monaco.editor.defineTheme("fahh-github-dark", {
+    base: "vs-dark", inherit: true,
+    rules: [
+      { token: "keyword", foreground: "ff7b72" },
+      { token: "string", foreground: "a5d6ff" },
+      { token: "comment", foreground: "8b949e", fontStyle: "italic" },
+      { token: "number", foreground: "79c0ff" },
+      { token: "type", foreground: "ffa657" },
+      { token: "function", foreground: "d2a8ff" },
+      { token: "variable", foreground: "c9d1d9" },
+    ],
+    colors: {
+      "editor.background": "#0d1117",
+      "editor.foreground": "#c9d1d9",
+      "editorLineNumber.foreground": "#6e7681",
+      "editor.selectionBackground": "#264f78",
+      "editor.lineHighlightBackground": "#161b22",
+      "editorCursor.foreground": "#58a6ff",
+    },
+  });
+
+  monaco.editor.defineTheme("fahh-dracula", {
+    base: "vs-dark", inherit: true,
+    rules: [
+      { token: "keyword", foreground: "ff79c6" },
+      { token: "string", foreground: "f1fa8c" },
+      { token: "comment", foreground: "6272a4", fontStyle: "italic" },
+      { token: "number", foreground: "bd93f9" },
+      { token: "type", foreground: "8be9fd" },
+      { token: "function", foreground: "50fa7b" },
+      { token: "variable", foreground: "f8f8f2" },
+      { token: "operator", foreground: "ff79c6" },
+    ],
+    colors: {
+      "editor.background": "#282a36",
+      "editor.foreground": "#f8f8f2",
+      "editorLineNumber.foreground": "#6272a4",
+      "editor.selectionBackground": "#44475a",
+      "editor.lineHighlightBackground": "#3a3c4e",
+      "editorCursor.foreground": "#f8f8f0",
+    },
+  });
+
+  monaco.editor.defineTheme("fahh-solarized-dark", {
+    base: "vs-dark", inherit: true,
+    rules: [
+      { token: "keyword", foreground: "859900" },
+      { token: "string", foreground: "2aa198" },
+      { token: "comment", foreground: "586e75", fontStyle: "italic" },
+      { token: "number", foreground: "d33682" },
+      { token: "type", foreground: "b58900" },
+      { token: "function", foreground: "268bd2" },
+      { token: "variable", foreground: "839496" },
+      { token: "operator", foreground: "93a1a1" },
+    ],
+    colors: {
+      "editor.background": "#002b36",
+      "editor.foreground": "#839496",
+      "editorLineNumber.foreground": "#586e75",
+      "editor.selectionBackground": "#073642",
+      "editor.lineHighlightBackground": "#073642",
+      "editorCursor.foreground": "#839496",
+    },
+  });
+}
 
 // ─── CSS variable application ─────────────────────────────────────────────────
 

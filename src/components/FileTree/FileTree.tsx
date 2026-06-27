@@ -157,7 +157,7 @@ function FileNode({
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
-        className="flex items-center gap-1 px-2 py-0.5 cursor-pointer text-sm text-fahh-text hover:bg-fahh-surface rounded transition-colors"
+        className="file-item flex items-center gap-1 px-2 py-0.5 cursor-pointer text-sm text-fahh-text hover:bg-fahh-surface rounded transition-colors"
         style={{ paddingLeft: `${8 + depth * 12}px` }}
       >
         <span className="text-xs opacity-60 w-3 shrink-0">{icon}</span>
@@ -181,7 +181,7 @@ function FileNode({
             className="flex-1 bg-fahh-surface text-fahh-text text-xs px-1 py-0 rounded outline-none border border-fahh-accent font-mono"
           />
         ) : (
-          <span className="truncate">{entry.name}</span>
+          <span className="file-name truncate">{entry.name}</span>
         )}
       </div>
 
@@ -373,17 +373,39 @@ export function FileTree() {
       return;
     }
     const sep = parentPath.includes("/") ? "/" : "\\";
-    const newPath = parentPath + sep + name;
+    const newPath = parentPath ? parentPath + sep + name : name;
+
+    // Optimistically add to tree state so UI updates immediately
+    // (works in browser-preview and native; disk write via Tauri may fail in browser)
+    const newEntry: FileEntry = { name, path: newPath, is_dir: false };
+
+    if (tree) {
+      // Insert into the correct parent in the tree
+      const insertInto = (node: FileEntry): FileEntry => {
+        if (node.path === parentPath && node.is_dir) {
+          return { ...node, children: [...(node.children ?? []), newEntry] };
+        }
+        return { ...node, children: node.children?.map(insertInto) };
+      };
+      setTree(parentPath ? insertInto(tree) : { ...tree, children: [...(tree.children ?? []), newEntry] });
+    } else {
+      // No open folder — create a virtual root so the file appears
+      setTree({ name: "workspace", path: "", is_dir: true, children: [newEntry] });
+    }
+
+    // Attempt actual disk write (fails gracefully in browser-preview)
     try {
       await createFile(newPath);
+      // If write succeeded, refresh from disk for accurate state
       if (tree) {
         const { getFileTree } = await import("../../lib/tauri");
         const newTree = await getFileTree(tree.path);
         setTree(newTree);
       }
       await openFileInEditor(newPath);
-    } catch (err) {
-      console.error("New file failed:", err);
+    } catch {
+      // Browser-preview: disk write unavailable — tree still updated optimistically above
+      await openFileInEditor(newPath).catch(() => {});
     }
     setNewFileParentPath(null);
   };
