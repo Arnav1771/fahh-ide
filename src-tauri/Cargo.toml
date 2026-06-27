@@ -27,6 +27,11 @@ notify = "6"
 notify-debouncer-mini = "0.4"
 dirs = "5"
 walkdir = "2"
+which = "6"
+lazy_static = "1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
