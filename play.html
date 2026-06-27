@@ -536,6 +536,60 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* ─── Tree actions ────────────────────────────────────────────────────── */
+.tree-header {
+  /* override existing — make it flex */
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px 8px !important;
+}
+.tree-actions { display: flex; gap: 2px; }
+.tree-btn {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .8rem; border-radius: 4px; color: var(--text-3);
+  transition: color .1s, background .1s;
+}
+.tree-btn:hover { color: var(--text); background: rgba(124,58,237,.12); }
+
+/* ─── New file input row ──────────────────────────────────────────────── */
+.new-file-row {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.new-file-input {
+  flex: 1; background: var(--bg-3); border: 1px solid var(--vl);
+  border-radius: 4px; color: var(--text);
+  font-family: var(--code); font-size: .72rem;
+  padding: 3px 7px; outline: none;
+}
+
+/* ─── File item delete button ─────────────────────────────────────────── */
+.file-delete {
+  display: none; width: 16px; height: 16px;
+  align-items: center; justify-content: center;
+  font-size: .65rem; border-radius: 3px; color: var(--text-3);
+  flex-shrink: 0; margin-left: auto;
+  transition: color .1s, background .1s;
+}
+.file-item:hover .file-delete { display: flex; }
+.file-delete:hover { color: var(--rose-l); background: rgba(225,29,72,.12); }
+
+/* ─── Drag over ───────────────────────────────────────────────────────── */
+#file-tree.drag-over {
+  background: rgba(124,58,237,.07);
+  border-right-color: var(--vl);
+}
+#file-tree.drag-over .tree-footer { border-top-color: var(--vl); }
+#file-tree.drag-over .tree-footer-text { color: var(--vl); }
+
+/* ─── Status download ─────────────────────────────────────────────────── */
+.status-dl-btn { transition: color .1s !important; }
+.status-dl-btn:hover { color: rgba(255,255,255,.9) !important; }
 </style>
 </head>
 <body>
@@ -602,10 +656,21 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 
     <!-- File tree -->
     <aside id="file-tree">
-      <div class="tree-header">Explorer</div>
+      <div class="tree-header">
+        <span>Explorer</span>
+        <div class="tree-actions">
+          <button class="tree-btn" title="New file" onclick="startNewFile()">+</button>
+          <button class="tree-btn" title="Upload file" onclick="triggerUpload()">⬆</button>
+        </div>
+      </div>
+      <div class="new-file-row" id="new-file-row" style="display:none">
+        <input type="text" id="new-file-input" class="new-file-input" placeholder="filename.py" spellcheck="false">
+        <button class="tree-btn" onclick="confirmNewFile()">✓</button>
+        <button class="tree-btn" onclick="cancelNewFile()">✕</button>
+      </div>
       <div class="file-list" id="file-list"></div>
       <div class="tree-footer">
-        <div class="tree-footer-text">// sample files<br>click to load</div>
+        <div class="tree-footer-text" id="drop-hint">drag &amp; drop files here</div>
       </div>
     </aside>
 
@@ -627,6 +692,7 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
         <div class="status-item" id="st-eol">LF</div>
         <div class="status-item" id="st-pos">Ln 1, Col 1</div>
         <div class="status-item" id="st-err"></div>
+        <button class="status-item status-dl-btn" title="Download current file" onclick="downloadCurrentFile()" style="cursor:pointer;border:none;background:none;font:inherit;color:rgba(255,255,255,.6);margin-left:auto">⬇</button>
       </div>
     </div>
   </div>
@@ -648,6 +714,8 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
     </div>
   </div>
 </div>
+
+<input type="file" id="upload-input" accept=".py,.js,.ts,.txt,.json,.html,.css,.md" style="display:none" multiple onchange="handleUploadChange(this)">
 
 <!-- Monaco loader -->
 <script>
@@ -845,7 +913,8 @@ function buildFileTree() {
     item.innerHTML = `
       <span class="file-icon">${f.icon}</span>
       <span class="file-name">${f.name}</span>
-      <span class="file-ext">${f.ext}</span>
+      ${f.userCreated ? '' : `<span class="file-ext">${f.ext}</span>`}
+      <button class="file-delete" title="Delete file" onclick="deleteFile('${f.id}', event)">✕</button>
     `;
     item.addEventListener('click', () => loadFile(f));
     list.appendChild(item);
@@ -1385,7 +1454,13 @@ require(['vs/editor/editor.main'], function() {
     updateStatusPos(e.position.lineNumber, e.position.column);
   });
 
+  // Auto-save on content change
+  monacoEditor.onDidChangeModelContent(() => {
+    scheduleAutoSave();
+  });
+
   // Build UI
+  loadFromLocalStorage();
   buildFileTree();
   buildTabs();
   updateStatusLang();
@@ -1396,6 +1471,194 @@ require(['vs/editor/editor.main'], function() {
   // Focus the editor
   monacoEditor.focus();
 });
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   FILE MANAGEMENT — new, delete, upload, download, localStorage
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+// Extension → language + icon
+function extToMeta(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const map = {
+    py:   { lang: 'python',     icon: '🐍' },
+    js:   { lang: 'javascript', icon: '📜' },
+    ts:   { lang: 'typescript', icon: '🔷' },
+    jsx:  { lang: 'javascript', icon: '⚛️' },
+    tsx:  { lang: 'typescript', icon: '⚛️' },
+    json: { lang: 'json',       icon: '📋' },
+    html: { lang: 'html',       icon: '🌐' },
+    css:  { lang: 'css',        icon: '🎨' },
+    md:   { lang: 'markdown',   icon: '📝' },
+    txt:  { lang: 'plaintext',  icon: '📄' },
+  };
+  return map[ext] || { lang: 'plaintext', icon: '📄' };
+}
+
+// ── New file ──────────────────────────────────────────────────────────────
+function startNewFile() {
+  const row = document.getElementById('new-file-row');
+  const inp = document.getElementById('new-file-input');
+  row.style.display = 'flex';
+  inp.value = '';
+  inp.focus();
+}
+
+function confirmNewFile() {
+  const inp = document.getElementById('new-file-input');
+  const name = inp.value.trim();
+  if (!name) { cancelNewFile(); return; }
+  const finalName = name.includes('.') ? name : name + '.py';
+  addFileToIDE(finalName, '');
+  cancelNewFile();
+}
+
+function cancelNewFile() {
+  document.getElementById('new-file-row').style.display = 'none';
+  document.getElementById('new-file-input').value = '';
+}
+
+document.getElementById('new-file-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') confirmNewFile();
+  if (e.key === 'Escape') cancelNewFile();
+});
+
+// ── Add file to IDE ───────────────────────────────────────────────────────
+function addFileToIDE(name, content) {
+  const meta = extToMeta(name);
+  const id = name + '_' + Date.now();
+  const file = { id, name, lang: meta.lang, icon: meta.icon, ext: '.' + name.split('.').pop(), content, userCreated: true };
+  SAMPLE_FILES.push(file);
+  buildFileTree();
+  buildTabs();
+  loadFile(file);
+  saveToLocalStorage();
+}
+
+// ── Delete file ───────────────────────────────────────────────────────────
+function deleteFile(id, e) {
+  e.stopPropagation();
+  const idx = SAMPLE_FILES.findIndex(f => f.id === id);
+  if (idx === -1) return;
+  SAMPLE_FILES.splice(idx, 1);
+  if (SAMPLE_FILES.length === 0) {
+    // Add an empty placeholder
+    addFileToIDE('untitled.js', '// Start coding here\n');
+    return;
+  }
+  if (currentFile.id === id) {
+    loadFile(SAMPLE_FILES[Math.min(idx, SAMPLE_FILES.length - 1)]);
+  } else {
+    buildFileTree();
+    buildTabs();
+  }
+  saveToLocalStorage();
+}
+
+// ── Upload via button ─────────────────────────────────────────────────────
+function triggerUpload() {
+  document.getElementById('upload-input').click();
+}
+
+function handleUploadChange(input) {
+  Array.from(input.files).forEach(readAndAddFile);
+  input.value = '';
+}
+
+function readAndAddFile(file) {
+  const reader = new FileReader();
+  reader.onload = e => addFileToIDE(file.name, e.target.result);
+  reader.readAsText(file);
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────
+const fileTree = document.getElementById('file-tree');
+
+fileTree.addEventListener('dragover', e => {
+  e.preventDefault();
+  fileTree.classList.add('drag-over');
+});
+fileTree.addEventListener('dragleave', e => {
+  if (!fileTree.contains(e.relatedTarget)) fileTree.classList.remove('drag-over');
+});
+fileTree.addEventListener('drop', e => {
+  e.preventDefault();
+  fileTree.classList.remove('drag-over');
+  Array.from(e.dataTransfer.files).forEach(readAndAddFile);
+});
+
+// Also allow drop on the Monaco container
+document.getElementById('monaco-container').addEventListener('dragover', e => {
+  e.preventDefault();
+  fileTree.classList.add('drag-over');
+  document.getElementById('drop-hint').textContent = 'drop to open';
+});
+document.getElementById('monaco-container').addEventListener('dragleave', e => {
+  fileTree.classList.remove('drag-over');
+  document.getElementById('drop-hint').textContent = 'drag & drop files here';
+});
+document.getElementById('monaco-container').addEventListener('drop', e => {
+  e.preventDefault();
+  fileTree.classList.remove('drag-over');
+  document.getElementById('drop-hint').textContent = 'drag & drop files here';
+  Array.from(e.dataTransfer.files).forEach(readAndAddFile);
+});
+
+// ── Download current file ─────────────────────────────────────────────────
+function downloadCurrentFile() {
+  if (!monacoEditor || !currentFile) return;
+  const content = monacoEditor.getValue();
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = currentFile.name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── localStorage persistence ──────────────────────────────────────────────
+const LS_KEY = 'fahh-play-files-v1';
+
+function saveToLocalStorage() {
+  try {
+    // Only save user-created files + content of all files
+    const toSave = SAMPLE_FILES.map(f => ({
+      id: f.id, name: f.name, lang: f.lang, icon: f.icon, ext: f.ext,
+      content: f.id === currentFile.id && monacoEditor ? monacoEditor.getValue() : f.content,
+      userCreated: f.userCreated || false,
+    }));
+    localStorage.setItem(LS_KEY, JSON.stringify(toSave));
+  } catch {}
+}
+
+function loadFromLocalStorage() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LS_KEY));
+    if (!saved || !saved.length) return;
+    // Restore user-created files and any edits to sample files
+    saved.forEach(saved => {
+      const existing = SAMPLE_FILES.find(f => f.id === saved.id);
+      if (existing) {
+        existing.content = saved.content; // restore edits
+      } else if (saved.userCreated) {
+        SAMPLE_FILES.push(saved); // restore user file
+      }
+    });
+  } catch {}
+}
+
+// Auto-save when editor content changes (debounced)
+let saveTimer = null;
+function scheduleAutoSave() {
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    // Sync editor content to currentFile before saving
+    if (monacoEditor && currentFile) {
+      currentFile.content = monacoEditor.getValue();
+    }
+    saveToLocalStorage();
+  }, 800);
+}
 </script>
 </body>
 </html>
