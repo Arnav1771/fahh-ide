@@ -256,6 +256,7 @@ export function FileTree() {
 
   // New-file inline input state
   const [newFileParentPath, setNewFileParentPath] = useState<string | null>(null);
+  const [newFileInput, setNewFileInput] = useState("");
 
   const handleOpenFolder = async () => {
     setIsOpening(true);
@@ -391,14 +392,23 @@ export function FileTree() {
     <div className="flex flex-col h-full bg-fahh-sidebar overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-fahh-muted uppercase tracking-wider shrink-0">
         <span>Explorer</span>
-        <button
-          onClick={handleOpenFolder}
-          disabled={isOpening}
-          className="text-fahh-muted hover:text-fahh-accent transition-colors disabled:opacity-40"
-          title="Open Folder"
-        >
-          {isOpening ? "…" : "+"}
-        </button>
+        <div className="flex gap-1">
+          <button
+            onClick={() => setNewFileParentPath(tree?.path ?? "")}
+            className="text-fahh-muted hover:text-fahh-accent transition-colors px-1"
+            title="New file"
+          >
+            📄
+          </button>
+          <button
+            onClick={handleOpenFolder}
+            disabled={isOpening}
+            className="text-fahh-muted hover:text-fahh-accent transition-colors disabled:opacity-40 px-1"
+            title="Open Folder"
+          >
+            {isOpening ? "…" : "📁"}
+          </button>
+        </div>
       </div>
 
       {/* Path input fallback — shown when native dialog is unavailable (WSL, etc.) */}
@@ -454,6 +464,25 @@ export function FileTree() {
           ))
         ) : (
           <div className="px-3 py-4 text-xs text-fahh-muted text-center">
+            {/* Inline new-file input when no folder is open */}
+            {newFileParentPath !== null && (
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleNewFileSubmit("", newFileInput); setNewFileInput(""); setNewFileParentPath(null); }}
+                className="mb-3 flex gap-1"
+              >
+                <input
+                  type="text"
+                  value={newFileInput}
+                  onChange={(e) => setNewFileInput(e.target.value)}
+                  placeholder="filename.ts"
+                  autoFocus
+                  spellCheck={false}
+                  onKeyDown={(e) => { if(e.key==="Escape") { setNewFileParentPath(null); setNewFileInput(""); }}}
+                  className="flex-1 bg-fahh-surface text-fahh-text text-xs px-2 py-1 rounded outline-none border border-fahh-accent font-mono"
+                />
+                <button type="submit" className="px-2 py-1 bg-fahh-accent text-white text-xs rounded">✓</button>
+              </form>
+            )}
             <p>No folder open</p>
             <button
               onClick={handleOpenFolder}
