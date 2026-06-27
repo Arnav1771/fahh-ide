@@ -7,8 +7,12 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Release tag (e.g. v0.2.0)"
+        description: "Release tag (e.g. v0.2.1)"
         required: true
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -20,22 +24,26 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
-            target: x86_64-unknown-linux-gnu
+            args: ""
             label: linux-x64
           - platform: macos-latest
-            target: aarch64-apple-darwin
+            args: "--target aarch64-apple-darwin"
+            rust-target: aarch64-apple-darwin
             label: macos-arm64
           - platform: macos-latest
-            target: x86_64-apple-darwin
+            args: "--target x86_64-apple-darwin"
+            rust-target: x86_64-apple-darwin
             label: macos-x64
           - platform: windows-latest
-            target: x86_64-pc-windows-msvc
+            args: "--target x86_64-pc-windows-msvc"
+            rust-target: x86_64-pc-windows-msvc
             label: windows-x64
 
     runs-on: ${{ matrix.platform }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Install Linux system deps
         if: matrix.platform == 'ubuntu-22.04'
@@ -43,25 +51,31 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev \
+            libappindicator3-dev \
             librsvg2-dev \
+            patchelf \
             libssl-dev \
-            patchelf
+            libgtk-3-dev \
+            libayatana-appindicator3-dev
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "lts/*"
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: npm install -g pnpm@latest
 
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          targets: ${{ matrix.target }}
+          targets: ${{ matrix.rust-target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
         with:
           workspaces: "./src-tauri -> target"
+          cache-on-failure: true
 
       - name: Install frontend deps
         run: pnpm install
@@ -76,27 +90,25 @@ jobs:
           releaseBody: |
             ## Fahh Editor ${{ github.ref_name }}
 
-            A Tauri 2 desktop IDE with Monaco editor, integrated terminal, LSP support, code execution, debugging, and the legendary Fahh SFX.
+            A Tauri 2 desktop IDE with Monaco editor, LSP support, step-through debugger,
+            one-click code execution, 5 built-in themes — and the fahhhh.mp3.
 
             ### Downloads
             | Platform | File |
             |----------|------|
-            | Windows (x64) | `.msi` installer |
-            | macOS (Apple Silicon) | `.dmg` |
-            | macOS (Intel) | `.dmg` |
-            | Linux (x64) | `.deb` and `.AppImage` |
+            | Windows 10/11 (x64) | `.msi` installer |
+            | macOS Apple Silicon | `.dmg` |
+            | macOS Intel | `.dmg` |
+            | Linux x64 | `.AppImage` · `.deb` |
 
-            ### What's included
-            - Monaco editor with full syntax highlighting for 15+ languages
-            - LSP support (rust-analyzer, tsserver, pylsp, gopls, clangd auto-detected)
-            - Code execution panel (Node.js, Python, Go, Java, C++, Rust)
-            - DAP debugging (Python + Node.js/TypeScript)
-            - 5 built-in themes
-            - Formatter integration (Prettier, Black, gofmt, clang-format, rustfmt)
-            - File tree, integrated terminal, Git status (Phase 2)
-            - The fahhhh.mp3 — every error, every time
+            ### What's new
+            - Full LSP (rust-analyzer, tsserver, pylsp, gopls, clangd auto-detected)
+            - DAP debugger: Python (debugpy), Node.js/TS (--inspect), Go (Delve)
+            - Run panel: one-click execution for 18+ languages with streaming output
+            - 5 built-in themes, formatter integration, plugin registry
+            - Fahh SFX: plays on every error, 3-second cooldown, always
 
-            See [TECHSPEC.md](https://github.com/Arnav1771/fahh-ide/blob/main/TECHSPEC.md) for full documentation.
+            See the [full docs](https://arnav1771.github.io/fahh-ide/docs.html).
           releaseDraft: false
           prerelease: false
-          args: --target ${{ matrix.target }}
+          args: ${{ matrix.args }}
