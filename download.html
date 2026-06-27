@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Download — Fahh Editor</title>
+<meta name="description" content="Download Fahh Editor for Windows, macOS, or Linux. The IDE that tells you when you messed up.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #050510;
+  --bg-1:     #0a0a1c;
+  --bg-2:     #111126;
+  --border:   rgba(160,155,220,.10);
+  --border-md:rgba(160,155,220,.18);
+  --v:        #7c3aed;
+  --vl:       #a78bfa;
+  --rose:     #e11d48;
+  --rose-l:   #fb7185;
+  --text:     #f0eeff;
+  --text-2:   #9d9bbf;
+  --text-3:   #5a5878;
+  --green:    #34d399;
+  --gold:     #fbbf24;
+  --mono:     'Space Mono', monospace;
+  --body:     'DM Sans', system-ui, sans-serif;
+  --code:     'JetBrains Mono', monospace;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--text);font-family:var(--body);line-height:1.6;overflow-x:hidden}
+a{color:inherit;text-decoration:none}
+
+/* ── Nav ── */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;height:58px;display:flex;align-items:center;justify-content:space-between;padding:0 32px;background:rgba(5,5,16,.8);backdrop-filter:blur(16px);border-bottom:1px solid var(--border)}
+.nav-logo{font-family:var(--mono);font-size:.85rem;font-weight:700;display:flex;align-items:center;gap:9px}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--rose);box-shadow:0 0 8px rgba(225,29,72,.5)}
+.nav-links{display:flex;align-items:center;gap:6px}
+.nav-link{font-size:.82rem;color:var(--text-2);padding:6px 12px;border-radius:6px;transition:color .15s,background .15s}
+.nav-link:hover{color:var(--text);background:var(--border)}
+.nav-link.active{color:var(--vl)}
+
+/* ── Hero ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:80px 24px 60px;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:40%;left:50%;transform:translate(-50%,-50%);width:600px;height:400px;background:radial-gradient(ellipse,rgba(124,58,237,.12) 0%,transparent 70%);pointer-events:none}
+
+.version-badge{display:inline-flex;align-items:center;gap:8px;font-family:var(--code);font-size:.7rem;color:var(--vl);border:1px solid rgba(167,139,250,.25);background:rgba(124,58,237,.08);border-radius:100px;padding:5px 14px;margin-bottom:28px;letter-spacing:.06em}
+.version-dot{width:6px;height:6px;border-radius:50%;background:var(--green);box-shadow:0 0 6px rgba(52,211,153,.6)}
+
+.hero-title{font-family:var(--mono);font-size:clamp(2.4rem,5vw,3.8rem);font-weight:700;letter-spacing:-.04em;line-height:1.08;margin-bottom:16px;text-wrap:balance}
+.hero-sub{font-size:1.05rem;color:var(--text-2);font-weight:300;max-width:480px;margin:0 auto 40px;line-height:1.75}
+
+/* ── Platform detector ── */
+.platform-hero{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:32px}
+.btn-primary-dl{display:inline-flex;align-items:center;gap:10px;padding:14px 32px;background:var(--v);color:#fff;border-radius:10px;font-family:var(--body);font-size:1rem;font-weight:600;box-shadow:0 8px 32px rgba(124,58,237,.4);transition:background .15s,transform .15s,box-shadow .15s;border:none;cursor:pointer}
+.btn-primary-dl:hover{background:#6d28d9;transform:translateY(-2px);box-shadow:0 12px 40px rgba(124,58,237,.55)}
+.btn-primary-dl svg{flex-shrink:0}
+.dl-platform-label{font-family:var(--code);font-size:.68rem;color:var(--text-3);letter-spacing:.12em;text-transform:uppercase}
+.btn-alt-dl{font-size:.82rem;color:var(--vl);text-decoration:underline;text-decoration-color:rgba(167,139,250,.3);cursor:pointer;background:none;border:none;transition:text-decoration-color .15s}
+.btn-alt-dl:hover{text-decoration-color:var(--vl)}
+
+/* ── Stats strip ── */
+.stats-strip{display:flex;align-items:center;gap:24px;flex-wrap:wrap;justify-content:center;font-family:var(--code);font-size:.68rem;color:var(--text-3);margin-bottom:64px;letter-spacing:.06em}
+.stats-strip span{display:flex;align-items:center;gap:6px}
+.stats-strip .dot-green{width:5px;height:5px;border-radius:50%;background:var(--green);flex-shrink:0}
+
+/* ── All platforms ── */
+.platforms{max-width:880px;margin:0 auto;padding:0 24px 80px}
+.section-eyebrow{font-family:var(--code);font-size:.65rem;letter-spacing:.2em;text-transform:uppercase;color:var(--vl);margin-bottom:16px;text-align:center}
+.section-title{font-family:var(--mono);font-size:clamp(1.4rem,2.5vw,2rem);font-weight:700;letter-spacing:-.03em;color:var(--text);margin-bottom:40px;text-align:center}
+
+.platform-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border-md);border:1px solid var(--border-md);border-radius:12px;overflow:hidden;margin-bottom:48px}
+@media(max-width:768px){.platform-grid{grid-template-columns:1fr}}
+
+.platform-card{background:var(--bg-1);padding:28px 24px;display:flex;flex-direction:column;gap:14px;transition:background .15s}
+.platform-card:hover{background:var(--bg-2)}
+.platform-header{display:flex;align-items:center;gap:12px}
+.platform-icon{font-size:1.6rem;flex-shrink:0}
+.platform-name{font-family:var(--mono);font-size:.95rem;font-weight:700;color:var(--text)}
+.platform-sub{font-family:var(--code);font-size:.62rem;color:var(--text-3);letter-spacing:.06em;margin-top:1px}
+.dl-list{display:flex;flex-direction:column;gap:6px}
+.dl-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.dl-link{display:inline-flex;align-items:center;gap:6px;font-family:var(--code);font-size:.72rem;color:var(--vl);padding:6px 12px;border-radius:6px;background:rgba(124,58,237,.08);border:1px solid rgba(124,58,237,.2);transition:background .15s,border-color .15s;white-space:nowrap}
+.dl-link:hover{background:rgba(124,58,237,.18);border-color:var(--vl)}
+.dl-size{font-family:var(--code);font-size:.6rem;color:var(--text-3);white-space:nowrap}
+.platform-note{font-size:.75rem;color:var(--text-3);font-weight:300;line-height:1.5;padding-top:4px;border-top:1px solid var(--border)}
+
+/* ── What's included ── */
+.whats-included{background:var(--bg-1);border:1px solid var(--border-md);border-radius:12px;padding:32px;margin-bottom:48px}
+.wi-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+@media(max-width:600px){.wi-grid{grid-template-columns:1fr}}
+.wi-col h4{font-family:var(--mono);font-size:.8rem;font-weight:700;color:var(--text-2);letter-spacing:.06em;text-transform:uppercase;margin-bottom:14px}
+.wi-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.wi-list li{display:flex;align-items:flex-start;gap:8px;font-size:.85rem;color:var(--text-2);font-weight:300;line-height:1.5}
+.wi-list li::before{content:'✓';color:var(--green);font-weight:700;flex-shrink:0;margin-top:1px}
+.wi-list li.phase2::before{content:'·';color:var(--text-3)}
+.wi-list li.phase2{color:var(--text-3)}
+.wi-divider{width:1px;background:var(--border);margin:0 28px}
+@media(max-width:600px){.wi-divider{display:none}}
+
+/* ── System requirements ── */
+.sysreq{margin-bottom:48px}
+.req-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.req-table th{font-family:var(--code);font-size:.62rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--text-3);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border-md)}
+.req-table td{padding:10px 14px;color:var(--text-2);font-weight:300;border-bottom:1px solid var(--border)}
+.req-table tr:last-child td{border-bottom:none}
+.req-table tr:hover td{background:rgba(124,58,237,.04)}
+
+/* ── Quick install ── */
+.quick-install{background:var(--bg-2);border:1px solid var(--border-md);border-radius:10px;overflow:hidden;margin-bottom:48px}
+.qi-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--bg-1);border-bottom:1px solid var(--border)}
+.qi-title{font-family:var(--code);font-size:.65rem;color:var(--text-3);letter-spacing:.1em;text-transform:uppercase}
+.qi-copy{font-family:var(--code);font-size:.62rem;color:var(--text-3);padding:3px 8px;border-radius:4px;border:1px solid var(--border);cursor:pointer;transition:color .1s,border-color .1s;background:none}
+.qi-copy:hover{color:var(--text);border-color:var(--border-md)}
+.qi-copy.copied{color:var(--green);border-color:rgba(52,211,153,.3)}
+.qi-body{padding:16px 20px;font-family:var(--code);font-size:.78rem;color:var(--vl);line-height:1.8}
+.qi-body .cm{color:var(--text-3);font-style:italic}
+.qi-tabs{display:flex;border-bottom:1px solid var(--border)}
+.qi-tab{font-family:var(--code);font-size:.65rem;padding:8px 16px;color:var(--text-3);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;background:none;border-top:none;border-left:none;border-right:none}
+.qi-tab.active{color:var(--vl);border-bottom-color:var(--v)}
+.qi-tab:hover:not(.active){color:var(--text-2)}
+
+/* ── Try in browser ── */
+.try-browser{text-align:center;padding:48px 0;border-top:1px solid var(--border)}
+.try-h{font-family:var(--mono);font-size:1.3rem;font-weight:700;letter-spacing:-.03em;margin-bottom:10px}
+.try-sub{font-size:.9rem;color:var(--text-2);font-weight:300;margin-bottom:24px}
+.btn-try{display:inline-flex;align-items:center;gap:8px;padding:11px 24px;border-radius:8px;font-size:.9rem;font-weight:500;border:1px solid rgba(225,29,72,.3);color:var(--rose-l);background:rgba(225,29,72,.06);transition:background .15s,border-color .15s}
+.btn-try:hover{background:rgba(225,29,72,.12);border-color:var(--rose-l)}
+
+/* ── Footer ── */
+footer{border-top:1px solid var(--border);padding:32px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;max-width:880px;margin:0 auto}
+.foot-l{font-family:var(--code);font-size:.68rem;color:var(--text-3);letter-spacing:.04em}
+.foot-links{display:flex;gap:24px}
+.foot-link{font-size:.8rem;color:var(--text-3);transition:color .15s}
+.foot-link:hover{color:var(--text)}
+
+@media(max-width:600px){nav{padding:0 16px}.hero{padding:80px 16px 40px}.stats-strip{gap:12px}}
+@media(prefers-reduced-motion:reduce){*{transition-duration:.01ms!important}}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <a href="index.html" class="nav-logo">
+    <span class="nav-dot"></span>
+    fahh
+  </a>
+  <div class="nav-links">
+    <a href="index.html#features" class="nav-link">Features</a>
+    <a href="docs.html" class="nav-link">Docs</a>
+    <a href="play.html" class="nav-link">Try it</a>
+    <a href="download.html" class="nav-link active">Download</a>
+    <a href="https://github.com/Arnav1771/fahh-ide" target="_blank" class="nav-link">GitHub</a>
+  </div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="version-badge">
+    <span class="version-dot"></span>
+    v0.3.0 · Released Jun 28, 2026
+  </div>
+  <h1 class="hero-title">Download<br>Fahh Editor</h1>
+  <p class="hero-sub">The IDE that plays a sound when your code breaks. Free, open source, runs locally.</p>
+
+  <!-- Platform-detected primary CTA -->
+  <div class="platform-hero">
+    <button class="btn-primary-dl" id="primary-dl-btn" onclick="primaryDownload()">
+      <svg width="16" height="16" viewBox="0 0 15 15" fill="none">
+        <path d="M7.5 1v9M4 7l3.5 3.5L11 7M2 13h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="primary-dl-text">Download for Windows</span>
+    </button>
+    <div class="dl-platform-label" id="platform-label">x64 · Windows 10/11</div>
+    <button class="btn-alt-dl" onclick="scrollToPlatforms()">Other platforms →</button>
+  </div>
+
+  <!-- Trust strip -->
+  <div class="stats-strip">
+    <span><span class="dot-green"></span>CI passing</span>
+    <span>·</span>
+    <span>17/17 E2E tests</span>
+    <span>·</span>
+    <span>Windows · macOS · Linux</span>
+    <span>·</span>
+    <span>Not Electron — Tauri 2</span>
+    <span>·</span>
+    <span>MIT License</span>
+  </div>
+</section>
+
+<!-- All platforms -->
+<div class="platforms" id="platforms">
+
+  <div class="section-eyebrow">// all platforms</div>
+  <h2 class="section-title">Pick your platform</h2>
+
+  <div class="platform-grid">
+
+    <!-- Windows -->
+    <div class="platform-card">
+      <div class="platform-header">
+        <span class="platform-icon">🪟</span>
+        <div>
+          <div class="platform-name">Windows</div>
+          <div class="platform-sub">10 / 11 · x64</div>
+        </div>
+      </div>
+      <div class="dl-list">
+        <div class="dl-row">
+          <a class="dl-link" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_x64-setup.exe">
+            ⬇ .exe installer
+          </a>
+          <span class="dl-size">~3MB</span>
+        </div>
+        <div class="dl-row">
+          <a class="dl-link" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_x64_en-US.msi">
+            ⬇ .msi (enterprise)
+          </a>
+          <span class="dl-size">~4.5MB</span>
+        </div>
+      </div>
+      <div class="platform-note">Installs to AppData\Local — no admin required. WebView2 pre-installed on Win 10/11.</div>
+    </div>
+
+    <!-- macOS -->
+    <div class="platform-card">
+      <div class="platform-header">
+        <span class="platform-icon">🍎</span>
+        <div>
+          <div class="platform-name">macOS</div>
+          <div class="platform-sub">11+ · Apple Silicon & Intel</div>
+        </div>
+      </div>
+      <div class="dl-list">
+        <div class="dl-row">
+          <a class="dl-link" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_aarch64.dmg">
+            ⬇ Apple Silicon .dmg
+          </a>
+          <span class="dl-size">~4.5MB</span>
+        </div>
+        <div class="dl-row">
+          <a class="dl-link" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_x64.dmg">
+            ⬇ Intel .dmg
+          </a>
+          <span class="dl-size">~4.6MB</span>
+        </div>
+      </div>
+      <div class="platform-note">First launch: right-click → Open to bypass Gatekeeper. Requires macOS 11 Big Sur or later.</div>
+    </div>
+
+    <!-- Linux -->
+    <div class="platform-card">
+      <div class="platform-header">
+        <span class="platform-icon">🐧</span>
+        <div>
+          <div class="platform-name">Linux</div>
+          <div class="platform-sub">x64 · Ubuntu 22.04+</div>
+        </div>
+      </div>
+      <div class="dl-list">
+        <div class="dl-row">
+          <a class="dl-link" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_amd64.AppImage">
+            ⬇ .AppImage (universal)
+          </a>
+          <span class="dl-size">~79MB</span>
+        </div>
+        <div class="dl-row">
+          <a class="dl-link" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_amd64.deb">
+            ⬇ .deb (Debian/Ubuntu)
+          </a>
+          <span class="dl-size">~5MB</span>
+        </div>
+        <div class="dl-row">
+          <a class="dl-link" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor-0.3.0-1.x86_64.rpm">
+            ⬇ .rpm (Fedora/RHEL)
+          </a>
+          <span class="dl-size">~5MB</span>
+        </div>
+      </div>
+      <div class="platform-note">AppImage: <code style="font-family:var(--code);font-size:.68em">chmod +x *.AppImage && ./Fahh*.AppImage</code></div>
+    </div>
+
+  </div>
+
+  <!-- What's included -->
+  <div class="whats-included">
+    <div style="margin-bottom:24px">
+      <div class="section-eyebrow" style="text-align:left">// what's inside</div>
+    </div>
+    <div class="wi-grid">
+      <div class="wi-col">
+        <h4>In v0.3.0</h4>
+        <ul class="wi-list">
+          <li>Monaco Editor — same engine as VS Code</li>
+          <li>5 built-in themes (Monaco colors change)</li>
+          <li>File tree with right-click context menu</li>
+          <li>Integrated terminal — pip, node, python, go</li>
+          <li>One-click run for 18+ languages</li>
+          <li>Debug panel UI</li>
+          <li>Optional tools installer — n8n, Flowise, Claude CLI</li>
+          <li>The fahhhh sound — plays on every error</li>
+        </ul>
+      </div>
+      <div class="wi-divider"></div>
+      <div class="wi-col">
+        <h4>Coming in Phase 2</h4>
+        <ul class="wi-list">
+          <li class="phase2">LSP completions wired to Monaco</li>
+          <li class="phase2">Step-through DAP debugger</li>
+          <li class="phase2">Git sidebar (stage, commit, diff)</li>
+          <li class="phase2">AI panel via MCP</li>
+          <li class="phase2">Streaming PTY terminal</li>
+          <li class="phase2">Real fahhhh.mp3 audio</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- System requirements -->
+  <div class="sysreq">
+    <div class="section-eyebrow" style="text-align:left;margin-bottom:12px">// system requirements</div>
+    <div style="overflow-x:auto;border:1px solid var(--border-md);border-radius:10px">
+      <table class="req-table">
+        <thead>
+          <tr>
+            <th>Platform</th>
+            <th>Minimum version</th>
+            <th>Required runtime</th>
+            <th>Disk space</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Windows</td>
+            <td>Windows 10 1803+</td>
+            <td>WebView2 (pre-installed Win 10/11)</td>
+            <td>~50MB</td>
+          </tr>
+          <tr>
+            <td>macOS</td>
+            <td>macOS 11 Big Sur</td>
+            <td>WebKit (built into macOS)</td>
+            <td>~30MB</td>
+          </tr>
+          <tr>
+            <td>Linux</td>
+            <td>Ubuntu 22.04 / glibc 2.17+</td>
+            <td>libwebkit2gtk-4.1</td>
+            <td>~80MB</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Quick install CLI -->
+  <div class="quick-install">
+    <div class="qi-tabs">
+      <button class="qi-tab active" onclick="showTab('win',this)">Windows</button>
+      <button class="qi-tab" onclick="showTab('mac',this)">macOS</button>
+      <button class="qi-tab" onclick="showTab('linux',this)">Linux</button>
+      <button class="qi-tab" onclick="showTab('wsl',this)">WSL</button>
+    </div>
+    <div class="qi-header">
+      <span class="qi-title" id="tab-label">powershell</span>
+      <button class="qi-copy" onclick="copyInstall()" id="copy-btn">copy</button>
+    </div>
+    <div class="qi-body" id="qi-content">
+      <span class="cm"># Download and install silently</span><br>
+      Invoke-WebRequest -Uri "https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_x64-setup.exe" -OutFile fahh-setup.exe<br>
+      .\fahh-setup.exe /S
+    </div>
+  </div>
+
+  <!-- Try in browser -->
+  <div class="try-browser">
+    <h3 class="try-h">Not ready to install?</h3>
+    <p class="try-sub">Try Fahh Editor directly in your browser. Python, JavaScript, and TypeScript — all running locally via Pyodide.</p>
+    <a href="play.html" class="btn-try">
+      <span>▶</span>
+      Open play.fahh in browser
+    </a>
+  </div>
+
+</div>
+
+<!-- Footer -->
+<footer>
+  <span class="foot-l">Fahh Editor v0.3.0 · MIT License · Tauri 2 + Rust + React</span>
+  <div class="foot-links">
+    <a href="index.html" class="foot-link">Home</a>
+    <a href="docs.html" class="foot-link">Docs</a>
+    <a href="play.html" class="foot-link">Try it</a>
+    <a href="https://github.com/Arnav1771/fahh-ide" target="_blank" class="foot-link">GitHub</a>
+    <a href="https://github.com/Arnav1771/fahh-ide/releases" target="_blank" class="foot-link">All releases</a>
+  </div>
+</footer>
+
+<script>
+/* Platform detection */
+const V = 'v0.3.0';
+const ASSETS = {
+  win:   { url: `https://github.com/Arnav1771/fahh-ide/releases/download/${V}/Fahh.Editor_0.3.0_x64-setup.exe`,     label: 'Download for Windows', sub: 'x64 · Windows 10/11' },
+  mac_arm:{ url: `https://github.com/Arnav1771/fahh-ide/releases/download/${V}/Fahh.Editor_0.3.0_aarch64.dmg`,      label: 'Download for macOS',   sub: 'Apple Silicon · M1/M2/M3' },
+  mac_x64:{ url: `https://github.com/Arnav1771/fahh-ide/releases/download/${V}/Fahh.Editor_0.3.0_x64.dmg`,           label: 'Download for macOS',   sub: 'Intel · x64' },
+  linux:  { url: `https://github.com/Arnav1771/fahh-ide/releases/download/${V}/Fahh.Editor_0.3.0_amd64.AppImage`,   label: 'Download for Linux',   sub: 'x64 · AppImage' },
+};
+
+function detectPlatform() {
+  const ua = navigator.userAgent;
+  if (/Win/i.test(ua)) return 'win';
+  if (/Mac/i.test(ua)) {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl');
+      const info = gl?.getExtension('WEBGL_debug_renderer_info');
+      const renderer = gl?.getParameter(info?.UNMASKED_RENDERER_WEBGL || 0) || '';
+      if (/Apple M/i.test(renderer)) return 'mac_arm';
+    } catch(_) {}
+    return navigator.maxTouchPoints > 0 ? 'mac_arm' : 'mac_x64';
+  }
+  if (/Linux/i.test(ua)) return 'linux';
+  return 'win';
+}
+
+const platform = detectPlatform();
+const asset = ASSETS[platform];
+document.getElementById('primary-dl-text').textContent = asset.label;
+document.getElementById('platform-label').textContent = asset.sub;
+
+function primaryDownload() {
+  window.location.href = asset.url;
+}
+
+function scrollToPlatforms() {
+  document.getElementById('platforms').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+/* Tab switcher */
+const TAB_CONTENT = {
+  win: {
+    label: 'powershell',
+    code: `<span class="cm"># Silent install via PowerShell</span><br>Invoke-WebRequest -Uri "https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_x64-setup.exe" -OutFile fahh-setup.exe<br>.\\fahh-setup.exe /S`
+  },
+  mac: {
+    label: 'shell',
+    code: `<span class="cm"># Download and mount DMG (Apple Silicon)</span><br>curl -L "https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_aarch64.dmg" -o fahh.dmg<br>hdiutil attach fahh.dmg<br>cp -r "/Volumes/Fahh Editor/Fahh Editor.app" /Applications/<br>hdiutil detach "/Volumes/Fahh Editor"`
+  },
+  linux: {
+    label: 'bash',
+    code: `<span class="cm"># AppImage — works on any Linux distro</span><br>wget -L "https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_amd64.AppImage"<br>chmod +x Fahh.Editor_0.3.0_amd64.AppImage<br>./Fahh.Editor_0.3.0_amd64.AppImage`
+  },
+  wsl: {
+    label: 'bash (wsl)',
+    code: `<span class="cm"># Run in WSL2 — window appears via WSLg</span><br>sudo apt-get install -y libwebkit2gtk-4.1-0 libgtk-3-0 gstreamer1.0-plugins-good<br>wget -L "https://github.com/Arnav1771/fahh-ide/releases/download/v0.3.0/Fahh.Editor_0.3.0_amd64.AppImage"<br>chmod +x Fahh.Editor_0.3.0_amd64.AppImage<br>DISPLAY=:0 ./Fahh.Editor_0.3.0_amd64.AppImage`
+  },
+};
+
+function showTab(tab, btn) {
+  document.querySelectorAll('.qi-tab').forEach(t => t.classList.remove('active'));
+  btn.classList.add('active');
+  const c = TAB_CONTENT[tab];
+  document.getElementById('tab-label').textContent = c.label;
+  document.getElementById('qi-content').innerHTML = c.code;
+  document.getElementById('copy-btn').textContent = 'copy';
+  document.getElementById('copy-btn').classList.remove('copied');
+}
+
+function copyInstall() {
+  const text = document.getElementById('qi-content').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.getElementById('copy-btn');
+    btn.textContent = 'copied!';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
+  });
+}
+</script>
+</body>
+</html>
