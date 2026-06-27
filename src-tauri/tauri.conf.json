@@ -46,17 +46,15 @@
         "installMode": "currentUser",
         "languages": ["English"],
         "displayLanguageSelector": false,
-        "shortcuts": {
-          "desktop": true,
-          "startMenu": true
-        },
+        "createDesktopShortcut": true,
+        "createStartMenuShortcut": true,
+        "shortcutName": "Fahh Editor",
         "allowElevation": true,
         "minimumWebview2Version": "0.1.0"
       }
     }
   },
   "app": {
-    "userAgentSuffix": "FahhEditor/0.2.0",
     "security": {
       "csp": null
     },
