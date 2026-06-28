@@ -7,7 +7,7 @@ This document records every major decision, attempt, failure, and lesson learned
 ## Session overview
 
 **Start state:** Repo had only documentation — no `src/`, no `src-tauri/`, no `package.json`.  
-**End state:** v0.2.0 released on Windows/macOS/Linux, WSL dev build working, GitHub Pages with web IDE live.
+**End state:** v0.3.0 released on Windows/macOS/Linux, WSL dev build working, GitHub Pages with web IDE live, and native Linux verified.
 
 ---
 
@@ -239,3 +239,18 @@ If all 4 build runners try to create the same GitHub Release simultaneously (whi
 7. **GitHub Pages `gh-pages` branch** — needs files at root, not in `docs/`. The `docs/` in main is just the source. Always update gh-pages branch separately via worktree + push.
 
 8. **The `create-release` → `build` pattern for CI** — any multi-runner release workflow must create the GitHub Release in a single pre-job, then all builds use `releaseId`. Otherwise you get 422 race conditions.
+
+---
+
+## Phase 7: v0.3.0 Fixes & Native Linux Testing
+
+**Goal:** Address bugs, standardize assets, and polish the IDE UI/UX based on early testing.
+
+**What was updated:**
+- **FileTree "Crash" Bug:** The user reported adding a second file caused a crash. **Lesson learned:** `tauri dev` watches the `src-tauri` folder. When the user created `src-tauri/yes.py`, the CLI automatically killed and rebuilt the Rust backend, making it look like a bug in the code. We verified the React state logic was 100% sound using an automated headless Playwright script.
+- **Audio Standardization:** Simplified the placeholder SFX filename from `fahhhh.mp3` to `fahh.mp3` globally, updating the `tauri.conf.json`, `App.tsx`, and all documentation.
+- **HTML Preview:** Implemented a live HTML preview iframe in `EditorPane.tsx`. Added a UI toggle (Eye/Code) to switch between Monaco editing and live rendering for `.html` files.
+- **Monaco Themes in Native Tauri:** **Lesson learned:** CSS variables alone aren't enough to update Monaco's syntax highlighting in the native Tauri build. We explicitly registered custom themes via `monaco.editor.defineTheme` to ensure Dracula, GitHub Dark, etc. render correctly.
+- **UI Aesthetics:** Removed raw emojis across the app and replaced them with polished `lucide-react` SVG icons.
+- **Website Downloads:** Fixed `docs/index.html` to link directly to `v0.3.0` release assets instead of the generic releases page.
+- **Native Linux Testing:** Verified the app natively on Arch Linux (Wayland) using `grim` to capture screenshots, bypassing the WSL black-screen issues entirely.
