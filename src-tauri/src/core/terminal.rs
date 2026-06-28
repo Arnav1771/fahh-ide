@@ -60,28 +60,24 @@ pub async fn execute_command(
     let stdout_handle = std::thread::spawn(move || {
         use std::io::{BufRead, BufReader};
         let reader = BufReader::new(stdout_pipe);
-        for line in reader.lines() {
-            if let Ok(l) = line {
-                let _ = app_stdout.emit("terminal://output", serde_json::json!({
-                    "stdout": l,
-                    "stderr": "",
-                    "exit_code": null,
-                }));
-            }
+        for l in reader.lines().flatten() {
+            let _ = app_stdout.emit("terminal://output", serde_json::json!({
+                "stdout": l,
+                "stderr": "",
+                "exit_code": null,
+            }));
         }
     });
 
     let stderr_handle = std::thread::spawn(move || {
         use std::io::{BufRead, BufReader};
         let reader = BufReader::new(stderr_pipe);
-        for line in reader.lines() {
-            if let Ok(l) = line {
-                let _ = app_stderr.emit("terminal://output", serde_json::json!({
-                    "stdout": "",
-                    "stderr": l,
-                    "exit_code": null,
-                }));
-            }
+        for l in reader.lines().flatten() {
+            let _ = app_stderr.emit("terminal://output", serde_json::json!({
+                "stdout": "",
+                "stderr": l,
+                "exit_code": null,
+            }));
         }
     });
 

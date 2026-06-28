@@ -1124,7 +1124,9 @@ wvEl.appendChild(fahhBtn);
 let fahhPlaying = false;
 let fahhTimer = null;
 
-const fahhAudio = new Audio('fahh.mp3');
+const fahhAudio = new Audio('fahh.mp3?v=2');
+fahhAudio.preload = 'auto';
+fahhAudio.load();
 
 fahhBtn.addEventListener('click', () => {
   if (fahhPlaying) return;

@@ -1083,7 +1083,9 @@ function escHtml(s) {
    FAHH
    ═══════════════════════════════════════════════════════════════════════════ */
 let fahhTimeout = null;
-const fahhAudio = new Audio('fahh.mp3');
+const fahhAudio = new Audio('fahh.mp3?v=2');
+fahhAudio.preload = 'auto';
+fahhAudio.load();
 
 function triggerFahh(errorMsg) {
   clearTimeout(fahhTimeout);
