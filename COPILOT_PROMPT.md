@@ -26,7 +26,7 @@ The repo has a working Rust backend library with:
 - Cargo.toml with: tokio, serde, serde_json, anyhow, thiserror, tracing
 
 There is also:
-- fahhhh.mp3 (the Fahh SFX sound file — 4 h's in the filename)
+- fahh.mp3 (the Fahh SFX sound file)
 - fahh_editor_architecture.svg
 
 There is NO frontend yet. No Tauri setup. No React. Just the Rust library.
@@ -45,7 +45,7 @@ PHASE 1 DELIVERABLES:
    - Create src-tauri/ structure (move existing Rust src into src-tauri/src/)
    - Create src-tauri/tauri.conf.json with app name "Fahh Editor", identifier
      "com.fahh.editor", window size 1400x900
-   - Move fahhhh.mp3 into src-tauri/assets/fahhhh.mp3
+   - Move fahh.mp3 into src-tauri/assets/fahh.mp3
    - Register the asset in tauri.conf.json so it's bundled
    - Create src-tauri/src/lib.rs that builds the Tauri app with
      .invoke_handler() and .run()
@@ -76,7 +76,7 @@ PHASE 1 DELIVERABLES:
 
    In src/lib/fahh.ts:
    - listen("fahh://error", handler) using @tauri-apps/api/event
-   - On event: play /assets/fahhhh.mp3 using Web Audio API
+   - On event: play /assets/fahh.mp3 using Web Audio API
    - Reset currentTime to 0 before each play (so rapid errors replay cleanly)
    - Export initFahhSfx() — call this once from App.tsx on mount
 
@@ -122,7 +122,7 @@ TECH RULES (non-negotiable)
 - Zustand for global state. useState for local component state.
 - TailwindCSS 4 for all styling. No inline styles. No CSS modules.
 - No unwrap() in production Rust. Use ? or handle explicitly.
-- The fahhhh.mp3 filename must not change. Ever. It has 4 h's.
+- The fahh.mp3 filename must not change. Ever.
 - Use pnpm as the package manager.
 - Target: Windows 10+, macOS 13+, Ubuntu 22.04+
 

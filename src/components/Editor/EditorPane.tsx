@@ -14,9 +14,14 @@ interface ThemeChangeDetail {
   monacoTheme: string;
 }
 
+import { useState } from "react";
+import { Eye, Code } from "lucide-react";
+
 export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   const { activeTab, fileContents, openTabs, setContent, markDirty } =
     useEditorStore();
+    
+  const [showHtmlPreview, setShowHtmlPreview] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
@@ -24,6 +29,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
 
   const activeDoc = openTabs.find((t) => t.path === activeTab);
   const content = activeTab ? fileContents[activeTab] ?? "" : "";
+  const isHtml = activeDoc?.path.toLowerCase().endsWith(".html") || activeDoc?.path.toLowerCase().endsWith(".htm");
 
   // Listen for theme changes dispatched by ThemePanel so Monaco's internal
   // theme is updated even in the native Tauri build (CSS variables alone do
@@ -38,6 +44,11 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     window.addEventListener("fahh-theme-change", handler);
     return () => window.removeEventListener("fahh-theme-change", handler);
   }, []);
+  
+  // Turn off preview when switching away from an HTML file
+  useEffect(() => {
+    if (!isHtml) setShowHtmlPreview(false);
+  }, [activeTab, isHtml]);
 
   if (!activeTab) {
     return (
@@ -81,7 +92,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   return (
     <div
       id="monaco-container"
-      className="flex-1 flex flex-col min-h-0"
+      className="flex-1 flex flex-col min-h-0 relative"
       onKeyDown={(e) => {
         if ((e.ctrlKey || e.metaKey) && e.key === "s") {
           e.preventDefault();
@@ -89,27 +100,51 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
         }
       }}
     >
-      <Editor
-        height="100%"
-        language={activeDoc?.language ?? "plaintext"}
-        value={content}
-        onChange={handleChange}
-        theme={monacoTheme}
-        onMount={handleEditorDidMount}
-        options={{
-          fontSize: 14,
-          fontFamily: "JetBrains Mono, Fira Code, monospace",
-          minimap: { enabled: true },
-          scrollBeyondLastLine: false,
-          wordWrap: "off",
-          tabSize: 2,
-          automaticLayout: true,
-          smoothScrolling: true,
-          cursorBlinking: "phase",
-          renderLineHighlight: "all",
-          padding: { top: 8 },
-        }}
-      />
+      {isHtml && (
+        <div className="absolute top-2 right-6 z-10">
+          <button
+            onClick={() => setShowHtmlPreview(!showHtmlPreview)}
+            title={showHtmlPreview ? "Show Code" : "Preview HTML"}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-fahh-surface/90 hover:bg-fahh-accent hover:text-white text-fahh-text text-xs rounded border border-white/10 backdrop-blur transition-colors shadow-lg"
+          >
+            {showHtmlPreview ? <Code size={14} /> : <Eye size={14} />}
+            {showHtmlPreview ? "Code" : "Preview"}
+          </button>
+        </div>
+      )}
+
+      {showHtmlPreview && isHtml ? (
+        <div className="flex-1 bg-white h-full w-full">
+          <iframe
+            srcDoc={content}
+            title="HTML Preview"
+            className="w-full h-full border-none bg-white"
+            sandbox="allow-scripts allow-modals allow-popups"
+          />
+        </div>
+      ) : (
+        <Editor
+          height="100%"
+          language={activeDoc?.language ?? "plaintext"}
+          value={content}
+          onChange={handleChange}
+          theme={monacoTheme}
+          onMount={handleEditorDidMount}
+          options={{
+            fontSize: 14,
+            fontFamily: "JetBrains Mono, Fira Code, monospace",
+            minimap: { enabled: true },
+            scrollBeyondLastLine: false,
+            wordWrap: "off",
+            tabSize: 2,
+            automaticLayout: true,
+            smoothScrolling: true,
+            cursorBlinking: "phase",
+            renderLineHighlight: "all",
+            padding: { top: 8 },
+          }}
+        />
+      )}
     </div>
   );
 }

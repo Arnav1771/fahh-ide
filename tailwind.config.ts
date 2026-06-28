@@ -6,16 +6,16 @@ export default {
     extend: {
       colors: {
         fahh: {
-          bg: "#1e1e2e",
-          sidebar: "#181825",
-          surface: "#313244",
-          accent: "#cba6f7",
-          text: "#cdd6f4",
-          muted: "#6c7086",
-          error: "#f38ba8",
-          warn: "#fab387",
-          success: "#a6e3a1",
-          info: "#89b4fa",
+          bg: "var(--fahh-bg)",
+          sidebar: "var(--fahh-sidebar)",
+          surface: "var(--fahh-surface)",
+          accent: "var(--fahh-accent)",
+          text: "var(--fahh-text)",
+          muted: "var(--fahh-muted)",
+          error: "var(--fahh-error)",
+          warn: "var(--fahh-warn)",
+          success: "var(--fahh-success)",
+          info: "var(--fahh-info)",
         },
       },
       fontFamily: {

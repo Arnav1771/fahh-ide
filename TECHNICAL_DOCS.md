@@ -26,6 +26,7 @@ Language providers are registered through `LanguageRegistry` and currently inclu
 - Rust (`.rs`)
 - Python (`.py`)
 - TypeScript/JavaScript (`.ts`, `.tsx`, `.js`, `.jsx`)
+- HTML (`.html`, `.htm`) - Includes live preview toggling
 
 ## Testing
 

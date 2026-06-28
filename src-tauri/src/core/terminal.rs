@@ -24,44 +24,80 @@ pub async fn execute_command(
     args: Vec<String>,
     cwd: Option<String>,
 ) -> Result<CommandOutput, String> {
-    let working_dir = cwd.unwrap_or_else(|| {
-        dirs::home_dir()
+    let mut working_dir = cwd.unwrap_or_default();
+    if working_dir.is_empty() || working_dir == "~" {
+        working_dir = dirs::home_dir()
             .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_default()
-    });
+            .unwrap_or_default();
+    }
 
-    let output = if cfg!(target_os = "windows") {
+    let mut child = if cfg!(target_os = "windows") {
         std::process::Command::new("cmd")
             .args(["/C", &command])
             .args(&args)
             .current_dir(&working_dir)
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
             .map_err(|e| e.to_string())?
     } else {
         std::process::Command::new("sh")
             .arg("-c")
             .arg(format!("{} {}", command, args.join(" ")))
             .current_dir(&working_dir)
-            .output()
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
             .map_err(|e| e.to_string())?
     };
 
-    let stdout = String::from_utf8_lossy(&output.stdout).to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).to_string();
-    let exit_code = output.status.code();
+    let stdout_pipe = child.stdout.take().unwrap();
+    let stderr_pipe = child.stderr.take().unwrap();
+
+    let app_stdout = app.clone();
+    let app_stderr = app.clone();
+
+    let stdout_handle = std::thread::spawn(move || {
+        use std::io::{BufRead, BufReader};
+        let reader = BufReader::new(stdout_pipe);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = app_stdout.emit("terminal://output", serde_json::json!({
+                    "stdout": l,
+                    "stderr": "",
+                    "exit_code": null,
+                }));
+            }
+        }
+    });
+
+    let stderr_handle = std::thread::spawn(move || {
+        use std::io::{BufRead, BufReader};
+        let reader = BufReader::new(stderr_pipe);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = app_stderr.emit("terminal://output", serde_json::json!({
+                    "stdout": "",
+                    "stderr": l,
+                    "exit_code": null,
+                }));
+            }
+        }
+    });
+
+    let status = child.wait().map_err(|e| e.to_string())?;
+    
+    let _ = stdout_handle.join();
+    let _ = stderr_handle.join();
+
+    let exit_code = status.code();
 
     let result = CommandOutput {
         id: 0,
-        stdout: stdout.clone(),
-        stderr: stderr.clone(),
+        stdout: String::new(),
+        stderr: String::new(),
         exit_code,
     };
-
-    let _ = app.emit("terminal://output", serde_json::json!({
-        "stdout": stdout,
-        "stderr": stderr,
-        "exit_code": exit_code,
-    }));
 
     Ok(result)
 }

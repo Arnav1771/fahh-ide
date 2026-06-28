@@ -1,4 +1,6 @@
 import { listen } from "@tauri-apps/api/event";
+import { resolveResource } from "@tauri-apps/api/path";
+import { convertFileSrc } from "@tauri-apps/api/core";
 
 let audioCtx: AudioContext | null = null;
 let audioBuffer: AudioBuffer | null = null;
@@ -7,11 +9,14 @@ let unlisten: (() => void) | null = null;
 async function loadAudio(): Promise<void> {
   audioCtx = new AudioContext();
   try {
-    const response = await fetch("/assets/fahhhh.mp3");
+    const resourcePath = await resolveResource("assets/fahh.mp3");
+    const assetUrl = convertFileSrc(resourcePath);
+    const response = await fetch(assetUrl);
     if (!response.ok) throw new Error("asset not found");
     const arrayBuffer = await response.arrayBuffer();
     audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  } catch {
+  } catch (err) {
+    console.warn("Failed to load fahh sfx:", err);
     audioBuffer = null;
   }
 }

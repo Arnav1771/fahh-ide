@@ -5,6 +5,7 @@ import { useEditorStore } from "../../store/editorStore";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { deleteFile, renameFile, createFile } from "../../lib/tauri";
 import { open } from "@tauri-apps/plugin-dialog";
+import { FolderOpen, Edit2, Trash2, Copy, FilePlus, Folder as FolderIcon, File, FileCode2, FileJson, FileText, Globe, Palette, Terminal as TerminalIcon } from "lucide-react";
 
 // ─── Context menu ─────────────────────────────────────────────────────────────
 
@@ -53,13 +54,13 @@ function ContextMenu({
     };
   }, [onClose]);
 
-  const item = (icon: string, label: string, onClick: () => void) => (
+  const item = (icon: React.ReactNode, label: string, onClick: () => void) => (
     <button
       key={label}
       onClick={() => { onClick(); onClose(); }}
       className="flex items-center gap-2 px-3 py-1.5 text-xs text-[#cdd6f4] hover:bg-[#313244] cursor-pointer w-full text-left transition-colors"
     >
-      <span>{icon}</span>
+      <span className="opacity-80">{icon}</span>
       <span>{label}</span>
     </button>
   );
@@ -70,12 +71,12 @@ function ContextMenu({
       style={{ left: menu.x, top: menu.y }}
       className="fixed bg-[#1e1e2e] border border-[#313244] rounded shadow-xl py-1 z-50 min-w-[160px]"
     >
-      {item("📂", "Open", () => onOpen(menu.entry))}
-      {item("✏️", "Rename", () => onRename(menu.entry))}
-      {item("🗑️", "Delete", () => onDelete(menu.entry))}
-      {item("📋", "Copy Path", () => onCopyPath(menu.entry))}
+      {item(<FolderOpen size={14} />, "Open", () => onOpen(menu.entry))}
+      {item(<Edit2 size={14} />, "Rename", () => onRename(menu.entry))}
+      {item(<Trash2 size={14} />, "Delete", () => onDelete(menu.entry))}
+      {item(<Copy size={14} />, "Copy Path", () => onCopyPath(menu.entry))}
       <div className="border-t border-[#313244] my-1" />
-      {item("➕", "New File", () => onNewFile(menu.entry))}
+      {item(<FilePlus size={14} />, "New File", () => onNewFile(menu.entry))}
     </div>
   );
 }
@@ -149,7 +150,7 @@ function FileNode({
     onContextMenu(e, entry);
   };
 
-  const icon = entry.is_dir ? (expanded ? "▾" : "▸") : fileIcon(entry.name);
+  const icon = entry.is_dir ? (expanded ? <FolderOpen size={14} className="text-fahh-accent" /> : <FolderIcon size={14} className="text-fahh-muted" />) : fileIcon(entry.name);
 
   return (
     <div>
@@ -157,10 +158,10 @@ function FileNode({
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}
         onContextMenu={handleContextMenu}
-        className="file-item flex items-center gap-1 px-2 py-0.5 cursor-pointer text-sm text-fahh-text hover:bg-fahh-surface rounded transition-colors"
+        className="file-item flex items-center gap-1.5 px-2 py-0.5 cursor-pointer text-sm text-fahh-text hover:bg-fahh-surface rounded transition-colors"
         style={{ paddingLeft: `${8 + depth * 12}px` }}
       >
-        <span className="text-xs opacity-60 w-3 shrink-0">{icon}</span>
+        <span className="flex items-center justify-center shrink-0 w-4">{icon}</span>
 
         {isRenaming ? (
           <input
@@ -188,10 +189,12 @@ function FileNode({
       {/* Inline new file input (shown under a directory) */}
       {entry.is_dir && isNewFileTarget && expanded && (
         <div
-          className="flex items-center gap-1 px-2 py-0.5"
+          className="flex items-center gap-1.5 px-2 py-0.5"
           style={{ paddingLeft: `${8 + (depth + 1) * 12}px` }}
         >
-          <span className="text-xs opacity-60 w-3 shrink-0">📄</span>
+          <span className="flex items-center justify-center shrink-0 w-4 text-fahh-muted">
+            <File size={14} />
+          </span>
           <input
             autoFocus
             value={newFileName}
@@ -417,18 +420,18 @@ export function FileTree() {
         <div className="flex gap-1">
           <button
             onClick={() => setNewFileParentPath(tree?.path ?? "")}
-            className="text-fahh-muted hover:text-fahh-accent transition-colors px-1"
+            className="flex items-center text-fahh-muted hover:text-fahh-accent transition-colors px-1"
             title="New file"
           >
-            📄
+            <FilePlus size={14} />
           </button>
           <button
             onClick={handleOpenFolder}
             disabled={isOpening}
-            className="text-fahh-muted hover:text-fahh-accent transition-colors disabled:opacity-40 px-1"
+            className="flex items-center text-fahh-muted hover:text-fahh-accent transition-colors disabled:opacity-40 px-1"
             title="Open Folder"
           >
-            {isOpening ? "…" : "📁"}
+            <FolderOpen size={14} />
           </button>
         </div>
       </div>
@@ -460,7 +463,7 @@ export function FileTree() {
             <button
               type="button"
               onClick={() => setShowPathInput(false)}
-              className="px-2 py-1 text-fahh-muted hover:text-fahh-text text-xs"
+              className="px-2 py-1 flex items-center text-fahh-muted hover:text-fahh-text text-xs"
             >
               ✕
             </button>
@@ -470,20 +473,45 @@ export function FileTree() {
 
       <div className="flex-1 overflow-y-auto">
         {tree ? (
-          tree.children?.map((entry) => (
-            <FileNode
-              key={entry.path}
-              entry={entry}
-              depth={0}
-              onContextMenu={handleContextMenu}
-              renamingPath={renamingPath}
-              onRenameSubmit={handleRenameSubmit}
-              onRenameDismiss={() => setRenamingPath(null)}
-              newFileParentPath={newFileParentPath}
-              onNewFileSubmit={handleNewFileSubmit}
-              onNewFileDismiss={() => setNewFileParentPath(null)}
-            />
-          ))
+          <>
+            {/* Inline new-file input for root folder */}
+            {newFileParentPath !== null && newFileParentPath === tree.path && (
+              <form
+                onSubmit={(e) => { e.preventDefault(); handleNewFileSubmit(tree.path, newFileInput); setNewFileInput(""); setNewFileParentPath(null); }}
+                className="flex items-center gap-1.5 px-2 py-0.5 mt-1"
+                style={{ paddingLeft: '8px' }}
+              >
+                <span className="flex items-center justify-center shrink-0 w-4 text-fahh-muted">
+                  <File size={14} />
+                </span>
+                <input
+                  type="text"
+                  value={newFileInput}
+                  onChange={(e) => setNewFileInput(e.target.value)}
+                  placeholder="filename.ts"
+                  autoFocus
+                  spellCheck={false}
+                  onKeyDown={(e) => { if(e.key==="Escape") { setNewFileParentPath(null); setNewFileInput(""); }}}
+                  onBlur={() => { setNewFileParentPath(null); setNewFileInput(""); }}
+                  className="flex-1 bg-fahh-surface text-fahh-text text-xs px-1 py-0 rounded outline-none border border-fahh-accent font-mono"
+                />
+              </form>
+            )}
+            {tree.children?.map((entry) => (
+              <FileNode
+                key={entry.path}
+                entry={entry}
+                depth={0}
+                onContextMenu={handleContextMenu}
+                renamingPath={renamingPath}
+                onRenameSubmit={handleRenameSubmit}
+                onRenameDismiss={() => setRenamingPath(null)}
+                newFileParentPath={newFileParentPath}
+                onNewFileSubmit={handleNewFileSubmit}
+                onNewFileDismiss={() => setNewFileParentPath(null)}
+              />
+            ))}
+          </>
         ) : (
           <div className="px-3 py-4 text-xs text-fahh-muted text-center">
             {/* Inline new-file input when no folder is open */}
@@ -532,12 +560,37 @@ export function FileTree() {
   );
 }
 
-function fileIcon(name: string): string {
+function fileIcon(name: string): React.ReactNode {
   const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  const icons: Record<string, string> = {
-    rs: "🦀", ts: "📘", tsx: "⚛", js: "📜", jsx: "⚛",
-    py: "🐍", json: "📋", toml: "⚙", md: "📝",
-    html: "🌐", css: "🎨", sh: "💻", yaml: "📄", yml: "📄",
-  };
-  return icons[ext] ?? "📄";
+  
+  switch (ext) {
+    case "rs":
+    case "ts":
+    case "tsx":
+    case "js":
+    case "jsx":
+    case "py":
+    case "c":
+    case "cpp":
+    case "java":
+    case "go":
+      return <FileCode2 size={14} className="text-blue-400" />;
+    case "json":
+      return <FileJson size={14} className="text-yellow-400" />;
+    case "md":
+      return <FileText size={14} className="text-purple-400" />;
+    case "html":
+      return <Globe size={14} className="text-orange-400" />;
+    case "css":
+      return <Palette size={14} className="text-pink-400" />;
+    case "sh":
+    case "bash":
+      return <TerminalIcon size={14} className="text-green-400" />;
+    case "toml":
+    case "yaml":
+    case "yml":
+      return <FileText size={14} className="text-gray-400" />;
+    default:
+      return <File size={14} className="text-fahh-muted" />;
+  }
 }

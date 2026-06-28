@@ -61,7 +61,7 @@ fn extension_to_language(ext: &str) -> Option<&'static str> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunConfig {
     /// Absolute path to the file to run.
-    pub file_path: String,
+    pub path: String,
     /// Language override. If empty/None, detected from extension.
     pub language: Option<String>,
     /// Extra arguments passed to the program (not the runner).
@@ -73,6 +73,7 @@ pub struct RunConfig {
 /// Result returned once a run completes.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RunResult {
+    pub pid: u32,
     pub stdout: String,
     pub stderr: String,
     pub exit_code: i32,
@@ -294,7 +295,7 @@ pub struct RunnerState {
 /// Run a file and stream output back to the frontend.
 #[tauri::command]
 pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, String> {
-    let path = std::path::Path::new(&config.file_path);
+    let path = std::path::Path::new(&config.path);
 
     // Detect language from extension if not explicitly provided.
     let language = match &config.language {
@@ -319,9 +320,9 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
             .unwrap_or_else(|| ".".to_string()),
     };
 
-    info!("run_file: language={language}, file={}, cwd={cwd}", config.file_path);
+    info!("run_file: language={language}, file={}, cwd={cwd}", config.path);
 
-    let run_cmd = build_run_command(&language, &config.file_path, &config.args)?;
+    let run_cmd = build_run_command(&language, &config.path, &config.args)?;
 
     debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
 
@@ -361,7 +362,7 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
                     collected.push('\n');
                     let _ = app_stdout.emit(
                         "runner://output",
-                        serde_json::json!({ "line": l, "stream": "stdout" }),
+                        serde_json::json!({ "line": l, "stream": "stdout", "pid": pid }),
                     );
                 }
                 Err(e) => {
@@ -383,7 +384,7 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
                     collected.push('\n');
                     let _ = app_stderr.emit(
                         "runner://output",
-                        serde_json::json!({ "line": l, "stream": "stderr" }),
+                        serde_json::json!({ "line": l, "stream": "stderr", "pid": pid }),
                     );
                 }
                 Err(e) => {
@@ -395,20 +396,33 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
         collected
     });
 
-    let status = child.wait().map_err(|e| format!("Failed to wait on child: {e}"))?;
-    let duration_ms = start.elapsed().as_millis() as u64;
+    let app_exit = app.clone();
+    std::thread::spawn(move || {
+        let _stdout = stdout_handle.join().unwrap_or_default();
+        let _stderr = stderr_handle.join().unwrap_or_default();
+        
+        let status = child.wait().expect("Failed to wait on child");
+        let duration_ms = start.elapsed().as_millis() as u64;
+        let exit_code = status.code().unwrap_or(-1);
 
-    let stdout = stdout_handle.join().unwrap_or_default();
-    let stderr = stderr_handle.join().unwrap_or_default();
-    let exit_code = status.code().unwrap_or(-1);
+        info!("run_file: PID={pid} exited with code={exit_code}, duration={duration_ms}ms");
 
-    info!("run_file: PID={pid} exited with code={exit_code}, duration={duration_ms}ms");
+        let _ = app_exit.emit(
+            "runner://exit",
+            serde_json::json!({
+                "pid": pid,
+                "exit_code": exit_code,
+                "duration_ms": duration_ms
+            })
+        );
+    });
 
     Ok(RunResult {
-        stdout,
-        stderr,
-        exit_code,
-        duration_ms,
+        pid,
+        stdout: String::new(),
+        stderr: String::new(),
+        exit_code: 0,
+        duration_ms: 0,
     })
 }
 

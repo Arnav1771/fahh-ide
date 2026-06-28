@@ -75,7 +75,7 @@ Summary:
    and monitors build task stdout for error patterns
 2. On the first error event after the cooldown window, it calls
    `app_handle.emit("fahh://error", payload)`
-3. `src/lib/fahh.ts` listens for this event and plays `fahhhh.mp3` using
+3. `src/lib/fahh.ts` listens for this event and plays `fahh.mp3` using
    the Web Audio API
 
 ---

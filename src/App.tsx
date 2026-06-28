@@ -13,6 +13,7 @@ import { LspBridge } from "./components/LspBridge";
 import { initFahhSfx, teardownFahhSfx } from "./lib/fahh";
 import { useThemeStore } from "./store/themeStore";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
+import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -145,7 +146,7 @@ export default function App() {
           title="Explorer"
           onClick={() => setSidebarTab("files")}
         >
-          📁
+          <FolderTree size={18} />
         </ActivityBtn>
 
         <ActivityBtn
@@ -153,7 +154,7 @@ export default function App() {
           title="Source Control"
           onClick={() => setSidebarTab("git")}
         >
-          ⑂
+          <GitBranch size={18} />
         </ActivityBtn>
 
         <ActivityBtn
@@ -165,7 +166,7 @@ export default function App() {
             setShowBottomPanel(true);
           }}
         >
-          🐛
+          <Bug size={18} />
         </ActivityBtn>
 
         <ActivityBtn
@@ -173,7 +174,7 @@ export default function App() {
           title="AI Assistant"
           onClick={() => setSidebarTab("ai")}
         >
-          🤖
+          <Bot size={18} />
         </ActivityBtn>
 
         <ActivityBtn
@@ -181,7 +182,7 @@ export default function App() {
           title="Extensions"
           onClick={() => setSidebarTab("extensions")}
         >
-          🔌
+          <Blocks size={18} />
         </ActivityBtn>
 
         <div className="flex-1" />
@@ -192,7 +193,7 @@ export default function App() {
           title="Colour Theme"
           onClick={() => setSidebarTab("extensions")}
         >
-          🎨
+          <Palette size={18} />
         </ActivityBtn>
 
         {/* Optional tools wizard */}
@@ -201,7 +202,7 @@ export default function App() {
           title="Optional Tools"
           className="w-8 h-8 mb-2 flex items-center justify-center rounded text-sm text-fahh-muted hover:text-fahh-text transition-colors"
         >
-          ⚙
+          <Settings size={18} />
         </button>
       </div>
 
@@ -278,7 +279,7 @@ export default function App() {
                 title="Close panel (Ctrl+`)"
                 className="px-2 text-fahh-muted hover:text-fahh-text text-xs mr-1 transition-colors"
               >
-                ✕
+                <X size={14} />
               </button>
             </div>
 
@@ -308,9 +309,9 @@ export default function App() {
               setBottomTab("run");
               setShowBottomPanel(true);
             }}
-            className="hover:text-fahh-text transition-colors"
+            className="flex items-center gap-1 hover:text-fahh-text transition-colors"
           >
-            ▶ Run
+            <Play size={12} /> Run
           </button>
 
           <div className="flex-1" />

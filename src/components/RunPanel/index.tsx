@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { Play, Square } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { useRunnerStore } from "../../store/runnerStore";
 import { runFile, stopRun as stopRunCmd, writeFile } from "../../lib/tauri";
@@ -221,18 +222,18 @@ export function RunPanel() {
             onClick={handleRun}
             disabled={!hasActiveFile}
             title={hasActiveFile ? `Run ${activeDoc?.path}` : "Open a file first"}
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-fahh-success text-fahh-bg font-semibold hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className="flex items-center gap-1.5 px-3 py-1 rounded bg-fahh-success text-fahh-bg font-semibold hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <span>▶</span>
+            <Play size={12} fill="currentColor" />
             <span>Run</span>
           </button>
         ) : (
           <button
             onClick={handleStop}
             title="Stop process"
-            className="flex items-center gap-1 px-2 py-0.5 rounded bg-fahh-error text-fahh-bg font-semibold hover:opacity-80 transition-opacity"
+            className="flex items-center gap-1.5 px-3 py-1 rounded bg-fahh-error text-fahh-bg font-semibold hover:opacity-80 transition-opacity"
           >
-            <span>■</span>
+            <Square size={12} fill="currentColor" />
             <span>Stop</span>
           </button>
         )}

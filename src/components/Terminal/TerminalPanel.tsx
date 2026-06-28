@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { useTerminalStore } from "../../store/terminalStore";
 import { useTerminal } from "../../hooks/useTerminal";
+import { useFileStore } from "../../store/fileStore";
 
 export function TerminalPanel() {
   const { lines } = useTerminalStore();
   const { run } = useTerminal();
+  const { tree } = useFileStore();
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -18,6 +20,26 @@ export function TerminalPanel() {
     if (!cmd) return;
     setInput("");
     run(cmd);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Tab") {
+      e.preventDefault();
+      if (!tree || !tree.children) return;
+      
+      const tokens = input.split(" ");
+      const lastToken = tokens[tokens.length - 1];
+      if (!lastToken) return;
+
+      const matches = tree.children
+        .filter((child) => child.name.toLowerCase().startsWith(lastToken.toLowerCase()))
+        .map((child) => child.name + (child.is_dir ? "/" : ""));
+
+      if (matches.length === 1) {
+        tokens[tokens.length - 1] = matches[0];
+        setInput(tokens.join(" "));
+      }
+    }
   };
 
   return (
@@ -51,6 +73,7 @@ export function TerminalPanel() {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
           className="flex-1 bg-transparent outline-none text-fahh-text placeholder-fahh-muted text-sm"
           placeholder="Enter command..."
           autoComplete="off"

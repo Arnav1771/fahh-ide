@@ -641,10 +641,10 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 </head>
 <body>
 
-<!-- FAHHHH overlay -->
+<!-- FAHH overlay -->
 <div id="flash-overlay"></div>
 <div id="fahh-banner">
-  <div class="fahh-word">FAHHHH!</div>
+  <div class="fahh-word">FAHH!</div>
   <div class="fahh-err" id="fahh-err-text"></div>
   <button class="fahh-dismiss" onclick="dismissFahh()">press any key or click to dismiss</button>
 </div>
@@ -1080,9 +1080,10 @@ function escHtml(s) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   FAHHHH
+   FAHH
    ═══════════════════════════════════════════════════════════════════════════ */
 let fahhTimeout = null;
+const fahhAudio = new Audio('fahh.mp3');
 
 function triggerFahh(errorMsg) {
   clearTimeout(fahhTimeout);
@@ -1095,6 +1096,8 @@ function triggerFahh(errorMsg) {
 
   overlay.classList.add('active');
   banner.classList.add('show');
+  fahhAudio.currentTime = 0;
+  fahhAudio.play().catch(e => console.error("Audio play failed:", e));
 
   fahhTimeout = setTimeout(() => {
     overlay.classList.remove('active');

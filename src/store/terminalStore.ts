@@ -15,7 +15,7 @@ interface TerminalStore {
 
 export const useTerminalStore = create<TerminalStore>((set) => ({
   lines: [],
-  cwd: "~",
+  cwd: "",
 
   addLine: (text, type = "stdout") =>
     set((state) => ({

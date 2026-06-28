@@ -1,15 +1,15 @@
 # Fahh SFX — Specification
 
 The Fahh SFX is the defining feature of Fahh Editor. When a user's code has
-an error, the IDE plays `fahhhh.mp3`. This document defines exactly how it works.
+an error, the IDE plays `fahh.mp3`. This document defines exactly how it works.
 
 ---
 
 ## The sound file
 
-**Location:** `src-tauri/assets/fahhhh.mp3`
+**Location:** `src-tauri/assets/fahh.mp3`
 
-**Important:** The filename has 4 h's: `fahhhh.mp3`. Do not rename it.
+**Important:** The filename has 4 h's: `fahh.mp3`. Do not rename it.
 The asset is bundled into the Tauri app at build time via `tauri.conf.json`.
 
 ---
@@ -65,7 +65,7 @@ src/lib/fahh.ts
          │
          ▼
   Web Audio API:
-  new Audio("/assets/fahhhh.mp3").play()
+  new Audio("/assets/fahh.mp3").play()
          │
          ▼
   optional: show meme toast overlay (2s, auto-dismiss)
@@ -140,7 +140,7 @@ let audio: HTMLAudioElement | null = null;
 
 function getAudio(): HTMLAudioElement {
   if (!audio) {
-    audio = new Audio("/assets/fahhhh.mp3");
+    audio = new Audio("/assets/fahh.mp3");
   }
   return audio;
 }

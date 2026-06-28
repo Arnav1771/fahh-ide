@@ -60,7 +60,7 @@ Bootstrap Fahh Editor from a docs-only repository into a running Phase 1 applica
 | `src-tauri/src/core/error_detector.rs` | `ErrorDetector` with atomic cooldown timer; emits `fahh://error` Tauri event |
 | `src-tauri/src/core/installer.rs` | `OptionalTool` enum, `get_tool_status`, `install_tool`; emits `installer://progress` events |
 | `src-tauri/src/app/mod.rs` | `setup()` — runs quality gates on app start |
-| `src-tauri/assets/fahhhh.mp3` | Minimal valid silent MP3 placeholder (427 bytes) — **must be replaced** with real audio |
+| `src-tauri/assets/fahh.mp3` | Minimal valid silent MP3 placeholder (427 bytes) — **must be replaced** with real audio |
 
 ### Created — React frontend
 
@@ -79,15 +79,15 @@ Bootstrap Fahh Editor from a docs-only repository into a running Phase 1 applica
 | `src/App.tsx` | Main layout: activity bar, 240px sidebar, editor + tabs, 192px terminal, status bar |
 | `src/lib/types.ts` | TypeScript types for all Tauri command payloads |
 | `src/lib/tauri.ts` | Typed `invoke()` wrappers for every Tauri command |
-| `src/lib/fahh.ts` | `initFahhSfx()` — loads fahhhh.mp3 via Web Audio API, listens for `fahh://error` |
+| `src/lib/fahh.ts` | `initFahhSfx()` — loads fahh.mp3 via Web Audio API, listens for `fahh://error` |
 | `src/store/editorStore.ts` | Zustand: open tabs, active tab, file contents, dirty state |
 | `src/store/fileStore.ts` | Zustand: workspace root, file tree |
 | `src/store/terminalStore.ts` | Zustand: terminal lines (capped at 1000), cwd |
 | `src/hooks/useWorkspace.ts` | `openFolder()`, `openFileInEditor()` — wires Tauri ↔ store |
 | `src/hooks/useTerminal.ts` | `run(cmd)` — executes command, streams lines into terminal store |
 | `src/components/Editor/TabBar.tsx` | Tab strip with close button and dirty (●) indicator |
-| `src/components/Editor/EditorPane.tsx` | Monaco editor wrapper; Ctrl+S save; welcome screen when no file open |
-| `src/components/FileTree/FileTree.tsx` | Recursive file tree with depth limit 5; emoji file icons; "Open Folder" via Tauri dialog |
+| `src/components/Editor/EditorPane.tsx` | Monaco editor wrapper; Ctrl+S save; HTML Viewer preview (Eye/Code toggle); welcome screen when no file open |
+| `src/components/FileTree/FileTree.tsx` | Recursive file tree with depth limit 5; lucide-react file icons; "Open Folder" via Tauri dialog |
 | `src/components/Terminal/TerminalPanel.tsx` | Simple terminal UI with command input bar |
 | `src/components/GitSidebar/index.tsx` | Placeholder — "Phase 2" |
 | `src/components/AIPanel/index.tsx` | Placeholder — "Phase 2" |
@@ -115,7 +115,7 @@ Bootstrap Fahh Editor from a docs-only repository into a running Phase 1 applica
 | Rust cargo check | ⏳ Running (pending VS Build Tools installation) |
 | Tauri full build | ⏳ Blocked on VS Build Tools (`vs_BuildTools` installer actively running) |
 | pnpm install | ✅ Clean, all 73 modules installed |
-| fahhhh.mp3 | ⚠️ Placeholder (427-byte silent MP3) — needs real audio |
+| fahh.mp3 | ⚠️ Placeholder (427-byte silent MP3) — needs real audio |
 
 ---
 
@@ -142,7 +142,7 @@ Cannot run the full Tauri app headlessly (requires a display + MSVC linker). The
 
 ## Known issues and limitations
 
-1. **fahhhh.mp3 is a silent placeholder.** The 427-byte file is a valid MP3 that will play silently. A real audio file (the "fahhhh" sound effect) needs to be placed at `src-tauri/assets/fahhhh.mp3`. The filename must stay exactly as-is (4 h's).
+1. **fahh.mp3 is a silent placeholder.** The 427-byte file is a valid MP3 that will play silently. A real audio file (the "fahh" sound effect) needs to be placed at `src-tauri/assets/fahh.mp3`. The filename must stay exactly as-is.
 
 2. **VS Build Tools not yet installed.** The installer (`vs_BuildTools`) was actively running at handoff. Once it completes, `cargo build` and `pnpm tauri dev` will work. The TypeScript/Vite side is fully buildable independently.
 
@@ -168,7 +168,7 @@ Cannot run the full Tauri app headlessly (requires a display + MSVC linker). The
    pnpm tauri dev           # launch the IDE
    ```
 
-2. **Replace `src-tauri/assets/fahhhh.mp3`** with the real sound effect. Keep the exact filename `fahhhh.mp3`.
+2. **Replace `src-tauri/assets/fahh.mp3`** with the real sound effect. Keep the exact filename `fahh.mp3`.
 
 3. **Test the full app** once Tauri dev runs:
    - Open a folder via the file tree
