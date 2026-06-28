@@ -356,7 +356,7 @@ td code { font-size: .78em; }
     <a href="index.html#fahh-section" class="nav-link">The Sound</a>
     <a href="index.html#features" class="nav-link">Features</a>
     <a href="https://github.com/Arnav1771/fahh-ide" target="_blank" class="nav-btn">⭐ GitHub</a>
-    <a href="https://github.com/Arnav1771/fahh-ide/releases" class="nav-btn" style="background:var(--v);border-color:var(--v);color:#fff">Download</a>
+    <a href="download.html" class="nav-btn" style="background:var(--v);border-color:var(--v);color:#fff">Download</a>
   </div>
 </nav>
 
@@ -415,7 +415,7 @@ td code { font-size: .78em; }
     </p>
     <div class="callout danger">
       <span class="callout-icon">🔊</span>
-      <p><strong>The fahhhh.mp3 filename must never change.</strong> The file lives at <code>src-tauri/assets/fahhhh.mp3</code> (four h's). Renaming it breaks the core feature. This is a hard rule.</p>
+      <p><strong>The fahh.mp3 filename must never change.</strong> The file lives at <code>src-tauri/assets/fahh.mp3</code> (four h's). Renaming it breaks the core feature. This is a hard rule.</p>
     </div>
     <p class="doc-p">
       Fahh Editor is currently at <strong>v0.1.0 (Phase 1)</strong>. The Phase 1 scope covers the full editor shell: file tree, Monaco editor, integrated terminal, Fahh SFX, and the optional tools installer. LSP integration, the Git sidebar, and the AI panel are Phase 2.
@@ -600,7 +600,7 @@ pnpm build      # Production bundle to dist/</pre></div>
   → If cooldown elapsed: app.<span class="hi">emit</span>("fahh://error", ())
   → JS: fahh.ts <span class="hi">listen</span>("fahh://error", handler)
   → Web Audio API: AudioContext → BufferSource → destination.<span class="hi">start</span>()
-  → User hears fahhhh.mp3</div>
+  → User hears fahh.mp3</div>
   </section>
 
   <!-- COMMANDS -->
@@ -678,7 +678,7 @@ pnpm build      # Production bundle to dist/</pre></div>
       <div class="event-row">
         <div class="event-cell event-name">fahh://error</div>
         <div class="event-cell event-source">error_detector.rs</div>
-        <div class="event-cell event-desc">Triggers fahhhh.mp3 playback. Payload: null. Respects the configured cooldown.</div>
+        <div class="event-cell event-desc">Triggers fahh.mp3 playback. Payload: null. Respects the configured cooldown.</div>
       </div>
       <div class="event-row">
         <div class="event-cell event-name">terminal://output</div>
@@ -697,7 +697,7 @@ pnpm build      # Production bundle to dist/</pre></div>
   <section class="doc-section" id="sfx">
     <span class="section-tag">// fahh sfx</span>
     <h1 class="doc-h1">How the sound works</h1>
-    <p class="doc-lead">The Fahh SFX is the core feature. It plays fahhhh.mp3 when errors are detected. The filename has four h's. Do not rename it.</p>
+    <p class="doc-lead">The Fahh SFX is the core feature. It plays fahh.mp3 when errors are detected. The filename has four h's. Do not rename it.</p>
 
     <h2 class="doc-h2">Trigger sources</h2>
     <p class="doc-p">In Phase 1, the trigger must be called manually from Rust code. Phase 2 will wire LSP diagnostic callbacks and build output parsing to call it automatically.</p>
