@@ -45,7 +45,7 @@ Bootstrap Fahh Editor from a docs-only repository into a running Phase 1 applica
 |------|---------|
 | `src-tauri/Cargo.toml` | Tauri 2 + tokio + serde + notify + walkdir + dirs |
 | `src-tauri/build.rs` | tauri-build invocation |
-| `src-tauri/tauri.conf.json` | App name, identifier, window size 1400×900, asset bundling for fahhhh.mp3 |
+| `src-tauri/tauri.conf.json` | App name, identifier, window size 1400×900, asset bundling for fahh.mp3 |
 | `src-tauri/src/main.rs` | Entry point, calls `fahh_editor_lib::run()` |
 | `src-tauri/src/lib.rs` | Tauri builder, plugin registration, command handler registration |
 | `src-tauri/src/core/mod.rs` | Declares all core submodules |

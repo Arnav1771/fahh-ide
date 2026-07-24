@@ -321,7 +321,7 @@ export default function App() {
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span>v0.2.0</span>
+          <span>v0.3.0</span>
         </div>
       </div>
 

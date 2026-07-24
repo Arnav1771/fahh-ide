@@ -199,10 +199,10 @@ Rust: error_detector::ErrorDetector::trigger(app)
   → if elapsed: app.emit("fahh://error", ())
   → JS: fahh.ts listen("fahh://error")
   → Web Audio API: AudioContext.createBufferSource() → destination.start()
-  → plays src-tauri/assets/fahhhh.mp3
+  → plays src-tauri/assets/fahh.mp3
 
-NOTE: Current fahhhh.mp3 is a 427-byte silent placeholder.
-Replace with real audio file. Filename MUST stay fahhhh.mp3 (4 h's).
+NOTE: Current fahh.mp3 is a 427-byte silent placeholder.
+Replace with real audio file. Filename MUST stay fahh.mp3 (4 h's).
 ```
 
 ---
@@ -334,5 +334,5 @@ wsl -d Ubuntu -u root bash -c "
 | CI builds fail — invalid permission names | `fs:allow-create-dir` doesn't exist (it's `fs:allow-mkdir`) | Fixed to exact valid names |
 | Multiple CI runners race to create release | Each runner tried to create the same GitHub Release | Added `create-release` job with find-or-create logic |
 | Linux AppImage black screen in WSL | No GPU/DRI3 in WSL — WebKit uses software rendering | Expected behavior; works on real Linux with GPU |
-| fahhhh.mp3 doesn't play on Linux | GStreamer missing `text/html` decoder | Install `gstreamer1.0-plugins-good gstreamer1.0-libav` |
+| fahh.mp3 doesn't play on Linux | GStreamer missing `text/html` decoder | Install `gstreamer1.0-plugins-good gstreamer1.0-libav` |
 | apt-get update hangs in WSL | Ubuntu Pro/ESM sources try to contact `esm.ubuntu.com` without credentials | Install with `-u root` (no sudo hang), use timeout |

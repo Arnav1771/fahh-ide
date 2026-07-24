@@ -1,0 +1,147 @@
+{
+  "url": "http://localhost:1420",
+  "expectedVersion": "v0.3.0",
+  "passed": 24,
+  "failed": 0,
+  "total": 24,
+  "results": [
+    {
+      "label": "App loads at http://localhost:1420",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Page title is \"Fahh Editor\"",
+      "ok": true,
+      "detail": "got \"Fahh Editor\""
+    },
+    {
+      "label": "Activity bar visible (w-10)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Sidebar panel visible (w-60)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "File tree shows 'No folder open'",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "'Open Folder' button visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Editor welcome screen visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Terminal command input visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Status bar shows '● Fahh Editor'",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Version v0.3.0 shown in status bar",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "'Hide Panel' toggle visible",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Panel hides when toggled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Panel restores when re-toggled",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Git sidebar reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "AI panel reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Extensions panel shows Themes tab",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Extensions panel shows Languages tab",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Debug panel reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Files tab restores file tree",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Installer wizard opens",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Installer wizard closes without crash",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "Run panel reachable",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "App stays alive after terminal command",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "label": "No critical console errors (16 total, 0 critical)",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "consoleErrors": [
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')",
+    "Cannot read properties of undefined (reading 'transformCallback')"
+  ]
+}

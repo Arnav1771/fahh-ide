@@ -8,7 +8,7 @@
 
 ## The one feature
 
-Every time your code has an LSP error or build failure, Fahh Editor plays `fahhhh.mp3`. The filename has four h's. It has a 3-second cooldown. You can't remove it.
+Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.mp3`. It has a 3-second cooldown. You can't remove it.
 
 ---
 
@@ -117,7 +117,7 @@ wsl -d Ubuntu -u root bash -c "
 
 ## The Fahh SFX
 
-`src-tauri/assets/fahhhh.mp3` — **4 h's, never rename it.**
+`src-tauri/assets/fahh.mp3` — **never rename it.**
 
 Plays when:
 - LSP diagnostic error appears in the open file
@@ -128,7 +128,7 @@ Has a 3-second atomic cooldown. Configurable in `~/.fahh/config.json`:
 { "sfx_cooldown_secs": 5 }
 ```
 
-The current MP3 is a silent 427-byte placeholder. Replace it with a real sound file to activate the feature. The filename must stay `fahhhh.mp3`.
+The bundled MP3 is a real ~29 KB sound clip. The filename must stay `fahh.mp3` (referenced by `tauri.conf.json` and `src/lib/fahh.ts`).
 
 ---
 

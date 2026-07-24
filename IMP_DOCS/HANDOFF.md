@@ -10,7 +10,7 @@
 
 ## What is this project?
 
-**Fahh Editor** is a cross-platform desktop IDE built with Tauri 2 (Rust backend) + React 18 + TypeScript (frontend). Its defining feature: every time your code has an error (LSP diagnostic, build failure), it plays `fahhhh.mp3` — a sound effect. The filename has 4 h's. Do not rename it.
+**Fahh Editor** is a cross-platform desktop IDE built with Tauri 2 (Rust backend) + React 18 + TypeScript (frontend). Its defining feature: every time your code has an error (LSP diagnostic, build failure), it plays `fahh.mp3` — a sound effect. The filename has 4 h's. Do not rename it.
 
 ---
 
@@ -42,7 +42,7 @@
 | Feature | Status | Blocker |
 |---------|--------|---------|
 | `pnpm tauri dev` on Windows | ❌ | MSVC linker needs VS Build Tools (install manually as Admin) |
-| fahhhh.mp3 plays a real sound | ⚠️ | Current file is silent placeholder (427 bytes) |
+| fahh.mp3 plays a real sound | ⚠️ | Current file is silent placeholder (427 bytes) |
 | LSP completions in editor | ❌ | `lsp_client.rs` detects servers but doesn't wire them to Monaco yet |
 | DAP debugging (step through) | ❌ | `debugger.rs` exists but UI wiring incomplete |
 | Code execution (Run button) | ⚠️ | `runner.rs` exists but IPC not fully wired to RunPanel |
@@ -78,13 +78,13 @@ fahh-ide/
 │   │   └── app/
 │   │       └── mod.rs          ← App setup(), quality gates
 │   ├── assets/
-│   │   └── fahhhh.mp3          ← THE SOUND FILE (4 h's, 427 bytes — replace with real audio!)
+│   │   └── fahh.mp3          ← THE SOUND FILE (4 h's, 427 bytes — replace with real audio!)
 │   ├── capabilities/
 │   │   └── default.json        ← Tauri 2 capability grants (dialog, fs, shell)
 │   ├── icons/                  ← All 16 required icon files (auto-generated violet squares)
 │   ├── Cargo.toml              ← v0.2.0, tauri 2.x, tokio, serde, anyhow, etc.
 │   ├── build.rs                ← tauri-build invocation
-│   └── tauri.conf.json         ← com.fahh.editor, 1400×900, fahhhh.mp3 bundled
+│   └── tauri.conf.json         ← com.fahh.editor, 1400×900, fahh.mp3 bundled
 ├── src/                        ← React + TypeScript frontend
 │   ├── components/
 │   │   ├── Editor/
@@ -194,7 +194,7 @@ First run: ~23 minutes (Tauri CLI + app compile). Subsequent runs: ~2-3 minutes 
 
 ## Critical rules (from CLAUDE.md)
 
-1. **Never rename `fahhhh.mp3`** — 4 h's, lives at `src-tauri/assets/fahhhh.mp3`
+1. **Never rename `fahh.mp3`** — 4 h's, lives at `src-tauri/assets/fahh.mp3`
 2. **Never remove the SFX** — it is a core feature
 3. **No Docker** — all optional tools run as local processes
 4. **TypeScript strict mode** — no `any`
@@ -208,7 +208,7 @@ First run: ~23 minutes (Tauri CLI + app compile). Subsequent runs: ~2-3 minutes 
 
 1. **Wire Run panel to `run_file` command** — the Rust code exists, the UI exists, connect them
 2. **Wire LSP to Monaco** — `lsp_client.rs` spawns servers, `LspBridge.tsx` sends messages, need to wire responses back to Monaco's `MonacoLanguageClient`
-3. **Replace `fahhhh.mp3` placeholder** — add a real sound file (the current one is silent)
+3. **Replace `fahh.mp3` placeholder** — add a real sound file (the current one is silent)
 4. **Git sidebar** — add `gitoxide` crate, implement `git_status`/`git_commit` commands
 5. **Real PTY terminal** — replace batch-mode `execute_command` with a streaming PTY using `portable-pty`
 6. **AI panel** — read MCP servers from `~/.fahh/config.json`, implement chat UI

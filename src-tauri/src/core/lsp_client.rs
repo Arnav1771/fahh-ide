@@ -187,7 +187,7 @@ pub async fn lsp_start(
                     debug!("lsp[{lang_clone}] → frontend: {}", &msg[..msg.len().min(200)]);
                     let _ = app.emit(
                         "lsp://message",
-                        serde_json::json!({ "language": lang_clone, "message": msg }),
+                        serde_json::json!({ "language": lang_clone, "payload": msg }),
                     );
                 }
                 Err(e) => {
