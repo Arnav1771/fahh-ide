@@ -1,3 +1,4 @@
+import type { Monaco } from "@monaco-editor/react";
 import { useThemeStore } from "../../store/themeStore";
 import type { ThemeId } from "../../lib/types";
 
@@ -116,7 +117,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
 // ─── Monaco custom theme registration ────────────────────────────────────────
 // Call once after Monaco is ready. Registers fahh-* theme IDs so setTheme() works.
 
-export function defineMonacoThemes(monaco: { editor: { defineTheme: (id: string, def: unknown) => void } }): void {
+export function defineMonacoThemes(monaco: Monaco): void {
   monaco.editor.defineTheme("fahh-github-dark", {
     base: "vs-dark", inherit: true,
     rules: [
