@@ -44,10 +44,11 @@ Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.
 | Task Manager name | ✅ Shows "Fahh Editor" not "WebView2 Gpu Process" |
 | Cross-platform builds | ✅ Windows, macOS (arm64 + x64), Linux (AppImage/deb/rpm) |
 | Fahh SFX | ✅ Wired and audible — ships a synthesized stand-in tone, swap in your own clip |
-| LSP (completions/hover) | 🔧 Server detection works, Monaco wiring in Phase 2 |
+| Git sidebar | ✅ Branch, staged/unstaged lists, stage/unstage, commit, per-file diff |
+| AI panel | ✅ Bring-your-own OpenAI-compatible endpoint (Ollama, LM Studio, hosted) |
+| LSP diagnostics | ✅ Errors and warnings appear as Monaco markers, and drive the SFX |
+| LSP completions / hover | 🔧 Servers start and respond, but no Monaco provider is registered yet |
 | Step-through debugger | 🔧 DAP client exists, UI wiring in Phase 2 |
-| Git sidebar | 🔧 Phase 2 |
-| AI panel (MCP) | 🔧 Phase 2 |
 
 ---
 
@@ -98,6 +99,40 @@ pnpm dev              # frontend only at http://localhost:1420
 pnpm tauri build
 # Output: src-tauri/target/release/bundle/
 ```
+
+### Tests
+
+```bash
+pnpm exec tsc --noEmit    # type check
+pnpm test                 # 136 vitest tests
+cd src-tauri && cargo clippy -- -D warnings && cargo test
+```
+
+The vitest suite covers the pure logic: the SFX cooldown rule, LSP
+diagnostic → Monaco marker conversion, the marker bridge, the git status
+model, the `src/lib/tauri.ts` IPC wrappers (with `@tauri-apps/api` mocked),
+the AI request/SSE layer, and the zustand stores.
+
+---
+
+## AI assistant
+
+Fahh Editor ships with **no AI provider and no API key**. The AI panel talks
+to any OpenAI-compatible `/v1/chat/completions` endpoint you point it at.
+Open the panel (robot icon), hit the settings gear, and fill in:
+
+| Field | Example |
+|-------|---------|
+| Base URL | `http://localhost:11434/v1` (Ollama) or `https://api.openai.com/v1` |
+| Model | `llama3.2`, `gpt-4o-mini`, … |
+| API key | leave blank for local servers |
+
+Settings are stored in the app's `localStorage`, including the key. Until a
+base URL and a model are set, the panel says it is not configured and
+refuses to send anything.
+
+**Local servers and CORS:** the desktop app runs on a `tauri://` origin, so a
+local server has to allow it. For Ollama, start it with `OLLAMA_ORIGINS=*`.
 
 ### Run in WSL (Ubuntu)
 
