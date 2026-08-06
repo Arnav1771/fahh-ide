@@ -5,7 +5,7 @@
 mod core;
 mod app;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -62,6 +62,13 @@ pub fn run() {
             plugin::get_language_packs,
             plugin::get_formatter_plugins,
             plugin::get_snippet_plugins,
+            // Git / source control
+            git::git_status,
+            git::git_current_branch,
+            git::git_stage,
+            git::git_unstage,
+            git::git_commit,
+            git::git_diff,
         ])
         .setup(|app| {
             app::setup(app)?;

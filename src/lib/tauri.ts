@@ -5,6 +5,7 @@ import type {
   Document,
   FahhConfig,
   FileEntry,
+  GitStatus,
   Plugin,
   RunConfig,
   RunResult,
@@ -131,3 +132,38 @@ export const getPlugins = () => invoke<Plugin[]>("get_plugins");
 
 /** List only theme plugins. */
 export const getThemes = () => invoke<Plugin[]>("get_themes");
+
+// ─── Git / source control ─────────────────────────────────────────────────────
+//
+// `path` is any path inside the working tree — the backend runs
+// `Repository::discover` on it, so the workspace root is fine.
+
+/**
+ * Full status snapshot. A folder that is not a repository resolves normally
+ * with `is_repo: false`; only real failures reject.
+ */
+export const gitStatus = (path: string) =>
+  invoke<GitStatus>("git_status", { path });
+
+/** Short branch name, or `null` on a detached HEAD or outside a repo. */
+export const gitCurrentBranch = (path: string) =>
+  invoke<string | null>("git_current_branch", { path });
+
+/** Stage one file (`git add <file>`). `file` is repo-relative. */
+export const gitStage = (path: string, file: string) =>
+  invoke<void>("git_stage", { path, file });
+
+/** Unstage one file (`git restore --staged <file>`). */
+export const gitUnstage = (path: string, file: string) =>
+  invoke<void>("git_unstage", { path, file });
+
+/** Commit whatever is staged. Resolves with the new commit's oid. */
+export const gitCommit = (path: string, message: string) =>
+  invoke<string>("git_commit", { path, message });
+
+/**
+ * Unified diff for one file. `staged: true` diffs HEAD against the index,
+ * `false` diffs the index against the working tree.
+ */
+export const gitDiff = (path: string, file: string, staged: boolean) =>
+  invoke<string>("git_diff", { path, file, staged });
