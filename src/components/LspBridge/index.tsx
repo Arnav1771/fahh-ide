@@ -1,10 +1,12 @@
 /**
  * LspBridge — non-rendering component that:
  *   1. Starts/stops LSP servers as the active file's language changes.
- *   2. Listens to `lsp://message` Tauri events and dispatches them to Monaco.
- *   3. Forwards Monaco language client messages to the Tauri backend.
- *   4. On LSP diagnostics containing errors, invokes `trigger_error_sound`
- *      (which fires the fahh://error event consumed by fahh.ts).
+ *   2. Listens to `lsp://message` Tauri events.
+ *   3. Turns `textDocument/publishDiagnostics` into Monaco markers via
+ *      `lib/monacoBridge` — this is what puts the squiggles in the editor.
+ *   4. On error-severity diagnostics, invokes `trigger_error_sound`
+ *      (which fires the fahh://error event consumed by fahh.ts), throttled
+ *      locally so one cascade of diagnostics is one sound.
  */
 
 import { useEffect, useRef } from "react";
@@ -13,6 +15,14 @@ import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "../../store/editorStore";
 import { lspStart, lspStop, lspSend } from "../../lib/tauri";
 import type { LspMessage } from "../../lib/types";
+import {
+  hasErrorDiagnostic,
+  lspToMarkers,
+  parsePublishDiagnostics,
+  uriToPath,
+} from "../../lib/diagnostics";
+import { clearDiagnostics, publishDiagnostics } from "../../lib/monacoBridge";
+import { createCooldown, DEFAULT_COOLDOWN_MS } from "../../lib/cooldown";
 
 // ─── Language → LSP server detection ──────────────────────────────────────────
 
@@ -34,20 +44,19 @@ function hasLsp(language: string): boolean {
   return LSP_SUPPORTED.has(language.toLowerCase());
 }
 
+/**
+ * One cooldown for the whole app lifetime, deliberately module-level: it must
+ * survive React remounts, otherwise a re-render would let the sound retrigger
+ * instantly. The Rust `ErrorDetector` enforces the same window independently.
+ */
+const sfxCooldown = createCooldown(DEFAULT_COOLDOWN_MS);
+
 // ─── JSON-RPC helpers ─────────────────────────────────────────────────────────
 
 interface JsonRpcNotification {
   jsonrpc: "2.0";
   method: string;
   params?: unknown;
-}
-
-interface PublishDiagnosticsParams {
-  uri: string;
-  diagnostics: Array<{
-    severity?: number; // 1 = Error
-    message: string;
-  }>;
 }
 
 function buildNotification(method: string, params: unknown): string {
@@ -236,24 +245,22 @@ export function LspBridge() {
         return;
       }
 
-      // Check for textDocument/publishDiagnostics
-      if (
-        typeof parsed === "object" &&
-        parsed !== null &&
-        "method" in parsed &&
-        (parsed as { method: string }).method === "textDocument/publishDiagnostics"
-      ) {
-        const notification = parsed as JsonRpcNotification;
-        const params = notification.params as PublishDiagnosticsParams | undefined;
-        if (params) {
-          const hasError = params.diagnostics.some((d) => d.severity === 1);
-          if (hasError) {
-            // Ask the Tauri error_detector to decide whether to play the SFX
-            invoke("trigger_error_sound", { source: msgLang }).catch(
-              (err: unknown) =>
-                console.warn("[LspBridge] trigger_error_sound failed:", err)
-            );
-          }
+      // textDocument/publishDiagnostics — the only inbound message that has a
+      // visible effect today. Everything else is forwarded below.
+      const params = parsePublishDiagnostics(parsed);
+      if (params) {
+        const path = uriToPath(params.uri);
+
+        // 1. Squiggles. An empty array is meaningful: it clears the file.
+        publishDiagnostics(path, lspToMarkers(params.diagnostics));
+
+        // 2. The Fahh SFX, throttled here so a 40-diagnostic cascade is one
+        //    sound even though it arrives as many notifications.
+        if (hasErrorDiagnostic(params.diagnostics) && sfxCooldown.tryTrigger()) {
+          invoke("trigger_error_sound", { source: msgLang }).catch(
+            (err: unknown) =>
+              console.warn("[LspBridge] trigger_error_sound failed:", err)
+          );
         }
       }
 
@@ -273,6 +280,20 @@ export function LspBridge() {
       unlisten?.();
     };
   }, []);
+
+  // ── Drop markers for files the user has closed ─────────────────────────────
+  const knownPathsRef = useRef<string[]>([]);
+
+  useEffect(() => {
+    const current = openTabs.map((t) => t.path);
+    for (const path of knownPathsRef.current) {
+      if (!current.includes(path)) {
+        clearDiagnostics(path);
+        openedPathsRef.current.delete(path);
+      }
+    }
+    knownPathsRef.current = current;
+  }, [openTabs]);
 
   // ── Cleanup on unmount ─────────────────────────────────────────────────────
   useEffect(() => {

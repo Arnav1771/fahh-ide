@@ -3,6 +3,11 @@ import Editor, { type Monaco } from "@monaco-editor/react";
 import { useEditorStore } from "../../store/editorStore";
 import { writeFile } from "../../lib/tauri";
 import { defineMonacoThemes } from "../ThemePanel";
+import {
+  attachMonaco,
+  detachMonaco,
+  setActiveDocument,
+} from "../../lib/monacoBridge";
 
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
@@ -50,6 +55,17 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     if (!isHtml) setShowHtmlPreview(false);
   }, [activeTab, isHtml]);
 
+  // Tell the diagnostics bridge which file the shared Monaco model is showing,
+  // so LSP markers for the wrong file never end up on screen.
+  useEffect(() => {
+    setActiveDocument(activeTab);
+  }, [activeTab]);
+
+  // Never let the bridge hold a reference to a disposed editor.
+  useEffect(() => {
+    return () => detachMonaco();
+  }, []);
+
   if (!activeTab) {
     return (
       <div className="flex-1 flex items-center justify-center text-fahh-muted select-none">
@@ -87,6 +103,11 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     // Register custom Monaco themes so GitHub Dark, Dracula, Solarized
     // are available for setTheme() calls from the theme switcher
     defineMonacoThemes(monaco);
+
+    // Hand the live editor to the diagnostics bridge. Anything LSP published
+    // before Monaco mounted is flushed onto the model immediately.
+    attachMonaco(monaco, editor);
+    setActiveDocument(activeTab);
   };
 
   return (
