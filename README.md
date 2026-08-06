@@ -43,7 +43,7 @@ Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.
 | F5 / Ctrl+R blocked | ✅ Page reload can't wipe your code |
 | Task Manager name | ✅ Shows "Fahh Editor" not "WebView2 Gpu Process" |
 | Cross-platform builds | ✅ Windows, macOS (arm64 + x64), Linux (AppImage/deb/rpm) |
-| Fahh SFX | ⚠️ Wired and plays — current MP3 is a silent placeholder, replace with real audio |
+| Fahh SFX | ✅ Wired and audible — ships a synthesized stand-in tone, swap in your own clip |
 | LSP (completions/hover) | 🔧 Server detection works, Monaco wiring in Phase 2 |
 | Step-through debugger | 🔧 DAP client exists, UI wiring in Phase 2 |
 | Git sidebar | 🔧 Phase 2 |
@@ -128,7 +128,45 @@ Has a 3-second atomic cooldown. Configurable in `~/.fahh/config.json`:
 { "sfx_cooldown_secs": 5 }
 ```
 
-The bundled MP3 is a real ~29 KB sound clip. The filename must stay `fahh.mp3` (referenced by `tauri.conf.json` and `src/lib/fahh.ts`).
+### What ships in the repo
+
+The bundled `fahh.mp3` is **a synthesized stand-in, not the meme clip.** It is a
+two-tone descending blip generated with ffmpeg — no copyrighted audio is
+committed to this repository. Measured with `ffmpeg -af volumedetect`:
+
+| Property | Value |
+|----------|-------|
+| Duration | 0.470 s |
+| mean_volume | -6.3 dB |
+| max_volume | -1.2 dB |
+| Encoding | mono, 44.1 kHz, 128 kbps MP3 (~8 KB) |
+
+It is genuinely audible — it is there so the signature feature is demonstrably
+working out of the box, not so it sounds like the meme.
+
+### Swapping in your own sound
+
+Drop your own clip over the bundled one:
+
+```bash
+cp /path/to/your-sound.mp3 src-tauri/assets/fahh.mp3
+pnpm tauri dev     # or `pnpm tauri build` for a release bundle
+```
+
+Rules:
+
+- The filename **must stay `fahh.mp3`** — it is referenced by
+  `src-tauri/tauri.conf.json` (resource bundling) and `src/lib/fahh.ts`
+  (`resolveResource("assets/fahh.mp3")`).
+- It must be a real MP3 the WebView can decode (`decodeAudioData`); mono or
+  stereo, any sample rate.
+- Keep it short. Anything over ~2 s overlaps itself on repeated errors — the
+  3-second cooldown is the only thing spacing playbacks out.
+- If the file fails to decode, `src/lib/fahh.ts` logs a warning and the editor
+  keeps working silently; it does not crash.
+
+To regenerate the stand-in tone from scratch, see the ffmpeg invocation
+recorded in `docs/FAHH_SFX.md`.
 
 ---
 

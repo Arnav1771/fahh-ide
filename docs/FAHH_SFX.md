@@ -12,6 +12,44 @@ an error, the IDE plays `fahh.mp3`. This document defines exactly how it works.
 **Important:** The filename has 4 h's: `fahh.mp3`. Do not rename it.
 The asset is bundled into the Tauri app at build time via `tauri.conf.json`.
 
+### The committed file is a synthesized stand-in
+
+No copyrighted meme audio is stored in this repository. The `fahh.mp3` that
+ships is a two-tone descending blip generated locally with ffmpeg. Measured
+values (`ffmpeg -i src-tauri/assets/fahh.mp3 -af volumedetect -f null -`):
+
+```
+Duration: 00:00:00.47
+mean_volume: -6.3 dB
+max_volume:  -1.2 dB
+```
+
+Regenerate it with:
+
+```bash
+# 1. Render the raw two-tone blip (880 Hz -> 466 Hz, each with an octave
+#    harmonic mixed in at 0.35 for body, short fades to kill the clicks).
+ffmpeg -y \
+  -f lavfi -i "sine=frequency=880:duration=0.17:sample_rate=44100" \
+  -f lavfi -i "sine=frequency=1760:duration=0.17:sample_rate=44100" \
+  -f lavfi -i "sine=frequency=466:duration=0.25:sample_rate=44100" \
+  -f lavfi -i "sine=frequency=932:duration=0.25:sample_rate=44100" \
+  -filter_complex "\
+[0][1]amix=inputs=2:weights=1 0.35:normalize=0,afade=t=in:st=0:d=0.008,afade=t=out:st=0.13:d=0.04[hi];\
+[2][3]amix=inputs=2:weights=1 0.35:normalize=0,afade=t=in:st=0:d=0.008,afade=t=out:st=0.16:d=0.09[lo];\
+[hi][lo]concat=n=2:v=0:a=1[out]" \
+  -map "[out]" -ac 1 -ar 44100 -c:a pcm_s16le /tmp/fahh_raw.wav
+
+# 2. Peak-normalize to -1 dBFS and encode.
+ffmpeg -y -i /tmp/fahh_raw.wav \
+  -af "volume=15.7dB,alimiter=limit=0.98" \
+  -ac 1 -ar 44100 -b:a 128k src-tauri/assets/fahh.mp3
+```
+
+**To use your own sound**, just overwrite `src-tauri/assets/fahh.mp3` (keep the
+filename) and rebuild. See the "Swapping in your own sound" section of the
+README for the full rules.
+
 ---
 
 ## Trigger conditions
