@@ -213,3 +213,99 @@ First run: ~23 minutes (Tauri CLI + app compile). Subsequent runs: ~2-3 minutes 
 5. **Real PTY terminal** — replace batch-mode `execute_command` with a streaming PTY using `portable-pty`
 6. **AI panel** — read MCP servers from `~/.fahh/config.json`, implement chat UI
 7. **Install VS Build Tools** on the Windows dev machine to enable `pnpm tauri dev` on Windows
+
+---
+
+# Handoff addendum — the mod pass on `fix/mod-2026-07-24`
+
+**Document version:** v1
+**Date:** 2026-08-04
+**Branch:** `fix/mod-2026-07-24`
+**Everything above this line is preserved as written for v0.2.0 and is not edited.**
+
+## Read this first
+
+The sections above describe v0.2.0 (2026-06-27). This addendum records the state of the
+`fix/mod-2026-07-24` branch, which is what you get if you check this repo out today.
+
+**No GUI verification was possible.** WSL has no display in this environment. The app
+was never launched while this addendum was written, and nothing here is a runtime
+observation of the desktop application. What exists is 136 unit tests over the logic and
+a measurement of the audio file.
+
+## What this branch changed
+
+| Change | Commit | Evidence |
+| --- | --- | --- |
+| Monaco bundled locally instead of fetched from jsdelivr | `4318181` | `src/lib/monaco-setup.ts`, imported from `main.tsx` |
+| Repo junk deleted from the root | `386d0f2` | removed `fahh.AppImage` (recorded 82 MB), `test.js`, `test.py`, `test.rs`, `pnpm.yaml`, a stray screenshot |
+| Audible error sound | `6633de9` | measured below |
+| Real Source Control sidebar on git2 | `060415f` | `src-tauri/src/core/git.rs`, six commands; `GitSidebar` now actually rendered |
+| Bring-your-own-provider AI panel | `9f8b50c` | `src/lib/ai.ts`, OpenAI-compatible SSE, nothing hardcoded |
+| LSP diagnostics → Monaco markers | `e972b88` | `src/lib/diagnostics.ts` + `monacoBridge.ts` → `setModelMarkers` |
+| Tests 0 → 136 | `48c5175` | output below |
+| README feature table matched to reality | `ab1a4e6` | |
+
+### The blank-editor bug
+
+`@monaco-editor/react` loads the Monaco core from jsdelivr at runtime by default. That
+resolves in `vite dev` and never resolves in the packaged app, where the WebView runs on
+the `tauri://` custom-protocol origin — so the editor pane rendered blank and no file
+ever appeared. `monaco-setup.ts` now points the loader at the local package and
+registers the five language workers as Vite worker chunks.
+
+### The sidebar that was never rendered
+
+`GitSidebar` was imported in `App.tsx` and never used; the sidebar slot inlined a second
+placeholder `div`. Both the component and its store existed. It is now imported at
+`src/App.tsx:7` and rendered at `src/App.tsx:214`, backed by six git2-based Tauri
+commands: `git_status`, `git_current_branch`, `git_stage`, `git_unstage`, `git_commit`,
+`git_diff`.
+
+### The sound, measured
+
+```
+$ ffprobe -v error -show_entries format=duration -of default=nw=1 src-tauri/assets/fahh.mp3
+duration=0.470204
+$ ffmpeg -i src-tauri/assets/fahh.mp3 -af volumedetect -f null -
+mean_volume: -6.3 dB
+max_volume:  -1.2 dB
+```
+
+The clip it replaced was recorded in the previous pass at 1.824 s, mean −21.0 dB — long
+enough to overlap the next error, quiet enough to miss. Those numbers come from that
+pass's record; the file is gone, so they cannot be re-measured here. The new figures
+above were measured on this branch.
+
+### Tests, 0 → 136
+
+```
+$ pnpm test
+ ✓ src/lib/cooldown.test.ts (13)     ✓ src/lib/git.test.ts (24)
+ ✓ src/lib/diagnostics.test.ts (20)  ✓ src/store/gitStore.test.ts (15)
+ ✓ src/lib/tauri.test.ts (16)        ✓ src/lib/monacoBridge.test.ts (11)
+ ✓ src/lib/ai.test.ts (27)           ✓ src/store/editorStore.test.ts (10)
+
+ Test Files  8 passed (8)
+      Tests  136 passed (136)
+   Duration  1.11s
+```
+
+## What to do next
+
+1. Run it on a machine with a display and work the table in `TODOS.md` §3. Nothing about
+   the UI is proven until then.
+2. Wire LSP completion / hover / definition (`TODOS.md` §1) — the responses are parsed
+   and dropped today.
+3. Confirm the PR #36 merge from a fetched clone (`TODOS.md` §6). It could not be
+   verified here: `git cat-file -t e95ac2e` reports `Not a valid object name`, and local
+   `main` is at `7f5dcb0`.
+
+## Traps
+
+- **Do not "simplify" `monaco-setup.ts` away.** Removing it restores a CDN fetch that
+  works in dev and produces a blank editor in the shipped app.
+- **`fahh.mp3` keeps its name** — four h's, at `src-tauri/assets/fahh.mp3`. That rule
+  predates this branch and still holds.
+- **136 green tests say the rules are right, not that the app works.** The bug this
+  branch found — a correct component nobody rendered — is invisible to every one of them.

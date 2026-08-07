@@ -282,3 +282,75 @@ If all 4 build runners try to create the same GitHub Release simultaneously (whi
 **Verification (all real):** `cargo test` 10/10 · `cargo clippy -D warnings` clean · `pnpm build` clean · Playwright QA **24/24 PASS, 0 critical console errors**. Screenshots + `results.json` under `IMP_DOCS/CANARY_RESULTS/v0.3.1/`.
 
 **Known issues (logged, not fixed):** DAP event translation is still incomplete (backend emits raw `{session_id, message}`; UI expects `{event, body}`) and the Node adapter's CDP↔DAP bridge is unimplemented — the debugger starts but won't drive stepping/variables yet. `terminal.rs::write_stdin` remains a no-op (interactive stdin needs the streaming model reworked). The Extensions list advertises 8 themes while only 5 are applyable (`ThemeId`). These are backend-only paths not exercisable in web QA and are documented for a future phase.
+
+---
+
+## Phase 9: Documentation pass (2026-08-04)
+
+**Document version:** v1 · **Branch:** `fix/mod-2026-07-24`
+
+**Goal:** complete the core `IMP_DOCS` set — `HANDOFF.md`, `TECHSPEC.md`,
+`PROMPT_TRAIL.md`, `DESIGN_CHOICES.md`, `TODOS.md` — without overwriting anything that
+was already here.
+
+**What was preserved.** `HANDOFF.md`, `PROMPT_TRAIL.md`, `TECH_SPEC.md`,
+`INSTALLATION.md`, `STARTER_PROMPT.md` and the whole `CANARY_RESULTS/` tree were left as
+written. `HANDOFF.md` and this file each gained an appended, dated section rather than an
+edit. `TECHSPEC.md` was added as a new file that covers the current branch and points at
+`TECH_SPEC.md` for the full Tauri command, event and capability inventory — the older
+document is more complete on those and duplicating it would guarantee drift.
+
+**What was added.** `TECHSPEC.md`, `DESIGN_CHOICES.md`, `TODOS.md`, plus these two
+appendices.
+
+### The order the branch's work happened in
+
+| Commit | What |
+| --- | --- |
+| `4318181` | Bundle Monaco locally so the editor renders in the packaged app |
+| `386d0f2` | Remove committed build junk and scratch files from the repo root |
+| `6633de9` | Ship an actually audible error sound instead of the placeholder |
+| `060415f` | Build a real Source Control sidebar on top of git2 |
+| `9f8b50c` | Replace the AI placeholder with a real bring-your-own-provider panel |
+| `e972b88` | Surface LSP diagnostics as Monaco markers |
+| `48c5175` | Add a real vitest suite and drop `--passWithNoTests` |
+| `ab1a4e6` | Bring the README feature table in line with what actually works |
+
+`--passWithNoTests` deserves the callout it gets in that commit message: with it set,
+a suite of zero tests reports green, which is the same signal as a suite that passes.
+Dropping the flag is what made the 136 tests mean anything.
+
+### What was actually run in this pass
+
+| Command | Result |
+| --- | --- |
+| `pnpm test` | 8 files, **136 passed**, 1.11 s |
+| `ffprobe … src-tauri/assets/fahh.mp3` | `duration=0.470204` |
+| `ffmpeg -af volumedetect` on the same file | `mean_volume: -6.3 dB`, `max_volume: -1.2 dB` |
+| `ls -la dist/assets/index-*.js` | `3562287` bytes |
+| `grep '#[test]' src-tauri/src/` | 10 test functions across `runner.rs`, `debugger.rs`, `plugin.rs` |
+| `grep -n GitSidebar src/App.tsx` | import at `:7`, render at `:214` |
+| `git cat-file -t e95ac2e` | `fatal: Not a valid object name` |
+
+### What could not be verified, and what was written instead
+
+- **The PR #36 merge (`e95ac2e`) and its two green CI checks.** The object is not in
+  this clone and local `main` is at `7f5dcb0`; no network call was made. The docs say
+  the merge is unconfirmed from here and record how to confirm it, rather than asserting
+  it.
+- **`cargo test`.** Not run in this pass. The docs state that 10 `#[test]` functions
+  exist and that the last recorded run was 10/10 on 2026-07-24 — not that they pass
+  today.
+- **Anything visual.** No display is available in WSL, so the app was not launched. Every
+  claim about the editor rendering, the sound playing, or the sidebar appearing is
+  explicitly marked as unproven in `TODOS.md` §3.
+- **The old sound file's 1.824 s / −21.0 dB.** The file was replaced, so those figures
+  are quoted as the previous pass's record. The new file's numbers were measured here.
+
+### Lesson worth carrying forward
+
+Two of this branch's most expensive bugs — the blank editor and the unrendered git
+sidebar — were invisible to unit tests by construction, and only reproduce in a built,
+running application. The tests are worth having; they are not a substitute for launching
+the thing. Until someone runs it on a machine with a display, `TODOS.md` §3 is the
+honest summary of what is known.
