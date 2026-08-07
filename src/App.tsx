@@ -4,6 +4,7 @@ import { TabBar } from "./components/Editor/TabBar";
 import { EditorPane } from "./components/Editor/EditorPane";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { AIPanel } from "./components/AIPanel";
+import { GitSidebar } from "./components/GitSidebar";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { RunPanel } from "./components/RunPanel";
 import { DebugPanel } from "./components/DebugPanel";
@@ -210,11 +211,7 @@ export default function App() {
       <div className="w-60 shrink-0 flex flex-col border-r border-fahh-surface overflow-hidden">
         {sidebarTab === "files" && <FileTree />}
 
-        {sidebarTab === "git" && (
-          <div className="p-3 text-xs text-fahh-muted">
-            Git sidebar — Phase 2
-          </div>
-        )}
+        {sidebarTab === "git" && <GitSidebar />}
 
         {sidebarTab === "debug" && (
           <div className="flex flex-col h-full overflow-hidden">
@@ -321,7 +318,7 @@ export default function App() {
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span>v0.2.0</span>
+          <span>v0.3.0</span>
         </div>
       </div>
 

@@ -91,7 +91,7 @@ Before opening a PR, make sure:
 ## What not to do
 
 - Do not add Docker to anything. Optional tools run as local processes.
-- Do not rename or move `src-tauri/assets/fahhhh.mp3`. It will break the SFX.
+- Do not rename or move `src-tauri/assets/fahh.mp3`. It will break the SFX.
 - Do not hardcode an AI provider. Use MCP.
 - Do not use Electron. This is a Tauri 2 project.
 

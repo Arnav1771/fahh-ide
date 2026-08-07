@@ -300,7 +300,7 @@ git status
 
 | Issue | Workaround |
 |-------|-----------|
-| fahhhh.mp3 is silent | Replace `src-tauri/assets/fahhhh.mp3` with a real sound file |
+| fahh.mp3 is silent | Replace `src-tauri/assets/fahh.mp3` with a real sound file |
 | LSP completions don't show | Phase 2 — install language servers on PATH for when it lands |
 | Terminal output waits for completion | By design (batch mode). Streaming PTY in Phase 2 |
 | `pnpm tauri dev` on Windows needs VS Build Tools | Install via Admin terminal then reboot |

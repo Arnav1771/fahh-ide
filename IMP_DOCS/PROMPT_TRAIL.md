@@ -254,3 +254,31 @@ If all 4 build runners try to create the same GitHub Release simultaneously (whi
 - **UI Aesthetics:** Removed raw emojis across the app and replaced them with polished `lucide-react` SVG icons.
 - **Website Downloads:** Fixed `docs/index.html` to link directly to `v0.3.0` release assets instead of the generic releases page.
 - **Native Linux Testing:** Verified the app natively on Arch Linux (Wayland) using `grim` to capture screenshots, bypassing the WSL black-screen issues entirely.
+
+---
+
+## Phase 8: End-to-End Mod Pass (2026-07-24)
+
+**Prompt:** "check everything end to end, try everything — icons, code, testing everything."
+
+**Goal:** Full audit → test → fix → document → ship pass over the whole repo.
+
+**Environment (WSL/Ubuntu):** rust 1.97, pnpm 11.9, node 24, webkit2gtk-4.1 present. `pnpm install`, `pnpm build` (tsc+vite) green; chromium installed for Playwright.
+
+**Bugs found & fixed (with proof):**
+- **Fahh SFX was dead end-to-end** — `LspBridge` calls `invoke("trigger_error_sound")`, but that command never existed and `ErrorDetector` was never wired. Added `error_detector::trigger_error_sound` command, `impl Default for ErrorDetector` (3 s cooldown), `.manage(ErrorDetector::default())`, and registered the command in `lib.rs`. The core feature can now fire.
+- **Run panel broken (serde)** — `RunConfig.args` was required; the frontend sends only `{path, language}`. Added `#[serde(default)]` to `args`/`cwd`. Locked with a deserialization test.
+- **Debugger broken (serde + adapter names)** — `DapConfig.args/cwd/stop_on_entry` required; frontend omits them. Added `#[serde(default)]` + a `working_dir()` fallback to the program's parent. Adapter match now accepts the names the UI actually sends (`debugpy`, `js-debug`, `codelldb`, `dlv-dap`). Tests added.
+- **LSP inbound field mismatch** — backend emitted `{language, message}`; frontend expects `payload`. Renamed the emit field to `payload` so diagnostics (and the SFX diagnostic path) flow.
+- **Extensions panel: empty "Languages" tab + "undefined" author** — backend serialized kind as `language_pack` (frontend filters `language`) and the `Plugin` struct lacked `author`/`builtin`/`extensions`/`command`/`monaco_theme`. Aligned the Rust model to the TS contract; `LanguagePack` now serializes as `"language"`. Tests assert the serialized shape.
+- **Blank purple app icon** — every icon was a flat #7c3aed square (1024² icon.png was 6.5 KB). Designed a real branded SVG (F monogram + sound-wave bars on a purple-gradient tile) and regenerated the full desktop/iOS/Android icon set via `tauri icon`.
+- **Missing favicons** — added `favicon.svg` to the Vite app (`public/`) and all four `docs/*.html` landing pages.
+- **Broken `vercel.json`** — it referenced non-existent `src/index.html` + `src/server.rs` (`@vercel/rust`) and routed everything to a server that doesn't exist. Replaced with a valid static config serving `docs/`.
+- **Pre-existing clippy CI break** — clippy 1.97 promotes `lines().flatten()` to a hard error (`lines_filter_map_ok`). Fixed both sites in `terminal.rs` with `map_while(Result::ok)`; `cargo clippy --all-targets -- -D warnings` is green again.
+- **Doc rot** — the earlier `fahhhh.mp3`→`fahh.mp3` rename never propagated to the docs, and docs still called the MP3 a "silent 427-byte placeholder" (it is a real ~29 KB clip). Corrected across CLAUDE.md, README.md, CONTRIBUTING.md, and the living IMP_DOCS. Fixed the status-bar version drift (`v0.2.0`→`v0.3.0`).
+
+**Tests added (were zero before):** 10 Rust unit tests in `runner.rs`, `debugger.rs`, `plugin.rs` locking the serde contracts and the plugin registry shape. Rewrote `fahh-test.mjs` into a portable 24-check Playwright suite (screenshots into the repo, correct assertions).
+
+**Verification (all real):** `cargo test` 10/10 · `cargo clippy -D warnings` clean · `pnpm build` clean · Playwright QA **24/24 PASS, 0 critical console errors**. Screenshots + `results.json` under `IMP_DOCS/CANARY_RESULTS/v0.3.1/`.
+
+**Known issues (logged, not fixed):** DAP event translation is still incomplete (backend emits raw `{session_id, message}`; UI expects `{event, body}`) and the Node adapter's CDP↔DAP bridge is unimplemented — the debugger starts but won't drive stepping/variables yet. `terminal.rs::write_stdin` remains a no-op (interactive stdin needs the streaming model reworked). The Extensions list advertises 8 themes while only 5 are applyable (`ThemeId`). These are backend-only paths not exercisable in web QA and are documented for a future phase.

@@ -8,7 +8,7 @@
 
 ## The one feature
 
-Every time your code has an LSP error or build failure, Fahh Editor plays `fahhhh.mp3`. The filename has four h's. It has a 3-second cooldown. You can't remove it.
+Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.mp3`. It has a 3-second cooldown. You can't remove it.
 
 ---
 
@@ -43,11 +43,12 @@ Every time your code has an LSP error or build failure, Fahh Editor plays `fahhh
 | F5 / Ctrl+R blocked | ✅ Page reload can't wipe your code |
 | Task Manager name | ✅ Shows "Fahh Editor" not "WebView2 Gpu Process" |
 | Cross-platform builds | ✅ Windows, macOS (arm64 + x64), Linux (AppImage/deb/rpm) |
-| Fahh SFX | ⚠️ Wired and plays — current MP3 is a silent placeholder, replace with real audio |
-| LSP (completions/hover) | 🔧 Server detection works, Monaco wiring in Phase 2 |
+| Fahh SFX | ✅ Wired and audible — ships a synthesized stand-in tone, swap in your own clip |
+| Git sidebar | ✅ Branch, staged/unstaged lists, stage/unstage, commit, per-file diff |
+| AI panel | ✅ Bring-your-own OpenAI-compatible endpoint (Ollama, LM Studio, hosted) |
+| LSP diagnostics | ✅ Errors and warnings appear as Monaco markers, and drive the SFX |
+| LSP completions / hover | 🔧 Servers start and respond, but no Monaco provider is registered yet |
 | Step-through debugger | 🔧 DAP client exists, UI wiring in Phase 2 |
-| Git sidebar | 🔧 Phase 2 |
-| AI panel (MCP) | 🔧 Phase 2 |
 
 ---
 
@@ -99,6 +100,40 @@ pnpm tauri build
 # Output: src-tauri/target/release/bundle/
 ```
 
+### Tests
+
+```bash
+pnpm exec tsc --noEmit    # type check
+pnpm test                 # 136 vitest tests
+cd src-tauri && cargo clippy -- -D warnings && cargo test
+```
+
+The vitest suite covers the pure logic: the SFX cooldown rule, LSP
+diagnostic → Monaco marker conversion, the marker bridge, the git status
+model, the `src/lib/tauri.ts` IPC wrappers (with `@tauri-apps/api` mocked),
+the AI request/SSE layer, and the zustand stores.
+
+---
+
+## AI assistant
+
+Fahh Editor ships with **no AI provider and no API key**. The AI panel talks
+to any OpenAI-compatible `/v1/chat/completions` endpoint you point it at.
+Open the panel (robot icon), hit the settings gear, and fill in:
+
+| Field | Example |
+|-------|---------|
+| Base URL | `http://localhost:11434/v1` (Ollama) or `https://api.openai.com/v1` |
+| Model | `llama3.2`, `gpt-4o-mini`, … |
+| API key | leave blank for local servers |
+
+Settings are stored in the app's `localStorage`, including the key. Until a
+base URL and a model are set, the panel says it is not configured and
+refuses to send anything.
+
+**Local servers and CORS:** the desktop app runs on a `tauri://` origin, so a
+local server has to allow it. For Ollama, start it with `OLLAMA_ORIGINS=*`.
+
 ### Run in WSL (Ubuntu)
 
 ```bash
@@ -117,7 +152,7 @@ wsl -d Ubuntu -u root bash -c "
 
 ## The Fahh SFX
 
-`src-tauri/assets/fahhhh.mp3` — **4 h's, never rename it.**
+`src-tauri/assets/fahh.mp3` — **never rename it.**
 
 Plays when:
 - LSP diagnostic error appears in the open file
@@ -128,7 +163,45 @@ Has a 3-second atomic cooldown. Configurable in `~/.fahh/config.json`:
 { "sfx_cooldown_secs": 5 }
 ```
 
-The current MP3 is a silent 427-byte placeholder. Replace it with a real sound file to activate the feature. The filename must stay `fahhhh.mp3`.
+### What ships in the repo
+
+The bundled `fahh.mp3` is **a synthesized stand-in, not the meme clip.** It is a
+two-tone descending blip generated with ffmpeg — no copyrighted audio is
+committed to this repository. Measured with `ffmpeg -af volumedetect`:
+
+| Property | Value |
+|----------|-------|
+| Duration | 0.470 s |
+| mean_volume | -6.3 dB |
+| max_volume | -1.2 dB |
+| Encoding | mono, 44.1 kHz, 128 kbps MP3 (~8 KB) |
+
+It is genuinely audible — it is there so the signature feature is demonstrably
+working out of the box, not so it sounds like the meme.
+
+### Swapping in your own sound
+
+Drop your own clip over the bundled one:
+
+```bash
+cp /path/to/your-sound.mp3 src-tauri/assets/fahh.mp3
+pnpm tauri dev     # or `pnpm tauri build` for a release bundle
+```
+
+Rules:
+
+- The filename **must stay `fahh.mp3`** — it is referenced by
+  `src-tauri/tauri.conf.json` (resource bundling) and `src/lib/fahh.ts`
+  (`resolveResource("assets/fahh.mp3")`).
+- It must be a real MP3 the WebView can decode (`decodeAudioData`); mono or
+  stereo, any sample rate.
+- Keep it short. Anything over ~2 s overlaps itself on repeated errors — the
+  3-second cooldown is the only thing spacing playbacks out.
+- If the file fails to decode, `src/lib/fahh.ts` logs a warning and the editor
+  keeps working silently; it does not crash.
+
+To regenerate the stand-in tone from scratch, see the ffmpeg invocation
+recorded in `docs/FAHH_SFX.md`.
 
 ---
 

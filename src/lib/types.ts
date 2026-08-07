@@ -140,3 +140,35 @@ export interface LspMessage {
   /** Raw JSON-RPC payload */
   payload: string;
 }
+
+// ─── Git / source control ─────────────────────────────────────────────────────
+
+export type GitChangeStatus =
+  | "added"
+  | "modified"
+  | "deleted"
+  | "renamed"
+  | "typechange"
+  | "untracked"
+  | "conflicted";
+
+export interface GitFileChange {
+  /** Path relative to the repository root, forward-slashed. */
+  path: string;
+  status: GitChangeStatus;
+  /** `true` for index entries, `false` for working-tree entries. */
+  staged: boolean;
+}
+
+export interface GitStatus {
+  /** `false` when the open folder simply is not a repo — not an error. */
+  is_repo: boolean;
+  /** Absolute work-tree root; empty string when `is_repo` is false. */
+  repo_root: string;
+  /** Short branch name; `null` on a detached HEAD. */
+  branch: string | null;
+  /** `true` before the first commit exists. */
+  unborn: boolean;
+  staged: GitFileChange[];
+  unstaged: GitFileChange[];
+}

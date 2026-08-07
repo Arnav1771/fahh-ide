@@ -21,7 +21,7 @@ Before doing anything, read these files from the repo in this order:
 After reading, confirm what you understood and ask me what I want to work on next.
 
 Key facts to keep in mind:
-- The app's signature feature is fahhhh.mp3 (4 h's) — plays when code has errors. Never rename it.
+- The app's signature feature is fahh.mp3 (4 h's) — plays when code has errors. Never rename it.
 - GitHub account: Arnav1771 (credentials in Windows Credential Manager)
 - Local repo: D:\OneDrive - Aligned Automation Services Private Limited\Documents\fahh
 - Current version: v0.2.0 — released, 9 assets on GitHub Releases

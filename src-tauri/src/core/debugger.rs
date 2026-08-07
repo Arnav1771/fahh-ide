@@ -41,9 +41,29 @@ pub enum AdapterKind {
 pub struct DapConfig {
     pub adapter: String,
     pub program: String,
+    /// Optional: the frontend typically sends only adapter/program/stop_on_entry.
+    #[serde(default)]
     pub args: Vec<String>,
+    /// Working directory. If empty, falls back to the program's parent dir.
+    #[serde(default)]
     pub cwd: String,
+    #[serde(default)]
     pub stop_on_entry: bool,
+}
+
+impl DapConfig {
+    /// Resolve the working directory, falling back to the program's parent
+    /// directory (or the current dir) when the frontend omits `cwd`.
+    fn working_dir(&self) -> std::path::PathBuf {
+        if !self.cwd.trim().is_empty() {
+            return std::path::PathBuf::from(&self.cwd);
+        }
+        std::path::Path::new(&self.program)
+            .parent()
+            .map(|p| p.to_path_buf())
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+    }
 }
 
 /// Internal representation of an active DAP session.
@@ -199,7 +219,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
     );
 
     let (child, port): (Option<Child>, u16) = match config.adapter.as_str() {
-        "python" => {
+        "python" | "debugpy" => {
             // debugpy: python -m debugpy --listen 5678 --wait-for-client <file>
             let mut cmd_args = vec![
                 "-m".to_string(),
@@ -218,7 +238,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
             let python = if which::which("python3").is_ok() { "python3" } else { "python" };
             let child = Command::new(python)
                 .args(&cmd_args)
-                .current_dir(&config.cwd)
+                .current_dir(config.working_dir())
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -227,7 +247,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
 
             (Some(child), 5678)
         }
-        "node" => {
+        "node" | "js-debug" => {
             // Node.js --inspect-brk opens a V8 inspector on port 9229.
             // We connect via raw TCP and translate CDP ↔ DAP in the reader thread.
             let mut cmd_args = vec!["--inspect-brk=9229".to_string(), config.program.clone()];
@@ -235,7 +255,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
 
             let child = Command::new("node")
                 .args(&cmd_args)
-                .current_dir(&config.cwd)
+                .current_dir(config.working_dir())
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -244,7 +264,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
 
             (Some(child), 9229)
         }
-        "go" => {
+        "go" | "dlv-dap" | "delve" => {
             // Delve debug adapter — dlv dap --listen :2345
             let child = Command::new("dlv")
                 .args([
@@ -261,7 +281,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
                 } else {
                     vec![]
                 })
-                .current_dir(&config.cwd)
+                .current_dir(config.working_dir())
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -270,11 +290,11 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
 
             (Some(child), 2345)
         }
-        "lldb" => {
+        "lldb" | "codelldb" | "lldb-dap" => {
             // lldb-dap (formerly lldb-vscode) listens on a port when passed --port.
             let child = Command::new("lldb-dap")
                 .args(["--port", "4711"])
-                .current_dir(&config.cwd)
+                .current_dir(config.working_dir())
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
                 .stderr(Stdio::null())
@@ -429,4 +449,41 @@ pub async fn debug_set_breakpoints(
             "lines": lines,
         }),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dap_config_deserializes_frontend_payload() {
+        // DebugPanel sends only { adapter, language, program, stop_on_entry }.
+        let cfg: DapConfig = serde_json::from_str(
+            r#"{"adapter":"debugpy","language":"python","program":"/tmp/x.py","stop_on_entry":true}"#,
+        )
+        .unwrap();
+        assert_eq!(cfg.adapter, "debugpy");
+        assert_eq!(cfg.program, "/tmp/x.py");
+        assert!(cfg.args.is_empty());
+        assert_eq!(cfg.cwd, "");
+        assert!(cfg.stop_on_entry);
+    }
+
+    #[test]
+    fn working_dir_falls_back_to_program_parent() {
+        let cfg: DapConfig = serde_json::from_str(
+            r#"{"adapter":"js-debug","language":"javascript","program":"/home/u/app/main.js"}"#,
+        )
+        .unwrap();
+        assert_eq!(cfg.working_dir(), std::path::PathBuf::from("/home/u/app"));
+    }
+
+    #[test]
+    fn working_dir_uses_explicit_cwd() {
+        let cfg: DapConfig = serde_json::from_str(
+            r#"{"adapter":"dlv-dap","program":"/a/b.go","cwd":"/work"}"#,
+        )
+        .unwrap();
+        assert_eq!(cfg.working_dir(), std::path::PathBuf::from("/work"));
+    }
 }

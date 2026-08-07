@@ -13,6 +13,8 @@ use tracing::{debug, info, warn};
 #[serde(rename_all = "snake_case")]
 pub enum PluginKind {
     Theme,
+    /// Serialized as "language" to match the frontend `PluginKind` union.
+    #[serde(rename = "language")]
     LanguagePack,
     Formatter,
     Snippet,
@@ -31,8 +33,51 @@ pub struct Plugin {
     pub version: String,
     /// Short description shown in the plugin browser.
     pub description: String,
+    /// Plugin author / vendor.
+    #[serde(default = "default_author")]
+    pub author: String,
+    /// Whether the plugin ships with the editor and cannot be removed.
+    #[serde(default)]
+    pub builtin: bool,
+    /// File extensions handled (language packs only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub extensions: Option<Vec<String>>,
+    /// CLI command a formatter plugin invokes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub command: Option<String>,
+    /// Monaco theme id (theme plugins only).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub monaco_theme: Option<String>,
     /// Arbitrary JSON configuration blob (may be an empty object).
+    #[serde(default)]
     pub config: Value,
+}
+
+fn default_author() -> String {
+    "Fahh Team".to_string()
+}
+
+/// File extensions handled by each built-in language pack.
+fn lang_extensions(id: &str) -> Vec<String> {
+    let exts: &[&str] = match id {
+        "rust" => &["rs"],
+        "python" => &["py", "pyi", "pyw"],
+        "typescript" => &["ts", "tsx", "js", "jsx", "mjs", "cjs"],
+        "go" => &["go"],
+        "java" => &["java"],
+        "cpp" => &["c", "h", "cpp", "cc", "cxx", "hpp"],
+        "kotlin" => &["kt", "kts"],
+        "swift" => &["swift"],
+        "ruby" => &["rb"],
+        "php" => &["php"],
+        "dart" => &["dart"],
+        "elixir" => &["ex", "exs"],
+        "haskell" => &["hs"],
+        "zig" => &["zig"],
+        "lua" => &["lua"],
+        _ => &[],
+    };
+    exts.iter().map(|s| s.to_string()).collect()
 }
 
 // ---------------------------------------------------------------------------
@@ -92,6 +137,11 @@ impl PluginRegistry {
                 kind: PluginKind::Theme,
                 version: "1.0.0".to_string(),
                 description: desc.to_string(),
+                author: default_author(),
+                builtin: true,
+                extensions: None,
+                command: None,
+                monaco_theme: Some(id.to_string()),
                 config: serde_json::json!({}),
             });
         }
@@ -121,6 +171,11 @@ impl PluginRegistry {
                 kind: PluginKind::LanguagePack,
                 version: "1.0.0".to_string(),
                 description: desc.to_string(),
+                author: default_author(),
+                builtin: true,
+                extensions: Some(lang_extensions(id)),
+                command: None,
+                monaco_theme: None,
                 config: serde_json::json!({}),
             });
         }
@@ -145,6 +200,11 @@ impl PluginRegistry {
                 kind: PluginKind::Formatter,
                 version: version.to_string(),
                 description: desc.to_string(),
+                author: default_author(),
+                builtin: true,
+                extensions: None,
+                command: Some(id.to_string()),
+                monaco_theme: None,
                 config: serde_json::json!({}),
             });
         }
@@ -163,12 +223,23 @@ impl PluginRegistry {
                 kind: PluginKind::Snippet,
                 version: "1.0.0".to_string(),
                 description: desc.to_string(),
+                author: default_author(),
+                builtin: true,
+                extensions: None,
+                command: None,
+                monaco_theme: None,
                 config: serde_json::json!({}),
             });
         }
 
         v
     }
+
+    // ------------------------------------------------------------------
+    // Helpers
+    // ------------------------------------------------------------------
+
+    // (see free fn `lang_extensions` below)
 
     // ------------------------------------------------------------------
     // User plugins from ~/.fahh/plugins/*.json
@@ -260,4 +331,64 @@ pub fn get_formatter_plugins() -> Vec<Plugin> {
 #[tauri::command]
 pub fn get_snippet_plugins() -> Vec<Plugin> {
     PluginRegistry::load().by_kind(&PluginKind::Snippet)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn language_pack_serializes_as_language() {
+        // Frontend PluginKind union uses "language", not "language_pack".
+        let json = serde_json::to_string(&PluginKind::LanguagePack).unwrap();
+        assert_eq!(json, "\"language\"");
+    }
+
+    #[test]
+    fn builtin_registry_has_expected_counts() {
+        let reg = PluginRegistry::load();
+        assert_eq!(reg.by_kind(&PluginKind::Theme).len(), 8);
+        assert_eq!(reg.by_kind(&PluginKind::LanguagePack).len(), 15);
+        assert_eq!(reg.by_kind(&PluginKind::Formatter).len(), 10);
+        assert_eq!(reg.by_kind(&PluginKind::Snippet).len(), 4);
+    }
+
+    #[test]
+    fn plugins_carry_author_and_builtin_and_typed_fields() {
+        let reg = PluginRegistry::load();
+        // Language packs expose extensions; every built-in has author + builtin.
+        let rust = reg
+            .by_kind(&PluginKind::LanguagePack)
+            .into_iter()
+            .find(|p| p.id == "rust")
+            .expect("rust language pack present");
+        assert_eq!(rust.author, "Fahh Team");
+        assert!(rust.builtin);
+        assert_eq!(rust.extensions.as_deref(), Some(&["rs".to_string()][..]));
+
+        let prettier = reg
+            .by_kind(&PluginKind::Formatter)
+            .into_iter()
+            .find(|p| p.id == "prettier")
+            .expect("prettier formatter present");
+        assert_eq!(prettier.command.as_deref(), Some("prettier"));
+
+        let theme = reg.by_kind(&PluginKind::Theme).into_iter().next().unwrap();
+        assert!(theme.monaco_theme.is_some());
+    }
+
+    #[test]
+    fn serialized_language_plugin_matches_frontend_shape() {
+        let reg = PluginRegistry::load();
+        let py = reg
+            .by_kind(&PluginKind::LanguagePack)
+            .into_iter()
+            .find(|p| p.id == "python")
+            .unwrap();
+        let v = serde_json::to_value(&py).unwrap();
+        assert_eq!(v["kind"], "language");
+        assert_eq!(v["author"], "Fahh Team");
+        assert_eq!(v["builtin"], true);
+        assert!(v["extensions"].is_array());
+    }
 }

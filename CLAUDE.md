@@ -11,7 +11,7 @@ before making any changes.
 **Fahh Editor** is a cross-platform desktop IDE built with Tauri 2 (Rust backend)
 and React 18 + TypeScript (frontend). It is designed as a VS Code competitor with
 a meme personality: whenever a user's code has an error, the IDE plays the
-`fahhhh.mp3` sound effect (located at `src-tauri/assets/fahhhh.mp3`).
+`fahh.mp3` sound effect (located at `src-tauri/assets/fahh.mp3`).
 
 The IDE also supports optional AI and workflow tools — n8n, browser-use, Flowise AI,
 and various CLI tools — installed locally (no Docker) via a first-run setup wizard.
@@ -40,7 +40,7 @@ fahh-ide/
 │   │   └── app/
 │   │       └── mod.rs       ← App bootstrap and orchestration
 │   ├── assets/
-│   │   └── fahhhh.mp3       ← THE sound file. Do not rename or move.
+│   │   └── fahh.mp3       ← THE sound file. Do not rename or move.
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── src/                     ← React + TypeScript frontend
@@ -112,8 +112,8 @@ pnpm test
 
 ## Critical: the Fahh SFX
 
-The sound file is `src-tauri/assets/fahhhh.mp3` (4 h's in the filename — do not
-change this). The flow is:
+The sound file is `src-tauri/assets/fahh.mp3` (do not rename it — the name is
+referenced by `tauri.conf.json` and `src/lib/fahh.ts`). The flow is:
 
 1. `src-tauri/src/core/error_detector.rs` watches LSP diagnostics and build output
 2. On detecting an error (with a 3-second cooldown), it emits Tauri event `fahh://error`
@@ -175,7 +175,7 @@ Do NOT copy code. Understand the patterns and reimplement in this stack.
 - Styling: TailwindCSS 4 utility classes only — no inline styles, no CSS modules
 - Never use `unwrap()` in production Rust code — use `?` or handle explicitly
 - Every Tauri command must have a corresponding TypeScript type in `src/lib/types.ts`
-- The `fahhhh.mp3` filename must never change
+- The `fahh.mp3` filename must never change
 
 ---
 

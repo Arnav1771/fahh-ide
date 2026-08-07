@@ -309,7 +309,7 @@ pnpm tauri build   # Compiles everything, generates installer in src-tauri/targe
 ## Deployment notes
 
 - **Target platform:** Desktop (Windows, macOS, Linux) via Tauri 2 bundler
-- **Bundled assets:** `src-tauri/assets/fahhhh.mp3` is bundled into the app package via `tauri.conf.json#bundle.resources`
+- **Bundled assets:** `src-tauri/assets/fahh.mp3` is bundled into the app package via `tauri.conf.json#bundle.resources`
 - **No Docker.** Per project policy (`CLAUDE.md`): all optional tools run as local processes, no containers
 - **No server.** Fahh Editor is a fully local desktop app. `vercel.json` and `Dockerfile` in the repo are legacy artifacts from a prior iteration
 - **Config location:** `~/.fahh/config.json` (auto-created on first run)

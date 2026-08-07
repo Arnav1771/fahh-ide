@@ -5,7 +5,7 @@
 mod core;
 mod app;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -16,6 +16,7 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .manage(state::AppState::default())
         .manage(lsp_client::LspState::default())
+        .manage(error_detector::ErrorDetector::default())
         .invoke_handler(tauri::generate_handler![
             // Workspace / file operations
             workspace::get_file_tree,
@@ -31,6 +32,8 @@ pub fn run() {
             // Terminal
             terminal::execute_command,
             terminal::write_stdin,
+            // Fahh SFX trigger (core feature)
+            error_detector::trigger_error_sound,
             // Optional tool installer
             installer::get_tool_status,
             installer::install_tool,
@@ -59,6 +62,13 @@ pub fn run() {
             plugin::get_language_packs,
             plugin::get_formatter_plugins,
             plugin::get_snippet_plugins,
+            // Git / source control
+            git::git_status,
+            git::git_current_branch,
+            git::git_stage,
+            git::git_unstage,
+            git::git_commit,
+            git::git_diff,
         ])
         .setup(|app| {
             app::setup(app)?;

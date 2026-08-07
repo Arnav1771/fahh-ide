@@ -60,7 +60,7 @@ pub async fn execute_command(
     let stdout_handle = std::thread::spawn(move || {
         use std::io::{BufRead, BufReader};
         let reader = BufReader::new(stdout_pipe);
-        for l in reader.lines().flatten() {
+        for l in reader.lines().map_while(Result::ok) {
             let _ = app_stdout.emit("terminal://output", serde_json::json!({
                 "stdout": l,
                 "stderr": "",
@@ -72,7 +72,7 @@ pub async fn execute_command(
     let stderr_handle = std::thread::spawn(move || {
         use std::io::{BufRead, BufReader};
         let reader = BufReader::new(stderr_pipe);
-        for l in reader.lines().flatten() {
+        for l in reader.lines().map_while(Result::ok) {
             let _ = app_stderr.emit("terminal://output", serde_json::json!({
                 "stdout": "",
                 "stderr": l,

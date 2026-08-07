@@ -65,8 +65,11 @@ pub struct RunConfig {
     /// Language override. If empty/None, detected from extension.
     pub language: Option<String>,
     /// Extra arguments passed to the program (not the runner).
+    /// Optional: the frontend usually sends only `{ path, language }`.
+    #[serde(default)]
     pub args: Vec<String>,
     /// Working directory; defaults to parent directory of the file.
+    #[serde(default)]
     pub cwd: Option<String>,
 }
 
@@ -454,5 +457,36 @@ fn kill_pid(pid: u32) -> Result<(), String> {
             return Err(format!("kill({pid}, SIGTERM) failed: errno={}", std::io::Error::last_os_error()));
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn extension_maps_to_language() {
+        assert_eq!(extension_to_language("py"), Some("python"));
+        assert_eq!(extension_to_language("rs"), Some("rust"));
+        assert_eq!(extension_to_language("tsx"), Some("typescript"));
+        assert_eq!(extension_to_language("nope"), None);
+    }
+
+    #[test]
+    fn run_config_deserializes_frontend_payload() {
+        // The RunPanel sends only { path, language }. args/cwd must default.
+        let cfg: RunConfig =
+            serde_json::from_str(r#"{"path":"/tmp/x.py","language":"python"}"#).unwrap();
+        assert_eq!(cfg.path, "/tmp/x.py");
+        assert_eq!(cfg.language.as_deref(), Some("python"));
+        assert!(cfg.args.is_empty());
+        assert!(cfg.cwd.is_none());
+    }
+
+    #[test]
+    fn run_config_ignores_unknown_env_field() {
+        let cfg: RunConfig =
+            serde_json::from_str(r#"{"path":"/a","language":"go","env":{"K":"V"}}"#).unwrap();
+        assert_eq!(cfg.path, "/a");
     }
 }
