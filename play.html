@@ -11,21 +11,21 @@
 <style>
 /* ─── Tokens ───────────────────────────────────────────────────────────── */
 :root {
-  --bg:        #050510;
-  --bg-1:      #0a0a1c;
-  --bg-2:      #111126;
-  --bg-3:      #181830;
-  --border:    rgba(160,155,220,.10);
-  --border-md: rgba(160,155,220,.18);
-  --v:         #7c3aed;
-  --vl:        #a78bfa;
-  --vd:        #4c1d95;
-  --rose:      #e11d48;
-  --rose-l:    #fb7185;
-  --rose-glow: rgba(225,29,72,.35);
-  --text:      #f0eeff;
-  --text-2:    #9d9bbf;
-  --text-3:    #5a5878;
+  --bg:        #0a0907;
+  --bg-1:      #100f0d;
+  --bg-2:      #161412;
+  --bg-3:      #1b1916;
+  --border:    rgba(255,248,230,.10);
+  --border-md: rgba(255,248,230,.18);
+  --v:         #d4a03c;
+  --vl:        #e8b84e;
+  --vd:        #7a5a1e;
+  --rose:      #c8453f;
+  --rose-l:    #e0706a;
+  --rose-glow: rgba(208,82,77,.35);
+  --text:      #f0ebe0;
+  --text-2:    #8a8070;
+  --text-3:    #6a6356;
   --gold:      #fbbf24;
   --green:     #34d399;
   --amber:     #f59e0b;
@@ -65,7 +65,7 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 #flash-overlay {
   position: fixed; inset: 0; z-index: 9999;
   pointer-events: none;
-  background: radial-gradient(ellipse 90% 80% at 50% 50%, rgba(225,29,72,.5) 0%, transparent 70%);
+  background: radial-gradient(ellipse 90% 80% at 50% 50%, rgba(208,82,77,.5) 0%, transparent 70%);
   opacity: 0;
   transition: opacity .08s;
 }
@@ -90,8 +90,8 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
   letter-spacing: -.05em;
   color: var(--rose);
   text-shadow:
-    0 0 40px rgba(225,29,72,.8),
-    0 0 100px rgba(225,29,72,.4);
+    0 0 40px rgba(208,82,77,.8),
+    0 0 100px rgba(208,82,77,.4);
   animation: fahh-shake .35s ease-in-out;
   line-height: 1;
 }
@@ -206,12 +206,12 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
   background: var(--v); color: #fff;
   font-family: var(--code); font-size: .72rem; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase;
-  box-shadow: 0 4px 16px rgba(124,58,237,.35);
+  box-shadow: 0 4px 16px rgba(212,160,60,.35);
   transition: background .15s, box-shadow .15s, transform .1s;
   flex-shrink: 0;
   min-width: 72px; justify-content: center;
 }
-.run-btn:hover { background: #6d28d9; box-shadow: 0 6px 24px rgba(124,58,237,.5); }
+.run-btn:hover { background: #b8862e; box-shadow: 0 6px 24px rgba(212,160,60,.5); }
 .run-btn:active { transform: scale(.97); }
 .run-btn.running {
   background: var(--bg-3);
@@ -244,7 +244,7 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 }
 .py-spinner {
   width: 10px; height: 10px; border-radius: 50%;
-  border: 1.5px solid rgba(167,139,250,.2);
+  border: 1.5px solid rgba(232,184,78,.2);
   border-top-color: var(--vl);
   animation: spin .7s linear infinite;
   flex-shrink: 0;
@@ -310,10 +310,10 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
   transition: color .1s, background .1s, border-color .1s;
   user-select: none;
 }
-.file-item:hover { color: var(--text); background: rgba(124,58,237,.06); }
+.file-item:hover { color: var(--text); background: rgba(212,160,60,.06); }
 .file-item.active {
   color: var(--text);
-  background: rgba(124,58,237,.1);
+  background: rgba(212,160,60,.1);
   border-left-color: var(--v);
 }
 .file-item .file-icon { font-size: .8rem; flex-shrink: 0; }
@@ -397,7 +397,7 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 }
 .monaco-loading-spinner {
   width: 28px; height: 28px; border-radius: 50%;
-  border: 2px solid rgba(167,139,250,.15);
+  border: 2px solid rgba(232,184,78,.15);
   border-top-color: var(--vl);
   animation: spin .8s linear infinite;
 }
@@ -486,16 +486,16 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
   font-family: var(--code); font-size: .65rem; font-weight: 700;
   letter-spacing: .06em; color: var(--vl);
   padding: 2px 10px; border-radius: 3px;
-  border: 1px solid rgba(167,139,250,.25);
-  background: rgba(124,58,237,.1);
+  border: 1px solid rgba(232,184,78,.25);
+  background: rgba(212,160,60,.1);
   transition: background .1s, border-color .1s;
   flex-shrink: 0;
 }
-.pip-btn:hover { background: rgba(124,58,237,.2); border-color: var(--vl); }
+.pip-btn:hover { background: rgba(212,160,60,.2); border-color: var(--vl); }
 .pip-btn:disabled { opacity: .4; cursor: default; }
 .pip-spinner {
   width: 10px; height: 10px; border-radius: 50%;
-  border: 1.5px solid rgba(167,139,250,.2);
+  border: 1.5px solid rgba(232,184,78,.2);
   border-top-color: var(--vl);
   animation: spin .7s linear infinite;
   display: none; flex-shrink: 0;
@@ -504,7 +504,7 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 
 /* ─── Error line highlight ───────────────────────────────────────────────── */
 .error-line-highlight {
-  background: rgba(225,29,72,.07);
+  background: rgba(208,82,77,.07);
   border-left: 2px solid var(--rose) !important;
 }
 
@@ -599,7 +599,7 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
   font-size: .8rem; border-radius: 4px; color: var(--text-3);
   transition: color .1s, background .1s;
 }
-.tree-btn:hover { color: var(--text); background: rgba(124,58,237,.12); }
+.tree-btn:hover { color: var(--text); background: rgba(212,160,60,.12); }
 
 /* ─── New file input row ──────────────────────────────────────────────── */
 .new-file-row {
@@ -624,11 +624,11 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
   transition: color .1s, background .1s;
 }
 .file-item:hover .file-delete { display: flex; }
-.file-delete:hover { color: var(--rose-l); background: rgba(225,29,72,.12); }
+.file-delete:hover { color: var(--rose-l); background: rgba(208,82,77,.12); }
 
 /* ─── Drag over ───────────────────────────────────────────────────────── */
 #file-tree.drag-over {
-  background: rgba(124,58,237,.07);
+  background: rgba(212,160,60,.07);
   border-right-color: var(--vl);
 }
 #file-tree.drag-over .tree-footer { border-top-color: var(--vl); }
@@ -638,6 +638,8 @@ button { cursor: pointer; border: none; background: none; font: inherit; color: 
 .status-dl-btn { transition: color .1s !important; }
 .status-dl-btn:hover { color: rgba(255,255,255,.9) !important; }
 </style>
+<link rel="icon" href="assets/mark.svg" type="image/svg+xml">
+<link rel="stylesheet" href="assets/play-luxe.css">
 </head>
 <body>
 
@@ -790,7 +792,7 @@ const SAMPLE_FILES = [
     id: 'calculator.py',
     name: 'calculator.py',
     lang: 'python',
-    icon: '🐍',
+    icon: 'py',
     ext: '.py',
     content: `# Fahh Calculator — Python demo
 # Try changing the operations or adding more numbers!
@@ -840,7 +842,7 @@ calculator()
     id: 'hello.js',
     name: 'hello.js',
     lang: 'javascript',
-    icon: '⚡',
+    icon: 'js',
     ext: '.js',
     content: `// Fahh Greeting — JavaScript demo
 // Runs directly in your browser via eval()
@@ -885,7 +887,7 @@ console.log(\`Passing avg:    \${avg.toFixed(1)}\`);
     id: 'fibonacci.ts',
     name: 'fibonacci.ts',
     lang: 'typescript',
-    icon: '🔷',
+    icon: 'ts',
     ext: '.ts',
     content: `// Fibonacci — TypeScript demo
 // Transpiled by Babel standalone, then run in-browser
@@ -966,9 +968,9 @@ function buildFileTree() {
     item.className = 'file-item' + (f.id === currentFile.id ? ' active' : '');
     item.dataset.id = f.id;
     item.innerHTML = `
-      <span class="file-icon">${f.icon}</span>
-      <span class="file-name">${f.name}</span>
-      ${f.userCreated ? '' : `<span class="file-ext">${f.ext}</span>`}
+      <span class="file-icon">${fileBadge(f)}</span>
+      <span class="file-name">${esc(f.name)}</span>
+      ${f.userCreated ? '' : `<span class="file-ext">${esc(f.ext)}</span>`}
       <button class="file-delete" title="Delete file" onclick="deleteFile('${f.id}', event)">✕</button>
     `;
     item.addEventListener('click', () => loadFile(f));
@@ -1018,7 +1020,7 @@ function buildTabs() {
   SAMPLE_FILES.forEach(f => {
     const tab = document.createElement('div');
     tab.className = 'tab' + (f.id === currentFile.id ? ' active' : '');
-    tab.innerHTML = `<span class="tab-icon">${f.icon}</span><span class="tab-name">${f.name}</span>`;
+    tab.innerHTML = `<span class="tab-icon">${fileBadge(f)}</span><span class="tab-name">${esc(f.name)}</span>`;
     tab.addEventListener('click', () => loadFile(f));
     bar.appendChild(tab);
   });
@@ -1561,32 +1563,32 @@ require(['vs/editor/editor.main'], function() {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'comment', foreground: '3d3b52', fontStyle: 'italic' },
-      { token: 'keyword', foreground: 'c084fc' },
-      { token: 'string', foreground: '86efac' },
-      { token: 'number', foreground: 'fb923c' },
-      { token: 'type', foreground: 'fde68a' },
-      { token: 'identifier', foreground: 'f0eeff' },
-      { token: 'function', foreground: '93c5fd' },
-      { token: 'variable', foreground: 'f0eeff' },
-      { token: 'operator', foreground: 'a78bfa' },
-      { token: 'delimiter', foreground: '7c6fa8' },
+      { token: 'comment', foreground: '6a6356', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'd4a03c' },
+      { token: 'string', foreground: 'b5c48a' },
+      { token: 'number', foreground: 'e39a6d' },
+      { token: 'type', foreground: 'e8b84e' },
+      { token: 'identifier', foreground: 'f0ebe0' },
+      { token: 'function', foreground: 'e2d3ad' },
+      { token: 'variable', foreground: 'f0ebe0' },
+      { token: 'operator', foreground: 'c8a46a' },
+      { token: 'delimiter', foreground: '8a8070' },
     ],
     colors: {
-      'editor.background': '#050510',
-      'editor.foreground': '#f0eeff',
-      'editorLineNumber.foreground': '#3d3b52',
-      'editorLineNumber.activeForeground': '#7c6fa8',
-      'editor.selectionBackground': '#7c3aed33',
-      'editor.lineHighlightBackground': '#0a0a1c',
-      'editorCursor.foreground': '#a78bfa',
-      'editorIndentGuide.background': '#111126',
-      'editorIndentGuide.activeBackground': '#1e1c40',
-      'editorWhitespace.foreground': '#1e1c40',
-      'editorGutter.background': '#050510',
-      'scrollbarSlider.background': '#1e1c4055',
-      'scrollbarSlider.hoverBackground': '#7c3aed44',
-      'minimap.background': '#050510',
+      'editor.background': '#0c0b09',
+      'editor.foreground': '#f0ebe0',
+      'editorLineNumber.foreground': '#524c42',
+      'editorLineNumber.activeForeground': '#8a8070',
+      'editor.selectionBackground': '#d4a03c33',
+      'editor.lineHighlightBackground': '#141210',
+      'editorCursor.foreground': '#e8b84e',
+      'editorIndentGuide.background': '#1b1916',
+      'editorIndentGuide.activeBackground': '#2a2620',
+      'editorWhitespace.foreground': '#2a2620',
+      'editorGutter.background': '#0c0b09',
+      'scrollbarSlider.background': '#2a262055',
+      'scrollbarSlider.hoverBackground': '#d4a03c44',
+      'minimap.background': '#0c0b09',
     }
   });
 
@@ -1653,22 +1655,34 @@ require(['vs/editor/editor.main'], function() {
    FILE MANAGEMENT — new, delete, upload, download, localStorage
    ═══════════════════════════════════════════════════════════════════════════ */
 
+// Text is escaped before it goes into innerHTML: a dropped file's name is user input.
+function esc(v) {
+  return String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// The badge comes from the extension, so files saved by an older version
+// (which stored an emoji) show the new badge too.
+function fileBadge(f) {
+  const ext = String(f.ext || f.name || '').split('.').pop().toLowerCase().slice(0, 4) || 'txt';
+  return esc(ext);
+}
+
 // Extension → language + icon
 function extToMeta(filename) {
   const ext = filename.split('.').pop().toLowerCase();
   const map = {
-    py:   { lang: 'python',     icon: '🐍' },
-    js:   { lang: 'javascript', icon: '📜' },
-    ts:   { lang: 'typescript', icon: '🔷' },
-    jsx:  { lang: 'javascript', icon: '⚛️' },
-    tsx:  { lang: 'typescript', icon: '⚛️' },
-    json: { lang: 'json',       icon: '📋' },
-    html: { lang: 'html',       icon: '🌐' },
-    css:  { lang: 'css',        icon: '🎨' },
-    md:   { lang: 'markdown',   icon: '📝' },
-    txt:  { lang: 'plaintext',  icon: '📄' },
+    py:   { lang: 'python',     icon: 'py' },
+    js:   { lang: 'javascript', icon: 'js' },
+    ts:   { lang: 'typescript', icon: 'ts' },
+    jsx:  { lang: 'javascript', icon: 'jsx' },
+    tsx:  { lang: 'typescript', icon: 'jsx' },
+    json: { lang: 'json',       icon: 'json' },
+    html: { lang: 'html',       icon: 'html' },
+    css:  { lang: 'css',        icon: 'css' },
+    md:   { lang: 'markdown',   icon: 'md' },
+    txt:  { lang: 'plaintext',  icon: 'txt' },
   };
-  return map[ext] || { lang: 'plaintext', icon: '📄' };
+  return map[ext] || { lang: 'plaintext', icon: 'txt' };
 }
 
 // ── New file ──────────────────────────────────────────────────────────────
