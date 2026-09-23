@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
+import { Volume2 } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { writeFile } from "../../lib/tauri";
 import { defineMonacoThemes } from "../ThemePanel";
@@ -70,7 +71,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     return (
       <div className="flex-1 flex items-center justify-center text-fahh-muted select-none">
         <div className="text-center">
-          <p className="text-4xl mb-3">🤙</p>
+          <Volume2 size={40} strokeWidth={1.5} className="mx-auto mb-3 text-fahh-accent" aria-hidden="true" />
           <p className="text-lg font-mono">Open a file to start editing</p>
           <p className="text-sm mt-1 opacity-60">fahh editor — make code, hear the vibe</p>
         </div>
@@ -100,9 +101,9 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   ) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
-    // Register custom Monaco themes so GitHub Dark, Dracula, Solarized
-    // are available for setTheme() calls from the theme switcher
-    defineMonacoThemes(monaco);
+    // The custom themes are registered in beforeMount; apply the chosen one
+    // again now, in case Monaco fell back while the editor was being created.
+    monaco.editor.setTheme(monacoTheme);
 
     // Hand the live editor to the diagnostics bridge. Anything LSP published
     // before Monaco mounted is flushed onto the model immediately.
@@ -150,6 +151,11 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
           value={content}
           onChange={handleChange}
           theme={monacoTheme}
+          /* Themes must exist before the editor is created: Monaco reads the
+             theme once at creation, so registering them in onMount left a
+             saved custom theme (Gold, GitHub Dark, Dracula, Solarized)
+             unapplied after a restart. */
+          beforeMount={defineMonacoThemes}
           onMount={handleEditorDidMount}
           options={{
             fontSize: 14,

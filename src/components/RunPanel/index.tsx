@@ -16,18 +16,18 @@ interface LangMeta {
 }
 
 const LANGUAGE_META: Record<string, LangMeta> = {
-  python: { label: "Python", icon: "🐍", color: "text-yellow-400", monacoId: "python" },
-  javascript: { label: "JavaScript", icon: "☕", color: "text-yellow-300", monacoId: "javascript" },
-  typescript: { label: "TypeScript", icon: "🔷", color: "text-blue-400", monacoId: "typescript" },
-  rust: { label: "Rust", icon: "🦀", color: "text-orange-400", monacoId: "rust" },
-  go: { label: "Go", icon: "🐹", color: "text-cyan-400", monacoId: "go" },
-  java: { label: "Java", icon: "☕", color: "text-red-400", monacoId: "java" },
-  c: { label: "C", icon: "⚙", color: "text-gray-400", monacoId: "c" },
-  cpp: { label: "C++", icon: "⚙", color: "text-purple-400", monacoId: "cpp" },
-  shell: { label: "Shell", icon: "🐚", color: "text-green-400", monacoId: "shell" },
-  bash: { label: "Bash", icon: "🐚", color: "text-green-400", monacoId: "shell" },
-  ruby: { label: "Ruby", icon: "💎", color: "text-red-500", monacoId: "ruby" },
-  php: { label: "PHP", icon: "🐘", color: "text-violet-400", monacoId: "php" },
+  python: { label: "Python", icon: "py", color: "text-yellow-400", monacoId: "python" },
+  javascript: { label: "JavaScript", icon: "js", color: "text-yellow-300", monacoId: "javascript" },
+  typescript: { label: "TypeScript", icon: "ts", color: "text-blue-400", monacoId: "typescript" },
+  rust: { label: "Rust", icon: "rs", color: "text-orange-400", monacoId: "rust" },
+  go: { label: "Go", icon: "go", color: "text-cyan-400", monacoId: "go" },
+  java: { label: "Java", icon: "java", color: "text-red-400", monacoId: "java" },
+  c: { label: "C", icon: "c", color: "text-gray-400", monacoId: "c" },
+  cpp: { label: "C++", icon: "c++", color: "text-purple-400", monacoId: "cpp" },
+  shell: { label: "Shell", icon: "sh", color: "text-green-400", monacoId: "shell" },
+  bash: { label: "Bash", icon: "sh", color: "text-green-400", monacoId: "shell" },
+  ruby: { label: "Ruby", icon: "rb", color: "text-red-500", monacoId: "ruby" },
+  php: { label: "PHP", icon: "php", color: "text-violet-400", monacoId: "php" },
 };
 
 const SUPPORTED_LANGUAGES = Object.keys(LANGUAGE_META);
@@ -200,7 +200,7 @@ export function RunPanel() {
       {/* Toolbar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-fahh-surface shrink-0 bg-fahh-sidebar">
         {/* Language selector */}
-        <span className={`${langMeta.color} text-sm`}>{langMeta.icon}</span>
+        <span className={`${langMeta.color} font-mono text-[10px] font-semibold px-1 py-0.5 rounded border border-current/30`}>{langMeta.icon}</span>
         <select
           value={effectiveLanguage}
           onChange={(e) => {
@@ -222,7 +222,7 @@ export function RunPanel() {
             onClick={handleRun}
             disabled={!hasActiveFile}
             title={hasActiveFile ? `Run ${activeDoc?.path}` : "Open a file first"}
-            className="flex items-center gap-1.5 px-3 py-1 rounded bg-fahh-success text-fahh-bg font-semibold hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            className="fahh-primary flex items-center gap-1.5 px-3 py-1 rounded bg-fahh-success text-fahh-bg font-semibold hover:opacity-80 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
           >
             <Play size={12} fill="currentColor" />
             <span>Run</span>
@@ -231,7 +231,7 @@ export function RunPanel() {
           <button
             onClick={handleStop}
             title="Stop process"
-            className="flex items-center gap-1.5 px-3 py-1 rounded bg-fahh-error text-fahh-bg font-semibold hover:opacity-80 transition-opacity"
+            className="fahh-danger flex items-center gap-1.5 px-3 py-1 rounded bg-fahh-error text-fahh-bg font-semibold hover:opacity-80 transition-opacity"
           >
             <Square size={12} fill="currentColor" />
             <span>Stop</span>

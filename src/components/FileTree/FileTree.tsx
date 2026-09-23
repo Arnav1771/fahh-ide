@@ -416,7 +416,7 @@ export function FileTree() {
   return (
     <div className="flex flex-col h-full bg-fahh-sidebar overflow-hidden">
       <div className="flex items-center justify-between px-3 py-2 text-xs font-semibold text-fahh-muted uppercase tracking-wider shrink-0">
-        <span>Explorer</span>
+        <span className="fahh-label">Explorer</span>
         <div className="flex gap-1">
           <button
             onClick={() => setNewFileParentPath(tree?.path ?? "")}

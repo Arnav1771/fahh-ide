@@ -46,6 +46,7 @@ export interface InstallerProgressEvent {
 // ─── Phase 2 types ────────────────────────────────────────────────────────────
 
 export type ThemeId =
+  | "fahh-gold"
   | "fahh-dark"
   | "fahh-light"
   | "github-dark"

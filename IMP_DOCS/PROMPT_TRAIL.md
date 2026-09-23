@@ -354,3 +354,39 @@ sidebar — were invisible to unit tests by construction, and only reproduce in 
 running application. The tests are worth having; they are not a substitute for launching
 the thing. Until someone runs it on a machine with a display, `TODOS.md` §3 is the
 honest summary of what is known.
+
+
+---
+
+## 2026-09-24 - Fahh Gold theme and the new website
+
+**Asked:** a brand-new UI for the Fahh Editor, website and app, including a simulator
+that proves the editor's sound works, in the owner's "dark luxury" design direction.
+
+**Built in the app (branch `redesign/fahh-gold`):**
+- A sixth theme, **Fahh Gold**, now the default for new installs. A theme someone already
+  chose is kept (`readPersistedTheme` accepts every theme id; unit-tested).
+- Theme-scoped chrome: `applyThemeCssVars` sets `data-fahh-theme` on `<html>`, and the
+  rules in `src/index.css` apply only under `fahh-gold` - bracketed monospace panel
+  headers, primary buttons with a dark ground and an amber edge, grain, an amber hairline
+  on the status bar. The other five themes render exactly as before (checked in a browser:
+  Dracula keeps uppercase headers and no grain).
+- The Palette button in the activity bar opened Extensions and could never be active. It
+  now opens a Theme panel and highlights.
+- Emoji in the UI replaced: the welcome-screen icon is an SVG, and Run-panel language
+  badges are text.
+- The terminal used a hard-coded navy (`#0d0d1a`) that matched none of the themes; it now
+  follows the theme background.
+- `LICENSE` added: `Cargo.toml` declared MIT but the repo had no licence file.
+
+**Bug found on the way:** custom Monaco themes were registered in `onMount`, after the
+editor had already been created with its theme. Anyone who restarted with GitHub Dark,
+Dracula or Solarized saved got the wrong editor colours. Themes are now registered in
+`beforeMount`, and the chosen theme is re-applied on mount.
+
+**Verified:** `pnpm test` 141/141 (5 new), `pnpm build` passes, `fahh-test.mjs` 24/24
+against the dev server, and a theme check (21 assertions) in Chromium.
+
+**Not verified:** Monaco's colours inside an open file. Opening a file needs the Rust
+backend, which a plain browser does not have. The fix is in place; confirming it needs
+`pnpm tauri dev`.

@@ -120,7 +120,7 @@ function ChangeGroup({
   return (
     <div className="mb-2">
       <div className="flex items-center gap-1 px-2 py-1">
-        <span className="text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
+        <span className="fahh-label text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
           {title}
         </span>
         <span className="text-[10px] text-fahh-muted">({changes.length})</span>
@@ -244,7 +244,7 @@ export function GitSidebar() {
   // ── Header, shared by every state ──
   const header = (
     <div className="flex items-center gap-1.5 px-3 py-2 border-b border-fahh-surface shrink-0">
-      <span className="text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
+      <span className="fahh-label text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
         Source Control
       </span>
       <div className="flex-1" />
