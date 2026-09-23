@@ -2,4 +2,3 @@ node_modules/
 target/
 src-tauri/
 dist/
-node_modules/
