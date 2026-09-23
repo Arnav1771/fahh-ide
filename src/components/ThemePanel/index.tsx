@@ -18,10 +18,29 @@ interface ThemeDef {
 
 export const THEME_DEFINITIONS: ThemeDef[] = [
   {
+    id: "fahh-gold",
+    name: "Fahh Gold",
+    monacoTheme: "fahh-gold",
+    description: "Warm near-black with an amber accent. The default.",
+    cssVars: {
+      "--fahh-bg": "#0a0907",
+      "--fahh-sidebar": "#100f0d",
+      "--fahh-surface": "#1b1916",
+      "--fahh-accent": "#d4a03c",
+      "--fahh-text": "#f0ebe0",
+      "--fahh-muted": "#8a8070",
+      "--fahh-error": "#d0524d",
+      "--fahh-warn": "#e39a4b",
+      "--fahh-success": "#3d9e5c",
+      "--fahh-info": "#9fb3c8",
+    },
+    swatches: ["#0a0907", "#100f0d", "#1b1916", "#d4a03c"],
+  },
+  {
     id: "fahh-dark",
     name: "Fahh Dark",
     monacoTheme: "vs-dark",
-    description: "The default dark theme with a purple accent.",
+    description: "The original dark theme with a purple accent.",
     cssVars: {
       "--fahh-bg": "#0e0e12",
       "--fahh-sidebar": "#16161d",
@@ -118,6 +137,38 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
 // Call once after Monaco is ready. Registers fahh-* theme IDs so setTheme() works.
 
 export function defineMonacoThemes(monaco: Monaco): void {
+  monaco.editor.defineTheme("fahh-gold", {
+    base: "vs-dark", inherit: true,
+    rules: [
+      { token: "keyword", foreground: "d4a03c" },
+      { token: "string", foreground: "b5c48a" },
+      { token: "comment", foreground: "6a6356", fontStyle: "italic" },
+      { token: "number", foreground: "e39a6d" },
+      { token: "type", foreground: "e8b84e" },
+      { token: "function", foreground: "e2d3ad" },
+      { token: "variable", foreground: "f0ebe0" },
+      { token: "operator", foreground: "c8a46a" },
+      { token: "delimiter", foreground: "8a8070" },
+    ],
+    colors: {
+      "editor.background": "#0c0b09",
+      "editor.foreground": "#f0ebe0",
+      "editorLineNumber.foreground": "#524c42",
+      "editorLineNumber.activeForeground": "#8a8070",
+      "editor.selectionBackground": "#d4a03c33",
+      "editor.lineHighlightBackground": "#141210",
+      "editorCursor.foreground": "#e8b84e",
+      "editorIndentGuide.background": "#1b1916",
+      "editorIndentGuide.activeBackground": "#2a2620",
+      "editorGutter.background": "#0c0b09",
+      "editorError.foreground": "#d0524d",
+      "editorWarning.foreground": "#e39a4b",
+      "scrollbarSlider.background": "#2a262066",
+      "scrollbarSlider.hoverBackground": "#d4a03c44",
+      "minimap.background": "#0c0b09",
+    },
+  });
+
   monaco.editor.defineTheme("fahh-github-dark", {
     base: "vs-dark", inherit: true,
     rules: [
@@ -191,6 +242,8 @@ export function applyThemeCssVars(def: ThemeDef): void {
   for (const [key, value] of Object.entries(def.cssVars)) {
     root.style.setProperty(key, value);
   }
+  // Lets a theme style more than colours (see the fahh-gold rules in index.css).
+  root.dataset.fahhTheme = def.id;
   // Notify Monaco (and any other listener) that the theme changed so they can
   // update their own theme API — CSS variables alone don't reach Monaco's
   // internal renderer in the native Tauri build.
@@ -211,7 +264,7 @@ export function ThemePanel() {
 
   return (
     <div className="flex flex-col gap-1 p-3">
-      <p className="text-[10px] uppercase tracking-widest text-fahh-muted mb-2 font-semibold">
+      <p className="fahh-label text-[10px] uppercase tracking-widest text-fahh-muted mb-2 font-semibold">
         Colour Theme
       </p>
 

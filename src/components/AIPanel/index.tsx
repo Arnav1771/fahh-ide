@@ -214,7 +214,7 @@ export function AIPanel() {
     <div className="flex flex-col h-full bg-fahh-sidebar overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-1.5 px-3 py-2 border-b border-fahh-surface shrink-0">
-        <span className="text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
+        <span className="fahh-label text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
           AI Assistant
         </span>
         <div className="flex-1" />

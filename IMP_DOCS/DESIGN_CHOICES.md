@@ -145,3 +145,19 @@ make `git log --stat` and every diff review noisier.
 objects still exist in the pack, so a fresh clone still transfers them. Rewriting
 history to reclaim that was judged not worth breaking every existing clone and open
 branch. The rule going forward is simply that build output does not get committed.
+
+
+## 7. Fahh Gold is scoped by an attribute, not a stylesheet swap
+
+**Decision.** The gold look is a set of CSS rules under
+`html[data-fahh-theme="fahh-gold"]`, switched on by the same `applyThemeCssVars` call
+that sets the colour variables.
+
+**Why.** The design direction asks for more than colours - bracketed labels, glowing
+bordered buttons instead of filled ones, grain. Doing that with Tailwind classes would
+have meant conditional class strings in a dozen components; doing it with an attribute
+keeps every component unchanged apart from a class hook (`fahh-label`, `fahh-primary`,
+`fahh-danger`, `fahh-statusbar`) that has no styles in any other theme.
+
+**Consequence.** A new theme that wants its own non-colour styling adds a block under its
+own `data-fahh-theme` value; nothing else has to change.

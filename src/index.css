@@ -39,3 +39,91 @@ body,
 .monaco-editor {
   --vscode-editor-background: #1e1e2e !important;
 }
+
+/* ─── Fahh Gold ─────────────────────────────────────────────────────────────
+   Everything below applies only while the Fahh Gold theme is active
+   (applyThemeCssVars sets data-fahh-theme on <html>), so the other five
+   themes look exactly as before. Accent is used on edges, labels and glows,
+   never as a large fill. */
+
+html[data-fahh-theme="fahh-gold"],
+html[data-fahh-theme="fahh-gold"] body,
+html[data-fahh-theme="fahh-gold"] #root {
+  background: #0a0907;
+  color: #f0ebe0;
+}
+
+html[data-fahh-theme="fahh-gold"] body {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+/* Grain: fixed, click-through, 3.5% overlay. */
+html[data-fahh-theme="fahh-gold"] body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.035;
+  mix-blend-mode: overlay;
+  background-size: 128px;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+html[data-fahh-theme="fahh-gold"] .monaco-editor {
+  --vscode-editor-background: #0c0b09 !important;
+}
+
+html[data-fahh-theme="fahh-gold"] ::-webkit-scrollbar-thumb { background: #2a2620; }
+html[data-fahh-theme="fahh-gold"] ::-webkit-scrollbar-thumb:hover { background: #3a342b; }
+
+/* Panel headers read as [Label]: monospace, amber, normal case. */
+html[data-fahh-theme="fahh-gold"] .fahh-label {
+  font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  text-transform: none;
+  letter-spacing: 0.04em;
+  font-weight: 500;
+  font-size: 11px;
+  color: #d4a03c;
+}
+html[data-fahh-theme="fahh-gold"] .fahh-label::before { content: "["; }
+html[data-fahh-theme="fahh-gold"] .fahh-label::after { content: "]"; }
+
+/* Primary buttons: dark ground, amber edge, a glow that stays lit. */
+html[data-fahh-theme="fahh-gold"] button.bg-fahh-accent,
+html[data-fahh-theme="fahh-gold"] button.fahh-primary {
+  background: #161412;
+  color: #f0ebe0;
+  border: 1px solid #d4a03c;
+  box-shadow: 0 0 6px rgba(212, 160, 60, 0.5), 0 0 16px rgba(212, 160, 60, 0.2);
+  opacity: 1;
+}
+html[data-fahh-theme="fahh-gold"] button.bg-fahh-accent:hover:not(:disabled),
+html[data-fahh-theme="fahh-gold"] button.fahh-primary:hover:not(:disabled) {
+  border-color: #e8b84e;
+  box-shadow: 0 0 8px rgba(212, 160, 60, 0.7), 0 0 24px rgba(212, 160, 60, 0.35);
+}
+html[data-fahh-theme="fahh-gold"] button.bg-fahh-accent:disabled,
+html[data-fahh-theme="fahh-gold"] button.fahh-primary:disabled {
+  box-shadow: none;
+  border-color: rgba(212, 160, 60, 0.3);
+  opacity: 0.5;
+}
+html[data-fahh-theme="fahh-gold"] button.fahh-danger {
+  background: #161412;
+  color: #f0ebe0;
+  border: 1px solid rgba(208, 82, 77, 0.7);
+}
+
+/* Status bar: a hairline of amber along the top edge. */
+html[data-fahh-theme="fahh-gold"] .fahh-statusbar {
+  box-shadow: inset 0 1px 0 rgba(212, 160, 60, 0.35);
+}
+
+/* Inputs pick up the amber focus ring. */
+html[data-fahh-theme="fahh-gold"] input:focus-visible,
+html[data-fahh-theme="fahh-gold"] textarea:focus-visible,
+html[data-fahh-theme="fahh-gold"] select:focus-visible {
+  outline: 1px solid #d4a03c;
+  outline-offset: 0;
+}

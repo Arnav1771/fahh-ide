@@ -18,7 +18,7 @@ import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play } f
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type SidebarTab = "files" | "git" | "ai" | "extensions" | "debug";
+type SidebarTab = "files" | "git" | "ai" | "extensions" | "debug" | "theme";
 type BottomTab = "terminal" | "run" | "debug";
 
 // ─── Activity bar button ──────────────────────────────────────────────────────
@@ -190,9 +190,9 @@ export default function App() {
 
         {/* Theme picker */}
         <ActivityBtn
-          active={sidebarTab === ("theme" as SidebarTab)}
+          active={sidebarTab === "theme"}
           title="Colour Theme"
-          onClick={() => setSidebarTab("extensions")}
+          onClick={() => setSidebarTab("theme")}
         >
           <Palette size={18} />
         </ActivityBtn>
@@ -215,7 +215,7 @@ export default function App() {
 
         {sidebarTab === "debug" && (
           <div className="flex flex-col h-full overflow-hidden">
-            <div className="px-3 py-2 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold border-b border-fahh-surface bg-fahh-sidebar shrink-0">
+            <div className="fahh-label px-3 py-2 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold border-b border-fahh-surface bg-fahh-sidebar shrink-0">
               Debug
             </div>
             <DebugPanel />
@@ -224,9 +224,15 @@ export default function App() {
 
         {sidebarTab === "ai" && <AIPanel />}
 
+        {sidebarTab === "theme" && (
+          <div className="flex flex-col h-full overflow-y-auto bg-fahh-sidebar">
+            <ThemePanel />
+          </div>
+        )}
+
         {sidebarTab === "extensions" && (
           <div className="flex flex-col h-full overflow-hidden">
-            <div className="px-3 py-2 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold border-b border-fahh-surface bg-fahh-sidebar shrink-0">
+            <div className="fahh-label px-3 py-2 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold border-b border-fahh-surface bg-fahh-sidebar shrink-0">
               Extensions
             </div>
             <div className="flex-1 overflow-y-auto">
@@ -290,7 +296,7 @@ export default function App() {
         )}
 
         {/* Status bar */}
-        <div className="h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 text-xs text-fahh-muted">
+        <div className="fahh-statusbar h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 text-xs text-fahh-muted">
           <span className="text-fahh-success">● Fahh Editor</span>
 
           <button

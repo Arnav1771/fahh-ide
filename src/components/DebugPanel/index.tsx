@@ -70,7 +70,7 @@ function ToolbarButton({
 
 function SectionHeader({ children }: { children: React.ReactNode }) {
   return (
-    <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold bg-fahh-sidebar border-b border-fahh-surface">
+    <div className="fahh-label px-3 py-1 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold bg-fahh-sidebar border-b border-fahh-surface">
       {children}
     </div>
   );
