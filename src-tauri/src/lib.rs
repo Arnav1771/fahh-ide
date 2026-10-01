@@ -5,7 +5,7 @@
 mod core;
 mod app;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git, preview};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -69,6 +69,8 @@ pub fn run() {
             git::git_unstage,
             git::git_commit,
             git::git_diff,
+            // Previews: let the asset protocol load the opened folder
+            preview::allow_preview,
         ])
         .setup(|app| {
             app::setup(app)?;

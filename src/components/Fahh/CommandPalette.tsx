@@ -4,9 +4,9 @@ import { rankCommands, type PaletteCommand } from "../../lib/palette";
 
 const RECENT_KEY = "fahh-palette-recent";
 
-function readRecent(): string[] {
+function readRecent(key: string): string[] {
   try {
-    const v = JSON.parse(localStorage.getItem(RECENT_KEY) ?? "[]");
+    const v = JSON.parse(localStorage.getItem(key) ?? "[]");
     return Array.isArray(v) ? v.filter((x) => typeof x === "string").slice(0, 5) : [];
   } catch {
     return [];
@@ -33,20 +33,50 @@ export function CommandPalette({
   open,
   onClose,
   commands,
+  placeholder = "Type a command: theme, panel, bell, problem…",
+  label = "Command palette",
+  recentKey = RECENT_KEY,
+  emptyText,
+  variant = "command",
 }: {
   open: boolean;
   onClose: () => void;
   commands: PaletteCommand[];
+  placeholder?: string;
+  label?: string;
+  recentKey?: string;
+  /** Shown when there is nothing to list at all (e.g. no folder open). */
+  emptyText?: string;
+  /** "file": name first, then its folder (Quick Open). */
+  variant?: "command" | "file";
 }) {
   // A fresh body every time it opens: no query left over from last time,
   // and nothing resets it after the user has started typing.
-  return open ? <PaletteBody onClose={onClose} commands={commands} /> : null;
+  return open ? (
+    <PaletteBody onClose={onClose} commands={commands} placeholder={placeholder} label={label} recentKey={recentKey} emptyText={emptyText} variant={variant} />
+  ) : null;
 }
 
-function PaletteBody({ onClose, commands }: { onClose: () => void; commands: PaletteCommand[] }) {
+function PaletteBody({
+  onClose,
+  commands,
+  placeholder,
+  label,
+  recentKey,
+  emptyText,
+  variant,
+}: {
+  onClose: () => void;
+  commands: PaletteCommand[];
+  placeholder: string;
+  label: string;
+  recentKey: string;
+  emptyText?: string;
+  variant: "command" | "file";
+}) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
-  const [recent] = useState<string[]>(readRecent);
+  const [recent] = useState<string[]>(() => readRecent(recentKey));
   const listRef = useRef<HTMLUListElement>(null);
 
   const ordered = useMemo(() => {
@@ -63,7 +93,7 @@ function PaletteBody({ onClose, commands }: { onClose: () => void; commands: Pal
     if (!cmd) return;
     const next = [cmd.id, ...recent.filter((id) => id !== cmd.id)].slice(0, 5);
     try {
-      localStorage.setItem(RECENT_KEY, JSON.stringify(next));
+      localStorage.setItem(recentKey, JSON.stringify(next));
     } catch {
       // ignore
     }
@@ -92,7 +122,7 @@ function PaletteBody({ onClose, commands }: { onClose: () => void; commands: Pal
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Command palette"
+        aria-label={label}
         className="fahh-palette w-[580px] max-w-[92vw] h-fit rounded-lg border border-fahh-surface bg-fahh-sidebar shadow-2xl overflow-hidden"
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -105,7 +135,7 @@ function PaletteBody({ onClose, commands }: { onClose: () => void; commands: Pal
               setSelected(0);
             }}
             onKeyDown={onKeyDown}
-            placeholder="Type a command: theme, panel, bell, problem…"
+            placeholder={placeholder}
             aria-label="Search commands"
             role="combobox"
             aria-expanded="true"
@@ -118,7 +148,11 @@ function PaletteBody({ onClose, commands }: { onClose: () => void; commands: Pal
           />
         </div>
         <ul id="fahh-palette-list" ref={listRef} role="listbox" className="max-h-[50vh] overflow-y-auto py-1">
-          {ordered.length === 0 && <li className="px-4 py-6 text-center text-xs text-fahh-muted">No command matches “{query}”.</li>}
+          {ordered.length === 0 && (
+            <li className="px-4 py-6 text-center text-xs text-fahh-muted">
+              {commands.length === 0 && emptyText ? emptyText : `Nothing matches “${query}”.`}
+            </li>
+          )}
           {ordered.map((cmd, i) => (
             <li
               key={cmd.id}
@@ -132,8 +166,17 @@ function PaletteBody({ onClose, commands }: { onClose: () => void; commands: Pal
                 i === selected ? "is-selected bg-fahh-surface text-fahh-text" : "text-fahh-text"
               }`}
             >
-              <span className="w-16 shrink-0 font-mono text-[11px] text-fahh-muted">{cmd.group}</span>
-              <span className="flex-1 truncate">{cmd.label}</span>
+              {variant === "file" ? (
+                <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                  <span className="truncate">{cmd.label}</span>
+                  <span className="truncate font-mono text-[11px] text-fahh-muted">{cmd.group}</span>
+                </span>
+              ) : (
+                <>
+                  <span className="w-16 shrink-0 font-mono text-[11px] text-fahh-muted">{cmd.group}</span>
+                  <span className="flex-1 truncate">{cmd.label}</span>
+                </>
+              )}
               {!query.trim() && i < recent.length && recent.includes(cmd.id) && (
                 <span className="text-[10px] uppercase tracking-wider text-fahh-muted">recent</span>
               )}

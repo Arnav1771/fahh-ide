@@ -27,17 +27,24 @@ Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.
 
 ---
 
-## What works in v0.3.0
+## What works in v0.5.0
+
+Verified on the real desktop app (tauri-driver + WebKitWebDriver, 108 + 24 checks), and by a recorded session that went from `mkdir` to `git push` entirely inside the Fahh window ([result](https://github.com/Arnav1771/fahh-hello)).
 
 | Feature | Status |
 |---------|--------|
-| Monaco editor (VS Code engine) | ✅ Full syntax highlighting, 15+ languages, Ctrl+S save |
+| The fahh moment | ✅ When the error count goes up: sound, editor shake, red edge, line pulse and a FAHH ×n combo chip. Fixing the last error gives CLEAN. Epic / Subtle / Off, plus mute |
+| Status bar | ✅ Live error/warning counts (click for the next problem), clean streak, language-server status |
+| Command palette | ✅ Ctrl+Shift+P / F1, fuzzy search, keycaps, recently used first |
+| Quick Open | ✅ Ctrl+P finds any file in the opened folder |
+| Previews | ✅ Ctrl+K V beside, Ctrl+Shift+V in place. Markdown (live, scroll sync, local images), HTML (sandboxed, scripts opt-in), images with zoom, SVG, CSV tables |
+| Monaco editor (VS Code engine) | ✅ Full syntax highlighting, 15+ languages, Ctrl+S save; one model per file (per-tab undo, real TSX checking) |
 | File explorer | ✅ Open folder, recursive tree, depth-5, context menu (Rename/Delete/Copy Path) |
 | New file creation | ✅ Click 📄 in explorer → inline name input |
-| 5 built-in themes | ✅ Fahh Dark, Fahh Light, GitHub Dark, Dracula, Solarized Dark — Monaco syntax colors change |
-| Terminal | ✅ Runs shell commands (`pip install`, `node`, `python`, etc.) |
+| 6 built-in themes | ✅ Fahh Gold (default), Fahh Dark, Fahh Light, GitHub Dark, Dracula, Solarized Dark |
+| Terminal | ✅ Runs shell commands; `cd` sticks and the prompt follows; `fahh .` opens a folder (like `code .`) |
 | Run panel | ✅ One-click code execution for Python, JS, TS, Go, Rust, Java, C++ |
-| Debug panel UI | ✅ Breakpoints, call stack, variables — DAP wiring in progress |
+| Debug panel UI | ✅ Breakpoints, call stack, variables; a missing adapter says how to install it — DAP wiring in progress |
 | Optional tools installer | ✅ n8n, Flowise, browser-use, GitHub CLI, Claude CLI |
 | Right-click context menu | ✅ No browser Share/Reload — custom IDE menu only |
 | F5 / Ctrl+R blocked | ✅ Page reload can't wipe your code |

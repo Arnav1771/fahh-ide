@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { useDebugStore } from "../../store/debugStore";
 import { useEditorStore } from "../../store/editorStore";
@@ -148,8 +148,12 @@ export function DebugPanel() {
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
+  // Why the last Start Debug failed (adapter missing, port, ...), shown in the panel.
+  const [startError, setStartError] = useState<string | null>(null);
+
   const handleStartDebug = async () => {
     if (!activeDoc) return;
+    setStartError(null);
     const language = activeDoc.language;
 
     const config: DapConfig = {
@@ -164,6 +168,7 @@ export function DebugPanel() {
       start(sid);
     } catch (err) {
       console.error("debug_start failed:", err);
+      setStartError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -279,6 +284,12 @@ export function DebugPanel() {
           </span>
         )}
       </div>
+
+      {startError && !isDebugging && (
+        <div role="alert" className="fahh-debug-error px-3 py-2 border-b border-fahh-surface text-fahh-error whitespace-pre-wrap">
+          Could not start debugging: {startError}
+        </div>
+      )}
 
       {/* ── Body (scrollable sections) ── */}
       <div className="flex-1 overflow-y-auto">

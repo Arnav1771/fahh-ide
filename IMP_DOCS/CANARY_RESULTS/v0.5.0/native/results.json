@@ -1,0 +1,781 @@
+{
+ "when": "2026-10-01T21:23:29.561Z",
+ "pass": 108,
+ "fail": 0,
+ "results": [
+  {
+   "section": "A. launch",
+   "label": "window title is Fahh Editor",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "A. launch",
+   "label": "running inside Tauri (IPC bridge present)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "A. launch",
+   "label": "title screen shown",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "A. launch",
+   "label": "status bar shows v0.4.0",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "A. launch",
+   "label": "Fahh Gold is the default theme",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "get_file_tree lists the project",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "get_file_tree hides .git",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "read_file returns the content",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "read_file of a missing file is an error, not a crash",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "create_file (with a new parent folder)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "write_file reaches the disk",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "rename_file",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "delete_file",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "open_document returns a document",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "FINDING: get_open_documents is a stub",
+   "ok": null,
+   "detail": "open_document records nothing and get_open_documents always returns []; the app never calls them (tabs live in the editor store)"
+  },
+  {
+   "section": "B1. backend: files and documents",
+   "label": "close_document removes it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "execute_command streams stdout as terminal://output",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "execute_command honours cwd",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "a failing command reports its exit code",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "write_stdin",
+   "ok": null,
+   "detail": "accepted (known no-op: the terminal has no interactive stdin)"
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "load_config returns a config",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "save_config round-trips",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "config is written to the throwaway HOME, not yours",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_plugins returns plugins",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_plugins count",
+   "ok": null,
+   "detail": "37"
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_themes returns themes",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_themes count",
+   "ok": null,
+   "detail": "8"
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_language_packs returns language packs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_language_packs count",
+   "ok": null,
+   "detail": "15"
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_formatter_plugins returns formatters",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_formatter_plugins count",
+   "ok": null,
+   "detail": "10"
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_snippet_plugins returns snippets",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_snippet_plugins count",
+   "ok": null,
+   "detail": "4"
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "get_tool_status lists the optional tools",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "tool status",
+   "ok": null,
+   "detail": "n8n:yes browser-use:no flowise:no gh:yes claude:yes"
+  },
+  {
+   "section": "B2. backend: terminal, config, plugins, tools",
+   "label": "install_tool rejects an unknown tool (nothing installed)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B3. backend: formatter, debugger",
+   "label": "format_file formats Rust (rustfmt)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B3. backend: formatter, debugger",
+   "label": "format_file without a formatter installed fails cleanly",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B3. backend: formatter, debugger",
+   "label": "debug_start without debugpy fails with a message, not a crash",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B3. backend: formatter, debugger",
+   "label": "…and the message says how to install debugpy",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B3. backend: formatter, debugger",
+   "label": "debug_start error",
+   "ok": null,
+   "detail": "The debugpy debug adapter exited before it was ready (exit status: 1). Is debugpy installed? Install it with: python3 -m pip install debugpy"
+  },
+  {
+   "section": "B3. backend: formatter, debugger",
+   "label": "debug_start with an unsupported adapter is refused",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B3. backend: formatter, debugger",
+   "label": "debug commands on a missing session fail cleanly",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B4. backend: git",
+   "label": "git_status sees the modified and untracked files",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B4. backend: git",
+   "label": "git_current_branch is main",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B4. backend: git",
+   "label": "git_diff (unstaged) shows the change",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B4. backend: git",
+   "label": "git_stage + staged diff",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B4. backend: git",
+   "label": "git_unstage",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B4. backend: git",
+   "label": "git_commit creates the commit",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B4. backend: git",
+   "label": "git_status outside a repo is an error, not a crash",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run python (hello.py) → exit 0, \"hello from python\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run javascript (hello.js) → exit 0, \"hello from node\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run c (hello.c) → exit 0, \"hello from c\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run cpp (hello.cpp) → exit 0, \"hello from cpp\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run shell (hello.sh) → exit 0, \"hello from sh\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run perl (hello.pl) → exit 0, \"hello from perl\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run rust (rs/src/main.rs) → exit 0, \"hello from rust\"",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run python (fail.py) → exit 3",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "stderr arrives on its own stream",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run go with no runtime installed fails with a readable message",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "go message",
+   "ok": null,
+   "detail": "Failed to spawn process `go`: No such file or directory (os error 2)"
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run ruby with no runtime installed fails with a readable message",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "ruby message",
+   "ok": null,
+   "detail": "Failed to spawn process `ruby`: No such file or directory (os error 2)"
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run java with no runtime installed fails with a readable message",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "java message",
+   "ok": null,
+   "detail": "sh: 1: javac: not found"
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "stop_run kills a running program",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B5. backend: run_file in every language",
+   "label": "run_file return shape",
+   "ok": null,
+   "detail": "{\"stdout\":\"\",\"pid\":85826,\"exit_code\":0,\"stderr\":\"\",\"duration_ms\":0}"
+  },
+  {
+   "section": "B6. backend: the fahh trigger",
+   "label": "trigger_error_sound emits fahh://error",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B6. backend: the fahh trigger",
+   "label": "…which the app turns into a sound and a FAHH chip",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "B6. backend: the fahh trigger",
+   "label": "Rust cooldown: an immediate second trigger is swallowed",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C1. open a folder through the native dialog",
+   "label": "dialog window",
+   "ok": null,
+   "detail": "Select Folder"
+  },
+  {
+   "section": "C1. open a folder through the native dialog",
+   "label": "xdotool",
+   "ok": null,
+   "detail": "Command failed: DISPLAY=:0 import -window root /home/dell/qa/fahh-native/shots/C1-dialog-home.png"
+  },
+  {
+   "section": "C1. open a folder through the native dialog",
+   "label": "native folder dialog",
+   "ok": null,
+   "detail": "opens (\"Select Folder\") but WSLg does not deliver injected keyboard or mouse input to GTK dialogs, so choosing the folder in it could not be automated"
+  },
+  {
+   "section": "C1. open a folder through the native dialog",
+   "label": "native dialog",
+   "ok": null,
+   "detail": "the GTK Select Folder dialog opens (screenshot), but WSLg does not deliver injected keys to it; the folder was opened through the same openFolder() path instead"
+  },
+  {
+   "section": "C1. open a folder through the native dialog",
+   "label": "folder opened via the store instead",
+   "ok": null,
+   "detail": "true"
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "clicking a file opens it in a tab",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "Monaco shows the file's content",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "a second file opens a second tab",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "typing marks the tab dirty (●)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "Ctrl+S saves to disk and clears the dirty mark",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "closing a tab",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "right-click menu has Open / Rename / Delete / Copy Path / New File",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "New File creates it on disk and opens it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "Rename renames it on disk",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C2. file tree, tabs, editing and saving",
+   "label": "Delete removes it from disk and the tree",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C3. terminal panel",
+   "label": "a command typed in the terminal runs and prints (&& and capitals intact)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C3. terminal panel",
+   "label": "the terminal runs in the opened folder (ls lists its files)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C3. terminal panel",
+   "label": "a failing command shows stderr and [exit N]",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C4. run panel",
+   "label": "Run (Python) prints stdout and stderr and exits 0",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C4. run panel",
+   "label": "exit badge shows exit 0",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C4. run panel",
+   "label": "the language picker is drawn by the app, not as a white GTK box",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C4. run panel",
+   "label": "Run (C) compiles and runs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C4. run panel",
+   "label": "Run shows a non-zero exit in red",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C4. run panel",
+   "label": "a running program shows ● Running and a Stop button",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C4. run panel",
+   "label": "Stop ends it",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C5. source control panel",
+   "label": "branch and change count show",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C5. source control panel",
+   "label": "the edited file is listed as Modified",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C5. source control panel",
+   "label": "Stage moves it to Staged Changes",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C5. source control panel",
+   "label": "clicking a file shows its diff",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C5. source control panel",
+   "label": "Commit from the panel creates the commit",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C5. source control panel",
+   "label": "…and says Committed <hash>",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C6. the fahh moment from a real typed error",
+   "label": "a clean .ts file shows 0 errors",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C6. the fahh moment from a real typed error",
+   "label": "typing a type error raises the count",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C6. the fahh moment from a real typed error",
+   "label": "the fahh plays",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C6. the fahh moment from a real typed error",
+   "label": "FAHH chip and edge glow appear in the real app",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C6. the fahh moment from a real typed error",
+   "label": "undoing the error gives CLEAN",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C7. palette and keyboard",
+   "label": "Ctrl+Shift+P opens the palette from inside Monaco",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C7. palette and keyboard",
+   "label": "palette → Dracula switches the theme",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C7. palette and keyboard",
+   "label": "F1 opens our palette, not Monaco's",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C7. palette and keyboard",
+   "label": "Ctrl+` toggles the bottom panel",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C7. palette and keyboard",
+   "label": "F5 and Ctrl+R do not reload the editor (state survives)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C8. AI assistant against local Ollama",
+   "label": "configured: says Connected to the model",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C8. AI assistant against local Ollama",
+   "label": "a chat message gets a streamed answer from the local model",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C8. AI assistant against local Ollama",
+   "label": "assistant said",
+   "ok": null,
+   "detail": "pong"
+  },
+  {
+   "section": "C9. extensions, optional tools, debug",
+   "label": "Extensions loads real plugins (non-zero counts)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C9. extensions, optional tools, debug",
+   "label": "Languages tab lists language packs",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C9. extensions, optional tools, debug",
+   "label": "Optional Tools shows the real tool status",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C9. extensions, optional tools, debug",
+   "label": "Start Debug without debugpy does not crash the app",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C9. extensions, optional tools, debug",
+   "label": "…and the panel says why, with the install hint",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C10. language server: rust-analyzer diagnostics → fahh",
+   "label": "main.rs rows",
+   "ok": null,
+   "detail": "2"
+  },
+  {
+   "section": "C10. language server: rust-analyzer diagnostics → fahh",
+   "label": "rust-analyzer starts and talks to the editor",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C10. language server: rust-analyzer diagnostics → fahh",
+   "label": "the status bar shows the language server as running (rust ✓)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C10. language server: rust-analyzer diagnostics → fahh",
+   "label": "rust-analyzer reports the error (publishDiagnostics, severity 1)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "C10. language server: rust-analyzer diagnostics → fahh",
+   "label": "…and the backend rings the fahh (fahh://error)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "D. restart",
+   "label": "relaunch keeps the theme (Dracula)",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "D. restart",
+   "label": "relaunch keeps mute",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "D. restart",
+   "label": "relaunch keeps the AI provider",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "console",
+   "label": "no unexpected console errors during the run",
+   "ok": true,
+   "detail": ""
+  },
+  {
+   "section": "console",
+   "label": "all console messages",
+   "ok": null,
+   "detail": "warn: [LspBridge] LSP startup sequence failed: No Python LSP found. Install pylsp or pyright. || warn: [LspBridge] LSP startup sequence failed: LSP binary 'vscode-json-language-server' not found on PATH. Install it to enable json support. || warn: [LspBridge] LSP startup sequence failed: No Python L"
+  }
+ ]
+}

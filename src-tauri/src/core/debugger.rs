@@ -120,19 +120,57 @@ lazy_static::lazy_static! {
 // ---------------------------------------------------------------------------
 
 /// Wait up to `timeout_ms` for a TCP port to be open.
-fn wait_for_port(host: &str, port: u16, timeout_ms: u64) -> bool {
+/// A port nothing is listening on. Adapters used to get fixed ports (debugpy
+/// 5678, node 9229, dlv 2345, lldb-dap 4711), and 5678 is also n8n's default:
+/// with n8n running, `debug_start` connected to n8n's web server and reported
+/// a debug session that did not exist.
+fn free_port() -> Result<u16, String> {
+    std::net::TcpListener::bind("127.0.0.1:0")
+        .and_then(|l| l.local_addr())
+        .map(|a| a.port())
+        .map_err(|e| format!("Could not find a free port for the debug adapter: {e}"))
+}
+
+/// What to tell the user when an adapter exits before it is ready.
+fn install_hint(adapter: &str) -> &'static str {
+    match adapter {
+        "python" | "debugpy" => "Is debugpy installed? Install it with: python3 -m pip install debugpy",
+        "node" | "js-debug" => "Is Node.js installed and on PATH?",
+        "go" | "dlv-dap" | "delve" => "Is Delve installed? Install it with: go install github.com/go-delve/delve/cmd/dlv@latest",
+        _ => "Is lldb-dap installed and on PATH?",
+    }
+}
+
+/// Wait until the adapter listens on `port`, or fail as soon as it exits.
+/// On failure the adapter process is killed, so nothing is left running.
+fn wait_for_adapter(child: &mut Option<Child>, adapter: &str, port: u16, timeout_ms: u64) -> Result<(), String> {
     let deadline = std::time::Instant::now() + Duration::from_millis(timeout_ms);
-    let addr: std::net::SocketAddr = match format!("{host}:{port}").parse() {
-        Ok(a) => a,
-        Err(_) => return false,
-    };
+    let addr: std::net::SocketAddr = format!("127.0.0.1:{port}")
+        .parse()
+        .map_err(|e| format!("Bad debug adapter address: {e}"))?;
     while std::time::Instant::now() < deadline {
+        if let Some(c) = child.as_mut() {
+            if let Ok(Some(status)) = c.try_wait() {
+                return Err(format!(
+                    "The {adapter} debug adapter exited before it was ready ({status}). {}",
+                    install_hint(adapter)
+                ));
+            }
+        }
         if TcpStream::connect_timeout(&addr, Duration::from_millis(200)).is_ok() {
-            return true;
+            return Ok(());
         }
         std::thread::sleep(Duration::from_millis(100));
     }
-    false
+    if let Some(c) = child.as_mut() {
+        let _ = c.kill();
+        let _ = c.wait();
+    }
+    Err(format!(
+        "The {adapter} debug adapter did not open port {port} within {} seconds. {}",
+        timeout_ms / 1000,
+        install_hint(adapter)
+    ))
 }
 
 /// Spawn a reader thread that forwards DAP messages from the adapter to the
@@ -218,14 +256,15 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
         config.adapter, config.program
     );
 
-    let (child, port): (Option<Child>, u16) = match config.adapter.as_str() {
+    let port = free_port()?;
+    let (mut child, port): (Option<Child>, u16) = match config.adapter.as_str() {
         "python" | "debugpy" => {
             // debugpy: python -m debugpy --listen 5678 --wait-for-client <file>
             let mut cmd_args = vec![
                 "-m".to_string(),
                 "debugpy".to_string(),
                 "--listen".to_string(),
-                "5678".to_string(),
+                format!("127.0.0.1:{port}"),
                 "--wait-for-client".to_string(),
             ];
             if config.stop_on_entry {
@@ -245,12 +284,12 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
                 .spawn()
                 .map_err(|e| format!("Failed to spawn debugpy: {e}"))?;
 
-            (Some(child), 5678)
+            (Some(child), port)
         }
         "node" | "js-debug" => {
             // Node.js --inspect-brk opens a V8 inspector on port 9229.
             // We connect via raw TCP and translate CDP ↔ DAP in the reader thread.
-            let mut cmd_args = vec!["--inspect-brk=9229".to_string(), config.program.clone()];
+            let mut cmd_args = vec![format!("--inspect-brk=127.0.0.1:{port}"), config.program.clone()];
             cmd_args.extend(config.args.clone());
 
             let child = Command::new("node")
@@ -262,14 +301,14 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
                 .spawn()
                 .map_err(|e| format!("Failed to spawn node: {e}"))?;
 
-            (Some(child), 9229)
+            (Some(child), port)
         }
         "go" | "dlv-dap" | "delve" => {
             // Delve debug adapter — dlv dap --listen :2345
             let child = Command::new("dlv")
                 .args([
                     "dap",
-                    "--listen=:2345",
+                    &format!("--listen=127.0.0.1:{port}"),
                     "--headless",
                     "exec",
                     &config.program,
@@ -288,12 +327,12 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
                 .spawn()
                 .map_err(|e| format!("Failed to spawn dlv: {e}"))?;
 
-            (Some(child), 2345)
+            (Some(child), port)
         }
         "lldb" | "codelldb" | "lldb-dap" => {
             // lldb-dap (formerly lldb-vscode) listens on a port when passed --port.
             let child = Command::new("lldb-dap")
-                .args(["--port", "4711"])
+                .args(["--port", &port.to_string()])
                 .current_dir(config.working_dir())
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
@@ -301,19 +340,16 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
                 .spawn()
                 .map_err(|e| format!("Failed to spawn lldb-dap: {e}"))?;
 
-            (Some(child), 4711)
+            (Some(child), port)
         }
         other => {
             return Err(format!("Unsupported debug adapter: {other}"));
         }
     };
 
-    // Wait for the adapter to open its port (up to 10 seconds).
-    if !wait_for_port("127.0.0.1", port, 10_000) {
-        return Err(format!(
-            "Debug adapter did not open port {port} within 10 seconds"
-        ));
-    }
+    // Wait for the adapter to open its port (up to 10 seconds), failing fast
+    // if it exits first (e.g. `python3 -m debugpy` without debugpy installed).
+    wait_for_adapter(&mut child, &config.adapter, port, 10_000)?;
 
     let stream = TcpStream::connect(format!("127.0.0.1:{port}"))
         .map_err(|e| format!("Failed to connect to debug adapter on port {port}: {e}"))?;
@@ -454,6 +490,43 @@ pub async fn debug_set_breakpoints(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn free_port_is_actually_free() {
+        let port = free_port().unwrap();
+        assert!(port > 0);
+        // Nothing is listening there, so we can take it ourselves.
+        assert!(std::net::TcpListener::bind(("127.0.0.1", port)).is_ok());
+    }
+
+    #[test]
+    fn an_adapter_that_exits_early_is_an_error_with_a_hint() {
+        let mut child = Some(Command::new("sh").args(["-c", "exit 1"]).spawn().unwrap());
+        let port = free_port().unwrap();
+        let t0 = std::time::Instant::now();
+        let err = wait_for_adapter(&mut child, "debugpy", port, 10_000).unwrap_err();
+        assert!(t0.elapsed() < Duration::from_secs(5), "fails fast instead of waiting 10 s");
+        assert!(err.contains("exited before it was ready"), "{err}");
+        assert!(err.contains("pip install debugpy"), "{err}");
+    }
+
+    #[test]
+    fn a_listening_adapter_is_ready() {
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let mut child = Some(Command::new("sleep").arg("5").spawn().unwrap());
+        assert!(wait_for_adapter(&mut child, "debugpy", port, 3_000).is_ok());
+        let _ = child.as_mut().unwrap().kill();
+    }
+
+    #[test]
+    fn a_silent_adapter_times_out_and_is_killed() {
+        let mut child = Some(Command::new("sleep").arg("30").spawn().unwrap());
+        let port = free_port().unwrap();
+        let err = wait_for_adapter(&mut child, "lldb-dap", port, 600).unwrap_err();
+        assert!(err.contains("did not open port"), "{err}");
+        assert!(child.as_mut().unwrap().try_wait().unwrap().is_some(), "the adapter was killed");
+    }
 
     #[test]
     fn dap_config_deserializes_frontend_payload() {

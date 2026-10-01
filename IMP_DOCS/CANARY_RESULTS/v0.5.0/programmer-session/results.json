@@ -1,0 +1,127 @@
+[
+ {
+  "label": "cd /home/dell/fahh-hello",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "mkdir tests",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "fahh . opens the project in the explorer",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "git log shows session 1's commit",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "New File tests/testfizzbuzz.py",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "saved exactly as typed",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "Run: the test passes (Ran 1 test … OK, exit 0)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "New File .gitignore",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": ".gitignore saved",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "New File web/fizzbuzz.js",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the JavaScript is clean",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "a syntax error: the error count goes up, the FAHH chip slams in",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "…and the fahh sound plays",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "fixing it: CLEAN, and the clean streak starts",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "Quick Open (Ctrl+P → readme → Enter) opens README.md",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the preview shows the new Tests section",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "README.md on disk is exactly what was typed",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "Source Control lists the new and changed files",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "Commit",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "git push",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "git log shows both commits",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "GitHub has both commits, newest first",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the pushed test is exactly what was typed",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the pushed README is exactly what was typed (session 1's lost line is back)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the pushed fizzbuzz.js is the clean version (typo removed)",
+  "ok": true,
+  "detail": ""
+ }
+]

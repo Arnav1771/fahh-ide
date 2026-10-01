@@ -15,11 +15,17 @@ import { initFahhSfx, teardownFahhSfx } from "./lib/fahh";
 import { useThemeStore } from "./store/themeStore";
 import { useFahhStore, type Intensity } from "./store/fahhStore";
 import { ImpactLayer } from "./components/Fahh/ImpactLayer";
-import { StatusHud, HudControls, CleanSweep } from "./components/Fahh/StatusHud";
+import { StatusHud, HudControls, CleanSweep, LspStatusItem } from "./components/Fahh/StatusHud";
 import { CommandPalette } from "./components/Fahh/CommandPalette";
 import { FAHH_COMMAND, OPEN_FOLDER_EVENT } from "./lib/commands";
 import { runEditorAction } from "./lib/monacoBridge";
 import type { PaletteCommand } from "./lib/palette";
+import { usePreviewStore } from "./store/previewStore";
+import { useEditorStore } from "./store/editorStore";
+import { useFileStore } from "./store/fileStore";
+import { previewKindFor } from "./lib/preview";
+import { flattenTree } from "./lib/quickOpen";
+import { useWorkspace } from "./hooks/useWorkspace";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
 import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play } from "lucide-react";
 
@@ -91,6 +97,9 @@ export default function App() {
 
   const { activeTheme, setTheme } = useThemeStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [quickOpen, setQuickOpen] = useState(false);
+  const tree = useFileStore((s) => s.tree);
+  const { openFileInEditor } = useWorkspace();
   const editorRegionRef = useRef<HTMLDivElement>(null);
 
   // Apply theme CSS vars on mount and whenever the active theme changes
@@ -137,18 +146,52 @@ export default function App() {
       { id: "fahh.off", group: "Fahh", label: "Effects: Off", keywords: "intensity silent disable", run: intensity("off") },
       { id: "fahh.mute", group: "Fahh", label: "Mute / Unmute Sound", keywords: "volume silence", run: () => useFahhStore.getState().toggleMute() },
       { id: "tools.optional", group: "Tools", label: "Optional Tools…", keywords: "installer n8n flowise setup", run: () => setShowInstaller(true) },
+      { id: "file.quickOpen", group: "Go", label: "Go to File…", keys: ["Ctrl", "P"], keywords: "quick open find file", run: () => setQuickOpen(true) },
+      { id: "preview.side", group: "Preview", label: "Open Preview to the Side", keys: ["Ctrl", "K", "V"], keywords: "markdown html image csv split", run: () => {
+        const path = useEditorStore.getState().activeTab;
+        if (path && previewKindFor(path)) usePreviewStore.getState().toggleSide(path);
+      } },
+      { id: "preview.toggle", group: "Preview", label: "Toggle Preview", keys: ["Ctrl", "Shift", "V"], keywords: "markdown html image csv source", run: () => {
+        const path = useEditorStore.getState().activeTab;
+        if (path && previewKindFor(path)) usePreviewStore.getState().toggleInPlace(path);
+      } },
     ];
   }, [setTheme]);
+
+  // Quick Open lists every file in the opened folder (VS Code's Ctrl+P).
+  const quickOpenFiles = useMemo<PaletteCommand[]>(
+    () =>
+      quickOpen
+        ? flattenTree(tree).map((f) => ({
+            id: f.path,
+            group: f.folder,
+            label: f.name,
+            keywords: f.folder.replace(/[\\/]/g, " "),
+            run: () => {
+              openFileInEditor(f.path).catch((err) => console.error("open failed:", err));
+            },
+          }))
+        : [],
+    [quickOpen, tree, openFileInEditor]
+  );
 
   // Ctrl+Shift+P and F1 open the palette. Captured before Monaco sees them,
   // so its own F1 palette does not open underneath ours.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const combo = (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "p";
+      const mod = e.ctrlKey || e.metaKey;
+      const combo = mod && e.shiftKey && e.key.toLowerCase() === "p";
       if (combo || e.key === "F1") {
         e.preventDefault();
         e.stopPropagation();
+        setQuickOpen(false);
         setPaletteOpen((v) => !v);
+      } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "p") {
+        // Ctrl+P: Quick Open (and never the webview's print dialog).
+        e.preventDefault();
+        e.stopPropagation();
+        setPaletteOpen(false);
+        setQuickOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKey, true);
@@ -391,6 +434,7 @@ export default function App() {
 
           <div className="flex-1" />
 
+          <LspStatusItem />
           <HudControls />
 
           {/* Active theme indicator */}
@@ -398,7 +442,7 @@ export default function App() {
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span>v0.4.0</span>
+          <span>v0.5.0</span>
         </div>
       </div>
 
@@ -407,6 +451,16 @@ export default function App() {
       )}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
+      <CommandPalette
+        open={quickOpen}
+        onClose={() => setQuickOpen(false)}
+        commands={quickOpenFiles}
+        label="Go to file"
+        placeholder="Search files by name"
+        recentKey="fahh-quickopen-recent"
+        variant="file"
+        emptyText="Open a folder first: Ctrl+Shift+P, then “Open Folder…”."
+      />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
 use std::process::{Child, ChildStdin, Command, Stdio};
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Emitter, State};
 use tracing::{debug, error, info, warn};
@@ -164,9 +164,17 @@ pub async fn lsp_start(
         .current_dir(&workspace)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
-        .stderr(Stdio::null())
+        .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn LSP server '{binary}': {e}"))?;
+
+    // Keep the start of stderr (servers log there constantly, so the pipe must
+    // always be drained) and fail now if the server dies on start. A rustup
+    // shim without the rust-analyzer component exits at once; it used to be
+    // reported as "ready" and every keystroke then failed with a broken pipe.
+    let stderr_head = drain_stderr(child.stderr.take());
+    exited_on_start(&mut child, &stderr_head, std::time::Duration::from_millis(400))
+        .map_err(|why| format!("The {language} language server ('{binary}') {why}"))?;
 
     let stdin = child
         .stdin
@@ -219,6 +227,48 @@ pub async fn lsp_start(
     Ok(())
 }
 
+/// Read a child's stderr on a thread for its whole life, keeping the first
+/// 4 KB so a start-up failure can be explained.
+fn drain_stderr(stderr: Option<std::process::ChildStderr>) -> Arc<Mutex<String>> {
+    let head = Arc::new(Mutex::new(String::new()));
+    if let Some(pipe) = stderr {
+        let keep = Arc::clone(&head);
+        std::thread::spawn(move || {
+            let reader = BufReader::new(pipe);
+            for line in reader.lines().map_while(Result::ok) {
+                if let Ok(mut h) = keep.lock() {
+                    if h.len() < 4096 {
+                        h.push_str(&line);
+                        h.push('\n');
+                    }
+                }
+                debug!("lsp stderr: {line}");
+            }
+        });
+    }
+    head
+}
+
+/// `Err(reason)` if the process exits within `grace`; `Ok(())` if it is still running.
+fn exited_on_start(child: &mut Child, stderr_head: &Arc<Mutex<String>>, grace: std::time::Duration) -> Result<(), String> {
+    let deadline = std::time::Instant::now() + grace;
+    while std::time::Instant::now() < deadline {
+        if let Ok(Some(status)) = child.try_wait() {
+            // Give the stderr thread a moment to collect the explanation.
+            std::thread::sleep(std::time::Duration::from_millis(80));
+            let said = stderr_head.lock().map(|h| h.trim().to_string()).unwrap_or_default();
+            let first = said.lines().next().unwrap_or("").trim().to_string();
+            return Err(if first.is_empty() {
+                format!("exited as soon as it started ({status})")
+            } else {
+                format!("exited as soon as it started: {first}")
+            });
+        }
+        std::thread::sleep(std::time::Duration::from_millis(40));
+    }
+    Ok(())
+}
+
 /// Send a raw JSON-RPC message string to the LSP server for the given language.
 #[tauri::command]
 pub async fn lsp_send(
@@ -268,4 +318,31 @@ pub fn lsp_stop(language: String, state: State<'_, LspState>) -> Result<(), Stri
 
     info!("lsp_stop: '{language}' server stopped");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::time::Duration;
+
+    #[test]
+    fn a_server_that_dies_on_start_is_an_error_with_its_message() {
+        let mut child = Command::new("sh")
+            .args(["-c", "echo \"error: Unknown binary 'rust-analyzer'\" >&2; exit 1"])
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap();
+        let head = drain_stderr(child.stderr.take());
+        let err = exited_on_start(&mut child, &head, Duration::from_millis(1500)).unwrap_err();
+        assert!(err.contains("exited as soon as it started"), "{err}");
+        assert!(err.contains("Unknown binary 'rust-analyzer'"), "{err}");
+    }
+
+    #[test]
+    fn a_server_that_keeps_running_is_fine() {
+        let mut child = Command::new("sleep").arg("5").stderr(Stdio::piped()).spawn().unwrap();
+        let head = drain_stderr(child.stderr.take());
+        assert!(exited_on_start(&mut child, &head, Duration::from_millis(300)).is_ok());
+        let _ = child.kill();
+    }
 }

@@ -1,0 +1,97 @@
+[
+ {
+  "label": "cd /home/dell",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "mkdir fahh-hello",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "cd fahh-hello (the prompt follows)",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "fahh . opens it in the explorer",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "git init -b main",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "New File creates fizzbuzz.py and opens it",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "Ctrl+S saves exactly what was typed",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "Run prints the FizzBuzz sequence and exits 0",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the preview renders the README as it is typed",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "README.md saved",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "both files show as untracked changes",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "Stage all moves them to Staged Changes",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "Commit creates the first commit",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "gh repo create … --push creates the private repo and pushes main",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "git log shows the commit",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the repo exists, private, default branch main",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "it holds README.md and fizzbuzz.py",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the commit is yours, with the message typed in Fahh",
+  "ok": true,
+  "detail": ""
+ },
+ {
+  "label": "the pushed fizzbuzz.py is byte-for-byte what was typed",
+  "ok": true,
+  "detail": ""
+ }
+]

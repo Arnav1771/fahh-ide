@@ -40,6 +40,25 @@ body,
   --vscode-editor-background: #1e1e2e !important;
 }
 
+/* Drop-downs. WebKitGTK (the Linux build) draws a native <select> with the
+   light GTK theme and ignores its background, so the theme's light text sat
+   on white and was unreadable. Draw the control ourselves; the option list is
+   painted by the OS, so give it colours that read everywhere. */
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: var(--fahh-surface);
+  color: var(--fahh-text);
+  padding-right: 1.4rem !important;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%23999' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.45rem center;
+}
+select option {
+  color: #1b1916;
+  background-color: #ffffff;
+}
+
 /* ─── Fahh Gold ─────────────────────────────────────────────────────────────
    Everything below applies only while the Fahh Gold theme is active
    (applyThemeCssVars sets data-fahh-theme on <html>), so the other five

@@ -13,3 +13,4 @@ pub mod lsp_client;
 pub mod debugger;
 pub mod formatter;
 pub mod git;
+pub mod preview;
