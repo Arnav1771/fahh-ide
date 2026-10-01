@@ -1,13 +1,16 @@
 import { useEffect, useRef } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
-import { Volume2 } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
+import { useFahhStore } from "../../store/fahhStore";
+import { useReducedMotion } from "../../hooks/useReducedMotion";
+import { TitleScreen } from "../Fahh/TitleScreen";
 import { writeFile } from "../../lib/tauri";
 import { defineMonacoThemes } from "../ThemePanel";
 import {
   attachMonaco,
   detachMonaco,
   setActiveDocument,
+  modelPathFor,
 } from "../../lib/monacoBridge";
 
 interface EditorPaneProps {
@@ -32,6 +35,10 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<Monaco | null>(null);
+  const disposablesRef = useRef<{ dispose(): void }[]>([]);
+  const settleRef = useRef<number | undefined>(undefined);
+  /** Has the user typed in the file on screen since it became active? */
+  const editedRef = useRef(false);
 
   const activeDoc = openTabs.find((t) => t.path === activeTab);
   const content = activeTab ? fileContents[activeTab] ?? "" : "";
@@ -64,19 +71,39 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
 
   // Never let the bridge hold a reference to a disposed editor.
   useEffect(() => {
-    return () => detachMonaco();
+    return () => {
+      detachMonaco();
+      for (const d of disposablesRef.current) d.dispose();
+      disposablesRef.current = [];
+      window.clearTimeout(settleRef.current);
+    };
   }, []);
 
+  // The fahh moment, on the line itself: the first error line pulses once (Epic).
+  const impact = useFahhStore((s) => s.impact);
+  const intensity = useFahhStore((s) => s.intensity);
+  const reduced = useReducedMotion();
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!impact || impact.kind !== "fahh" || !impact.line || !editor || !monaco) return;
+    if (intensity !== "epic" || reduced) return;
+    const ids: string[] = editor.deltaDecorations([], [
+      {
+        range: new monaco.Range(impact.line, 1, impact.line, 1),
+        options: { isWholeLine: true, className: "fahh-line-hit", marginClassName: "fahh-line-hit-margin" },
+      },
+    ]);
+    const t = window.setTimeout(() => editor.deltaDecorations(ids, []), 1100);
+    return () => {
+      window.clearTimeout(t);
+      editor.deltaDecorations(ids, []);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [impact?.seq]);
+
   if (!activeTab) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-fahh-muted select-none">
-        <div className="text-center">
-          <Volume2 size={40} strokeWidth={1.5} className="mx-auto mb-3 text-fahh-accent" aria-hidden="true" />
-          <p className="text-lg font-mono">Open a file to start editing</p>
-          <p className="text-sm mt-1 opacity-60">fahh editor — make code, hear the vibe</p>
-        </div>
-      </div>
-    );
+    return <TitleScreen />;
   }
 
   const handleChange = (value: string | undefined) => {
@@ -109,6 +136,54 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     // before Monaco mounted is flushed onto the model immediately.
     attachMonaco(monaco, editor);
     setActiveDocument(activeTab);
+
+    // Feed the HUD. Every checker's markers count (Monaco's own TypeScript,
+    // JSON, CSS and HTML workers, and the language servers via the bridge),
+    // once they have settled for 800 ms. A count only *reacts* (fahh / clean)
+    // after you have typed in this file; opening or switching to a broken
+    // file just shows its count.
+    const countMarkers = () => {
+      const model = editor.getModel();
+      let errors = 0;
+      let warnings = 0;
+      let line: number | null = null;
+      if (model) {
+        for (const m of monaco.editor.getModelMarkers({ resource: model.uri })) {
+          if (m.severity === monaco.MarkerSeverity.Error) {
+            errors++;
+            if (line === null || m.startLineNumber < line) line = m.startLineNumber;
+          } else if (m.severity === monaco.MarkerSeverity.Warning) {
+            warnings++;
+          }
+        }
+      }
+      return { errors, warnings, line };
+    };
+    const settle = () => {
+      window.clearTimeout(settleRef.current);
+      settleRef.current = window.setTimeout(() => {
+        const c = countMarkers();
+        const hud = useFahhStore.getState();
+        if (editedRef.current) hud.report(c.errors, c.warnings, c.line);
+        else hud.rebase(c.errors, c.warnings);
+      }, 800);
+    };
+    for (const d of disposablesRef.current) d.dispose();
+    disposablesRef.current = [
+      monaco.editor.onDidChangeMarkers((uris) => {
+        const current = editor.getModel()?.uri.toString();
+        if (current && uris.some((u) => u.toString() === current)) settle();
+      }),
+      editor.onDidChangeModel(() => {
+        editedRef.current = false;
+        settle();
+      }),
+      editor.onDidChangeModelContent((e) => {
+        if (!e.isFlush) editedRef.current = true;
+      }),
+    ];
+    editedRef.current = false;
+    settle();
   };
 
   return (
@@ -147,6 +222,9 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
       ) : (
         <Editor
           height="100%"
+          /* One model per file: TypeScript sees the real extension (so .tsx
+             parses JSX) and each tab keeps its own undo history. */
+          path={modelPathFor(activeTab)}
           language={activeDoc?.language ?? "plaintext"}
           value={content}
           onChange={handleChange}

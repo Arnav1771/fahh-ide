@@ -181,3 +181,25 @@ describe("monacoBridge — LSP markers reaching the editor", () => {
     }
   });
 });
+
+describe("modelPathFor and runEditorAction", () => {
+  it("gives every file a file:// model path, Windows paths included", async () => {
+    const { modelPathFor } = await import("./monacoBridge");
+    expect(modelPathFor("/home/me/app/src/App.tsx")).toBe("file:///home/me/app/src/App.tsx");
+    expect(modelPathFor("C:\\Users\\me\\app\\main.ts")).toBe("file:///C:/Users/me/app/main.ts");
+  });
+
+  it("runs an editor action only when an editor is attached", async () => {
+    const bridge = await import("./monacoBridge");
+    bridge.resetMonacoBridge();
+    expect(bridge.runEditorAction("editor.action.marker.next")).toBe(false);
+    let ran = 0;
+    let focused = 0;
+    bridge.attachMonaco(
+      { editor: { setModelMarkers() {} } },
+      { getModel: () => null, getAction: () => ({ run: () => { ran++; } }), focus: () => { focused++; } }
+    );
+    expect(bridge.runEditorAction("editor.action.marker.next")).toBe(true);
+    expect([ran, focused]).toEqual([1, 1]);
+  });
+});

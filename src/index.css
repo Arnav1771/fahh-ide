@@ -127,3 +127,189 @@ html[data-fahh-theme="fahh-gold"] select:focus-visible {
   outline: 1px solid #d4a03c;
   outline-offset: 0;
 }
+
+/* ─── The fahh moment ───────────────────────────────────────────────────────
+   Theme-agnostic: every colour comes from the active theme's variables, so
+   all six themes get the effects. Only transform and opacity animate, and
+   every layer is click-through, so the editor never drops input. */
+
+@keyframes fahh-shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  15% { transform: translate3d(-5px, 1px, 0); }
+  30% { transform: translate3d(4px, -2px, 0); }
+  45% { transform: translate3d(-3px, 2px, 0); }
+  60% { transform: translate3d(2px, -1px, 0); }
+  75% { transform: translate3d(-1px, 1px, 0); }
+}
+.fahh-shake { animation: fahh-shake 280ms cubic-bezier(0.36, 0.07, 0.19, 0.97) both; }
+
+@keyframes fahh-fade-out {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  100% { opacity: 0; }
+}
+.fahh-vignette,
+.fahh-clean-glow {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  animation: fahh-fade-out 1100ms ease-out forwards;
+}
+.fahh-vignette {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--fahh-error) 70%, transparent),
+    inset 0 0 140px color-mix(in srgb, var(--fahh-error) 38%, transparent);
+}
+.fahh-clean-glow {
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--fahh-success) 55%, transparent),
+    inset 0 0 120px color-mix(in srgb, var(--fahh-success) 22%, transparent);
+}
+
+@keyframes fahh-slam {
+  0% { opacity: 0; transform: scale(1.9) rotate(-4deg); }
+  14% { opacity: 1; transform: scale(0.94) rotate(-2deg); }
+  22% { transform: scale(1.04) rotate(-2deg); }
+  30% { transform: scale(1) rotate(-2deg); }
+  78% { opacity: 1; transform: scale(1) rotate(-2deg); }
+  100% { opacity: 0; transform: scale(0.98) translateY(-6px) rotate(-2deg); }
+}
+.fahh-chip {
+  position: absolute;
+  top: 14px;
+  right: 132px; /* clear of the minimap */
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 12px 5px;
+  border-radius: 4px;
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-weight: 800;
+  font-size: 22px;
+  letter-spacing: 0.18em;
+  background: color-mix(in srgb, var(--fahh-bg) 82%, transparent);
+  animation: fahh-slam 1300ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.fahh-chip.is-fahh {
+  color: var(--fahh-error);
+  border: 1px solid color-mix(in srgb, var(--fahh-error) 60%, transparent);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--fahh-error) 55%, transparent);
+}
+.fahh-chip.is-clean {
+  color: var(--fahh-success);
+  border: 1px solid color-mix(in srgb, var(--fahh-success) 55%, transparent);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--fahh-success) 45%, transparent);
+}
+.fahh-chip-x { font-size: 15px; letter-spacing: 0.05em; }
+
+/* The line the error is on pulses once (Epic only). */
+@keyframes fahh-line-pulse {
+  0% { background: color-mix(in srgb, var(--fahh-error) 30%, transparent); }
+  100% { background: transparent; }
+}
+.monaco-editor .fahh-line-hit { animation: fahh-line-pulse 1000ms ease-out forwards; }
+.monaco-editor .fahh-line-hit-margin { box-shadow: inset 3px 0 0 var(--fahh-error); }
+
+/* Status bar: the error count flashes, the combo chip glows, a clean sweeps. */
+@keyframes fahh-flash {
+  0%, 60% { background: color-mix(in srgb, var(--fahh-error) 35%, transparent); }
+  100% { background: transparent; }
+}
+.fahh-flash { animation: fahh-flash 900ms ease-out; border-radius: 3px; padding: 0 3px; margin: 0 -3px; }
+.fahh-combo {
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-weight: 700;
+  color: var(--fahh-error);
+  text-shadow: 0 0 10px color-mix(in srgb, var(--fahh-error) 50%, transparent);
+  animation: fahh-flash 900ms ease-out;
+  padding: 0 4px;
+  border-radius: 3px;
+}
+@keyframes fahh-sweep {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+.fahh-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--fahh-accent) 45%, transparent), transparent);
+  animation: fahh-sweep 900ms ease-out forwards;
+}
+
+/* Keycaps */
+.fahh-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 4px;
+  border: 1px solid var(--fahh-surface);
+  background: var(--fahh-bg);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--fahh-surface) 80%, black);
+  font-family: "JetBrains Mono", "Fira Code", monospace;
+  font-size: 10px;
+  line-height: 1;
+  color: var(--fahh-muted);
+}
+
+/* Command palette */
+.fahh-palette-backdrop { background: color-mix(in srgb, var(--fahh-bg) 55%, transparent); backdrop-filter: blur(2px); }
+@keyframes fahh-pop { from { opacity: 0; transform: translateY(-6px) scale(0.985); } to { opacity: 1; transform: none; } }
+.fahh-palette { animation: fahh-pop 140ms ease-out; }
+html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
+.fahh-palette-row.is-selected { box-shadow: inset 2px 0 0 var(--fahh-accent); }
+
+/* Title screen */
+.fahh-title-glow {
+  position: absolute;
+  inset: -20%;
+  background: radial-gradient(closest-side at 50% 42%, color-mix(in srgb, var(--fahh-accent) 13%, transparent), transparent 70%);
+}
+.fahh-wordmark {
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-weight: 900;
+  font-size: clamp(64px, 9vw, 128px);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fahh-accent) 55%, white) 0%,
+    var(--fahh-accent) 55%,
+    color-mix(in srgb, var(--fahh-accent) 60%, black) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 28px color-mix(in srgb, var(--fahh-accent) 30%, transparent));
+}
+.fahh-bell {
+  border: 1px solid color-mix(in srgb, var(--fahh-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--fahh-sidebar) 85%, transparent);
+  transition: transform 160ms ease-out, box-shadow 160ms ease-out;
+}
+.fahh-bell:hover { transform: scale(1.05); box-shadow: 0 0 24px color-mix(in srgb, var(--fahh-accent) 35%, transparent); }
+.fahh-bell:active { transform: scale(0.96); }
+.fahh-bell:focus-visible, .fahh-title-action:focus-visible { outline: 1px solid var(--fahh-accent); outline-offset: 2px; }
+@keyframes fahh-ring {
+  from { transform: scale(1); opacity: 0.55; }
+  to { transform: scale(2.6); opacity: 0; }
+}
+.fahh-rings span {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--fahh-accent) 60%, transparent);
+  animation: fahh-ring 3.6s cubic-bezier(0.2, 0.6, 0.3, 1) infinite;
+}
+.fahh-rings span:nth-child(2) { animation-delay: 1.2s; }
+.fahh-rings span:nth-child(3) { animation-delay: 2.4s; }
+@keyframes fahh-blink { 0%, 55% { opacity: 1; } 75%, 100% { opacity: 0.25; } }
+.fahh-press { animation: fahh-blink 2.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fahh-shake, .fahh-chip, .fahh-rings span, .fahh-press, .fahh-sweep, .fahh-palette { animation: none !important; }
+  .fahh-rings span { opacity: 0; }
+}

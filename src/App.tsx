@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FileTree } from "./components/FileTree/FileTree";
 import { TabBar } from "./components/Editor/TabBar";
 import { EditorPane } from "./components/Editor/EditorPane";
@@ -13,6 +13,13 @@ import { ExtensionsPanel } from "./components/ExtensionsPanel";
 import { LspBridge } from "./components/LspBridge";
 import { initFahhSfx, teardownFahhSfx } from "./lib/fahh";
 import { useThemeStore } from "./store/themeStore";
+import { useFahhStore, type Intensity } from "./store/fahhStore";
+import { ImpactLayer } from "./components/Fahh/ImpactLayer";
+import { StatusHud, HudControls, CleanSweep } from "./components/Fahh/StatusHud";
+import { CommandPalette } from "./components/Fahh/CommandPalette";
+import { FAHH_COMMAND, OPEN_FOLDER_EVENT } from "./lib/commands";
+import { runEditorAction } from "./lib/monacoBridge";
+import type { PaletteCommand } from "./lib/palette";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
 import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play } from "lucide-react";
 
@@ -82,7 +89,9 @@ export default function App() {
   const [showBottomPanel, setShowBottomPanel] = useState(true);
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
 
-  const { activeTheme } = useThemeStore();
+  const { activeTheme, setTheme } = useThemeStore();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const editorRegionRef = useRef<HTMLDivElement>(null);
 
   // Apply theme CSS vars on mount and whenever the active theme changes
   useEffect(() => {
@@ -90,11 +99,72 @@ export default function App() {
     if (def) applyThemeCssVars(def);
   }, [activeTheme]);
 
-  // Fahh SFX
+  // Fahh SFX. Errors from the backend (builds, language servers) go through
+  // the HUD store, which owns the cooldown, the combo and the mute.
   useEffect(() => {
-    initFahhSfx();
+    initFahhSfx(() => useFahhStore.getState().external());
     return () => teardownFahhSfx();
   }, []);
+
+  // Everything the palette (and the welcome screen) can do.
+  const commands = useMemo<PaletteCommand[]>(() => {
+    const view = (tab: SidebarTab) => () => setSidebarTab(tab);
+    const bottom = (tab: BottomTab) => () => {
+      setBottomTab(tab);
+      setShowBottomPanel(true);
+    };
+    const intensity = (i: Intensity) => () => useFahhStore.getState().setIntensity(i);
+    return [
+      { id: "folder.open", group: "File", label: "Open Folder…", keywords: "workspace project", run: () => {
+        setSidebarTab("files");
+        window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
+      } },
+      { id: "view.explorer", group: "View", label: "Explorer", keywords: "files tree", run: view("files") },
+      { id: "view.git", group: "View", label: "Source Control", keywords: "git branch commit", run: view("git") },
+      { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
+      { id: "view.ai", group: "View", label: "AI Assistant", keywords: "chat llm ollama", run: view("ai") },
+      { id: "view.extensions", group: "View", label: "Extensions", keywords: "plugins language packs", run: view("extensions") },
+      { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
+      { id: "panel.toggle", group: "View", label: "Toggle Panel", keys: ["Ctrl", "`"], keywords: "terminal bottom", run: () => setShowBottomPanel((v) => !v) },
+      { id: "panel.terminal", group: "View", label: "Terminal", keywords: "shell console", run: bottom("terminal") },
+      { id: "panel.run", group: "Run", label: "Run Panel", keywords: "execute active file", run: bottom("run") },
+      { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
+      { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
+      ...THEME_DEFINITIONS.map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
+      { id: "fahh.ring", group: "Fahh", label: "Ring the Bell", keywords: "test sound play", run: () => useFahhStore.getState().ringBell() },
+      { id: "fahh.epic", group: "Fahh", label: "Effects: Epic", keywords: "shake intensity power mode", run: intensity("epic") },
+      { id: "fahh.subtle", group: "Fahh", label: "Effects: Subtle", keywords: "intensity quiet", run: intensity("subtle") },
+      { id: "fahh.off", group: "Fahh", label: "Effects: Off", keywords: "intensity silent disable", run: intensity("off") },
+      { id: "fahh.mute", group: "Fahh", label: "Mute / Unmute Sound", keywords: "volume silence", run: () => useFahhStore.getState().toggleMute() },
+      { id: "tools.optional", group: "Tools", label: "Optional Tools…", keywords: "installer n8n flowise setup", run: () => setShowInstaller(true) },
+    ];
+  }, [setTheme]);
+
+  // Ctrl+Shift+P and F1 open the palette. Captured before Monaco sees them,
+  // so its own F1 palette does not open underneath ours.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const combo = (e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "p";
+      if (combo || e.key === "F1") {
+        e.preventDefault();
+        e.stopPropagation();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  // Commands asked for by id (the welcome screen uses this).
+  useEffect(() => {
+    const onCommand = (e: Event) => {
+      const id = (e as CustomEvent<string>).detail;
+      if (id === "palette.open") setPaletteOpen(true);
+      else commands.find((c) => c.id === id)?.run();
+    };
+    window.addEventListener(FAHH_COMMAND, onCommand);
+    return () => window.removeEventListener(FAHH_COMMAND, onCommand);
+  }, [commands]);
 
   // Derive Monaco theme from the active Fahh theme
   const monacoTheme =
@@ -247,10 +317,11 @@ export default function App() {
 
       {/* ── Main area ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Editor region */}
-        <div className="flex flex-col flex-1 min-h-0">
+        {/* Editor region (the fahh effects play over this, and only this) */}
+        <div ref={editorRegionRef} className="relative flex flex-col flex-1 min-h-0">
           <TabBar />
           <EditorPane monacoTheme={monacoTheme} />
+          <ImpactLayer targetRef={editorRegionRef} />
         </div>
 
         {/* Bottom panel (Terminal / Run / Debug) */}
@@ -296,8 +367,9 @@ export default function App() {
         )}
 
         {/* Status bar */}
-        <div className="fahh-statusbar h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 text-xs text-fahh-muted">
-          <span className="text-fahh-success">● Fahh Editor</span>
+        <div className="fahh-statusbar relative overflow-hidden h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 text-xs text-fahh-muted">
+          <CleanSweep />
+          <StatusHud />
 
           <button
             onClick={() => setShowBottomPanel((p) => !p)}
@@ -319,18 +391,22 @@ export default function App() {
 
           <div className="flex-1" />
 
+          <HudControls />
+
           {/* Active theme indicator */}
           <span className="text-fahh-muted capitalize">
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span>v0.3.0</span>
+          <span>v0.4.0</span>
         </div>
       </div>
 
       {showInstaller && (
         <InstallerWizard onClose={() => setShowInstaller(false)} />
       )}
+
+      <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
     </div>
   );
 }

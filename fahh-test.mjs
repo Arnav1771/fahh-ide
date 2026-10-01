@@ -22,7 +22,7 @@ const SHOTS = join(OUT, "screenshots");
 mkdirSync(SHOTS, { recursive: true });
 
 const URL = process.env.FAHH_URL || "http://localhost:1420";
-const EXPECTED_VERSION = "v0.3.0";
+const EXPECTED_VERSION = "v0.4.0";
 
 const results = [];
 let passed = 0,
@@ -73,7 +73,7 @@ async function shot(page, name) {
   await shot(page, "02-file-tree-empty");
 
   // 5 — Editor welcome screen
-  log("Editor welcome screen visible", await page.locator("text=Open a file to start editing").isVisible());
+  log("Editor title screen visible", await page.locator(".fahh-wordmark", { hasText: "FAHH" }).isVisible());
   await shot(page, "03-editor-welcome");
 
   // 6 — Terminal input
@@ -81,7 +81,7 @@ async function shot(page, name) {
   await shot(page, "04-terminal-panel");
 
   // 7 — Status bar + correct version
-  log("Status bar shows '● Fahh Editor'", await page.locator("text=Fahh Editor").first().isVisible());
+  log("Status bar shows the problem counts", await page.locator(".fahh-statusbar .fahh-hud-problems").isVisible());
   log(`Version ${EXPECTED_VERSION} shown in status bar`, await page.locator(`text=${EXPECTED_VERSION}`).isVisible());
 
   // 8 — Panel toggle (Hide Panel / Show Panel)
