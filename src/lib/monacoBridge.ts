@@ -36,6 +36,8 @@ export interface MonacoApiLike {
 
 export interface MonacoEditorLike {
   getModel(): MonacoModelLike | null;
+  getAction?(id: string): { run(): Promise<void> | void } | null;
+  focus?(): void;
 }
 
 let monacoApi: MonacoApiLike | null = null;
@@ -117,6 +119,29 @@ export function totalDiagnosticCount(): number {
   let total = 0;
   for (const markers of markersByPath.values()) total += markers.length;
   return total;
+}
+
+/**
+ * Run a built-in editor action on the live editor, e.g. the status bar's
+ * "next problem" (`editor.action.marker.next`). False when no editor is up.
+ */
+export function runEditorAction(id: string): boolean {
+  const action = editorInstance?.getAction?.(id);
+  if (!action) return false;
+  editorInstance?.focus?.();
+  void action.run();
+  return true;
+}
+
+/**
+ * The Monaco model path for a file on disk. Each file gets its own model, so
+ * TypeScript sees the real extension (a .tsx file parses JSX) and each tab
+ * keeps its own undo history. Windows paths become `file:///C:/...`, because
+ * a bare `C:\...` would be read as a URI with the scheme "c".
+ */
+export function modelPathFor(path: string): string {
+  const forward = path.replace(/\\/g, "/");
+  return forward.startsWith("/") ? `file://${forward}` : `file:///${forward}`;
 }
 
 /** Test-only: return the module to its initial state. */

@@ -50,3 +50,33 @@ self.MonacoEnvironment = {
 
 // Hand the React wrapper the bundled instance so it never touches the CDN.
 loader.config({ monaco });
+
+// Monaco's built-in TypeScript checker sees one file at a time, with no
+// node_modules and no tsconfig. Left at its defaults it underlines every JSX
+// tag and every import, and an error-sound IDE would then fahh at code that is
+// fine. Parse JSX the way modern React projects do, and ignore only the
+// diagnostics that come from not seeing the rest of the project.
+const PROJECT_BLIND_CODES = [
+  2307, // Cannot find module 'x'
+  2792, // Cannot find module 'x'. Did you mean to set moduleResolution...
+  7016, // Could not find a declaration file for module 'x'
+  7026, // JSX element implicitly has type 'any' (no JSX.IntrinsicElements)
+  2875, // This JSX tag requires the module path 'react/jsx-runtime' to exist
+];
+const ts = monaco.languages.typescript;
+for (const defaults of [ts.typescriptDefaults, ts.javascriptDefaults]) {
+  defaults.setCompilerOptions({
+    ...defaults.getCompilerOptions(),
+    target: ts.ScriptTarget.ESNext,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeJs,
+    jsx: ts.JsxEmit.ReactJSX,
+    allowJs: true,
+    allowNonTsExtensions: true,
+    esModuleInterop: true,
+  });
+  defaults.setDiagnosticsOptions({
+    ...defaults.getDiagnosticsOptions(),
+    diagnosticCodesToIgnore: PROJECT_BLIND_CODES,
+  });
+}
