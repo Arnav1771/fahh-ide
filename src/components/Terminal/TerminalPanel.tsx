@@ -2,9 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { useTerminalStore } from "../../store/terminalStore";
 import { useTerminal } from "../../hooks/useTerminal";
 import { useFileStore } from "../../store/fileStore";
+import { promptLabel } from "../../lib/shellCwd";
+import { homeDir } from "@tauri-apps/api/path";
 
 export function TerminalPanel() {
-  const { lines } = useTerminalStore();
+  const { lines, cwd } = useTerminalStore();
+  const [home, setHome] = useState<string | null>(null);
+  useEffect(() => {
+    homeDir().then(setHome).catch(() => setHome(null));
+  }, []);
   const { run } = useTerminal();
   const { tree } = useFileStore();
   const [input, setInput] = useState("");
@@ -68,6 +74,7 @@ export function TerminalPanel() {
         onSubmit={handleSubmit}
         className="flex items-center px-3 py-2 border-t border-fahh-surface shrink-0"
       >
+        <span className="fahh-prompt text-fahh-muted mr-1 max-w-[40%] truncate" title={cwd || "home"}>{promptLabel(cwd, home)}</span>
         <span className="text-fahh-accent mr-2">$</span>
         <input
           type="text"

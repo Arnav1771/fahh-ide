@@ -13,6 +13,8 @@ import { useEffect, useRef } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "../../store/editorStore";
+import { useFileStore } from "../../store/fileStore";
+import { useLspStore } from "../../store/lspStore";
 import { lspStart, lspStop, lspSend } from "../../lib/tauri";
 import type { LspMessage } from "../../lib/types";
 import {
@@ -108,8 +110,13 @@ export function LspBridge() {
       return;
     }
 
-    const workspace =
-      activeDoc.path.replace(/[\\/][^\\/]+$/, "") || activeDoc.path;
+    // The opened folder is the workspace (as in VS Code); a file outside it
+    // falls back to its own folder.
+    const root = useFileStore.getState().root;
+    const inRoot = !!root && (activeDoc.path === root || activeDoc.path.startsWith(root.replace(/[\\/]+$/, "") + "/") || activeDoc.path.startsWith(root.replace(/[\\/]+$/, "") + "\\"));
+    const workspace = inRoot
+      ? root!.replace(/[\\/]+$/, "")
+      : activeDoc.path.replace(/[\\/][^\\/]+$/, "") || activeDoc.path;
     workspaceRef.current = workspace;
 
     // Stop the previous server if language changed
@@ -144,6 +151,8 @@ export function LspBridge() {
 
     // Start fresh server
     let mounted = true;
+    const status = useLspStore.getState();
+    status.set(language, "starting");
 
     lspStart(language, workspace)
       .then(() => {
@@ -152,6 +161,7 @@ export function LspBridge() {
         openedPathsRef.current.clear();
 
         // 1. initialize
+        useLspStore.getState().set(language, "ready", workspace);
         return lspSend(language, buildInitialize(workspace));
       })
       .then(() => {
@@ -179,6 +189,9 @@ export function LspBridge() {
       })
       .catch((err: unknown) => {
         console.warn("[LspBridge] LSP startup sequence failed:", err);
+        // Show why in the status bar, and never talk to a server that is not there.
+        useLspStore.getState().set(language, "failed", String(err));
+        if (runningLangRef.current === language) runningLangRef.current = null;
       });
 
     return () => {
@@ -206,9 +219,15 @@ export function LspBridge() {
       contentChanges: [{ text: content }],
     });
 
-    lspSend(language, didChange).catch((err: unknown) =>
-      console.warn("[LspBridge] lsp_send(didChange) failed:", err)
-    );
+    lspSend(language, didChange).catch((err: unknown) => {
+      console.warn("[LspBridge] lsp_send(didChange) failed:", err);
+      // The server died mid-session: stop sending, say so, and let the next
+      // activation of this language start a fresh one.
+      useLspStore.getState().set(language, "failed", String(err));
+      runningLangRef.current = null;
+      openedPathsRef.current.clear();
+      lspStop(language).catch(() => {});
+    });
   }, [fileContents, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── textDocument/didSave ────────────────────────────────────────────────────

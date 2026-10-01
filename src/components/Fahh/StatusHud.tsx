@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
-import { CircleX, Sparkles, TriangleAlert, Volume2, VolumeX, Zap } from "lucide-react";
+import { Braces, CircleX, Sparkles, TriangleAlert, Volume2, VolumeX, Zap } from "lucide-react";
+import { useEditorStore } from "../../store/editorStore";
+import { useLspStore } from "../../store/lspStore";
 import { useFahhStore, INTENSITIES } from "../../store/fahhStore";
 import { DEFAULT_COMBO_WINDOW_MS, formatStreak } from "../../lib/fahhEngine";
 import { runEditorAction } from "../../lib/monacoBridge";
@@ -53,6 +55,34 @@ export function StatusHud() {
         {label}
       </span>
     </>
+  );
+}
+
+/**
+ * The language server for the file on screen, like VS Code's language status
+ * item: "rust …" while it starts, "rust ✓" when it is up, "rust ✕" (hover for
+ * why) when it could not start or died.
+ */
+export function LspStatusItem() {
+  const language = useEditorStore((s) => s.openTabs.find((t) => t.path === s.activeTab)?.language ?? null);
+  const status = useLspStore((s) => (language ? s.servers[language] : undefined));
+  if (!language || !status) return null;
+  const mark = status.state === "ready" ? "✓" : status.state === "starting" ? "…" : "✕";
+  const title =
+    status.state === "ready"
+      ? `${language} language server is running (${status.detail ?? ""})`
+      : status.state === "starting"
+        ? `Starting the ${language} language server…`
+        : `No ${language} language server: ${status.detail ?? "it could not start"}`;
+  return (
+    <span
+      className={`fahh-lsp-status flex items-center gap-1 ${status.state === "failed" ? "text-fahh-warn" : ""}`}
+      title={title}
+      data-state={status.state}
+    >
+      <Braces size={12} aria-hidden="true" />
+      {language} {mark}
+    </span>
   );
 }
 

@@ -7,6 +7,63 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.5.0] — 2026-10-02
+
+Tested end to end as the real desktop app in WSL. The tools were tauri-driver and WebKitWebDriver, against the real Rust backend, real files and real processes. That run found the bugs fixed below. Then a programmer's session, done entirely in the Fahh window, pushed a project to GitHub: [Arnav1771/fahh-hello](https://github.com/Arnav1771/fahh-hello).
+
+### Added
+
+**Previews, modelled on VS Code** (`markdown-language-features`, `media-preview`)
+- **Shortcuts:** Ctrl+K V opens the preview beside the editor; Ctrl+Shift+V swaps the editor for the preview. The same actions sit at the right of the tab bar.
+- **Markdown:**
+  - Live as you type, and scroll sync follows the editor's top line.
+  - Double-click a block to jump to its source line.
+  - Relative images load from disk.
+  - Links open in the browser, or in the editor for local files.
+  - Rendered with markdown-it with raw HTML off, sanitised with DOMPurify, in a shadow root.
+- **HTML:**
+  - Rendered in a sandboxed frame that can never reach the editor (no `allow-same-origin`).
+  - Scripts are off until you allow them for that file.
+  - The page's own CSS and images load.
+- **Images** (PNG, JPEG, GIF, WebP, …):
+  - Open straight into the viewer instead of as garbled text.
+  - Fit or 100%; click to zoom in, Ctrl+click to zoom out, Ctrl+wheel to zoom.
+  - Pixelated from 3×.
+  - Dimensions and file size are shown.
+- **SVG:** previews beside its source, live.
+- **CSV/TSV:** shown as a table, with quoted fields handled.
+- **Local files and the asset protocol:** previews load local files through Tauri's asset protocol. It starts with an empty scope, and only the folder you opened (or the opened file's folder) is allowed, like VS Code's `localResourceRoots`.
+
+**Editor**
+- **Quick Open (Ctrl+P):** fuzzy-find any file in the opened folder. Build output folders are skipped. Ctrl+P no longer opens the print dialog.
+
+**Terminal**
+- **`cd` sticks:** `mkdir hello && cd hello`, then `git init`, now initialises `hello`. Every command used to run in the folder the terminal started in. The prompt shows where you are.
+- **`fahh .` / `fahh <folder>`:** opens a folder in the explorer from the terminal, like VS Code's `code .`.
+
+**Status bar**
+- **Language-server status item:** shows "rust ✓", or "rust ✕" with the reason on hover.
+
+### Fixed
+- **Debugging connected to the wrong program.** Adapters had fixed ports (debugpy 5678, node 9229, dlv 2345, lldb-dap 4711), and 5678 is n8n's default. With n8n running, Start Debug connected to n8n's web server and reported a session that did not exist. Each session now gets a free port.
+- **A missing debug adapter now fails fast, with how to install it** (for example `python3 -m pip install debugpy`). It used to wait 10 s, or worse. The Debug panel now says why; before, the reason only went to the developer console. An adapter that never answers is killed instead of left running.
+- **The Run panel hung on fast programs.** A script that printed and exited before `run_file` returned its pid lost its output and stayed on "● Running" forever. Events are now buffered until the pid is known and then replayed (`lib/runEvents.ts`).
+- **A language server that died at start was reported as running.** Every keystroke then logged "Broken pipe". For example, `rust-analyzer` is a rustup shim until the component is installed. The start is now checked, and the server's own error is shown. The opened folder is now the language server's workspace, not the file's parent folder.
+- **Drop-downs were unreadable on Linux.** WebKitGTK drew `<select>` as a white GTK box with the theme's light text on it.
+
+### Tests
+- 184 unit tests (28 new) and 17 Rust tests (7 new).
+- A native end-to-end suite of 108 checks on the real app:
+  - every backend command;
+  - every panel;
+  - rust-analyzer diagnostics turning into a fahh;
+  - the AI chat against a local Ollama;
+  - restart persistence.
+- A native preview and Quick Open suite (24 checks).
+- Two recorded programmer sessions, 19 and 25 checks, pushing to GitHub entirely from the Fahh window.
+
+---
+
 ## [0.4.0] — 2026-10-02
 
 The fahh you can see. Researched against Cursor, Windsurf, Zed, VS Code and

@@ -12,6 +12,10 @@ import {
   setActiveDocument,
   modelPathFor,
 } from "../../lib/monacoBridge";
+import { PreviewPane } from "../Preview/PreviewPane";
+import { isPreviewOnly, previewKindFor } from "../../lib/preview";
+import { usePreviewStore } from "../../store/previewStore";
+import { runCommand } from "../../lib/commands";
 
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
@@ -23,14 +27,10 @@ interface ThemeChangeDetail {
   monacoTheme: string;
 }
 
-import { useState } from "react";
-import { Eye, Code } from "lucide-react";
-
 export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   const { activeTab, fileContents, openTabs, setContent, markDirty } =
     useEditorStore();
     
-  const [showHtmlPreview, setShowHtmlPreview] = useState(false);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
@@ -42,7 +42,12 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
 
   const activeDoc = openTabs.find((t) => t.path === activeTab);
   const content = activeTab ? fileContents[activeTab] ?? "" : "";
-  const isHtml = activeDoc?.path.toLowerCase().endsWith(".html") || activeDoc?.path.toLowerCase().endsWith(".htm");
+  // Which preview this file can have, and how it is shown (VS Code's editor resolver, in small).
+  const kind = activeTab ? previewKindFor(activeTab) : null;
+  const previewOnly = activeTab ? isPreviewOnly(activeTab) : false;
+  const storedMode = usePreviewStore((s) => (activeTab ? s.modes[activeTab] : undefined));
+  const setPreviewMode = usePreviewStore((s) => s.setMode);
+  const mode = previewOnly ? "only" : kind ? storedMode ?? "off" : "off";
 
   // Listen for theme changes dispatched by ThemePanel so Monaco's internal
   // theme is updated even in the native Tauri build (CSS variables alone do
@@ -58,11 +63,6 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     return () => window.removeEventListener("fahh-theme-change", handler);
   }, []);
   
-  // Turn off preview when switching away from an HTML file
-  useEffect(() => {
-    if (!isHtml) setShowHtmlPreview(false);
-  }, [activeTab, isHtml]);
-
   // Tell the diagnostics bridge which file the shared Monaco model is showing,
   // so LSP markers for the wrong file never end up on screen.
   useEffect(() => {
@@ -182,44 +182,36 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
         if (!e.isFlush) editedRef.current = true;
       }),
     ];
+    // Previews: Ctrl+K V opens one to the side, Ctrl+Shift+V swaps in place.
+    // Registered with Monaco so its own Ctrl+K chords keep working.
+    editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, monaco.KeyCode.KeyV), () => runCommand("preview.side"));
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV, () => runCommand("preview.toggle"));
+    // Scroll sync: the preview follows the editor's top visible line.
+    disposablesRef.current.push(
+      editor.onDidScrollChange(() => {
+        usePreviewStore.getState().setTopLine(editor.getVisibleRanges()[0]?.startLineNumber ?? 1);
+      })
+    );
+
     editedRef.current = false;
     settle();
   };
 
   return (
-    <div
-      id="monaco-container"
-      className="flex-1 flex flex-col min-h-0 relative"
-      onKeyDown={(e) => {
-        if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-          e.preventDefault();
-          handleSave();
-        }
-      }}
-    >
-      {isHtml && (
-        <div className="absolute top-2 right-6 z-10">
-          <button
-            onClick={() => setShowHtmlPreview(!showHtmlPreview)}
-            title={showHtmlPreview ? "Show Code" : "Preview HTML"}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-fahh-surface/90 hover:bg-fahh-accent hover:text-white text-fahh-text text-xs rounded border border-white/10 backdrop-blur transition-colors shadow-lg"
-          >
-            {showHtmlPreview ? <Code size={14} /> : <Eye size={14} />}
-            {showHtmlPreview ? "Code" : "Preview"}
-          </button>
-        </div>
-      )}
-
-      {showHtmlPreview && isHtml ? (
-        <div className="flex-1 bg-white h-full w-full">
-          <iframe
-            srcDoc={content}
-            title="HTML Preview"
-            className="w-full h-full border-none bg-white"
-            sandbox="allow-scripts allow-modals allow-popups"
-          />
-        </div>
-      ) : (
+    <div className="flex-1 flex min-h-0 relative">
+      {/* The text editor stays mounted (hidden) when the preview replaces it,
+          so the diagnostics bridge never holds a disposed editor. */}
+      <div
+        id="monaco-container"
+        className="flex-1 flex flex-col min-h-0 min-w-0 relative"
+        style={mode === "only" ? { display: "none" } : undefined}
+        onKeyDown={(e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+            e.preventDefault();
+            handleSave();
+          }
+        }}
+      >
         <Editor
           height="100%"
           /* One model per file: TypeScript sees the real extension (so .tsx
@@ -247,8 +239,21 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
             cursorBlinking: "phase",
             renderLineHighlight: "all",
             padding: { top: 8 },
+            readOnly: previewOnly,
           }}
         />
+      </div>
+
+      {kind && mode !== "off" && (
+        <div className={mode === "side" ? "flex w-1/2 min-w-0 border-l border-fahh-surface" : "flex flex-1 min-w-0"}>
+          <PreviewPane
+            path={activeTab}
+            content={content}
+            kind={kind}
+            onClose={mode === "side" ? () => setPreviewMode(activeTab, "off") : undefined}
+            onShowSource={mode === "only" && !previewOnly ? () => setPreviewMode(activeTab, "off") : undefined}
+          />
+        </div>
       )}
     </div>
   );

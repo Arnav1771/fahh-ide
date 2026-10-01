@@ -167,3 +167,9 @@ export const gitCommit = (path: string, message: string) =>
  */
 export const gitDiff = (path: string, file: string, staged: boolean) =>
   invoke<string>("git_diff", { path, file, staged });
+
+// ─── Previews ─────────────────────────────────────────────────────────────────
+
+/** Let the previews load files from this folder (or this file's folder) through the asset protocol. */
+export const allowPreview = (path: string) =>
+  invoke<string>("allow_preview", { path });

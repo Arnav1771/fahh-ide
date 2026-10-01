@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
+import { createRunRouter, type RunRouter } from "../../lib/runEvents";
 import { Play, Square } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { useRunnerStore } from "../../store/runnerStore";
@@ -83,7 +84,6 @@ export function RunPanel() {
     addOutput,
     clearOutput,
     setLanguage,
-    finishRun,
   } = useRunnerStore();
 
   const activeDoc = openTabs.find((t) => t.path === activeTab) ?? null;
@@ -110,50 +110,37 @@ export function RunPanel() {
     setLanguageOverride(null);
   }, [activeTab]);
 
-  // Listen to runner://output events from Tauri
+  // One router for the panel's lifetime: it buffers what a run sends before
+  // run_file has told us its pid (see lib/runEvents.ts).
+  const routerRef = useRef<RunRouter | null>(null);
+  if (!routerRef.current) {
+    routerRef.current = createRunRouter({
+      onOutput: (line, stream) => useRunnerStore.getState().addOutput(line, stream),
+      onExit: (code, ms) => useRunnerStore.getState().finishRun(code, ms),
+    });
+  }
+
+  // Subscribe once (re-subscribing per pid dropped events in between).
   useEffect(() => {
     let mounted = true;
-    let unlisten: (() => void) | null = null;
+    const unlisteners: Array<() => void> = [];
+    const router = routerRef.current!;
 
     listen<RunOutputEvent>("runner://output", (event) => {
-      if (!mounted) return;
-      const { line, stream, pid: eventPid } = event.payload;
-      // Only accept events for the current pid
-      if (pid !== null && eventPid !== pid) return;
-      addOutput(line, stream);
+      if (mounted) router.output(event.payload);
     }).then((fn) => {
-      unlisten = fn;
+      unlisteners.push(fn);
       unlistenRef.current = fn;
     });
+    listen<{ pid: number; exit_code: number | null; duration_ms: number }>("runner://exit", (event) => {
+      if (mounted) router.exit(event.payload);
+    }).then((fn) => unlisteners.push(fn));
 
     return () => {
       mounted = false;
-      unlisten?.();
+      unlisteners.forEach((fn) => fn());
     };
-  }, [pid, addOutput]);
-
-  // Listen to runner://exit events
-  useEffect(() => {
-    let mounted = true;
-    let unlisten: (() => void) | null = null;
-
-    listen<{ pid: number; exit_code: number | null; duration_ms: number }>(
-      "runner://exit",
-      (event) => {
-        if (!mounted) return;
-        const { pid: eventPid, exit_code, duration_ms } = event.payload;
-        if (pid !== null && eventPid !== pid) return;
-        finishRun(exit_code, duration_ms);
-      }
-    ).then((fn) => {
-      unlisten = fn;
-    });
-
-    return () => {
-      mounted = false;
-      unlisten?.();
-    };
-  }, [pid, finishRun]);
+  }, []);
 
   const handleRun = async () => {
     if (!activeDoc) return;
@@ -172,12 +159,17 @@ export function RunPanel() {
         markDirty(activeDoc.path, false);
       }
 
+      routerRef.current!.begin();
       const result = await runFile({
         path: activeDoc.path,
         language: effectiveLanguage,
       });
       startRun(result.pid, effectiveLanguage);
+      // Replays anything the process already printed (and its exit, if it has
+      // finished), then routes live events for this pid.
+      routerRef.current!.attach(result.pid);
     } catch (err) {
+      routerRef.current!.cancel();
       addOutput(`Failed to start: ${String(err)}`, "stderr");
     }
   };

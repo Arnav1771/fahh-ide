@@ -22,7 +22,7 @@ const SHOTS = join(OUT, "screenshots");
 mkdirSync(SHOTS, { recursive: true });
 
 const URL = process.env.FAHH_URL || "http://localhost:1420";
-const EXPECTED_VERSION = "v0.4.0";
+const EXPECTED_VERSION = "v0.5.0";
 
 const results = [];
 let passed = 0,

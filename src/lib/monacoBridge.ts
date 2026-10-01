@@ -38,6 +38,17 @@ export interface MonacoEditorLike {
   getModel(): MonacoModelLike | null;
   getAction?(id: string): { run(): Promise<void> | void } | null;
   focus?(): void;
+  revealLineInCenter?(line: number): void;
+  setPosition?(pos: { lineNumber: number; column: number }): void;
+}
+
+/** Jump the editor to a 1-based line (the preview's double-click does this). */
+export function revealLine(line: number): boolean {
+  if (!editorInstance?.revealLineInCenter) return false;
+  editorInstance.revealLineInCenter(line);
+  editorInstance.setPosition?.({ lineNumber: line, column: 1 });
+  editorInstance.focus?.();
+  return true;
 }
 
 let monacoApi: MonacoApiLike | null = null;
