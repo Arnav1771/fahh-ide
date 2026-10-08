@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { Code, ShieldAlert, X } from "lucide-react";
+import { AppWindow, Code, ExternalLink, RotateCw, ShieldAlert, X } from "lucide-react";
 import { renderMarkdown, SAFE_URL } from "../../lib/markdown";
-import { dirOf, extOf, formatBytes, nextZoom, parseCsv, resolvePath, syncTarget, type PreviewKind } from "../../lib/preview";
+import { dirOf, extOf, formatBytes, nextZoom, normalizeUrl, parseCsv, resolvePath, syncTarget, type PreviewKind } from "../../lib/preview";
+import { openExternal, openInWindow } from "../../lib/browser";
 import { allowPreview } from "../../lib/tauri";
 import { revealLine } from "../../lib/monacoBridge";
 import { usePreviewStore } from "../../store/previewStore";
@@ -43,8 +44,10 @@ export function PreviewPane({ path, content, kind, onClose, onShowSource }: Prop
 
   // The asset protocol starts with an empty scope: allow this file's folder.
   useEffect(() => {
-    allowPreview(path).catch(() => {});
-  }, [path]);
+    if (kind !== "browser") allowPreview(path).catch(() => {});
+  }, [path, kind]);
+
+  if (kind === "browser") return <BrowserPreview url={path} />;
 
   return (
     <div className="fahh-preview flex h-full min-w-0 flex-1 flex-col bg-fahh-bg" data-kind={kind}>
@@ -202,6 +205,56 @@ function HtmlPreview({ path, content }: { path: string; content: string }) {
         sandbox={allowed ? "allow-scripts allow-modals" : ""}
         className="fahh-html-frame w-full flex-1 border-none bg-white"
       />
+    </div>
+  );
+}
+
+// ─── Built-in browser (localhost and any web address) ────────────────────────
+
+function BrowserPreview({ url }: { url: string }) {
+  const [address, setAddress] = useState(url);
+  const [src, setSrc] = useState(url);
+  const [reloads, setReloads] = useState(0);
+  const go = (e: React.FormEvent) => {
+    e.preventDefault();
+    const next = normalizeUrl(address);
+    setAddress(next);
+    setSrc(next);
+    setReloads((n) => n + 1);
+  };
+  const btn = "flex items-center gap-1 rounded px-1.5 py-1 text-fahh-muted hover:bg-fahh-surface hover:text-fahh-text";
+  return (
+    <div className="fahh-browser flex h-full min-w-0 flex-1 flex-col bg-fahh-bg">
+      <form onSubmit={go} className="flex h-9 shrink-0 items-center gap-1 border-b border-fahh-surface bg-fahh-sidebar px-2 text-xs">
+        <button type="button" className={btn} onClick={() => setReloads((n) => n + 1)} title="Reload" aria-label="Reload">
+          <RotateCw size={13} aria-hidden="true" />
+        </button>
+        <input
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+          aria-label="Address"
+          spellCheck={false}
+          className="min-w-0 flex-1 rounded border border-fahh-surface bg-fahh-bg px-2 py-1 font-mono text-[12px] text-fahh-text focus:border-fahh-accent focus:outline-none"
+        />
+        <button type="button" className={btn} onClick={() => openInWindow(src).catch(() => {})} title="Open in its own window (for pages that will not show here)">
+          <AppWindow size={13} aria-hidden="true" /> Window
+        </button>
+        <button type="button" className={btn} onClick={() => openExternal(src)} title="Open in your web browser" aria-label="Open in your web browser">
+          <ExternalLink size={13} aria-hidden="true" />
+        </button>
+      </form>
+      <iframe
+        key={`${src}#${reloads}`}
+        src={src}
+        title={`Browser: ${src}`}
+        // The page keeps its own origin (localhost:5173 is not the editor's origin), so it can
+        // run normally but can never reach the editor.
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals allow-downloads"
+        className="w-full flex-1 border-none bg-white"
+      />
+      <p className="shrink-0 border-t border-fahh-surface bg-fahh-sidebar px-3 py-1 text-[11px] text-fahh-muted">
+        Blank page? Some sites refuse to be shown inside another app; use Window. Is the server running?
+      </p>
     </div>
   );
 }

@@ -15,6 +15,9 @@ interface PreviewStore {
   scripts: Record<string, boolean>;
   /** The editor's top visible line (1-based), for scroll sync. */
   topLine: number;
+  /** The latest local dev-server address printed in the terminal or a run (http://localhost:5173). */
+  localUrl: string | null;
+  setLocalUrl: (url: string) => void;
   setMode: (path: string, mode: PreviewMode) => void;
   /** Ctrl+K V: open to the side, or close it again. */
   toggleSide: (path: string) => void;
@@ -28,6 +31,8 @@ export const usePreviewStore = create<PreviewStore>((set) => ({
   modes: {},
   scripts: {},
   topLine: 1,
+  localUrl: null,
+  setLocalUrl: (url) => set((s) => (s.localUrl === url ? s : { localUrl: url })),
   setMode: (path, mode) => set((s) => ({ modes: { ...s.modes, [path]: mode } })),
   toggleSide: (path) =>
     set((s) => ({ modes: { ...s.modes, [path]: s.modes[path] === "side" ? "off" : "side" } })),

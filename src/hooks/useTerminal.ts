@@ -4,6 +4,7 @@ import { useTerminalStore } from "../store/terminalStore";
 import { listen } from "@tauri-apps/api/event";
 import { splitCwdLine, wrapForCwd, type ShellKind } from "../lib/shellCwd";
 import { resolvePath } from "../lib/preview";
+import { noteLocalUrls } from "../lib/browser";
 import { useWorkspace } from "./useWorkspace";
 
 /** The backend runs commands with `cmd /C` on Windows and `sh -c` elsewhere. */
@@ -21,6 +22,7 @@ export function useTerminal() {
       (event) => {
         if (!mounted) return;
         const { stdout, stderr, exit_code } = event.payload;
+        noteLocalUrls(`${stdout ?? ""}\n${stderr ?? ""}`); // offer "localhost:5173" in the status bar
         if (stdout) {
           // The folder the command ended in (so `cd` sticks), then the visible text.
           const { text, cwd: nextCwd } = splitCwdLine(stdout);

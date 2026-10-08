@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dirOf, formatBytes, isPreviewOnly, nextZoom, parseCsv, previewKindFor, resolvePath, syncTarget } from "./preview";
+import { dirOf, findLocalUrls, formatBytes, isPreviewOnly, isUrl, nextZoom, normalizeUrl, parseCsv, previewKindFor, resolvePath, syncTarget } from "./preview";
 
 describe("which preview a file gets", () => {
   it("maps extensions, case-insensitively", () => {
@@ -73,5 +73,32 @@ describe("image zoom and sizes", () => {
     expect(formatBytes(512)).toBe("512 B");
     expect(formatBytes(2048)).toBe("2.0 KB");
     expect(formatBytes(3 * 1024 * 1024)).toBe("3.0 MB");
+  });
+});
+
+describe("built-in browser", () => {
+  it("treats http(s) tabs as browser previews that are never opened as text", () => {
+    expect(isUrl("http://localhost:5173")).toBe(true);
+    expect(isUrl("src/http.ts")).toBe(false);
+    expect(previewKindFor("https://example.com/a.md")).toBe("browser");
+    expect(isPreviewOnly("http://localhost:3000")).toBe(true);
+    expect(isPreviewOnly("README.md")).toBe(false);
+  });
+
+  it("turns what you type into an address", () => {
+    expect(normalizeUrl("5173")).toBe("http://localhost:5173");
+    expect(normalizeUrl(":8000/docs")).toBe("http://localhost:8000/docs");
+    expect(normalizeUrl("localhost:3000")).toBe("http://localhost:3000");
+    expect(normalizeUrl(" https://example.com ")).toBe("https://example.com");
+  });
+
+  it("finds dev-server addresses in coloured terminal output", () => {
+    const vite = "  \x1b[32m➜\x1b[39m  Local:   \x1b[36mhttp://localhost:\x1b[1m5173\x1b[22m/\x1b[39m\n  Network: use --host";
+    expect(findLocalUrls(vite)).toEqual(["http://localhost:5173/"]);
+    expect(findLocalUrls("Running on http://0.0.0.0:8000. Also http://127.0.0.1:8000/api, http://0.0.0.0:8000.")).toEqual([
+      "http://localhost:8000",
+      "http://127.0.0.1:8000/api",
+    ]);
+    expect(findLocalUrls("see https://example.com")).toEqual([]);
   });
 });

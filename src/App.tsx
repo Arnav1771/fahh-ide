@@ -26,10 +26,11 @@ import { usePreviewStore } from "./store/previewStore";
 import { useEditorStore } from "./store/editorStore";
 import { useFileStore } from "./store/fileStore";
 import { previewKindFor } from "./lib/preview";
+import { openBrowser } from "./lib/browser";
 import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
-import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play } from "lucide-react";
+import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -162,6 +163,11 @@ export default function App() {
       { id: "preview.toggle", group: "Preview", label: "Toggle Preview", keys: ["Ctrl", "Shift", "V"], keywords: "markdown html image csv source", run: () => {
         const path = useEditorStore.getState().activeTab;
         if (path && previewKindFor(path)) usePreviewStore.getState().toggleInPlace(path);
+      } },
+      { id: "browser.open", group: "Browser", label: "Open Browser…", keywords: "localhost web page dev server url preview site", run: () => {
+        const suggested = usePreviewStore.getState().localUrl ?? "http://localhost:5173";
+        const typed = window.prompt("Open in the built-in browser (a port like 5173, or a URL):", suggested);
+        if (typed && typed.trim()) openBrowser(typed);
       } },
     ];
   }, [setTheme]);
@@ -421,6 +427,7 @@ export default function App() {
         <div className="fahh-statusbar relative overflow-hidden h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 text-xs text-fahh-muted">
           <CleanSweep />
           <StatusHud />
+          <LocalServerItem />
 
           <button
             onClick={() => setShowBottomPanel((p) => !p)}
@@ -481,5 +488,21 @@ export default function App() {
         emptyText="Open a folder first: Ctrl+Shift+P, then “Open Folder…”."
       />
     </div>
+  );
+}
+
+/** Status bar: the dev server the terminal or a run just started, one click from the built-in browser. */
+function LocalServerItem() {
+  const url = usePreviewStore((s) => s.localUrl);
+  if (!url) return null;
+  const label = url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return (
+    <button
+      onClick={() => openBrowser(url)}
+      title={`Open ${url} in the built-in browser`}
+      className="flex items-center gap-1 hover:text-fahh-text transition-colors"
+    >
+      <Globe size={12} aria-hidden="true" /> {label}
+    </button>
   );
 }

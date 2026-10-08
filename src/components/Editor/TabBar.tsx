@@ -65,9 +65,9 @@ export function TabBar() {
             title="Open Preview (Ctrl+Shift+V)"
             aria-label="Open preview"
             aria-pressed={mode === "only"}
-            className={`rounded p-1.5 hover:bg-fahh-surface ${mode === "only" ? "text-fahh-accent" : "text-fahh-muted hover:text-fahh-text"}`}
+            className={`flex items-center gap-1 rounded px-1.5 py-1 text-xs hover:bg-fahh-surface ${mode === "only" ? "text-fahh-accent" : "text-fahh-muted hover:text-fahh-text"}`}
           >
-            <Eye size={15} aria-hidden="true" />
+            <Eye size={15} aria-hidden="true" /> {mode === "only" ? "Source" : "Preview"}
           </button>
         </div>
       )}
