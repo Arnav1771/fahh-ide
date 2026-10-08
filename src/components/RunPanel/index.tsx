@@ -6,6 +6,7 @@ import { useEditorStore } from "../../store/editorStore";
 import { useRunnerStore } from "../../store/runnerStore";
 import { runFile, stopRun as stopRunCmd, writeFile } from "../../lib/tauri";
 import type { RunOutputEvent } from "../../lib/types";
+import { noteLocalUrls } from "../../lib/browser";
 
 // ─── Language metadata ────────────────────────────────────────────────────────
 
@@ -127,7 +128,9 @@ export function RunPanel() {
     const router = routerRef.current!;
 
     listen<RunOutputEvent>("runner://output", (event) => {
-      if (mounted) router.output(event.payload);
+      if (!mounted) return;
+      noteLocalUrls(event.payload.line); // a dev server's "Local: http://localhost:5173"
+      router.output(event.payload);
     }).then((fn) => {
       unlisteners.push(fn);
       unlistenRef.current = fn;

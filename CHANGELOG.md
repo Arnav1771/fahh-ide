@@ -7,7 +7,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [0.5.0] — 2026-10-02
+## [0.5.0] — 2026-10-08
+
+### Also in this release (added 8 Oct)
+
+- **Built-in browser.** Open any address as an editor tab: Command Palette → "Open Browser…" (type a port like `5173` or a URL), or click the dev-server address that appears in the status bar when the terminal or a run prints one ("Local: http://localhost:5173"). Address bar, reload, **Window** (its own Fahh window, for sites that refuse to be framed) and open-in-your-browser. The page keeps its own origin and cannot reach the editor.
+- **Preview button labelled.** The tab-bar action now reads "Preview" / "Source" for Markdown, HTML, SVG and CSV files.
+- **First-run welcome.** Three steps on first launch: errors make a sound, AI is optional, open a project; reopen with "Show Welcome".
+- **AI Composer.** Code blocks in AI replies have Copy and "Apply to file" (asks first, replaces only that file's open tab, unsaved until Ctrl+S); context chips; an error auto-fix prompt; an LSP request/response correlator (not wired in yet).
+- **Contributor setup.** Issue and PR templates, CONTRIBUTING with pnpm and cargo, a welcome message on new PRs.
+
+### Earlier 0.5.0 work (2 Oct)
 
 Tested end to end as the real desktop app in WSL. The tools were tauri-driver and WebKitWebDriver, against the real Rust backend, real files and real processes. That run found the bugs fixed below. Then a programmer's session, done entirely in the Fahh window, pushed a project to GitHub: [Arnav1771/fahh-hello](https://github.com/Arnav1771/fahh-hello).
 

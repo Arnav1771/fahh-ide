@@ -9,7 +9,40 @@
  * No React, Monaco or Tauri imports, so everything here is unit-tested in Node.
  */
 
-export type PreviewKind = "markdown" | "html" | "image" | "svg" | "csv";
+export type PreviewKind = "markdown" | "html" | "image" | "svg" | "csv" | "browser";
+
+/** A tab whose "path" is a web address opens in the built-in browser. */
+export function isUrl(path: string): boolean {
+  return /^https?:\/\//i.test(path);
+}
+
+/**
+ * What someone types in the address bar, as a URL: "5173" or ":5173" is a local
+ * port, "localhost:3000" or "127.0.0.1:8000/docs" gets http://, anything with a
+ * scheme is kept. Pure.
+ */
+export function normalizeUrl(input: string): string {
+  const s = input.trim();
+  if (/^:?\d{2,5}(\/.*)?$/.test(s)) return `http://localhost:${s.replace(/^:/, "")}`;
+  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(s)) return s;
+  return `http://${s}`;
+}
+
+const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
+const LOCAL_URL = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d{2,5})?(?:\/[^\s"'<>)\]]*)?/gi;
+
+/**
+ * Local dev-server addresses printed in terminal or run output ("Local:
+ * http://localhost:5173/"), colour codes stripped, 0.0.0.0 shown as localhost,
+ * in order, without repeats. Pure.
+ */
+export function findLocalUrls(text: string): string[] {
+  const seen = new Set<string>();
+  for (const m of text.replace(ANSI, "").matchAll(LOCAL_URL)) {
+    seen.add(m[0].replace("0.0.0.0", "localhost").replace(/[.,;:]+$/, ""));
+  }
+  return [...seen];
+}
 
 const BY_EXT: Record<string, PreviewKind> = {
   md: "markdown",
@@ -37,12 +70,14 @@ export function extOf(path: string): string {
 }
 
 export function previewKindFor(path: string): PreviewKind | null {
+  if (isUrl(path)) return "browser";
   return BY_EXT[extOf(path)] ?? null;
 }
 
-/** Binary files cannot be opened as text: their preview is the editor. */
+/** Binary files and web pages cannot be opened as text: their preview is the editor. */
 export function isPreviewOnly(path: string): boolean {
-  return previewKindFor(path) === "image";
+  const kind = previewKindFor(path);
+  return kind === "image" || kind === "browser";
 }
 
 export function dirOf(path: string): string {
