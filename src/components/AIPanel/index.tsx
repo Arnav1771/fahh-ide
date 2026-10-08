@@ -11,7 +11,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, Check, CircleAlert, Code2, Copy, FileCode, Play, Send, Settings2, Sparkles, Square, Trash2 } from "lucide-react";
+import { Bot, Check, CircleAlert, Copy, FileCode, Play, Send, Settings2, Sparkles, Square, Trash2 } from "lucide-react";
 
 import { useAiStore } from "../../store/aiStore";
 import { useEditorStore } from "../../store/editorStore";
@@ -126,9 +126,10 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
 
 function CodeBlockItem({ block, activeFilePath }: { block: { language: string; code: string; filePath?: string }; activeFilePath?: string | null }) {
   const [copied, setCopied] = useState(false);
-  const [applied, setApplied] = useState(false);
+  const [applied, setApplied] = useState<"idle" | "applied" | "not-open">("idle");
 
   const targetPath = block.filePath || activeFilePath || null;
+  const fileName = targetPath ? targetPath.split("/").pop() : "";
 
   const handleCopy = () => {
     navigator.clipboard.writeText(block.code).catch(() => {});
@@ -138,11 +139,11 @@ function CodeBlockItem({ block, activeFilePath }: { block: { language: string; c
 
   const handleApply = () => {
     if (!targetPath) return;
+    // The block replaces the whole file, so ask first; it stays unsaved until Ctrl+S.
+    if (!window.confirm(`Replace all of ${fileName} with this code? It stays unsaved: Ctrl+S keeps it, closing the tab without saving undoes it.`)) return;
     const ok = applyCodeToEditor(targetPath, block.code);
-    if (ok) {
-      setApplied(true);
-      setTimeout(() => setApplied(false), 2500);
-    }
+    setApplied(ok ? "applied" : "not-open");
+    setTimeout(() => setApplied("idle"), 2500);
   };
 
   return (
@@ -161,11 +162,11 @@ function CodeBlockItem({ block, activeFilePath }: { block: { language: string; c
           {targetPath && (
             <button
               onClick={handleApply}
-              title="Apply changes to editor"
+              title={`Replace ${fileName} in the editor with this code (unsaved)`}
               className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-fahh-accent/20 text-fahh-accent hover:bg-fahh-accent hover:text-white transition-colors font-sans"
             >
-              {applied ? <Check size={11} className="text-green-400" /> : <Play size={11} />}
-              <span>{applied ? "Applied!" : "Apply to Editor"}</span>
+              {applied === "applied" ? <Check size={11} className="text-green-400" /> : <Play size={11} />}
+              <span>{applied === "applied" ? "Applied, unsaved" : applied === "not-open" ? `Open ${fileName} first` : "Apply to file"}</span>
             </button>
           )}
         </div>

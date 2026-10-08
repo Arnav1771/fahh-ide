@@ -101,24 +101,18 @@ export function generateErrorFixPrompt(
 }
 
 /**
- * Applies new code directly to the active Monaco tab in EditorStore.
- * Marks the tab as dirty so the user can review and save (Ctrl+S).
+ * Replaces the contents of the open tab for `filePath` with `newContent`, unsaved
+ * (the tab is marked dirty: Ctrl+S keeps it, closing without saving throws it away).
+ *
+ * Only ever the file the code block is for: if that file is not open, nothing is
+ * written and this returns false. (It used to fall back to the active tab, which
+ * overwrote a different file with code meant for another.)
  */
 export function applyCodeToEditor(filePath: string, newContent: string): boolean {
   const store = useEditorStore.getState();
-  const tab = store.openTabs.find((t) => t.path === filePath);
-
-  if (!tab && store.activeTab !== filePath) {
-    // If target path isn't open, open it or apply to active tab if singular
-    if (store.activeTab) {
-      store.setContent(store.activeTab, newContent);
-      store.markDirty(store.activeTab, true);
-      return true;
-    }
-    return false;
-  }
-
-  const target = tab ? tab.path : (store.activeTab as string);
+  const target = store.openTabs.find((t) => t.path === filePath)?.path
+    ?? (store.activeTab === filePath ? filePath : null);
+  if (!target) return false;
   store.setContent(target, newContent);
   store.markDirty(target, true);
   return true;

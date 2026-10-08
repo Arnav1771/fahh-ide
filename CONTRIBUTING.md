@@ -14,12 +14,13 @@ Thank you for your interest in contributing! We welcome bug fixes, documentation
 
 2. **Install Dependencies**:
    ```bash
-   npm install
+   pnpm install   # this repo uses pnpm (npm i -g pnpm)
    ```
 
 3. **Verify Everything Passes**:
    ```bash
-   npm test
+   pnpm test
+   cd src-tauri && cargo test   # the Rust side
    ```
 
 4. **Create a Feature Branch**:

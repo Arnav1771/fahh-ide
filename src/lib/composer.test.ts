@@ -91,7 +91,7 @@ print(sys.version)
   describe("applyCodeToEditor", () => {
     it("updates active tab content in EditorStore and marks dirty", () => {
       useEditorStore.getState().openFile(
-        { path: "test.ts", name: "test.ts", dirty: false },
+        { path: "test.ts", language: "typescript", dirty: false },
         "original content"
       );
 
@@ -101,6 +101,16 @@ print(sys.version)
       const store = useEditorStore.getState();
       expect(store.fileContents["test.ts"]).toBe("updated content");
       expect(store.openTabs.find((t) => t.path === "test.ts")?.dirty).toBe(true);
+    });
+
+    it("never writes code meant for a closed file into the active tab", () => {
+      useEditorStore.getState().openFile(
+        { path: "keep.ts", language: "typescript", dirty: false },
+        "my work"
+      );
+      const applied = applyCodeToEditor("other/closed.ts", "code for another file");
+      expect(applied).toBe(false);
+      expect(useEditorStore.getState().fileContents["keep.ts"]).toBe("my work");
     });
   });
 });

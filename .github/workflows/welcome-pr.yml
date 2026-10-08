@@ -16,7 +16,7 @@ jobs:
           script: |
             const creator = context.payload.sender.login;
             const issue_number = context.payload.pull_request.number;
-            const message = `👋 Welcome @${creator}!\n\nThank you for contributing to this project. Our automated CI/CD suite is currently running automated checks across Linux, Windows, and macOS.\n\n- Please ensure all tests pass cleanly: \`npm test\`\n- Adhere to the conventions outlined in [CONTRIBUTING.md](./CONTRIBUTING.md)\n\nA maintainer will review your pull request shortly! 🚀`;
+            const message = `👋 Welcome @${creator}!\n\nThank you for contributing to this project. CI is now running the TypeScript and Rust checks on your change.\n\n- Please make sure \`pnpm test\` and \`cargo test\` (in src-tauri) pass\n- Adhere to the conventions outlined in [CONTRIBUTING.md](./CONTRIBUTING.md)\n\nA maintainer will review your pull request shortly! 🚀`;
             await github.rest.issues.createComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
