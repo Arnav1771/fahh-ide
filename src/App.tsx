@@ -6,6 +6,8 @@ import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { AIPanel } from "./components/AIPanel";
 import { GitSidebar } from "./components/GitSidebar";
 import { InstallerWizard } from "./components/InstallerWizard";
+import { Welcome } from "./components/Welcome";
+import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
 import { RunPanel } from "./components/RunPanel";
 import { DebugPanel } from "./components/DebugPanel";
 import { ThemePanel } from "./components/ThemePanel";
@@ -92,6 +94,11 @@ function BottomTabBtn({
 export default function App() {
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("files");
   const [showInstaller, setShowInstaller] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(() => shouldShowWelcome(typeof localStorage === "undefined" ? undefined : localStorage));
+  const closeWelcome = () => {
+    markWelcomeSeen(typeof localStorage === "undefined" ? undefined : localStorage);
+    setShowWelcome(false);
+  };
   const [showBottomPanel, setShowBottomPanel] = useState(true);
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
 
@@ -145,6 +152,7 @@ export default function App() {
       { id: "fahh.subtle", group: "Fahh", label: "Effects: Subtle", keywords: "intensity quiet", run: intensity("subtle") },
       { id: "fahh.off", group: "Fahh", label: "Effects: Off", keywords: "intensity silent disable", run: intensity("off") },
       { id: "fahh.mute", group: "Fahh", label: "Mute / Unmute Sound", keywords: "volume silence", run: () => useFahhStore.getState().toggleMute() },
+      { id: "help.welcome", group: "Help", label: "Show Welcome", keywords: "onboarding tour getting started intro", run: () => setShowWelcome(true) },
       { id: "tools.optional", group: "Tools", label: "Optional Tools…", keywords: "installer n8n flowise setup", run: () => setShowInstaller(true) },
       { id: "file.quickOpen", group: "Go", label: "Go to File…", keys: ["Ctrl", "P"], keywords: "quick open find file", run: () => setQuickOpen(true) },
       { id: "preview.side", group: "Preview", label: "Open Preview to the Side", keys: ["Ctrl", "K", "V"], keywords: "markdown html image csv split", run: () => {
@@ -448,6 +456,17 @@ export default function App() {
 
       {showInstaller && (
         <InstallerWizard onClose={() => setShowInstaller(false)} />
+      )}
+
+      {showWelcome && (
+        <Welcome
+          onClose={closeWelcome}
+          onOpenAI={() => setSidebarTab("ai")}
+          onOpenFolder={() => {
+            setSidebarTab("files");
+            window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
+          }}
+        />
       )}
 
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
