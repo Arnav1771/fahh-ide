@@ -11,16 +11,23 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Bot, CircleAlert, Send, Settings2, Square, Trash2 } from "lucide-react";
+import { Bot, Check, CircleAlert, Copy, FileCode, Play, Send, Settings2, Sparkles, Square, Trash2 } from "lucide-react";
 
 import { useAiStore } from "../../store/aiStore";
 import { useEditorStore } from "../../store/editorStore";
+import { useFahhStore } from "../../store/fahhStore";
 import {
   configurationProblem,
   isConfigured,
   sendChat,
   type ChatMessage,
 } from "../../lib/ai";
+import {
+  applyCodeToEditor,
+  buildComposerPrompt,
+  extractCodeBlocks,
+  generateErrorFixPrompt,
+} from "../../lib/composer";
 
 // ─── Settings form ────────────────────────────────────────────────────────────
 
@@ -115,10 +122,68 @@ function SettingsForm({ onDone }: { onDone: () => void }) {
   );
 }
 
+// ─── Code Block with Cursor-like Apply action ───────────────────────────────
+
+function CodeBlockItem({ block, activeFilePath }: { block: { language: string; code: string; filePath?: string }; activeFilePath?: string | null }) {
+  const [copied, setCopied] = useState(false);
+  const [applied, setApplied] = useState<"idle" | "applied" | "not-open">("idle");
+
+  const targetPath = block.filePath || activeFilePath || null;
+  const fileName = targetPath ? targetPath.split("/").pop() : "";
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(block.code).catch(() => {});
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleApply = () => {
+    if (!targetPath) return;
+    // The block replaces the whole file, so ask first; it stays unsaved until Ctrl+S.
+    if (!window.confirm(`Replace all of ${fileName} with this code? It stays unsaved: Ctrl+S keeps it, closing the tab without saving undoes it.`)) return;
+    const ok = applyCodeToEditor(targetPath, block.code);
+    setApplied(ok ? "applied" : "not-open");
+    setTimeout(() => setApplied("idle"), 2500);
+  };
+
+  return (
+    <div className="my-2 rounded border border-fahh-surface bg-[#111318] overflow-hidden text-xs">
+      <div className="flex items-center justify-between px-2.5 py-1 bg-[#1a1d24] border-b border-fahh-surface text-[10px] text-fahh-muted font-mono">
+        <span className="uppercase tracking-wider">{block.language || "text"} {targetPath ? `• ${targetPath.split("/").pop()}` : ""}</span>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={handleCopy}
+            title="Copy code"
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded hover:bg-fahh-surface hover:text-fahh-text transition-colors"
+          >
+            {copied ? <Check size={11} className="text-green-400" /> : <Copy size={11} />}
+            <span>{copied ? "Copied" : "Copy"}</span>
+          </button>
+          {targetPath && (
+            <button
+              onClick={handleApply}
+              title={`Replace ${fileName} in the editor with this code (unsaved)`}
+              className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-fahh-accent/20 text-fahh-accent hover:bg-fahh-accent hover:text-white transition-colors font-sans"
+            >
+              {applied === "applied" ? <Check size={11} className="text-green-400" /> : <Play size={11} />}
+              <span>{applied === "applied" ? "Applied, unsaved" : applied === "not-open" ? `Open ${fileName} first` : "Apply to file"}</span>
+            </button>
+          )}
+        </div>
+      </div>
+      <pre className="p-2.5 overflow-x-auto text-[11px] font-mono leading-relaxed text-neutral-300">
+        <code>{block.code}</code>
+      </pre>
+    </div>
+  );
+}
+
 // ─── Message bubble ───────────────────────────────────────────────────────────
 
-function Bubble({ message }: { message: ChatMessage }) {
+function Bubble({ message, activeFilePath }: { message: ChatMessage; activeFilePath?: string | null }) {
   const isUser = message.role === "user";
+  const blocks = !isUser ? extractCodeBlocks(message.content) : [];
+
   return (
     <div className="px-2 py-1.5">
       <div
@@ -131,6 +196,14 @@ function Bubble({ message }: { message: ChatMessage }) {
       <div className="text-xs text-fahh-text whitespace-pre-wrap break-words leading-relaxed">
         {message.content}
       </div>
+
+      {blocks.length > 0 && (
+        <div className="mt-1 space-y-1">
+          {blocks.map((block, idx) => (
+            <CodeBlockItem key={idx} block={block} activeFilePath={activeFilePath} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -152,8 +225,9 @@ export function AIPanel() {
     clearConversation,
   } = useAiStore();
 
-  const { activeTab, openTabs } = useEditorStore();
+  const { activeTab, openTabs, fileContents } = useEditorStore();
   const activeDoc = openTabs.find((t) => t.path === activeTab) ?? null;
+  const fahhErrors = useFahhStore((s) => s.errors);
 
   const [showSettings, setShowSettings] = useState(!isConfigured(settings));
   const [input, setInput] = useState("");
@@ -283,11 +357,11 @@ export function AIPanel() {
         )}
 
         {messages.map((message, i) => (
-          <Bubble key={i} message={message} />
+          <Bubble key={i} message={message} activeFilePath={activeDoc?.path} />
         ))}
 
         {streaming && (
-          <Bubble message={{ role: "assistant", content: streaming }} />
+          <Bubble message={{ role: "assistant", content: streaming }} activeFilePath={activeDoc?.path} />
         )}
 
         {sending && !streaming && (
@@ -305,9 +379,54 @@ export function AIPanel() {
         </div>
       )}
 
+      {/* Fahh Autonomous Error Fix Banner */}
+      {fahhErrors > 0 && activeDoc && (
+        <div className="px-2.5 py-1.5 bg-red-950/40 border-t border-red-500/30 flex items-center justify-between text-[11px] text-red-200 shrink-0">
+          <span className="flex items-center gap-1.5 font-medium">
+            <CircleAlert size={12} className="text-red-400" />
+            <span>{fahhErrors} Fahh error{fahhErrors > 1 ? "s" : ""} detected</span>
+          </span>
+          <button
+            onClick={() => {
+              if (!activeDoc) return;
+              const content = fileContents[activeDoc.path] || "";
+              const fixPrompt = generateErrorFixPrompt("Active compiler/LSP error", activeDoc.path, content);
+              setInput(fixPrompt);
+            }}
+            className="px-2 py-0.5 rounded bg-red-600 hover:bg-red-500 text-white font-semibold text-[10px] flex items-center gap-1 transition-colors"
+          >
+            <Sparkles size={10} />
+            Auto-Fix with AI
+          </button>
+        </div>
+      )}
+
       {/* Composer */}
       {!problem && (
         <div className="p-2 border-t border-fahh-surface shrink-0">
+          {/* Quick Context Chips */}
+          <div className="flex items-center gap-1.5 mb-1.5">
+            {activeDoc && (
+              <button
+                type="button"
+                onClick={() => {
+                  const content = fileContents[activeDoc.path] || "";
+                  const promptWithDoc = buildComposerPrompt({
+                    activeFilePath: activeDoc.path,
+                    activeFileContent: content,
+                    userPrompt: input,
+                  });
+                  setInput(promptWithDoc);
+                }}
+                title="Attach active file content to prompt"
+                className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-fahh-surface hover:bg-fahh-accent/20 text-fahh-muted hover:text-fahh-accent border border-fahh-surface transition-colors"
+              >
+                <FileCode size={10} />
+                <span>@{activeDoc.path.split("/").pop()}</span>
+              </button>
+            )}
+          </div>
+
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}

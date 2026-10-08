@@ -1,103 +1,61 @@
-# Contributing to Fahh Editor
+# Contributing to This Project 🤝
 
-Thanks for wanting to contribute. Here's everything you need to know.
-
----
-
-## Getting started
-
-1. Fork the repo and clone your fork
-2. Follow the setup in [README.md](README.md#quick-start)
-3. Create a branch: `git checkout -b feat/your-feature-name`
-4. Make your changes
-5. Run tests: `cargo test && pnpm test`
-6. Open a pull request against `main`
+Thank you for your interest in contributing! We welcome bug fixes, documentation improvements, new features, and performance optimizations.
 
 ---
 
-## Branch naming
+## ⚡ Quick Start (5-Minute On-Ramp)
 
-| Type | Pattern | Example |
-|------|---------|---------|
-| Feature | `feat/short-description` | `feat/canvas-zoom` |
-| Bug fix | `fix/short-description` | `fix/lsp-crash-on-empty-file` |
-| Documentation | `docs/short-description` | `docs/installer-guide` |
-| Refactor | `refactor/short-description` | `refactor/editor-store` |
+1. **Fork and Clone**:
+   ```bash
+   git clone https://github.com/<your-username>/<repo-name>.git
+   cd <repo-name>
+   ```
 
----
+2. **Install Dependencies**:
+   ```bash
+   pnpm install   # this repo uses pnpm (npm i -g pnpm)
+   ```
 
-## Commit style
+3. **Verify Everything Passes**:
+   ```bash
+   pnpm test
+   cd src-tauri && cargo test   # the Rust side
+   ```
 
-Use [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
-feat: add panel detach to separate window
-fix: prevent fahh sfx spam on batch LSP errors
-docs: add n8n setup instructions to INSTALLER.md
-refactor: extract lsp error parser into own module
-```
-
----
-
-## Code style
-
-**Rust:**
-- `cargo fmt` before committing (enforced in CI)
-- `cargo clippy -- -D warnings` must pass
-- Use `anyhow::Result` for fallible functions
-- No `unwrap()` in production paths — use `?` or handle explicitly
-- Every public function needs a doc comment
-
-**TypeScript / React:**
-- `pnpm lint` must pass (ESLint + Prettier)
-- Strict mode — no `any`, no `// @ts-ignore`
-- Functional components only, no class components
-- Zustand for global state, `useState` for local
-- TailwindCSS only — no inline styles, no CSS modules
+4. **Create a Feature Branch**:
+   ```bash
+   git checkout -b feat/my-awesome-improvement
+   ```
 
 ---
 
-## Testing
+## 📐 Development Guidelines
 
-All new features need tests.
-
-- **Rust unit tests:** in the same file, under `#[cfg(test)]`
-- **Rust integration tests:** in `tests/`
-- **Frontend component tests:** colocated as `ComponentName.test.tsx`
-
-Run everything:
-
-```bash
-cargo test
-pnpm test
-```
+- **Standard Library First (Ponytail Rule)**: Avoid pulling in heavy external dependencies if standard platform features or native modules suffice.
+- **Test Before Submitting**: Always write unit tests under `test/` for any new logic or bugfixes.
+- **Conventional Commits**: Format your commit messages clearly:
+  - `feat: add automated token burn alert`
+  - `fix: resolve race condition in process scanner`
+  - `docs: update setup instructions`
 
 ---
 
-## Pull request checklist
+## 🏷️ Looking for Tasks?
 
-Before opening a PR, make sure:
-
-- [ ] `cargo fmt && cargo clippy` pass with no warnings
-- [ ] `pnpm lint && pnpm test` pass
-- [ ] New functionality has tests
-- [ ] If you changed the Fahh SFX system, `docs/FAHH_SFX.md` is updated
-- [ ] If you added an optional tool to the installer, `docs/INSTALLER.md` is updated
-- [ ] `CHANGELOG.md` has an entry under `[Unreleased]`
-- [ ] PR description explains what changed and why
+Check out our [Issue Tracker](../../issues) filtered by:
+- `good first issue`: Accessible, well-scoped tasks ideal for newcomers.
+- `help wanted`: Strategic enhancements where community ideas are celebrated.
+- `bounty`: Prioritized high-impact tasks.
 
 ---
 
-## What not to do
+## 🚀 Submitting Your Pull Request
 
-- Do not add Docker to anything. Optional tools run as local processes.
-- Do not rename or move `src-tauri/assets/fahh.mp3`. It will break the SFX.
-- Do not hardcode an AI provider. Use MCP.
-- Do not use Electron. This is a Tauri 2 project.
-
----
-
-## Need help?
-
-Open an issue. Include your OS, Rust version (`rustc --version`), and Node version
-(`node --version`), and the full error output.
+1. Push your branch:
+   ```bash
+   git push origin feat/my-awesome-improvement
+   ```
+2. Open a Pull Request against `main`.
+3. Our GitHub Actions CI/CD will immediately run tests across Ubuntu, Windows, and macOS.
+4. Once tests pass and review is approved, your code will be merged into the core project!
