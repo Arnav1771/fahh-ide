@@ -22,10 +22,14 @@ export const MARKER_OWNER = "fahh-lsp";
 
 export interface MonacoModelLike {
   isDisposed?: () => boolean;
+  getAlternativeVersionId?: () => number;
+  dispose?: () => void;
 }
 
 export interface MonacoApiLike {
+  Uri?: { parse(value: string): unknown };
   editor: {
+    getModel?(uri: never): MonacoModelLike | null;
     setModelMarkers(
       model: MonacoModelLike,
       owner: string,
@@ -153,6 +157,25 @@ export function runEditorAction(id: string): boolean {
 export function modelPathFor(path: string): string {
   const forward = path.replace(/\\/g, "/");
   return forward.startsWith("/") ? `file://${forward}` : `file:///${forward}`;
+}
+
+/** Version id of the model on screen (see saveBaseline.ts); null when no editor is up. */
+export function getActiveVersionId(): number | null {
+  return editorInstance?.getModel()?.getAlternativeVersionId?.() ?? null;
+}
+
+/** Give the keyboard back to the editor (the terminal's Esc). False when no editor is up. */
+export function focusEditor(): boolean {
+  if (!editorInstance?.focus) return false;
+  editorInstance.focus();
+  return true;
+}
+
+/** Drop a file's model (closed tab), so reopening starts from disk with fresh undo history. */
+export function disposeModel(path: string): void {
+  if (!monacoApi?.Uri || !monacoApi.editor.getModel) return;
+  const model = monacoApi.editor.getModel(monacoApi.Uri.parse(modelPathFor(path)) as never);
+  setTimeout(() => model?.dispose?.(), 0);
 }
 
 /** Test-only: return the module to its initial state. */

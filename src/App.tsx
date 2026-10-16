@@ -7,6 +7,10 @@ import { AIPanel } from "./components/AIPanel";
 import { GitSidebar } from "./components/GitSidebar";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
+import { ResizeHandle } from "./components/ResizeHandle";
+import { Toasts } from "./components/Toasts";
+import { clampSize, loadSize, saveSize } from "./lib/panelSize";
+import { saveActive, unsavedMessage } from "./lib/tabActions";
 import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
 import { RunPanel } from "./components/RunPanel";
 import { DebugPanel } from "./components/DebugPanel";
@@ -33,6 +37,12 @@ import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
 import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+const store = () => (typeof localStorage === "undefined" ? undefined : localStorage);
+const SIDEBAR = { key: "fahh-sidebar-w", def: 240, min: 160, max: 560 };
+const BOTTOM = { key: "fahh-bottom-h", def: 208, min: 80 };
+/** Leave room for the editor: the bottom panel may take at most the window minus 220px. */
+const bottomMax = () => (typeof window === "undefined" ? 600 : Math.max(BOTTOM.min, window.innerHeight - 220));
 
 type SidebarTab = "files" | "git" | "ai" | "extensions" | "debug" | "theme";
 type BottomTab = "terminal" | "run" | "debug";
@@ -101,6 +111,10 @@ export default function App() {
     setShowWelcome(false);
   };
   const [showBottomPanel, setShowBottomPanel] = useState(true);
+  const [sidebarW, setSidebarW] = useState(() => loadSize(SIDEBAR.key, SIDEBAR.def, SIDEBAR.min, SIDEBAR.max, store()));
+  const [bottomH, setBottomH] = useState(() => loadSize(BOTTOM.key, BOTTOM.def, BOTTOM.min, bottomMax(), store()));
+  useEffect(() => saveSize(SIDEBAR.key, sidebarW, store()), [sidebarW]);
+  useEffect(() => saveSize(BOTTOM.key, bottomH, store()), [bottomH]);
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
 
   const { activeTheme, setTheme } = useThemeStore();
@@ -250,6 +264,39 @@ export default function App() {
     return () => window.removeEventListener("keydown", blockReload);
   }, []);
 
+  // Ctrl+S saves the open file from anywhere: editor, explorer, terminal, panels.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void saveActive();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  // Closing the window with unsaved tabs asks first (Tauri close-requested).
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let gone = false;
+    import("@tauri-apps/api/window")
+      .then(({ getCurrentWindow }) =>
+        getCurrentWindow().onCloseRequested((e) => {
+          const msg = unsavedMessage();
+          if (msg && !window.confirm(msg)) e.preventDefault();
+        })
+      )
+      .then((fn) => (gone ? fn() : (off = fn)))
+      .catch(() => {
+        // plain browser build: no native window to guard
+      });
+    return () => {
+      gone = true;
+      off?.();
+    };
+  }, []);
+
   // Toggle bottom panel via keyboard shortcut (Ctrl+`)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -335,7 +382,7 @@ export default function App() {
       </div>
 
       {/* ── Sidebar panel ── */}
-      <div className="w-60 shrink-0 flex flex-col border-r border-fahh-surface overflow-hidden">
+      <div style={{ width: sidebarW }} className="shrink-0 flex flex-col overflow-hidden">
         {sidebarTab === "files" && <FileTree />}
 
         {sidebarTab === "git" && <GitSidebar />}
@@ -372,6 +419,8 @@ export default function App() {
         )}
       </div>
 
+      <ResizeHandle dir="col" size={sidebarW} onResize={(n) => setSidebarW(clampSize(n, SIDEBAR.min, SIDEBAR.max))} label="Resize sidebar" />
+
       {/* ── Main area ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Editor region (the fahh effects play over this, and only this) */}
@@ -383,7 +432,10 @@ export default function App() {
 
         {/* Bottom panel (Terminal / Run / Debug) */}
         {showBottomPanel && (
-          <div className="h-52 shrink-0 border-t border-fahh-surface flex flex-col">
+          <ResizeHandle dir="row" growsBackward size={bottomH} onResize={(n) => setBottomH(clampSize(n, BOTTOM.min, bottomMax()))} label="Resize panel" />
+        )}
+        {showBottomPanel && (
+          <div style={{ height: Math.min(bottomH, bottomMax()) }} className="shrink-0 flex flex-col">
             {/* Panel tab bar */}
             <div className="flex items-center shrink-0 border-b border-fahh-surface bg-fahh-sidebar">
               <BottomTabBtn
@@ -424,14 +476,14 @@ export default function App() {
         )}
 
         {/* Status bar */}
-        <div className="fahh-statusbar relative overflow-hidden h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 text-xs text-fahh-muted">
+        <div className="fahh-statusbar relative overflow-hidden h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 max-[900px]:gap-3 text-xs text-fahh-muted [&>*]:shrink-0 [&>*]:whitespace-nowrap">
           <CleanSweep />
           <StatusHud />
           <LocalServerItem />
 
           <button
             onClick={() => setShowBottomPanel((p) => !p)}
-            className="hover:text-fahh-text transition-colors"
+            className="hover:text-fahh-text transition-colors max-[760px]:hidden"
           >
             {showBottomPanel ? "Hide Panel" : "Show Panel"}
           </button>
@@ -453,11 +505,11 @@ export default function App() {
           <HudControls />
 
           {/* Active theme indicator */}
-          <span className="text-fahh-muted capitalize">
+          <span className="text-fahh-muted capitalize max-[860px]:hidden">
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span>v0.5.0</span>
+          <span className="max-[680px]:hidden">v0.5.0</span>
         </div>
       </div>
 
@@ -476,6 +528,7 @@ export default function App() {
         />
       )}
 
+      <Toasts />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
       <CommandPalette
         open={quickOpen}

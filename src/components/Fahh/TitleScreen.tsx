@@ -20,9 +20,11 @@ export function TitleScreen() {
   const ringBell = useFahhStore((s) => s.ringBell);
 
   return (
-    <div className="fahh-title relative flex flex-1 items-center justify-center overflow-hidden select-none">
+    <div className="fahh-title relative min-h-0 flex-1 overflow-hidden select-none">
       <div className="fahh-title-glow" aria-hidden="true" />
-      <div className="relative flex flex-col items-center text-center">
+      {/* Centred when it fits, scrolls (never clips) when the window is small. */}
+      <div className="absolute inset-0 flex overflow-y-auto overflow-x-hidden">
+      <div className="relative m-auto flex flex-col items-center px-4 py-4 text-center">
         <button
           type="button"
           onClick={ringBell}
@@ -39,7 +41,7 @@ export function TitleScreen() {
         </button>
 
         <h1 className="fahh-wordmark">FAHH</h1>
-        <p className="mt-2 font-mono text-xs tracking-[0.35em] text-fahh-muted uppercase">the editor that hears your mistakes</p>
+        <p className="mt-2 font-mono text-xs tracking-[0.35em] max-[640px]:tracking-[0.15em] text-fahh-muted uppercase">the editor that hears your mistakes</p>
 
         <ul className="mt-9 w-[340px] max-w-[80vw] space-y-1 text-left">
           {ACTIONS.map(({ id, label, Icon, keys }) => (
@@ -71,6 +73,7 @@ export function TitleScreen() {
         <p className="fahh-press mt-8 font-mono text-[11px] tracking-[0.3em] uppercase text-fahh-muted">
           {fahhCount > 0 ? `${fahhCount} fahh${fahhCount === 1 ? "" : "s"} this session` : "press ctrl shift p"}
         </p>
+      </div>
       </div>
     </div>
   );

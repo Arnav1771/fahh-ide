@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { getToolStatus, installTool } from "../../lib/tauri";
 import type { ToolStatus } from "../../lib/types";
 
@@ -15,6 +16,8 @@ const TOOL_DESCRIPTIONS: Record<string, string> = {
 };
 
 export function InstallerWizard({ onClose }: Props) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, onClose);
   const [tools, setTools] = useState<ToolStatus[]>([]);
   const [installing, setInstalling] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -47,9 +50,17 @@ export function InstallerWizard({ onClose }: Props) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-      <div className="bg-fahh-bg border border-fahh-surface rounded-lg p-6 w-[520px] max-h-[80vh] overflow-y-auto">
-        <h2 className="text-fahh-accent text-lg font-semibold mb-1">
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onMouseDown={onClose}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tools-title"
+        tabIndex={-1}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="bg-fahh-bg border border-fahh-surface rounded-lg p-6 w-[520px] max-w-[92vw] max-h-[80vh] overflow-y-auto"
+      >
+        <h2 id="tools-title" className="text-fahh-accent text-lg font-semibold mb-1">
           Optional Tools
         </h2>
         <p className="text-fahh-muted text-sm mb-4">
