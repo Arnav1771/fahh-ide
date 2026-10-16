@@ -11,6 +11,10 @@ import { ResizeHandle } from "./components/ResizeHandle";
 import { Toasts } from "./components/Toasts";
 import { clampSize, loadSize, saveSize } from "./lib/panelSize";
 import { saveActive, unsavedMessage } from "./lib/tabActions";
+import { handleOpenRequest } from "./lib/openRequest";
+import { installCli, takePendingOpen } from "./lib/tauri";
+import { useToastStore } from "./store/toastStore";
+import type { OpenRequest } from "./lib/types";
 import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
 import { RunPanel } from "./components/RunPanel";
 import { DebugPanel } from "./components/DebugPanel";
@@ -24,7 +28,7 @@ import { ImpactLayer } from "./components/Fahh/ImpactLayer";
 import { StatusHud, HudControls, CleanSweep, LspStatusItem } from "./components/Fahh/StatusHud";
 import { CommandPalette } from "./components/Fahh/CommandPalette";
 import { FAHH_COMMAND, OPEN_FOLDER_EVENT } from "./lib/commands";
-import { runEditorAction } from "./lib/monacoBridge";
+import { getActiveDocument, revealLine, runEditorAction } from "./lib/monacoBridge";
 import type { PaletteCommand } from "./lib/palette";
 import { usePreviewStore } from "./store/previewStore";
 import { useEditorStore } from "./store/editorStore";
@@ -121,8 +125,34 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const tree = useFileStore((s) => s.tree);
-  const { openFileInEditor } = useWorkspace();
+  const { openFileInEditor, openFolder } = useWorkspace();
   const editorRegionRef = useRef<HTMLDivElement>(null);
+
+  // `fahh <folder|file>` from a shell: the first launch's path, then any later ones the
+  // running window is handed (src-tauri/src/app/mod.rs, single-instance).
+  useEffect(() => {
+    const run = (req: OpenRequest) =>
+      handleOpenRequest(req, {
+        openFolder,
+        openFile: openFileInEditor,
+        hasFolder: () => !!useFileStore.getState().root,
+        isActive: (p) => getActiveDocument() === p,
+        goToLine: revealLine,
+        notify: (t, k) => useToastStore.getState().show(t, k),
+      });
+    let off: (() => void) | undefined;
+    let gone = false;
+    takePendingOpen().then((req) => req && run(req)).catch(() => {});
+    import("@tauri-apps/api/event")
+      .then(({ listen }) => listen<OpenRequest>("fahh://open", (e) => void run(e.payload)))
+      .then((fn) => (gone ? fn() : (off = fn)))
+      .catch(() => {});
+    return () => {
+      gone = true;
+      off?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Apply theme CSS vars on mount and whenever the active theme changes
   useEffect(() => {
@@ -168,6 +198,9 @@ export default function App() {
       { id: "fahh.off", group: "Fahh", label: "Effects: Off", keywords: "intensity silent disable", run: intensity("off") },
       { id: "fahh.mute", group: "Fahh", label: "Mute / Unmute Sound", keywords: "volume silence", run: () => useFahhStore.getState().toggleMute() },
       { id: "help.welcome", group: "Help", label: "Show Welcome", keywords: "onboarding tour getting started intro", run: () => setShowWelcome(true) },
+      { id: "cli.install", group: "Tools", label: "Install 'fahh' Command in PATH", keywords: "shell terminal code command line cli", run: () => {
+        installCli().then((m) => useToastStore.getState().show(m)).catch((e) => useToastStore.getState().show(String(e), "error"));
+      } },
       { id: "tools.optional", group: "Tools", label: "Optional Tools…", keywords: "installer n8n flowise setup", run: () => setShowInstaller(true) },
       { id: "file.quickOpen", group: "Go", label: "Go to File…", keys: ["Ctrl", "P"], keywords: "quick open find file", run: () => setQuickOpen(true) },
       { id: "preview.side", group: "Preview", label: "Open Preview to the Side", keys: ["Ctrl", "K", "V"], keywords: "markdown html image csv split", run: () => {
@@ -382,7 +415,7 @@ export default function App() {
       </div>
 
       {/* ── Sidebar panel ── */}
-      <div style={{ width: sidebarW }} className="shrink-0 flex flex-col overflow-hidden">
+      <div style={{ width: sidebarW }} className="fahh-sidebar shrink-0 flex flex-col overflow-hidden">
         {sidebarTab === "files" && <FileTree />}
 
         {sidebarTab === "git" && <GitSidebar />}

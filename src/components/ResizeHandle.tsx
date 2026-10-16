@@ -16,7 +16,11 @@ export function ResizeHandle({ dir, size, onResize, label, growsBackward }: Prop
   const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
     const el = e.currentTarget;
-    el.setPointerCapture(e.pointerId);
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      // synthetic pointer (tests): the listeners on the handle still get the events
+    }
     const start = dir === "col" ? e.clientX : e.clientY;
     const startSize = size;
     const move = (m: PointerEvent) => onResize(startSize + sign * ((dir === "col" ? m.clientX : m.clientY) - start));
