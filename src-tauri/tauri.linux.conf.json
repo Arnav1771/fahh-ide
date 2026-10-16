@@ -1,0 +1,11 @@
+{
+  "bundle": {
+    "linux": {
+      "deb": {
+        "files": {
+          "/usr/bin/fahh": "cli/fahh"
+        }
+      }
+    }
+  }
+}

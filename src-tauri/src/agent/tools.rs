@@ -262,18 +262,18 @@ impl Checkpoints {
 
 // ─── run_command ──────────────────────────────────────────────────────────────
 
-/// A shell command that never opens a console window on Windows.
+/// A shell command that never opens a console window on Windows: it is built by
+/// `core::proc::cmd` (the one place that sets CREATE_NO_WINDOW).
 pub fn shell(command: &str, cwd: &std::path::Path) -> tokio::process::Command {
     #[cfg(windows)]
     let mut c = {
-        let mut c = tokio::process::Command::new("cmd");
+        let mut c = tokio::process::Command::from(crate::core::proc::cmd("cmd"));
         c.arg("/C").arg(command);
-        c.creation_flags(0x0800_0000); // CREATE_NO_WINDOW
         c
     };
     #[cfg(not(windows))]
     let mut c = {
-        let mut c = tokio::process::Command::new("sh");
+        let mut c = tokio::process::Command::from(crate::core::proc::cmd("sh"));
         c.arg("-c").arg(command);
         c
     };

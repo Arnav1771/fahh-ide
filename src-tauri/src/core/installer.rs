@@ -1,6 +1,5 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::process::Command;
 use tauri::{AppHandle, Emitter};
 use tracing::info;
 
@@ -53,7 +52,7 @@ impl OptionalTool {
 
     pub fn check_installed(&self) -> ToolStatus {
         let (cmd, args) = self.check_command();
-        let output = Command::new(cmd).args(args).output();
+        let output = crate::core::proc::cmd(cmd).args(args).output();
         let installed = output.map(|o| o.status.success()).unwrap_or(false);
         ToolStatus {
             tool: self.name().to_string(),
@@ -95,7 +94,7 @@ pub async fn install_tool(app: AppHandle, tool_name: String) -> Result<(), Strin
         "message": format!("Installing {tool_name}...")
     }));
 
-    let output = Command::new(cmd)
+    let output = crate::core::proc::cmd(cmd)
         .args(&args)
         .output()
         .map_err(|e| e.to_string())?;

@@ -3,9 +3,10 @@ import { useEditorStore } from "../../store/editorStore";
 import { usePreviewStore } from "../../store/previewStore";
 import { isPreviewOnly, previewKindFor } from "../../lib/preview";
 import { runCommand } from "../../lib/commands";
+import { requestClose } from "../../lib/tabActions";
 
 export function TabBar() {
-  const { openTabs, activeTab, setActiveTab, closeFile } = useEditorStore();
+  const { openTabs, activeTab, setActiveTab } = useEditorStore();
   const mode = usePreviewStore((s) => (activeTab ? s.modes[activeTab] : undefined));
 
   if (openTabs.length === 0) return null;
@@ -36,7 +37,7 @@ export function TabBar() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  closeFile(tab.path);
+                  requestClose(tab.path);
                 }}
                 className="ml-1 opacity-50 hover:opacity-100 text-xs leading-none"
                 aria-label="Close tab"

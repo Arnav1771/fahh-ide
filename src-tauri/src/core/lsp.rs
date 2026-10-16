@@ -56,7 +56,7 @@ pub fn detect_lsp_servers() -> Vec<LspConfig> {
 }
 
 fn which_on_path(cmd: &str) -> bool {
-    std::process::Command::new(if cfg!(windows) { "where" } else { "which" })
+    crate::core::proc::cmd(if cfg!(windows) { "where" } else { "which" })
         .arg(cmd)
         .output()
         .map(|o| o.status.success())

@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [Unreleased]
+
+### Fixed (v0.5.1, "stop losing work")
+
+- No console window flashes on Windows: every child process is started through `core::proc::cmd`, and CI rejects a bare `Command::new(`.
+- Themes paint their own editor background (Fahh Light is readable again).
+- Unsaved work is guarded: closing a dirty tab or the window asks first, and the dirty dot clears when undo returns to the saved text.
+- Ctrl+S saves from anywhere (explorer, terminal, panels) and shows a toast; a failed save says so.
+- Renaming or deleting a file in the explorer keeps its open tab in step (a dirty file asks before it is deleted).
+- Focus: the terminal no longer traps Tab (Esc returns to the editor), dialogs trap focus and give it back, Esc closes Optional Tools.
+- The sidebar and bottom panel can be dragged (or resized with the arrow keys) and remember their size.
+- Terminal: header shows the shell, Up/Down history, Clear (button, Ctrl+L, `clear`).
+- Title screen scrolls instead of clipping; the status bar drops low-priority items on narrow windows.
+
+### Added
+
+- **`fahh` command.** `fahh .`, `fahh <folder>`, `fahh <file>[:line]` from any shell, relative to that shell's folder. See docs/FAHH_COMMAND.md.
+
+---
+
 ## [0.5.0] — 2026-10-08
 
 ### Also in this release (added 8 Oct)

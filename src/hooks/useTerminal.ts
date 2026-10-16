@@ -2,13 +2,12 @@ import { useCallback, useEffect } from "react";
 import { executeCommand } from "../lib/tauri";
 import { useTerminalStore } from "../store/terminalStore";
 import { listen } from "@tauri-apps/api/event";
-import { splitCwdLine, wrapForCwd, type ShellKind } from "../lib/shellCwd";
+import { detectShell, splitCwdLine, wrapForCwd } from "../lib/shellCwd";
 import { resolvePath } from "../lib/preview";
 import { noteLocalUrls } from "../lib/browser";
 import { useWorkspace } from "./useWorkspace";
 
-/** The backend runs commands with `cmd /C` on Windows and `sh -c` elsewhere. */
-const SHELL: ShellKind = typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent) ? "cmd" : "posix";
+const SHELL = detectShell();
 
 export function useTerminal() {
   const { addLine, cwd } = useTerminalStore();
@@ -36,6 +35,8 @@ export function useTerminal() {
       }
     ).then((fn) => {
       unlisten = fn;
+    }).catch(() => {
+      // no Tauri (plain browser build): nothing to listen to
     });
 
     return () => {
