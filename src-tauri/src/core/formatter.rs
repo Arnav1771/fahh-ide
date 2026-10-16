@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 use tracing::{debug, info, warn};
 
@@ -19,7 +19,7 @@ fn run_formatter_stdin(
 ) -> Result<String, String> {
     debug!("formatter: running '{program}' {:?}", args);
 
-    let mut child = Command::new(program)
+    let mut child = crate::core::proc::cmd(program)
         .args(args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -58,7 +58,7 @@ fn run_formatter_stdin(
 fn run_formatter_file(program: &str, args: &[&str]) -> Result<String, String> {
     debug!("formatter: running '{program}' {:?}", args);
 
-    let output = Command::new(program)
+    let output = crate::core::proc::cmd(program)
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -360,7 +360,7 @@ pub async fn format_file(path: String, language: String) -> Result<String, Strin
                 ));
                 std::fs::write(&tmp_path, &original)
                     .map_err(|e| format!("Failed to write temp file: {e}"))?;
-                let status = Command::new("zig")
+                let status = crate::core::proc::cmd("zig")
                     .args(["fmt", &tmp_path.to_string_lossy()])
                     .status()
                     .map_err(|e| format!("zig fmt failed: {e}"))?;

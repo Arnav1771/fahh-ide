@@ -173,3 +173,13 @@ export interface GitStatus {
   staged: GitFileChange[];
   unstaged: GitFileChange[];
 }
+
+// ─── `fahh <path>` command line (src-tauri/src/app/cli.rs) ────────────────────
+
+export interface OpenRequest {
+  /** Absolute, already resolved against the caller's working directory. */
+  path: string;
+  /** 1-based, from `fahh file:line`; only for files. */
+  line: number | null;
+  kind: "dir" | "file" | "missing";
+}

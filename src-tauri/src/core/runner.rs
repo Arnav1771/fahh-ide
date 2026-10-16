@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -329,7 +329,7 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
 
     debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
 
-    let mut child = Command::new(&run_cmd.program)
+    let mut child = crate::core::proc::cmd(&run_cmd.program)
         .args(&run_cmd.args)
         .current_dir(&cwd)
         .stdout(Stdio::piped())
@@ -440,7 +440,7 @@ pub fn stop_run(pid: u32) -> Result<(), String> {
 fn kill_pid(pid: u32) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
-        let status = Command::new("taskkill")
+        let status = crate::core::proc::cmd("taskkill")
             .args(["/PID", &pid.to_string(), "/F", "/T"])
             .status()
             .map_err(|e| format!("taskkill failed: {e}"))?;

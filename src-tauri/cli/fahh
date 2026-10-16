@@ -1,0 +1,11 @@
+#!/bin/sh
+# fahh: open files and folders in Fahh Editor (fahh . | fahh <folder> | fahh <file>[:line])
+if [ "$1" = "agent" ]; then
+  shift
+  d="$(dirname "$0")"
+  if [ -x "$d/fahh-agent" ]; then exec "$d/fahh-agent" "$@"; fi
+  if command -v fahh-agent >/dev/null 2>&1; then exec fahh-agent "$@"; fi
+  echo "fahh: 'fahh-agent' is not installed" >&2
+  exit 1
+fi
+nohup /usr/bin/fahh-editor "$@" >/dev/null 2>&1 &

@@ -6,6 +6,7 @@ import { useWorkspace } from "../../hooks/useWorkspace";
 import { deleteFile, renameFile, createFile } from "../../lib/tauri";
 import { open } from "@tauri-apps/plugin-dialog";
 import { OPEN_FOLDER_EVENT } from "../../lib/commands";
+import { closeTabsUnder, dirtyPaths, renameTabs } from "../../lib/tabActions";
 import { FolderOpen, Edit2, Trash2, Copy, FilePlus, Folder as FolderIcon, File, FileCode2, FileJson, FileText, Globe, Palette, Terminal as TerminalIcon } from "lucide-react";
 
 // ─── Context menu ─────────────────────────────────────────────────────────────
@@ -331,6 +332,7 @@ export function FileTree() {
     const newPath = dir + newName;
     try {
       await renameFile(entry.path, newPath);
+      renameTabs(entry.path, newPath);
       // Refresh the tree from the root
       if (tree) {
         const { getFileTree } = await import("../../lib/tauri");
@@ -344,12 +346,15 @@ export function FileTree() {
   };
 
   const handleContextDelete = async (entry: FileEntry) => {
+    const unsaved = dirtyPaths(entry.path).length;
     const confirmed = window.confirm(
-      `Delete "${entry.name}"? This cannot be undone.`
+      `Delete "${entry.name}"? This cannot be undone.` +
+        (unsaved ? `\n\n${unsaved === 1 ? "An open tab has" : `${unsaved} open tabs have`} unsaved changes that will be lost.` : "")
     );
     if (!confirmed) return;
     try {
       await deleteFile(entry.path);
+      closeTabsUnder(entry.path);
       if (tree) {
         const { getFileTree } = await import("../../lib/tauri");
         const newTree = await getFileTree(tree.path);
