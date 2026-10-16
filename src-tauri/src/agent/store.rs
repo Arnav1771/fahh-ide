@@ -188,7 +188,7 @@ mod tests {
         save(d.path(), &file("ok", 1)).unwrap();
         std::fs::write(d.path().join("bad.json"), "{nope").unwrap();
         assert_eq!(list(d.path()).len(), 1);
-        assert!(load(d.path(), "bad").unwrap_err().contains("damaged"));
+        assert!(load(d.path(), "bad").err().unwrap().contains("damaged"));
     }
 
     #[test]

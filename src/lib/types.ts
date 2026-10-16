@@ -178,8 +178,9 @@ export interface GitStatus {
 // Mirrors src-tauri/src/agent/mod.rs. Events arrive on agent://event as
 // { session, event }.
 
-export type AgentMode = "ask" | "auto-edit" | "plan";
-export type AgentToolKind = "read" | "edit" | "run" | "plan";
+/** ask = Normal, auto-edit = Accept Edits, qa = the one-shot /ask (read-only). */
+export type AgentMode = "ask" | "auto-edit" | "smart" | "plan" | "bypass" | "qa";
+export type AgentToolKind = "read" | "edit" | "run" | "plan" | "agent";
 export type AgentProviderKind = "openai" | "anthropic";
 
 export interface AgentProviderConfig {
@@ -197,13 +198,93 @@ export interface AgentContext {
   dirty_files: string[];
 }
 
+export type AgentRunSpec =
+  | { kind: "turn" }
+  | { kind: "loop"; max_rounds?: number | null }
+  | { kind: "btw" }
+  | { kind: "agent"; name: string };
+
+export interface AgentLimits {
+  max_parallel?: number;
+  turn_steps?: number;
+  turn_tokens?: number;
+}
+
 export interface AgentStartParams {
   session?: string | null;
   workspace: string;
   prompt: string;
   mode: AgentMode;
   provider: AgentProviderConfig;
+  /** The fast model for Smart mode's judge; the main model if absent. */
+  judge?: AgentProviderConfig | null;
   context: AgentContext;
+  run?: AgentRunSpec;
+  limits?: AgentLimits | null;
+  /** Extra folders from /add-dir. */
+  extra_dirs?: string[];
+}
+
+/** The conversation, exactly as the backend keeps it (src-tauri/src/agent/provider.rs `Msg`). */
+export type AgentMsg =
+  | { role: "user"; text: string }
+  | { role: "assistant"; text: string; calls: { id: string; name: string; args: Record<string, unknown> }[] }
+  | { role: "tool_result"; id: string; name: string; content: string };
+
+export interface AgentTurnRec {
+  id: number;
+  prompt: string;
+  hist_start: number | null;
+  mode: AgentMode;
+  at: number;
+}
+
+export interface AgentSessionInfo {
+  id: string;
+  title: string;
+  updated: number;
+  steps: number;
+}
+
+export interface AgentLoaded {
+  session: string;
+  title: string;
+  history: AgentMsg[];
+  turns: AgentTurnRec[];
+}
+
+export interface AgentRevertResult {
+  files: string[];
+  rewound: boolean;
+  loaded: AgentLoaded;
+}
+
+export interface AgentContextInfo {
+  used: number;
+  window: number;
+  percent: number;
+  messages: number;
+}
+
+export interface AgentUsage {
+  model_calls: number;
+  tool_calls: number;
+  tokens_in: number;
+  tokens_out: number;
+}
+
+export interface AgentInfo {
+  name: string;
+  description: string;
+  model: string | null;
+  mode: AgentMode;
+  source: string;
+  max_steps: number;
+}
+
+export interface AgentsReport {
+  agents: AgentInfo[];
+  problems: string[];
 }
 
 export interface AgentStartResult {
@@ -248,6 +329,13 @@ export type AgentEvent =
   | { type: "tool_result"; turn: number; id: string; ok: boolean; output: string }
   | { type: "file_changed"; turn: number; path: string }
   | { type: "plan_written"; turn: number; id: string; path: string; markdown: string }
+  | { type: "judge"; turn: number; command: string; safe: boolean; reason: string }
+  | { type: "sub_started"; turn: number; child: string; name: string; task: string; model: string | null; mode: AgentMode }
+  | { type: "sub"; turn: number; child: string; name: string; event: AgentEvent }
+  | { type: "sub_done"; turn: number; child: string; name: string; ok: boolean; steps: number; summary: string }
+  | { type: "loop_round"; turn: number; round: number; max: number; approved: boolean; notes: string }
+  | { type: "notice"; turn: number; text: string }
+  | { type: "compacted"; turn: number; before: number; after: number }
   | { type: "done"; turn: number; steps: number; files: string[] }
   | { type: "error"; turn: number; message: string };
 

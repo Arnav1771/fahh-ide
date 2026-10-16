@@ -1,18 +1,34 @@
 import { create } from "zustand";
 import {
+  agentAgents,
   agentApprove,
+  agentCompact,
+  agentContext,
+  agentExport,
   agentRevertFile,
   agentRevertTurn,
+  agentSessionFork,
+  agentSessionLoad,
+  agentSessionRemove,
+  agentSessionRename,
+  agentSessionRevert,
+  agentSessions,
   agentSetDiagnostics,
   agentStart,
+  agentSteps,
   agentStop,
+  agentStopChild,
+  agentUsage,
   DEFAULT_AGENT_SETTINGS,
   listenAgent,
   parseAgentSettings,
   settingsProblem,
+  toJudgeConfig,
   toProviderConfig,
   type AgentSettings,
 } from "../lib/agent";
+import { runSlash, type SendOpts } from "../lib/agentCommands";
+import { parseSlash } from "../lib/slash";
 import {
   agentReducer,
   errorsAdded,
@@ -22,7 +38,7 @@ import {
   type AgentAction,
   type AgentState,
 } from "../lib/agentState";
-import { collectMarkers } from "../lib/agentMarkers";
+import { collectMarkers, currentSelection } from "../lib/agentMarkers";
 import { readFile } from "../lib/tauri";
 import type { AgentDecision, AgentEnvelope, AgentMode } from "../lib/types";
 import { useEditorStore } from "./editorStore";
@@ -55,7 +71,15 @@ interface AgentStore extends AgentState {
   dispatch: (a: AgentAction) => void;
   updateSettings: (patch: Partial<AgentSettings>) => void;
   setMode: (m: AgentMode) => void;
-  send: (prompt: string, mode?: AgentMode) => Promise<void>;
+  /** True while /fast has switched to the fast model. */
+  usingFast: boolean;
+  /** Called when /exit is typed: the panel's host decides what leaving means. */
+  onExit: (() => void) | null;
+  send: (prompt: string, opts?: SendOpts) => Promise<void>;
+  /** What the user typed: a slash command runs as one, anything else is a prompt. */
+  handleInput: (text: string) => Promise<void>;
+  stopChild: (child: string) => Promise<void>;
+  loadSession: (id: string) => Promise<void>;
   answer: (id: string, decision: AgentDecision) => Promise<void>;
   stop: () => Promise<void>;
   revertTurn: (turn: number) => Promise<void>;
@@ -93,6 +117,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   ...initialAgentState,
   settings: load(),
   baseline: 0,
+  usingFast: false,
+  onExit: null,
 
   dispatch: (a) => set((s) => agentReducer(s, a)),
 
@@ -105,8 +131,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   setMode: (mode) => get().updateSettings({ mode }),
 
-  send: async (prompt, modeOverride) => {
-    const { settings, session, dispatch } = get();
+  send: async (prompt, opts = {}) => {
+    const { settings, session, dispatch, usingFast } = get();
     const root = useFileStore.getState().root;
     if (!root) {
       dispatch({ type: "event", event: { type: "error", turn: 0, message: "Open a folder first: the agent works inside a workspace." } });
@@ -126,17 +152,22 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     const snapshot = collectMarkers(root);
     set({ baseline: snapshot.errors });
     await agentSetDiagnostics(snapshot.files).catch(() => {});
-    dispatch({ type: "user_sent", text: prompt });
+    const model = opts.model ?? (usingFast && settings.fastModel ? settings.fastModel : undefined);
+    const shown = opts.run?.kind === "loop" ? `/loop ${prompt}` : opts.run?.kind === "btw" ? `/btw ${prompt}` : opts.run?.kind === "agent" ? `/agent ${opts.run.name} ${prompt}` : opts.mode === "qa" ? `/ask ${prompt}` : prompt;
+    dispatch({ type: "user_sent", text: shown });
     try {
       const r = await agentStart({
         session,
         workspace: root,
         prompt,
-        mode: modeOverride ?? settings.mode,
-        provider: toProviderConfig(settings),
+        mode: opts.mode ?? settings.mode,
+        provider: toProviderConfig(settings, model),
+        judge: toJudgeConfig(settings),
+        run: opts.run ?? { kind: "turn" },
+        extra_dirs: settings.extraDirs,
         context: {
           active_file: ed.activeTab,
-          selection: null,
+          selection: currentSelection(ed.activeTab),
           open_files: ed.openTabs.map((t) => t.path),
           dirty_files: ed.openTabs.filter((t) => t.dirty).map((t) => t.path),
         },
@@ -183,9 +214,65 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     }
   },
 
+  stopChild: async (child) => {
+    const { session } = get();
+    if (session) await agentStopChild(session, child).catch(() => {});
+  },
+
+  loadSession: async (id) => {
+    const root = useFileStore.getState().root;
+    if (!root) return;
+    try {
+      const loaded = await agentSessionLoad(root, id, get().settings.extraDirs);
+      get().dispatch({ type: "loaded", loaded });
+    } catch (e) {
+      get().dispatch({ type: "notice", level: "error", text: String(e) });
+    }
+  },
+
+  handleInput: async (text) => {
+    const parsed = parseSlash(text);
+    if (parsed === null) return get().send(text);
+    if (typeof parsed === "string") return get().dispatch({ type: "notice", level: "error", text: parsed });
+    await runSlash(
+      {
+        ipc: {
+          sessions: agentSessions,
+          load: agentSessionLoad,
+          fork: agentSessionFork,
+          revert: agentSessionRevert,
+          rename: agentSessionRename,
+          remove: agentSessionRemove,
+          steps: agentSteps,
+          compact: agentCompact,
+          context: agentContext,
+          usage: agentUsage,
+          exportSession: agentExport,
+          agents: agentAgents,
+        },
+        settings: () => get().settings,
+        state: () => get(),
+        root: () => useFileStore.getState().root,
+        update: (patch) => get().updateSettings(patch),
+        dispatch: (a) => get().dispatch(a),
+        send: (p, o) => get().send(p, o),
+        provider: () => toProviderConfig(get().settings, get().usingFast && get().settings.fastModel ? get().settings.fastModel : undefined),
+        newChat: () => get().newChat(),
+        reloadTabs,
+        copy: async (t) => {
+          await navigator.clipboard.writeText(t);
+        },
+        exit: () => get().onExit?.(),
+        usingFast: () => get().usingFast,
+        setUsingFast: (on) => set({ usingFast: on }),
+      },
+      parsed
+    );
+  },
+
   newChat: () => {
     void get().stop();
-    set({ ...initialAgentState });
+    set({ ...initialAgentState, usingFast: false });
   },
 }));
 
@@ -193,10 +280,12 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
 let settleTimer: number | undefined;
 
-function onEnvelope({ session, event }: AgentEnvelope): void {
+function onEnvelope({ session, event: outer }: AgentEnvelope): void {
   const store = useAgentStore.getState();
   if (store.session && session !== store.session) return;
-  store.dispatch({ type: "event", event });
+  store.dispatch({ type: "event", event: outer });
+  // a subagent's edit or approval needs the same reactions as the parent's
+  const event = outer.type === "sub" ? outer.event : outer;
 
   if (event.type === "file_changed") {
     void reloadTabs([event.path]);

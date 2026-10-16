@@ -436,7 +436,7 @@ export default function App() {
           </div>
         )}
 
-        {sidebarTab === "ai" && <AgentPanel />}
+        {sidebarTab === "ai" && <AgentPanel onClose={() => setSidebarTab("files")} />}
 
         {sidebarTab === "theme" && (
           <div className="flex flex-col h-full overflow-y-auto bg-fahh-sidebar">

@@ -2,7 +2,7 @@
  * Fahh Local panel state: a pure reducer over the backend's agent events plus
  * the user's own actions. No React, no Tauri, so it runs under vitest.
  */
-import type { AgentEvent, AgentToolKind } from "./types";
+import type { AgentEvent, AgentLoaded, AgentMode, AgentMsg, AgentSessionInfo, AgentToolKind } from "./types";
 
 export type AgentStatus = "idle" | "running" | "needs_input" | "done" | "error";
 
@@ -31,11 +31,26 @@ export type Item =
       state: "pending" | "allowed" | "denied";
     }
   | { kind: "plan"; id: string; path: string; markdown: string; state: "proposed" | "implementing" }
+  | {
+      kind: "sub";
+      child: string;
+      name: string;
+      task: string;
+      model: string | null;
+      mode: AgentMode;
+      status: "running" | "done" | "failed";
+      steps: number;
+      summary: string;
+      /** Its tool lines and approvals, nested. */
+      items: Item[];
+    }
+  | { kind: "sessions"; sessions: AgentSessionInfo[]; current: string | null }
   | { kind: "notice"; level: "error" | "info"; text: string };
 
 type ApprovalItem = Extract<Item, { kind: "approval" }>;
 type ToolItem = Extract<Item, { kind: "tool" }>;
 type PlanItem = Extract<Item, { kind: "plan" }>;
+type SubItem = Extract<Item, { kind: "sub" }>;
 
 export interface TurnInfo {
   turn: number;
@@ -50,12 +65,13 @@ export interface TurnInfo {
 
 export interface AgentState {
   session: string | null;
+  title: string;
   status: AgentStatus;
   items: Item[];
   turns: Record<number, TurnInfo>;
 }
 
-export const initialAgentState: AgentState = { session: null, status: "idle", items: [], turns: {} };
+export const initialAgentState: AgentState = { session: null, title: "", status: "idle", items: [], turns: {} };
 
 export type AgentAction =
   | { type: "user_sent"; text: string }
@@ -67,6 +83,10 @@ export type AgentAction =
   | { type: "file_reverted"; turn: number; path: string }
   | { type: "turn_reverted"; turn: number }
   | { type: "errors_added"; turn: number; count: number }
+  | { type: "notice"; level: "error" | "info"; text: string }
+  | { type: "sessions"; sessions: AgentSessionInfo[] }
+  | { type: "loaded"; loaded: AgentLoaded }
+  | { type: "renamed"; title: string }
   | { type: "reset" };
 
 function turnOf(state: AgentState, turn: number): TurnInfo {
@@ -78,11 +98,12 @@ function withTurn(state: AgentState, info: TurnInfo): AgentState {
 }
 
 function hasPending(items: Item[]): boolean {
-  return items.some((i) => i.kind === "approval" && i.state === "pending");
+  return items.some((i) => (i.kind === "approval" && i.state === "pending") || (i.kind === "sub" && hasPending(i.items)));
 }
 
-function mapItem(items: Item[], pred: (i: Item) => boolean, f: (i: Item) => Item): Item[] {
-  return items.map((i) => (pred(i) ? f(i) : i));
+/** Map matching items, looking inside subagent cards too. */
+function mapDeep(items: Item[], pred: (i: Item) => boolean, f: (i: Item) => Item): Item[] {
+  return items.map((i) => (pred(i) ? f(i) : i.kind === "sub" ? { ...i, items: mapDeep(i.items, pred, f) } : i));
 }
 
 export function agentReducer(state: AgentState, action: AgentAction): AgentState {
@@ -93,8 +114,19 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
       return { ...state, status: "running", items: [...state.items, { kind: "user", text: action.text }] };
     case "started":
       return withTurn({ ...state, session: action.session }, turnOf(state, action.turn));
+    case "notice":
+      return { ...state, items: [...state.items, { kind: "notice", level: action.level, text: action.text }] };
+    case "sessions":
+      return { ...state, items: [...state.items, { kind: "sessions", sessions: action.sessions, current: state.session }] };
+    case "renamed":
+      return { ...state, title: action.title };
+    case "loaded": {
+      const turns: Record<number, TurnInfo> = {};
+      for (const t of action.loaded.turns) turns[t.id] = { turn: t.id, files: [], accepted: [], reverted: [], finished: true, errorsAdded: 0 };
+      return { session: action.loaded.session, title: action.loaded.title, status: "idle", items: itemsFromHistory(action.loaded.history), turns };
+    }
     case "approval_answered": {
-      const items = mapItem(
+      const items = mapDeep(
         state.items,
         (i) => i.kind === "approval" && i.id === action.id,
         (i) => ({ ...(i as ApprovalItem), state: action.allow ? "allowed" : "denied" })
@@ -105,7 +137,7 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
     case "plan_implementing":
       return {
         ...state,
-        items: mapItem(state.items, (i) => i.kind === "plan" && i.id === action.id, (i) => ({ ...(i as PlanItem), state: "implementing" })),
+        items: mapDeep(state.items, (i) => i.kind === "plan" && i.id === action.id, (i) => ({ ...(i as PlanItem), state: "implementing" })),
       };
     case "file_accepted": {
       const t = turnOf(state, action.turn);
@@ -128,6 +160,40 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
   }
 }
 
+/** Events that happen inside a subagent: tool lines, approvals, its judge. Its prose is not shown. */
+function applyInner(items: Item[], ev: AgentEvent): Item[] {
+  switch (ev.type) {
+    case "tool_call":
+      return [...items, { kind: "tool", id: ev.id, name: ev.name, toolKind: ev.kind, args: ev.args, status: "running" }];
+    case "tool_result":
+      return mapDeep(items, (i) => i.kind === "tool" && i.id === ev.id, (i) => ({ ...(i as ToolItem), status: ev.ok ? "ok" : "error", output: ev.output }));
+    case "approval_request":
+      return [
+        ...items,
+        {
+          kind: "approval",
+          id: ev.id,
+          tool: ev.tool,
+          toolKind: ev.kind,
+          summary: ev.summary,
+          command: ev.command,
+          path: ev.path,
+          oldText: ev.old_text,
+          newText: ev.new_text,
+          state: "pending",
+        },
+      ];
+    case "judge":
+      return [...items, { kind: "notice", level: "info", text: judgeLine(ev) }];
+    default:
+      return items;
+  }
+}
+
+function judgeLine(ev: Extract<AgentEvent, { type: "judge" }>): string {
+  return `Judge: ${ev.safe ? "SAFE" : "UNSAFE"} ${ev.command}${ev.reason ? ` (${ev.reason})` : ""}`;
+}
+
 function applyEvent(state: AgentState, ev: AgentEvent): AgentState {
   switch (ev.type) {
     case "turn_started":
@@ -140,39 +206,46 @@ function applyEvent(state: AgentState, ev: AgentEvent): AgentState {
       return { ...state, items: [...state.items, { kind: "assistant", turn: ev.turn, text: ev.text }] };
     }
     case "tool_call":
+    case "tool_result":
+    case "approval_request": {
+      const items = applyInner(state.items, ev);
+      return { ...state, items, status: ev.type === "approval_request" ? "needs_input" : state.status };
+    }
+    case "judge":
+      return { ...state, items: [...state.items, { kind: "notice", level: "info", text: judgeLine(ev) }] };
+    case "sub_started":
       return {
         ...state,
-        items: [...state.items, { kind: "tool", id: ev.id, name: ev.name, toolKind: ev.kind, args: ev.args, status: "running" }],
-      };
-    case "approval_request":
-      return {
-        ...state,
-        status: "needs_input",
         items: [
           ...state.items,
-          {
-            kind: "approval",
-            id: ev.id,
-            tool: ev.tool,
-            toolKind: ev.kind,
-            summary: ev.summary,
-            command: ev.command,
-            path: ev.path,
-            oldText: ev.old_text,
-            newText: ev.new_text,
-            state: "pending",
-          },
+          { kind: "sub", child: ev.child, name: ev.name, task: ev.task, model: ev.model, mode: ev.mode, status: "running", steps: 0, summary: "", items: [] },
         ],
       };
-    case "tool_result":
+    case "sub": {
+      if (ev.event.type === "file_changed") return applyEvent(state, ev.event); // the child's edit belongs to this turn's review
+      const inner = ev.event;
+      const items = state.items.map((i) => (i.kind === "sub" && i.child === ev.child ? { ...i, items: applyInner(i.items, inner) } : i));
+      return { ...state, items, status: inner.type === "approval_request" ? "needs_input" : state.status };
+    }
+    case "sub_done":
       return {
         ...state,
-        items: mapItem(
-          state.items,
-          (i) => i.kind === "tool" && i.id === ev.id,
-          (i) => ({ ...(i as ToolItem), status: ev.ok ? "ok" : "error", output: ev.output })
+        items: state.items.map((i) =>
+          i.kind === "sub" && i.child === ev.child ? { ...(i as SubItem), status: ev.ok ? "done" : "failed", steps: ev.steps, summary: ev.summary } : i
         ),
       };
+    case "loop_round":
+      return {
+        ...state,
+        items: [
+          ...state.items,
+          { kind: "notice", level: "info", text: `Loop round ${ev.round}/${ev.max}: ${ev.approved ? "the reviewer approved" : `changes requested: ${ev.notes}`}` },
+        ],
+      };
+    case "notice":
+      return { ...state, items: [...state.items, { kind: "notice", level: "info", text: ev.text }] };
+    case "compacted":
+      return { ...state, items: [...state.items, { kind: "notice", level: "info", text: `Context compacted: about ${ev.before} to ${ev.after} tokens.` }] };
     case "file_changed": {
       const t = turnOf(state, ev.turn);
       return withTurn(state, { ...t, files: t.files.includes(ev.path) ? t.files : [...t.files, ev.path] });
@@ -191,6 +264,44 @@ function applyEvent(state: AgentState, ev: AgentEvent): AgentState {
       };
   }
 }
+
+// ─── resuming a saved session ─────────────────────────────────────────────────
+
+const TOOL_KINDS: Record<string, AgentToolKind> = {
+  list_dir: "read", read_file: "read", search: "read", get_diagnostics: "read",
+  edit_file: "edit", write_file: "edit", run_command: "run", write_plan: "plan", delegate: "agent",
+};
+
+/** Rebuild the transcript from the saved conversation (what resume shows). */
+export function itemsFromHistory(history: AgentMsg[]): Item[] {
+  const results = new Map<string, string>();
+  for (const m of history) if (m.role === "tool_result") results.set(m.id, m.content);
+  const items: Item[] = [];
+  for (const m of history) {
+    if (m.role === "user") {
+      items.push(m.text.startsWith("[Summary of the earlier conversation]")
+        ? { kind: "notice", level: "info", text: "Earlier turns were summarised to save context." }
+        : { kind: "user", text: m.text });
+    } else if (m.role === "assistant") {
+      if (m.text) items.push({ kind: "assistant", turn: 0, text: m.text });
+      for (const c of m.calls) {
+        const out = results.get(c.id);
+        items.push({
+          kind: "tool",
+          id: c.id,
+          name: c.name,
+          toolKind: TOOL_KINDS[c.name] ?? "read",
+          args: c.args,
+          status: out === undefined ? "ok" : /^(denied|unknown tool|missing)/.test(out) ? "error" : "ok",
+          output: out,
+        });
+      }
+    }
+  }
+  return items;
+}
+
+// ─── helpers ──────────────────────────────────────────────────────────────────
 
 /** Turns that still have changes the user has not accepted. */
 export function pendingReview(state: AgentState): TurnInfo[] {
@@ -219,4 +330,13 @@ export function relToRoot(root: string, uriPath: string): string | null {
   const p = norm(uriPath);
   if (p.toLowerCase().startsWith(r.toLowerCase() + "/")) return p.slice(r.length + 1);
   return null;
+}
+
+/** The last assistant message with text, for /copy. */
+export function lastReply(items: Item[]): string {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i];
+    if (it.kind === "assistant" && it.text.trim()) return it.text;
+  }
+  return "";
 }

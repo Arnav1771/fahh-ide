@@ -514,7 +514,7 @@ async fn run_child(ctx: &Arc<RunCtx>, parent: &Engine, depth: u8, def: AgentDef,
         Err(e) if e == "stopped" => (false, "the subagent was stopped by the user".to_string(), 0),
         Err(e) => (false, format!("the subagent failed: {e}"), 0),
     };
-    sink(AgentEvent::SubDone { turn: ctx.turn, child: id, ok, steps, summary: tools::truncate(&text, 400) });
+    sink(AgentEvent::SubDone { turn: ctx.turn, child: id, name: def.name.clone(), ok, steps, summary: tools::truncate(&text, 400) });
     (ok, text)
 }
 

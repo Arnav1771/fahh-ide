@@ -59,7 +59,7 @@ pub enum AgentEvent {
     SubStarted { turn: u32, child: String, name: String, task: String, model: Option<String>, mode: Mode },
     /// An event from inside a subagent, tagged with which one.
     Sub { turn: u32, child: String, name: String, event: Box<AgentEvent> },
-    SubDone { turn: u32, child: String, ok: bool, steps: u32, summary: String },
+    SubDone { turn: u32, child: String, name: String, ok: bool, steps: u32, summary: String },
     LoopRound { turn: u32, round: u32, max: u32, approved: bool, notes: String },
     Notice { turn: u32, text: String },
     Compacted { turn: u32, before: u64, after: u64 },

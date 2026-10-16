@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn bad_frontmatter_is_an_error() {
         assert!(parse_def("no frontmatter", "p").unwrap_err().contains("frontmatter"));
-        assert!(parse_def("---\nname: x\nbody", "p").unwrap_err().contains("not closed"));
+        assert!(parse_def("---\nname: x\nmode: plan\n", "p").unwrap_err().contains("not closed"));
         assert!(parse_def("---\ndescription: d\n---\n", "p").unwrap_err().contains("name"));
         assert!(parse_def("---\nname: x\nmode: godlike\n---\n", "p").unwrap_err().contains("mode"));
         assert!(parse_def("---\nname: x\nmax_steps: 500\n---\n", "p").unwrap_err().contains("max_steps"));
