@@ -32,7 +32,7 @@ pub async fn execute_command(
     }
 
     let mut child = if cfg!(target_os = "windows") {
-        std::process::Command::new("cmd")
+        crate::core::proc::cmd("cmd")
             .args(["/C", &command])
             .args(&args)
             .current_dir(&working_dir)
@@ -41,7 +41,7 @@ pub async fn execute_command(
             .spawn()
             .map_err(|e| e.to_string())?
     } else {
-        std::process::Command::new("sh")
+        crate::core::proc::cmd("sh")
             .arg("-c")
             .arg(format!("{} {}", command, args.join(" ")))
             .current_dir(&working_dir)

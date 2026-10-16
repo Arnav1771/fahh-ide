@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read, Write};
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::{Child, ChildStdin, Stdio};
 use std::sync::{Arc, Mutex};
 
 use tauri::{AppHandle, Emitter, State};
@@ -159,7 +159,7 @@ pub async fn lsp_start(
         ));
     }
 
-    let mut child = Command::new(&binary)
+    let mut child = crate::core::proc::cmd(&binary)
         .args(&args)
         .current_dir(&workspace)
         .stdin(Stdio::piped())
@@ -327,7 +327,7 @@ mod tests {
 
     #[test]
     fn a_server_that_dies_on_start_is_an_error_with_its_message() {
-        let mut child = Command::new("sh")
+        let mut child = crate::core::proc::cmd("sh")
             .args(["-c", "echo \"error: Unknown binary 'rust-analyzer'\" >&2; exit 1"])
             .stderr(Stdio::piped())
             .spawn()
@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn a_server_that_keeps_running_is_fine() {
-        let mut child = Command::new("sleep").arg("5").stderr(Stdio::piped()).spawn().unwrap();
+        let mut child = crate::core::proc::cmd("sleep").arg("5").stderr(Stdio::piped()).spawn().unwrap();
         let head = drain_stderr(child.stderr.take());
         assert!(exited_on_start(&mut child, &head, Duration::from_millis(300)).is_ok());
         let _ = child.kill();
