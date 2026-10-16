@@ -14,8 +14,8 @@ body,
   height: 100%;
   width: 100%;
   overflow: hidden;
-  background: #1e1e2e;
-  color: #cdd6f4;
+  background: var(--fahh-bg, #1e1e2e);
+  color: var(--fahh-text, #cdd6f4);
 }
 
 ::-webkit-scrollbar {
@@ -34,10 +34,6 @@ body,
 
 ::-webkit-scrollbar-thumb:hover {
   background: #45475a;
-}
-
-.monaco-editor {
-  --vscode-editor-background: #1e1e2e !important;
 }
 
 /* Drop-downs. WebKitGTK (the Linux build) draws a native <select> with the
