@@ -113,6 +113,8 @@ pub fn parse(args: &[String], cwd: &Path) -> Launch {
 
 /// The `fahh` shell command: start the editor detached, or hand `agent ...` to `fahh-agent`.
 pub fn shim_script(exe: &Path) -> String {
+    // the installer puts fahh-agent next to the editor, which is not where the shim lives
+    let exe_dir = exe.parent().map(|d| d.to_string_lossy().replace('\'', r"'\''")).unwrap_or_default();
     let exe = exe.to_string_lossy().replace('\'', r"'\''");
     format!(
         "#!/bin/sh\n\
@@ -121,6 +123,7 @@ pub fn shim_script(exe: &Path) -> String {
          \x20 shift\n\
          \x20 d=\"$(dirname \"$0\")\"\n\
          \x20 if [ -x \"$d/fahh-agent\" ]; then exec \"$d/fahh-agent\" \"$@\"; fi\n\
+         \x20 if [ -x '{exe_dir}/fahh-agent' ]; then exec '{exe_dir}/fahh-agent' \"$@\"; fi\n\
          \x20 if command -v fahh-agent >/dev/null 2>&1; then exec fahh-agent \"$@\"; fi\n\
          \x20 echo \"fahh: 'fahh-agent' is not installed\" >&2\n\
          \x20 exit 1\n\
