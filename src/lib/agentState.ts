@@ -17,6 +17,7 @@ export type Item =
       args: Record<string, unknown>;
       status: "running" | "ok" | "error";
       output?: string;
+      elapsedMs?: number;
     }
   | {
       kind: "approval";
@@ -170,7 +171,7 @@ function applyEvent(state: AgentState, ev: AgentEvent): AgentState {
         items: mapItem(
           state.items,
           (i) => i.kind === "tool" && i.id === ev.id,
-          (i) => ({ ...(i as ToolItem), status: ev.ok ? "ok" : "error", output: ev.output })
+          (i) => ({ ...(i as ToolItem), status: ev.ok ? "ok" : "error", output: ev.output, elapsedMs: ev.elapsed_ms })
         ),
       };
     case "file_changed": {
@@ -220,3 +221,35 @@ export function relToRoot(root: string, uriPath: string): string | null {
   if (p.toLowerCase().startsWith(r.toLowerCase() + "/")) return p.slice(r.length + 1);
   return null;
 }
+
+export type SlashCommand =
+  | { type: "plan"; prompt: string }
+  | { type: "auto"; prompt: string }
+  | { type: "ask"; prompt: string }
+  | { type: "undo" }
+  | { type: "clear" };
+
+/**
+ * Devin CLI-style slash commands:
+ * /plan <prompt> -> Plan mode
+ * /auto <prompt> -> Auto-edit mode
+ * /ask <prompt>  -> Ask mode
+ * /undo          -> Revert turn
+ * /clear         -> Reset / clear history
+ */
+export function parseSlashCommand(input: string): SlashCommand | null {
+  const trimmed = input.trim();
+  if (trimmed === "/undo") return { type: "undo" };
+  if (trimmed === "/clear") return { type: "clear" };
+  if (trimmed === "/plan" || trimmed.startsWith("/plan ") || trimmed.startsWith("/plan\n") || trimmed.startsWith("/plan\t")) {
+    return { type: "plan", prompt: trimmed.slice(5).trim() };
+  }
+  if (trimmed === "/auto" || trimmed.startsWith("/auto ") || trimmed.startsWith("/auto\n") || trimmed.startsWith("/auto\t")) {
+    return { type: "auto", prompt: trimmed.slice(5).trim() };
+  }
+  if (trimmed === "/ask" || trimmed.startsWith("/ask ") || trimmed.startsWith("/ask\n") || trimmed.startsWith("/ask\t")) {
+    return { type: "ask", prompt: trimmed.slice(4).trim() };
+  }
+  return null;
+}
+

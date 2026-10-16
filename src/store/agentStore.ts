@@ -18,6 +18,7 @@ import {
   errorsAdded,
   initialAgentState,
   joinRoot,
+  parseSlashCommand,
   samePath,
   type AgentAction,
   type AgentState,
@@ -106,6 +107,38 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   setMode: (mode) => get().updateSettings({ mode }),
 
   send: async (prompt, modeOverride) => {
+    const cmd = parseSlashCommand(prompt);
+    if (cmd) {
+      if (cmd.type === "clear") {
+        get().newChat();
+        return;
+      }
+      if (cmd.type === "undo") {
+        const turnNums = Object.keys(get().turns).map(Number).sort((a, b) => b - a);
+        const turnWithFiles = turnNums.find((t) => (get().turns[t]?.files.length ?? 0) > 0) ?? turnNums[0];
+        if (turnWithFiles !== undefined) {
+          await get().revertTurn(turnWithFiles);
+        }
+        return;
+      }
+      if (cmd.type === "plan") {
+        get().setMode("plan");
+        if (!cmd.prompt) return;
+        prompt = cmd.prompt;
+        modeOverride = "plan";
+      } else if (cmd.type === "auto") {
+        get().setMode("auto-edit");
+        if (!cmd.prompt) return;
+        prompt = cmd.prompt;
+        modeOverride = "auto-edit";
+      } else if (cmd.type === "ask") {
+        get().setMode("ask");
+        if (!cmd.prompt) return;
+        prompt = cmd.prompt;
+        modeOverride = "ask";
+      }
+    }
+
     const { settings, session, dispatch } = get();
     const root = useFileStore.getState().root;
     if (!root) {

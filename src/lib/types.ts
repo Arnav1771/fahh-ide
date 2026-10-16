@@ -245,7 +245,7 @@ export type AgentEvent =
       old_text: string | null;
       new_text: string | null;
     }
-  | { type: "tool_result"; turn: number; id: string; ok: boolean; output: string }
+  | { type: "tool_result"; turn: number; id: string; ok: boolean; output: string; elapsed_ms?: number }
   | { type: "file_changed"; turn: number; path: string }
   | { type: "plan_written"; turn: number; id: string; path: string; markdown: string }
   | { type: "done"; turn: number; steps: number; files: string[] }

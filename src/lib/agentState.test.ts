@@ -4,6 +4,7 @@ import {
   errorsAdded,
   initialAgentState,
   joinRoot,
+  parseSlashCommand,
   pendingReview,
   relToRoot,
   samePath,
@@ -51,12 +52,12 @@ describe("agentReducer", () => {
     expect(s.items.map((i) => i.kind)).toEqual(["assistant", "tool", "assistant"]);
   });
 
-  it("completes a tool card with its result", () => {
+  it("completes a tool card with its result and elapsedMs", () => {
     const s = run([
       ev({ type: "tool_call", turn: 1, id: "c1", name: "search", args: {}, kind: "read" }),
-      ev({ type: "tool_result", turn: 1, id: "c1", ok: false, output: "denied: nope" }),
+      ev({ type: "tool_result", turn: 1, id: "c1", ok: false, output: "denied: nope", elapsed_ms: 42 }),
     ]);
-    expect(s.items[0]).toMatchObject({ kind: "tool", status: "error", output: "denied: nope" });
+    expect(s.items[0]).toMatchObject({ kind: "tool", status: "error", output: "denied: nope", elapsedMs: 42 });
   });
 
   it("needs_input while an approval is pending, running again once answered", () => {
@@ -136,5 +137,52 @@ describe("helpers", () => {
     expect(samePath("C:\\Proj\\src\\a.ts", "c:/proj/src/a.ts")).toBe(true);
     expect(samePath("/a/b", "/a/c")).toBe(false);
     expect(joinRoot("C:\\proj\\", "src/a.ts")).toBe("C:\\proj/src/a.ts");
+  });
+});
+
+describe("parseSlashCommand", () => {
+  it("parses /plan with and without prompt", () => {
+    expect(parseSlashCommand("/plan Refactor auth module")).toEqual({
+      type: "plan",
+      prompt: "Refactor auth module",
+    });
+    expect(parseSlashCommand("/plan")).toEqual({
+      type: "plan",
+      prompt: "",
+    });
+  });
+
+  it("parses /auto with and without prompt", () => {
+    expect(parseSlashCommand("/auto Fix typing error in tab.ts")).toEqual({
+      type: "auto",
+      prompt: "Fix typing error in tab.ts",
+    });
+    expect(parseSlashCommand("/auto")).toEqual({
+      type: "auto",
+      prompt: "",
+    });
+  });
+
+  it("parses /ask with and without prompt", () => {
+    expect(parseSlashCommand("/ask What does this function do?")).toEqual({
+      type: "ask",
+      prompt: "What does this function do?",
+    });
+    expect(parseSlashCommand("/ask")).toEqual({
+      type: "ask",
+      prompt: "",
+    });
+  });
+
+  it("parses /undo and /clear", () => {
+    expect(parseSlashCommand("/undo")).toEqual({ type: "undo" });
+    expect(parseSlashCommand("/clear")).toEqual({ type: "clear" });
+  });
+
+  it("returns null for non-slash prompts or false prefixes", () => {
+    expect(parseSlashCommand("Hello local agent")).toBeNull();
+    expect(parseSlashCommand("/planning ahead")).toBeNull();
+    expect(parseSlashCommand("/automatic")).toBeNull();
+    expect(parseSlashCommand("/asking")).toBeNull();
   });
 });
