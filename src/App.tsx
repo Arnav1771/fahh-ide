@@ -3,7 +3,8 @@ import { FileTree } from "./components/FileTree/FileTree";
 import { TabBar } from "./components/Editor/TabBar";
 import { EditorPane } from "./components/Editor/EditorPane";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
-import { AIPanel } from "./components/AIPanel";
+import { AgentPanel } from "./components/AgentPanel";
+import { initAgentEvents, useAgentStore } from "./store/agentStore";
 import { GitSidebar } from "./components/GitSidebar";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
@@ -123,6 +124,9 @@ export default function App() {
     return () => teardownFahhSfx();
   }, []);
 
+  // Fahh Local: keep hearing the agent while its panel is hidden.
+  useEffect(() => initAgentEvents(), []);
+
   // Everything the palette (and the welcome screen) can do.
   const commands = useMemo<PaletteCommand[]>(() => {
     const view = (tab: SidebarTab) => () => setSidebarTab(tab);
@@ -139,7 +143,7 @@ export default function App() {
       { id: "view.explorer", group: "View", label: "Explorer", keywords: "files tree", run: view("files") },
       { id: "view.git", group: "View", label: "Source Control", keywords: "git branch commit", run: view("git") },
       { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
-      { id: "view.ai", group: "View", label: "AI Assistant", keywords: "chat llm ollama", run: view("ai") },
+      { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keywords: "agent chat llm ollama groq composer", run: view("ai") },
       { id: "view.extensions", group: "View", label: "Extensions", keywords: "plugins language packs", run: view("extensions") },
       { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
       { id: "panel.toggle", group: "View", label: "Toggle Panel", keys: ["Ctrl", "`"], keywords: "terminal bottom", run: () => setShowBottomPanel((v) => !v) },
@@ -299,10 +303,13 @@ export default function App() {
 
         <ActivityBtn
           active={sidebarTab === "ai"}
-          title="AI Assistant"
+          title="Fahh Local (AI agent)"
           onClick={() => setSidebarTab("ai")}
         >
-          <Bot size={18} />
+          <span className="relative">
+            <Bot size={18} />
+            <AgentStatusDot />
+          </span>
         </ActivityBtn>
 
         <ActivityBtn
@@ -335,7 +342,7 @@ export default function App() {
       </div>
 
       {/* ── Sidebar panel ── */}
-      <div className="w-60 shrink-0 flex flex-col border-r border-fahh-surface overflow-hidden">
+      <div className={`${sidebarTab === "ai" ? "w-80" : "w-60"} shrink-0 flex flex-col border-r border-fahh-surface overflow-hidden`}>
         {sidebarTab === "files" && <FileTree />}
 
         {sidebarTab === "git" && <GitSidebar />}
@@ -349,7 +356,7 @@ export default function App() {
           </div>
         )}
 
-        {sidebarTab === "ai" && <AIPanel />}
+        {sidebarTab === "ai" && <AgentPanel />}
 
         {sidebarTab === "theme" && (
           <div className="flex flex-col h-full overflow-y-auto bg-fahh-sidebar">
@@ -488,6 +495,18 @@ export default function App() {
         emptyText="Open a folder first: Ctrl+Shift+P, then “Open Folder…”."
       />
     </div>
+  );
+}
+
+/** Fahh Local state on the activity bar: pulses while working, solid when it needs you. */
+function AgentStatusDot() {
+  const status = useAgentStore((s) => s.status);
+  if (status !== "running" && status !== "needs_input") return null;
+  return (
+    <span
+      aria-label={status === "needs_input" ? "Fahh Local needs your approval" : "Fahh Local is working"}
+      className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${status === "needs_input" ? "bg-fahh-error" : "bg-fahh-accent animate-pulse"}`}
+    />
   );
 }
 
