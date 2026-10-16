@@ -14,13 +14,67 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::path::{Component, Path, PathBuf};
 
+/// Devin naming in brackets: Ask = Normal, AutoEdit = Accept Edits, Qa = the one-shot /ask.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "kebab-case")]
 pub enum Mode {
     #[default]
     Ask,
     AutoEdit,
+    /// Edits auto-approved; a fast judge model classifies each command.
+    Smart,
     Plan,
+    /// Every prompt auto-approved. Deny rules still apply.
+    Bypass,
+    /// Read-only Q&A (no commands, no plan files).
+    Qa,
+}
+
+impl Mode {
+    /// How much the mode may do; a child agent never gets a higher rank than its parent.
+    pub fn rank(self) -> u8 {
+        match self {
+            Mode::Qa => 0,
+            Mode::Plan => 1,
+            Mode::Ask => 2,
+            Mode::AutoEdit => 3,
+            Mode::Smart => 4,
+            Mode::Bypass => 5,
+        }
+    }
+
+    /// The lower-ranked of the two.
+    pub fn clamp_to(self, parent: Mode) -> Mode {
+        if self.rank() <= parent.rank() { self } else { parent }
+    }
+
+    pub fn read_only(self) -> bool {
+        matches!(self, Mode::Plan | Mode::Qa)
+    }
+
+    /// Accepts Devin names and aliases.
+    pub fn parse(name: &str) -> Option<Mode> {
+        Some(match name.trim().to_lowercase().as_str() {
+            "ask" | "normal" | "code" | "default" => Mode::Ask,
+            "auto-edit" | "accept-edits" | "acceptedits" | "edits" => Mode::AutoEdit,
+            "smart" => Mode::Smart,
+            "plan" => Mode::Plan,
+            "bypass" | "yolo" | "dangerous" => Mode::Bypass,
+            "qa" | "ask-only" | "readonly" | "read-only" => Mode::Qa,
+            _ => return None,
+        })
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Mode::Ask => "normal",
+            Mode::AutoEdit => "accept-edits",
+            Mode::Smart => "smart",
+            Mode::Plan => "plan",
+            Mode::Bypass => "bypass",
+            Mode::Qa => "ask (read-only)",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -30,6 +84,8 @@ pub enum Kind {
     Edit,
     Run,
     Plan,
+    /// Starting a subagent: always allowed; the child is clamped to the parent's mode.
+    Agent,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +109,8 @@ pub struct Rule {
 pub enum Verdict {
     Allow,
     Ask,
+    /// Smart mode: let the judge model classify the command; unsafe still asks.
+    Judge,
     Deny(String),
 }
 
@@ -177,7 +235,7 @@ impl Engine {
         if self.matching(Action::Deny, kind, target) {
             return Verdict::Deny(format!("denied by a rule in .fahh/permissions.json: {target}"));
         }
-        // 3. plan mode is read-only
+        // 3. read-only modes
         if self.mode == Mode::Plan {
             match kind {
                 Kind::Edit => return Verdict::Deny("plan mode is read-only; write a plan instead".into()),
@@ -186,6 +244,13 @@ impl Engine {
                 }
                 _ => {}
             }
+        }
+        if self.mode == Mode::Qa && matches!(kind, Kind::Edit | Kind::Run | Kind::Plan) {
+            return Verdict::Deny("ask mode is read-only Q&A: it can read and search, nothing else".into());
+        }
+        // bypass: every prompt is auto-approved, but the denies above already applied
+        if self.mode == Mode::Bypass {
+            return Verdict::Allow;
         }
         // 4. ask beats allow
         if self.matching(Action::Ask, kind, target) {
@@ -199,9 +264,10 @@ impl Engine {
         }
         // 5. defaults
         match kind {
-            Kind::Read | Kind::Plan => Verdict::Allow,
-            Kind::Edit if self.mode == Mode::AutoEdit => Verdict::Allow,
+            Kind::Read | Kind::Plan | Kind::Agent => Verdict::Allow,
+            Kind::Edit if matches!(self.mode, Mode::AutoEdit | Mode::Smart) => Verdict::Allow,
             Kind::Run if self.mode == Mode::Plan => Verdict::Allow, // read-only, checked above
+            Kind::Run if self.mode == Mode::Smart => Verdict::Judge,
             _ => Verdict::Ask,
         }
     }
@@ -254,6 +320,8 @@ pub fn save_always_allow(ws: &Workspace, kind: Kind, pattern: &str) -> Result<()
 #[derive(Debug, Clone)]
 pub struct Workspace {
     pub root: PathBuf,
+    /// Extra folders added with /add-dir; paths inside them are shown absolute.
+    pub extra: Vec<PathBuf>,
 }
 
 fn normalize(p: &Path) -> PathBuf {
@@ -276,7 +344,12 @@ impl Workspace {
         if !root.is_dir() {
             return Err("workspace is not a folder".into());
         }
-        Ok(Self { root })
+        Ok(Self { root, extra: vec![] })
+    }
+
+    /// The root (primary or extra) a canonical path lives under.
+    fn base_of(&self, p: &Path) -> Option<&PathBuf> {
+        std::iter::once(&self.root).chain(self.extra.iter()).find(|r| p.starts_with(r))
     }
 
     /// Resolve a model-supplied path to (absolute path, workspace-relative path with `/`).
@@ -305,14 +378,15 @@ impl Workspace {
         for n in rest.iter().rev() {
             real.push(n);
         }
-        if !real.starts_with(&self.root) {
+        let Some(base) = self.base_of(&real).cloned() else {
             return Err(format!("{input} is outside the workspace"));
-        }
+        };
 
         if write {
             // walk the non-canonical path below the root: no symlink may be crossed
-            let probe = abs.strip_prefix(&self.root).unwrap_or(&abs).to_path_buf();
-            let mut cur = if abs.starts_with(&self.root) { self.root.clone() } else { PathBuf::new() };
+            let lexical_base = std::iter::once(&self.root).chain(self.extra.iter()).find(|r| abs.starts_with(r)).cloned();
+            let probe = lexical_base.as_ref().map(|b| abs.strip_prefix(b).unwrap_or(&abs).to_path_buf()).unwrap_or_else(|| abs.clone());
+            let mut cur = lexical_base.unwrap_or_default();
             for c in probe.components() {
                 cur.push(c.as_os_str());
                 if let Ok(md) = std::fs::symlink_metadata(&cur) {
@@ -322,7 +396,11 @@ impl Workspace {
                 }
             }
         }
-        let rel = real.strip_prefix(&self.root).unwrap_or(&real).to_string_lossy().replace('\\', "/");
+        let rel = if base == self.root {
+            real.strip_prefix(&base).unwrap_or(&real).to_string_lossy().replace('\\', "/")
+        } else {
+            real.to_string_lossy().replace('\\', "/") // extra roots: absolute
+        };
         Ok((real, rel))
     }
 }
@@ -404,6 +482,59 @@ mod tests {
         assert_eq!(e.decide(Kind::Run, "git status"), Verdict::Allow);
         assert_eq!(e.decide(Kind::Read, "a.rs"), Verdict::Allow);
         assert_eq!(e.decide(Kind::Plan, "plan"), Verdict::Allow);
+    }
+
+    #[test]
+    fn mode_names_aliases_and_ranks() {
+        assert_eq!(Mode::parse("normal"), Some(Mode::Ask));
+        assert_eq!(Mode::parse("code"), Some(Mode::Ask));
+        assert_eq!(Mode::parse("Accept-Edits"), Some(Mode::AutoEdit));
+        assert_eq!(Mode::parse("yolo"), Some(Mode::Bypass));
+        assert_eq!(Mode::parse("dangerous"), Some(Mode::Bypass));
+        assert_eq!(Mode::parse("nope"), None);
+        // children never exceed the parent
+        assert_eq!(Mode::AutoEdit.clamp_to(Mode::Plan), Mode::Plan);
+        assert_eq!(Mode::Bypass.clamp_to(Mode::Ask), Mode::Ask);
+        assert_eq!(Mode::Plan.clamp_to(Mode::Bypass), Mode::Plan);
+        assert_eq!(Mode::Ask.clamp_to(Mode::Qa), Mode::Qa);
+    }
+
+    #[test]
+    fn qa_mode_is_read_only_and_smart_judges_commands() {
+        let q = engine(Mode::Qa, vec![rule(Action::Allow, Kind::Edit, "*"), rule(Action::Allow, Kind::Run, "*")]);
+        assert!(matches!(q.decide(Kind::Edit, "a.rs"), Verdict::Deny(_)));
+        assert!(matches!(q.decide(Kind::Run, "ls"), Verdict::Deny(_)));
+        assert!(matches!(q.decide(Kind::Plan, "plan"), Verdict::Deny(_)));
+        assert_eq!(q.decide(Kind::Read, "a.rs"), Verdict::Allow);
+        let s = engine(Mode::Smart, vec![rule(Action::Allow, Kind::Run, "make*")]);
+        assert_eq!(s.decide(Kind::Edit, "a.rs"), Verdict::Allow);
+        assert_eq!(s.decide(Kind::Run, "npm test"), Verdict::Judge);
+        assert_eq!(s.decide(Kind::Run, "make build"), Verdict::Allow);
+        assert!(matches!(s.decide(Kind::Run, "sudo x"), Verdict::Deny(_)));
+    }
+
+    #[test]
+    fn bypass_auto_approves_but_deny_rules_still_win() {
+        let b = engine(Mode::Bypass, vec![rule(Action::Deny, Kind::Run, "npm publish*"), rule(Action::Ask, Kind::Run, "git push*"), rule(Action::Deny, Kind::Edit, "secrets/*")]);
+        assert_eq!(b.decide(Kind::Run, "cargo build"), Verdict::Allow);
+        assert_eq!(b.decide(Kind::Run, "git push origin x"), Verdict::Allow); // ask rule is a prompt: auto-approved
+        assert_eq!(b.decide(Kind::Edit, "a.rs"), Verdict::Allow);
+        assert!(matches!(b.decide(Kind::Run, "npm publish"), Verdict::Deny(_)));
+        assert!(matches!(b.decide(Kind::Run, "sudo reboot"), Verdict::Deny(_)));
+        assert!(matches!(b.decide(Kind::Edit, "secrets/key"), Verdict::Deny(_)));
+        assert!(matches!(b.decide(Kind::Edit, ".git/config"), Verdict::Deny(_)));
+    }
+
+    #[test]
+    fn extra_roots_are_allowed_and_shown_absolute() {
+        let a = tempfile::tempdir().unwrap();
+        let b = tempfile::tempdir().unwrap();
+        std::fs::write(b.path().join("x.txt"), "x").unwrap();
+        let mut ws = Workspace::new(a.path().to_str().unwrap()).unwrap();
+        assert!(ws.resolve(b.path().join("x.txt").to_str().unwrap(), false).is_err());
+        ws.extra.push(std::fs::canonicalize(b.path()).unwrap());
+        let (abs, rel) = ws.resolve(b.path().join("x.txt").to_str().unwrap(), true).unwrap();
+        assert!(abs.ends_with("x.txt") && rel.ends_with("/x.txt"), "{rel}");
     }
 
     #[test]

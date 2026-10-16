@@ -19,7 +19,8 @@ fn run(dir: &std::path::Path, script: &std::path::Path, args: &[&str], stdin: &s
         .stderr(Stdio::piped())
         .spawn()
         .unwrap();
-    child.stdin.take().unwrap().write_all(stdin.as_bytes()).unwrap();
+    // the child may exit before reading (usage errors): a broken pipe is not a test failure
+    let _ = child.stdin.take().unwrap().write_all(stdin.as_bytes());
     let o = child.wait_with_output().unwrap();
     (o.status.code().unwrap_or(-1), String::from_utf8_lossy(&o.stdout).into(), String::from_utf8_lossy(&o.stderr).into())
 }

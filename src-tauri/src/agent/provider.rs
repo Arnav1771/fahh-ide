@@ -65,16 +65,44 @@ impl std::fmt::Debug for ProviderConfig {
     }
 }
 
-#[derive(Debug)]
+pub type ScriptFn = Box<dyn Fn(&str, &[Msg]) -> ModelTurn + Send + Sync>;
+
 pub enum Provider {
     Http(ProviderConfig),
     /// Pops one scripted turn per model call; used by tests and demos.
     Mock(Mutex<VecDeque<ModelTurn>>),
+    /// Answers from the system prompt and history: deterministic under concurrency (subagent tests).
+    Scripted(ScriptFn),
+}
+
+impl std::fmt::Debug for Provider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Provider::Http(c) => write!(f, "Http({c:?})"),
+            Provider::Mock(_) => write!(f, "Mock"),
+            Provider::Scripted(_) => write!(f, "Scripted"),
+        }
+    }
 }
 
 impl Provider {
     pub fn mock(turns: Vec<ModelTurn>) -> Self {
         Provider::Mock(Mutex::new(turns.into()))
+    }
+
+    pub fn model_name(&self) -> Option<&str> {
+        match self {
+            Provider::Http(c) => Some(&c.model),
+            _ => None,
+        }
+    }
+
+    /// Same provider with another model name (a subagent's `model:`). Mocks are shared as they are.
+    pub fn with_model(&self, model: &str) -> Option<Provider> {
+        match self {
+            Provider::Http(c) => Some(Provider::Http(ProviderConfig { model: model.into(), ..c.clone() })),
+            _ => None,
+        }
     }
 
     pub async fn complete(
@@ -88,6 +116,13 @@ impl Provider {
         match self {
             Provider::Mock(q) => {
                 let turn = q.lock().unwrap().pop_front().ok_or("mock provider has no more scripted turns")?;
+                if !turn.text.is_empty() {
+                    on_text(&turn.text);
+                }
+                Ok(turn)
+            }
+            Provider::Scripted(f) => {
+                let turn = f(system, history);
                 if !turn.text.is_empty() {
                     on_text(&turn.text);
                 }
