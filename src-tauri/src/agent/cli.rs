@@ -163,7 +163,10 @@ fn make_sink(s: Arc<Session>, out: Arc<Mutex<Outcome>>) -> Sink {
                 let _ = std::io::stdout().flush();
             }
             AgentEvent::ToolCall { name, args, .. } => println!("\n  > {name} {}", one_line(&args.to_string(), 100)),
-            AgentEvent::ToolResult { ok, output, .. } => println!("    {} {}", if *ok { "ok" } else { "failed:" }, if *ok { String::new() } else { one_line(output, 120) }),
+            AgentEvent::ToolResult { ok, output, elapsed_ms, .. } => {
+                let dur = elapsed_ms.map(|ms| format!(" ({ms}ms)")).unwrap_or_default();
+                println!("    {} {}{dur}", if *ok { "ok" } else { "failed:" }, if *ok { String::new() } else { one_line(output, 120) });
+            }
             AgentEvent::FileChanged { path, .. } => println!("    changed {path}"),
             AgentEvent::PlanWritten { path, .. } => {
                 println!("\n  plan written to {path}");

@@ -43,7 +43,14 @@ pub enum AgentEvent {
         old_text: Option<String>,
         new_text: Option<String>,
     },
-    ToolResult { turn: u32, id: String, ok: bool, output: String },
+    ToolResult {
+        turn: u32,
+        id: String,
+        ok: bool,
+        output: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        elapsed_ms: Option<u64>,
+    },
     FileChanged { turn: u32, path: String },
     PlanWritten { turn: u32, id: String, path: String, markdown: String },
     Done { turn: u32, steps: u32, files: Vec<String> },
@@ -228,12 +235,20 @@ pub async fn run_turn(s: &Arc<Session>, provider: &Provider, input: TurnInput, t
             return sink(AgentEvent::Done { turn, steps: step, files });
         }
         for call in reply.calls {
+            let start = std::time::Instant::now();
             let (ok, output) = if s.cancel.load(Ordering::Relaxed) {
                 (false, "cancelled by the user".to_string())
             } else {
                 run_call(s, &engine, turn, &call, sink).await
             };
-            sink(AgentEvent::ToolResult { turn, id: call.id.clone(), ok, output: tools::truncate(&output, 4_000) });
+            let elapsed_ms = Some(start.elapsed().as_millis() as u64);
+            sink(AgentEvent::ToolResult {
+                turn,
+                id: call.id.clone(),
+                ok,
+                output: tools::truncate(&output, 4_000),
+                elapsed_ms,
+            });
             s.history.lock().await.push(Msg::ToolResult { id: call.id, name: call.name, content: tools::truncate(&output, 30_000) });
         }
     }

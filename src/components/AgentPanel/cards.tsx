@@ -57,6 +57,15 @@ export function ToolCard({ item }: { item: Extract<Item, { kind: "tool" }> }) {
         <Icon size={12} className="shrink-0 text-fahh-muted" />
         <span className="font-mono text-fahh-text">{item.name}</span>
         <span className="truncate text-fahh-muted font-mono min-w-0 flex-1">{brief(item.args)}</span>
+        {item.elapsedMs !== undefined && (
+          <span
+            className="text-[10px] text-fahh-muted font-mono px-1 py-0.5 rounded bg-fahh-surface/60 shrink-0"
+            data-testid="tool-elapsed"
+            title={`Execution time: ${item.elapsedMs}ms`}
+          >
+            {item.elapsedMs < 1000 ? `${item.elapsedMs}ms` : `${(item.elapsedMs / 1000).toFixed(1)}s`}
+          </span>
+        )}
         {item.status === "running" && <Loader2 size={12} className="animate-spin text-fahh-muted" />}
         {item.status === "ok" && <Check size={12} className="text-green-400" />}
         {item.status === "error" && <CircleAlert size={12} className="text-fahh-error" />}

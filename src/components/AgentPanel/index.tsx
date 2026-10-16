@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { Bot, Plus, Send, Settings2, Square } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
-import { pendingReview } from "../../lib/agentState";
+import { parseSlashCommand, pendingReview } from "../../lib/agentState";
 import type { AgentMode } from "../../lib/types";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useAgentStore } from "../../store/agentStore";
@@ -22,6 +22,25 @@ const MODES: { id: AgentMode; label: string; hint: string }[] = [
   { id: "ask", label: "Ask", hint: "Asks before every edit and command" },
   { id: "auto-edit", label: "Auto-edit", hint: "Edits files freely; still asks before commands" },
   { id: "plan", label: "Plan", hint: "Read-only: researches and writes a plan first" },
+];
+
+const QUICK_ACTIONS = [
+  {
+    label: "Find Bugs",
+    prompt: "Analyze the open file and current diagnostics for any bugs, type errors, or syntax issues.",
+  },
+  {
+    label: "Generate Plan",
+    prompt: "/plan Research the open file and write a step-by-step implementation plan.",
+  },
+  {
+    label: "Add Tests",
+    prompt: "Write unit tests for the active file.",
+  },
+  {
+    label: "Explain Selection",
+    prompt: "Explain the selected code and its purpose in the architecture.",
+  },
 ];
 
 const field = "mt-0.5 w-full bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent";
@@ -98,9 +117,27 @@ export function AgentPanel() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [items, status]);
 
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && busy) {
+        e.preventDefault();
+        void store.stop();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [busy, store]);
+
   const send = () => {
     const text = input.trim();
-    if (!text || busy) return;
+    if (!text) return;
+    const cmd = parseSlashCommand(text);
+    if (cmd && (cmd.type === "clear" || cmd.type === "undo")) {
+      setInput("");
+      void store.send(text);
+      return;
+    }
+    if (busy) return;
     setInput("");
     void store.send(text);
   };
@@ -199,22 +236,45 @@ export function AgentPanel() {
         ))}
       </div>
 
-      <div className="p-2 border-t border-fahh-surface shrink-0">
+      <div className="p-2 border-t border-fahh-surface shrink-0 space-y-1.5">
+        <div className="flex items-center gap-1 overflow-x-auto pb-0.5" role="group" aria-label="Quick actions">
+          {QUICK_ACTIONS.map((action) => (
+            <button
+              key={action.label}
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                if (busy) return;
+                void store.send(action.prompt);
+              }}
+              title={action.prompt}
+              className="px-2 py-0.5 rounded-full text-[10px] bg-fahh-surface/80 hover:bg-fahh-accent/20 hover:text-fahh-text text-fahh-muted border border-fahh-surface transition-colors shrink-0 whitespace-nowrap disabled:opacity-40"
+              data-testid={`quick-action-${action.label.toLowerCase().replace(/\s+/g, "-")}`}
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Escape" && busy) {
+              e.preventDefault();
+              void store.stop();
+              return;
+            }
+            if ((e.key === "Enter" && (e.ctrlKey || e.metaKey)) || (e.key === "Enter" && !e.shiftKey)) {
               e.preventDefault();
               send();
             }
           }}
-          placeholder="Ask Fahh Local… (Enter to send)"
+          placeholder="Ask Fahh Local or /plan, /auto, /ask, /undo, /clear… (Ctrl+Enter to send)"
           rows={3}
           disabled={busy}
           className="w-full resize-none bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent disabled:opacity-60"
         />
-        <div className="flex gap-2 mt-1.5">
+        <div className="flex gap-2">
           <button
             onClick={send}
             disabled={busy || !input.trim()}
@@ -223,12 +283,12 @@ export function AgentPanel() {
             <Send size={12} /> Send
           </button>
           {busy && (
-            <button onClick={() => void store.stop()} title="Stop" className="px-2 py-1 rounded text-xs text-fahh-muted hover:text-fahh-error">
+            <button onClick={() => void store.stop()} title="Stop (Escape)" className="px-2 py-1 rounded text-xs text-fahh-muted hover:text-fahh-error">
               <Square size={12} />
             </button>
           )}
         </div>
-        <div className="mt-1 text-[10px] text-fahh-muted truncate">{settings.model || "no model"} · {turnsLabel(Object.keys(turns).length)}</div>
+        <div className="text-[10px] text-fahh-muted truncate">{settings.model || "no model"} · {turnsLabel(Object.keys(turns).length)}</div>
       </div>
     </div>
   );
