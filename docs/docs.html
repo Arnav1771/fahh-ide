@@ -81,6 +81,92 @@ nav {
 }
 .nav-btn:hover { border-color: var(--vl); background: rgba(124,58,237,.1); }
 
+/* ── Search Bar & Modal ── */
+.nav-search-btn {
+  display: flex; align-items: center; gap: 8px;
+  background: rgba(160,155,220,.08);
+  border: 1px solid var(--border-md);
+  border-radius: 8px;
+  color: var(--text-2);
+  padding: 6px 12px;
+  font-size: .82rem;
+  font-family: var(--body);
+  cursor: pointer;
+  transition: all .15s;
+  margin-right: 6px;
+}
+.nav-search-btn:hover {
+  background: rgba(160,155,220,.14);
+  color: var(--text);
+  border-color: var(--vl);
+}
+.nav-search-btn kbd {
+  background: rgba(5,5,16,.6);
+  border: 1px solid var(--border-md);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--code);
+  font-size: .7rem;
+  color: var(--text-3);
+}
+
+.search-modal-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(5,5,16,.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: none; align-items: flex-start; justify-content: center;
+  padding-top: 14vh;
+}
+.search-modal-backdrop.open { display: flex; }
+.search-modal {
+  width: 90%; max-width: 640px;
+  background: #0d0d22;
+  border: 1px solid rgba(167,139,250,.3);
+  box-shadow: 0 25px 60px -15px rgba(0,0,0,.8), 0 0 40px rgba(124,58,237,.2);
+  border-radius: 14px;
+  overflow: hidden;
+  animation: searchIn .15s ease-out;
+}
+@keyframes searchIn { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: scale(1); } }
+.search-input-wrap {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: #0a0a1c;
+}
+.search-input-wrap svg { color: var(--vl); flex-shrink: 0; }
+.search-input {
+  flex: 1; background: transparent; border: none; outline: none;
+  font-family: var(--body); font-size: 1rem; color: var(--text);
+}
+.search-input::placeholder { color: var(--text-3); }
+.search-results {
+  max-height: 380px; overflow-y: auto; padding: 10px;
+  display: flex; flex-direction: column; gap: 4px;
+}
+.search-result-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-radius: 8px;
+  color: var(--text); font-size: .88rem;
+  transition: background .12s; cursor: pointer; text-decoration: none;
+}
+.search-result-item:hover, .search-result-item.selected {
+  background: rgba(124,58,237,.2); color: #fff;
+}
+.search-item-badge {
+  font-family: var(--code); font-size: .68rem; padding: 2px 8px; border-radius: 999px;
+  background: rgba(255,255,255,.06); color: var(--vl); border: 1px solid rgba(167,139,250,.2);
+}
+.search-empty {
+  padding: 30px; text-align: center; color: var(--text-3); font-size: .88rem;
+}
+.search-footer {
+  padding: 10px 20px; background: #080818; border-top: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: .75rem; color: var(--text-3); font-family: var(--code);
+}
+
 /* ── Shell ────────────────────────────────────────────────────────────────── */
 .shell {
   display: flex;
@@ -354,6 +440,11 @@ td code { font-size: .78em; }
     <span class="nav-section">docs</span>
   </div>
   <div class="nav-right">
+    <button class="nav-search-btn" id="openSearchBtn">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <span>Search docs...</span>
+      <kbd>Ctrl K</kbd>
+    </button>
     <a href="index.html#fahh-section" class="nav-link">The Sound</a>
     <a href="index.html#features" class="nav-link">Features</a>
     <a href="https://github.com/Arnav1771/fahh-ide" target="_blank" class="nav-btn">⭐ GitHub</a>
@@ -369,6 +460,12 @@ td code { font-size: .78em; }
     <span class="sb-label">Overview</span>
     <a class="sb-link active" href="#intro">Introduction</a>
     <a class="sb-link" href="#quickstart">Quick start</a>
+  </div>
+  <div class="sb-group">
+    <span class="sb-label">Spatial & AI</span>
+    <a class="sb-link" href="#spatial-canvas">CATE Spatial Canvas</a>
+    <a class="sb-link" href="#inline-edit">Cursor Inline Edit (Ctrl+K)</a>
+    <a class="sb-link" href="#rea-analysis">REA Code Analysis</a>
   </div>
   <div class="sb-group">
     <span class="sb-label">Architecture</span>
@@ -491,6 +588,94 @@ pnpm build      # Production bundle to dist/</pre></div>
     <h2 class="doc-h2">Production build</h2>
     <div class="cb-wrap"><div class="cb-head"><span class="cb-lang">bash</span><button class="cb-copy" onclick="copy(this)">copy</button></div><pre>pnpm tauri build
 # Output in src-tauri/target/release/bundle/</pre></div>
+  </section>
+
+  <!-- SPATIAL CANVAS -->
+  <section class="doc-section" id="spatial-canvas">
+    <span class="section-tag">// spatial ide</span>
+    <h1 class="doc-h1">CATE Spatial Canvas</h1>
+    <p class="doc-lead">
+      An infinite 2D zoomable and pannable spatial environment inspired by <a href="https://cate.cero-ai.com/" target="_blank" style="color:var(--vl)">CATE</a>. Break free from rigid split-panes and arrange code, terminals, AI agents, dev browsers, and architectural sticky notes freely on an infinite canvas.
+    </p>
+
+    <h2 class="doc-h2">Key capabilities</h2>
+    <div class="mod-list">
+      <div class="mod-row"><span class="mod-name">Infinite 2D Navigation</span><span class="mod-desc">Smooth panning with middle-click/drag or trackpad, zoom levels from 35% to 200% with mouse wheel or HUD controls.</span></div>
+      <div class="mod-row"><span class="mod-name">Window Chrome</span><span class="mod-desc">macOS-inspired traffic lights (Close, Minimize to tray, Expand/Maximize), titlebar drag with zoom compensation, and corner resize.</span></div>
+      <div class="mod-row"><span class="mod-name">Monaco Code Nodes</span><span class="mod-desc">Full-featured floating Monaco editors with multi-tab switcher and breadcrumbs navigation.</span></div>
+      <div class="mod-row"><span class="mod-name">Interactive Terminals</span><span class="mod-desc">Multiple floating shells executing PowerShell, bash, or cmd with unbuffered output and Alt+V screenshot paste.</span></div>
+      <div class="mod-row"><span class="mod-name">Fahh Local AI Agent</span><span class="mod-desc">Floating AI assistant node with Ask, Auto-edit, and Plan modes, model switcher, and live code generation.</span></div>
+      <div class="mod-row"><span class="mod-name">Dev Browser Node</span><span class="mod-desc">Embedded live preview browser with address bar, reload, responsive viewport switches (Desktop, Tablet, Mobile), and external launcher.</span></div>
+      <div class="mod-row"><span class="mod-name">Architectural Sticky Notes</span><span class="mod-desc">Floating brainstorming and architecture scratchpads styled with the <code>Architects Daughter</code> cursive font and 4 pastel color swatches.</span></div>
+      <div class="mod-row"><span class="mod-name">Spatial HUD & Minimap</span><span class="mod-desc">Floating bottom pill for quick zoom/node creation and bottom-right radar minimap with viewport indicator and click-to-teleport.</span></div>
+    </div>
+
+    <h2 class="doc-h2">Keyboard shortcut</h2>
+    <div class="cb-wrap"><div class="cb-head"><span class="cb-lang">shortcuts</span><button class="cb-copy" onclick="copy(this)">copy</button></div><pre>Ctrl+Shift+C   <span class="cm"># Toggle between Docked IDE and CATE Spatial Canvas</span>
+Scroll / Wheel <span class="cm"># Zoom canvas in and out (35% - 200%)</span>
+Middle Drag    <span class="cm"># Pan canvas across 2D plane</span></pre></div>
+  </section>
+
+  <!-- INLINE EDIT -->
+  <section class="doc-section" id="inline-edit">
+    <span class="section-tag">// ai code editing</span>
+    <h1 class="doc-h1">Cursor Inline Edit (Ctrl+K)</h1>
+    <p class="doc-lead">
+      Edit code directly in place with Cursor-style floating inline prompts. No context switching to a side chat panel — highlight code, press <kbd>Ctrl+K</kbd>, and watch AI rewrite or generate code live.
+    </p>
+
+    <h2 class="doc-h2">Workflow</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <h4>Select code & press Ctrl+K</h4>
+          <p>Highlight the target lines or leave the cursor at any line in Monaco, then press <kbd>Ctrl+K</kbd>. A floating glassmorphic input appears right above the line.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <h4>Describe transformation</h4>
+          <p>Type your request or click quick prompts such as <em>"Add error handling"</em>, <em>"Refactor and simplify"</em>, or <em>"Generate docstrings"</em>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <h4>Review diff & accept</h4>
+          <p>Preview side-by-side or unified green/red diffs right in the editor. Press <kbd>Ctrl+Enter</kbd> to accept and merge changes, or <kbd>Esc</kbd> to discard.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- REA CODE ANALYSIS -->
+  <section class="doc-section" id="rea-analysis">
+    <span class="section-tag">// reverse engineering</span>
+    <h1 class="doc-h1">REA Code Analysis</h1>
+    <p class="doc-lead">
+      Deep reverse-engineering, AST symbol recovery, and binary inspection inspired by <a href="https://github.com/morluto/rea" target="_blank" style="color:var(--vl)">morluto/rea</a>. Inspect binary structures, extract strings with memory offsets, and navigate symbol graphs instantly.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Tool Mode</th><th>Engine</th><th>Capabilities</th></tr></thead>
+        <tbody>
+          <tr><td><strong>AST & Symbol Recovery</strong></td><td>Tree parser</td><td>Recovers function signatures, classes, interfaces, types, imports, and exports with exact line positions and symbol jumping.</td></tr>
+          <tr><td><strong>String Extractor</strong></td><td>GNU <code>strings</code> emulator</td><td>Extracts ASCII & UTF-8 printable strings, detects semantic categories (URLs, filesystem paths, identifiers, human text), and shows <code>0x000...</code> byte offsets.</td></tr>
+          <tr><td><strong>Hex Dump Inspector</strong></td><td>Binary visualizer</td><td>16-byte row hexadecimal representation, byte offsets, and side-by-side ASCII decode column for examining compiled artifacts or raw buffers.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="doc-h2">How to launch</h2>
+    <p class="doc-p">Access REA Code Analysis via:</p>
+    <ul style="color:var(--text-2);font-size:0.88rem;line-height:1.8;padding-left:20px;margin-bottom:20px;">
+      <li>Activity Bar: Click the <strong>CPU icon</strong> (REA Analysis tab).</li>
+      <li>Menu Bar: Navigate to <strong>View</strong> → <strong>REA Code Analysis</strong>.</li>
+      <li>Command Palette (<kbd>Ctrl+Shift+P</kbd>): Search for <code>view.rea</code> or <code>REA Analysis</code>.</li>
+    </ul>
   </section>
 
   <!-- ARCHITECTURE -->
@@ -838,6 +1023,25 @@ pnpm test      <span class="cm"># Vitest unit test suite</span></pre></div>
 </main>
 </div>
 
+<!-- Search Modal Backdrop -->
+<div class="search-modal-backdrop" id="searchBackdrop">
+  <div class="search-modal" role="dialog" aria-modal="true" aria-label="Search documentation">
+    <div class="search-input-wrap">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" id="searchInput" class="search-input" placeholder="Search documentation, modules, shortcuts..." autocomplete="off" />
+      <kbd style="font-size:0.7rem;padding:2px 6px;border-radius:4px;border:1px solid var(--border-md);color:var(--text-3);background:var(--bg-1)">ESC</kbd>
+    </div>
+    <div class="search-results" id="searchResults">
+      <!-- Populated dynamically -->
+    </div>
+    <div class="search-footer">
+      <span>Navigate <kbd>↑</kbd> <kbd>↓</kbd></span>
+      <span>Select <kbd>Enter</kbd></span>
+      <span>Close <kbd>ESC</kbd></span>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ── Sidebar active state on scroll ─────────────────────────────────────── */
 const links = document.querySelectorAll('.sb-link');
@@ -872,6 +1076,149 @@ function copy(btn) {
     setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 2000);
   });
 }
+
+/* ── Instant Docs Search (Ctrl+K) ─────────────────────────────────────────── */
+(function() {
+  const backdrop = document.getElementById('searchBackdrop');
+  const input = document.getElementById('searchInput');
+  const resultsContainer = document.getElementById('searchResults');
+  const openBtn = document.getElementById('openSearchBtn');
+
+  // Build searchable index from documentation sections
+  const index = [];
+  document.querySelectorAll('.doc-section').forEach(sec => {
+    const id = sec.id;
+    const tag = sec.querySelector('.section-tag')?.innerText.replace('//', '').trim() || 'docs';
+    const h1 = sec.querySelector('.doc-h1')?.innerText || '';
+    const lead = sec.querySelector('.doc-lead')?.innerText || '';
+
+    if (h1) {
+      index.push({ id, title: h1, category: tag, snippet: lead.slice(0, 100) });
+    }
+
+    sec.querySelectorAll('.doc-h2').forEach(h2 => {
+      index.push({ id, title: `${h1} › ${h2.innerText}`, category: tag, snippet: '' });
+    });
+
+    sec.querySelectorAll('.mod-row').forEach(row => {
+      const name = row.querySelector('.mod-name')?.innerText || '';
+      const desc = row.querySelector('.mod-desc')?.innerText || '';
+      if (name) {
+        index.push({ id, title: name, category: h1, snippet: desc.slice(0, 100) });
+      }
+    });
+  });
+
+  let selectedIndex = 0;
+  let currentResults = [];
+
+  function renderResults(query) {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      currentResults = index.slice(0, 8);
+    } else {
+      currentResults = index.filter(item => 
+        item.title.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        item.snippet.toLowerCase().includes(q)
+      ).slice(0, 12);
+    }
+
+    if (currentResults.length === 0) {
+      resultsContainer.innerHTML = `<div class="search-empty">No results found for "${query}"</div>`;
+      return;
+    }
+
+    selectedIndex = Math.min(selectedIndex, currentResults.length - 1);
+    selectedIndex = Math.max(0, selectedIndex);
+
+    resultsContainer.innerHTML = currentResults.map((item, idx) => `
+      <a href="#${item.id}" class="search-result-item ${idx === selectedIndex ? 'selected' : ''}" data-idx="${idx}">
+        <div style="overflow:hidden;text-overflow:ellipsis">
+          <div style="font-weight:600">${item.title}</div>
+          ${item.snippet ? `<div style="font-size:0.75rem;color:var(--text-3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.snippet}</div>` : ''}
+        </div>
+        <span class="search-item-badge">${item.category}</span>
+      </a>
+    `).join('');
+
+    resultsContainer.querySelectorAll('.search-result-item').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.preventDefault();
+        const targetId = el.getAttribute('href');
+        closeSearch();
+        const target = document.querySelector(targetId);
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      });
+    });
+  }
+
+  function openSearch() {
+    backdrop.classList.add('open');
+    input.value = '';
+    selectedIndex = 0;
+    renderResults('');
+    setTimeout(() => input.focus(), 50);
+  }
+
+  function closeSearch() {
+    backdrop.classList.remove('open');
+  }
+
+  if (openBtn) {
+    openBtn.addEventListener('click', openSearch);
+  }
+
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) closeSearch();
+  });
+
+  input.addEventListener('input', () => {
+    selectedIndex = 0;
+    renderResults(input.value);
+  });
+
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (currentResults.length > 0) {
+        selectedIndex = (selectedIndex + 1) % currentResults.length;
+        renderResults(input.value);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (currentResults.length > 0) {
+        selectedIndex = (selectedIndex - 1 + currentResults.length) % currentResults.length;
+        renderResults(input.value);
+      }
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (currentResults[selectedIndex]) {
+        const targetId = '#' + currentResults[selectedIndex].id;
+        closeSearch();
+        const target = document.querySelector(targetId);
+        if (target) target.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      if (backdrop.classList.contains('open')) {
+        closeSearch();
+      } else {
+        openSearch();
+      }
+    } else if (e.key === '/' && document.activeElement !== input && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      openSearch();
+    } else if (e.key === 'Escape' && backdrop.classList.contains('open')) {
+      e.preventDefault();
+      closeSearch();
+    }
+  });
+})();
 </script>
 </body>
 </html>

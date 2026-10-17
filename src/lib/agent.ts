@@ -35,16 +35,122 @@ export interface ProviderPreset {
   kind: AgentProviderKind;
   baseUrl: string;
   needsKey: boolean;
+  defaultModel: string;
+  popularModels: string[];
 }
 
 export const PROVIDER_PRESETS: ProviderPreset[] = [
-  { id: "groq", label: "Groq", kind: "openai", baseUrl: "https://api.groq.com/openai/v1", needsKey: true },
-  { id: "nvidia", label: "NVIDIA NIM", kind: "openai", baseUrl: "https://integrate.api.nvidia.com/v1", needsKey: true },
-  { id: "openrouter", label: "OpenRouter", kind: "openai", baseUrl: "https://openrouter.ai/api/v1", needsKey: true },
-  { id: "gemini", label: "Gemini", kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", needsKey: true },
-  { id: "ollama", label: "Ollama (local)", kind: "openai", baseUrl: "http://localhost:11434/v1", needsKey: false },
-  { id: "anthropic", label: "Anthropic", kind: "anthropic", baseUrl: "https://api.anthropic.com", needsKey: true },
-  { id: "custom", label: "Custom (OpenAI-compatible)", kind: "openai", baseUrl: "", needsKey: false },
+  {
+    id: "groq",
+    label: "Groq",
+    kind: "openai",
+    baseUrl: "https://api.groq.com/openai/v1",
+    needsKey: true,
+    defaultModel: "llama-3.3-70b-versatile",
+    popularModels: [
+      "llama-3.3-70b-versatile",
+      "deepseek-r1-distill-llama-70b",
+      "llama-3.1-8b-instant",
+      "mixtral-8x7b-32768",
+      "gemma2-9b-it",
+    ],
+  },
+  {
+    id: "openai",
+    label: "OpenAI",
+    kind: "openai",
+    baseUrl: "https://api.openai.com/v1",
+    needsKey: true,
+    defaultModel: "gpt-4o",
+    popularModels: [
+      "gpt-4o",
+      "gpt-4o-mini",
+      "o3-mini",
+      "o1",
+      "gpt-4-turbo",
+    ],
+  },
+  {
+    id: "anthropic",
+    label: "Anthropic",
+    kind: "anthropic",
+    baseUrl: "https://api.anthropic.com",
+    needsKey: true,
+    defaultModel: "claude-3-7-sonnet-latest",
+    popularModels: [
+      "claude-3-7-sonnet-latest",
+      "claude-3-5-sonnet-latest",
+      "claude-3-5-haiku-latest",
+      "claude-3-opus-latest",
+    ],
+  },
+  {
+    id: "ollama",
+    label: "Ollama (local)",
+    kind: "openai",
+    baseUrl: "http://localhost:11434/v1",
+    needsKey: false,
+    defaultModel: "llama3.2",
+    popularModels: [
+      "llama3.2",
+      "qwen2.5-coder:7b",
+      "deepseek-r1:8b",
+      "codellama",
+      "mistral",
+      "phi3",
+    ],
+  },
+  {
+    id: "openrouter",
+    label: "OpenRouter",
+    kind: "openai",
+    baseUrl: "https://openrouter.ai/api/v1",
+    needsKey: true,
+    defaultModel: "anthropic/claude-3.7-sonnet",
+    popularModels: [
+      "anthropic/claude-3.7-sonnet",
+      "deepseek/deepseek-r1",
+      "openai/gpt-4o",
+      "google/gemini-2.0-flash-exp:free",
+      "meta-llama/llama-3.3-70b-instruct",
+    ],
+  },
+  {
+    id: "gemini",
+    label: "Gemini",
+    kind: "openai",
+    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
+    needsKey: true,
+    defaultModel: "gemini-2.0-flash",
+    popularModels: [
+      "gemini-2.0-flash",
+      "gemini-2.0-pro-exp-02-05",
+      "gemini-1.5-pro",
+      "gemini-1.5-flash",
+    ],
+  },
+  {
+    id: "nvidia",
+    label: "NVIDIA NIM",
+    kind: "openai",
+    baseUrl: "https://integrate.api.nvidia.com/v1",
+    needsKey: true,
+    defaultModel: "meta/llama-3.3-70b-instruct",
+    popularModels: [
+      "meta/llama-3.3-70b-instruct",
+      "deepseek-ai/deepseek-r1",
+      "mistralai/mistral-large-2-instruct",
+    ],
+  },
+  {
+    id: "custom",
+    label: "Custom (OpenAI-compatible)",
+    kind: "openai",
+    baseUrl: "http://localhost:8000/v1",
+    needsKey: false,
+    defaultModel: "default",
+    popularModels: ["default", "local-model"],
+  },
 ];
 
 export interface AgentSettings {
@@ -82,10 +188,12 @@ export function parseAgentSettings(raw: string | null, legacy: string | null = n
   const cur = read(raw);
   if (cur) {
     const provider = PROVIDER_PRESETS.some((p) => p.id === cur.provider) ? (cur.provider as string) : "custom";
+    const preset = PROVIDER_PRESETS.find((p) => p.id === provider);
+    const model = str(cur.model, "") || preset?.defaultModel || "";
     return {
       provider,
-      baseUrl: str(cur.baseUrl, ""),
-      model: str(cur.model, ""),
+      baseUrl: str(cur.baseUrl, "") || preset?.baseUrl || "",
+      model,
       apiKey: str(cur.apiKey, ""),
       mode: MODES.includes(cur.mode as AgentMode) ? (cur.mode as AgentMode) : "ask",
     };

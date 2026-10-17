@@ -51,7 +51,8 @@ export type ThemeId =
   | "fahh-light"
   | "github-dark"
   | "dracula"
-  | "solarized-dark";
+  | "solarized-dark"
+  | "cate-obsidian";
 
 export interface RunConfig {
   /** Absolute path to the file to execute */

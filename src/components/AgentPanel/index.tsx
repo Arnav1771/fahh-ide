@@ -8,7 +8,7 @@
  * backend only for the request; nothing is written into the project.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Plus, Send, Settings2, Square } from "lucide-react";
+import { Bot, Plus, Send, Settings2, Square, X } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
 import { parseSlashCommand, pendingReview } from "../../lib/agentState";
@@ -57,15 +57,43 @@ const field = "mt-0.5 w-full bg-fahh-bg border border-fahh-surface rounded px-2 
 
 function Settings({ onDone }: { onDone: () => void }) {
   const { settings, updateSettings } = useAgentStore();
-  const [models, setModels] = useState<string[]>([]);
+  const currentPreset = PROVIDER_PRESETS.find((x) => x.id === settings.provider) || PROVIDER_PRESETS[0];
+  const [models, setModels] = useState<string[]>(currentPreset.popularModels || []);
   const [modelsMsg, setModelsMsg] = useState<string | null>(null);
+
+  // Auto-detect local Ollama models when Ollama is selected
+  useEffect(() => {
+    if (settings.provider === "ollama") {
+      fetch("http://localhost:11434/api/tags")
+        .then((r) => r.json())
+        .then((data) => {
+          if (data && Array.isArray(data.models)) {
+            const names = data.models.map((m: any) => m.name);
+            if (names.length > 0) {
+              setModels(names);
+              setModelsMsg(`${names.length} local Ollama models detected`);
+            }
+          }
+        })
+        .catch(() => {
+          // Ollama not responding
+        });
+    }
+  }, [settings.provider]);
+
   const pick = (id: string) => {
     const p = PROVIDER_PRESETS.find((x) => x.id === id);
-    // no default model: models come and go, so the picker asks the provider
-    if (p) updateSettings({ provider: id, baseUrl: p.baseUrl || settings.baseUrl, model: "" });
-    setModels([]);
+    if (p) {
+      updateSettings({
+        provider: id,
+        baseUrl: p.baseUrl || settings.baseUrl,
+        model: p.defaultModel,
+      });
+      setModels(p.popularModels || []);
+    }
     setModelsMsg(null);
   };
+
   const loadModels = async () => {
     setModelsMsg("Loading…");
     try {
@@ -76,6 +104,7 @@ function Settings({ onDone }: { onDone: () => void }) {
       setModelsMsg(String(e));
     }
   };
+
   return (
     <div className="p-2 space-y-2 border-b border-fahh-surface text-xs" data-testid="agent-settings">
       <label className="block">
@@ -90,15 +119,38 @@ function Settings({ onDone }: { onDone: () => void }) {
         <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Base URL</span>
         <input value={settings.baseUrl} onChange={(e) => updateSettings({ baseUrl: e.target.value })} spellCheck={false} className={field} />
       </label>
-      <label className="block">
-        <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Model</span>
+      <div className="space-y-1">
+        <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Model Selection</span>
+        <select
+          value={models.includes(settings.model) ? settings.model : "custom"}
+          onChange={(e) => {
+            if (e.target.value !== "custom") {
+              updateSettings({ model: e.target.value });
+            }
+          }}
+          className={field}
+        >
+          {models.map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+          <option value="custom">Custom model name…</option>
+        </select>
         <div className="flex gap-1">
-          <input list="agent-models" value={settings.model} onChange={(e) => updateSettings({ model: e.target.value })} placeholder="pick one, or type a name" spellCheck={false} className={field} />
-          <button type="button" onClick={() => void loadModels()} className="mt-0.5 px-2 rounded bg-fahh-surface text-fahh-text hover:bg-fahh-accent/30 shrink-0">Load</button>
+          <input
+            list="agent-models"
+            value={settings.model}
+            onChange={(e) => updateSettings({ model: e.target.value })}
+            placeholder="pick one above or type name"
+            spellCheck={false}
+            className={field}
+          />
+          <button type="button" onClick={() => void loadModels()} className="mt-0.5 px-2 rounded bg-fahh-surface text-fahh-text hover:bg-fahh-accent/30 shrink-0">
+            Refresh
+          </button>
         </div>
         <datalist id="agent-models">{models.map((m) => <option key={m} value={m} />)}</datalist>
         {modelsMsg && <span className="block mt-0.5 text-[10px] text-fahh-muted break-words" data-testid="models-msg">{modelsMsg}</span>}
-      </label>
+      </div>
       <label className="block">
         <span className="text-[10px] uppercase tracking-wider text-fahh-muted">API key</span>
         <input type="password" value={settings.apiKey} onChange={(e) => updateSettings({ apiKey: e.target.value })} placeholder="not needed for local Ollama" spellCheck={false} className={field} />
@@ -106,7 +158,7 @@ function Settings({ onDone }: { onDone: () => void }) {
       <p className="text-[10px] text-fahh-muted opacity-70 leading-relaxed">
         The key stays in this machine&apos;s localStorage and is sent only to the provider above. It is never written into your project.
       </p>
-      <button onClick={onDone} className="w-full py-1 rounded text-xs bg-fahh-accent/90 text-white hover:bg-fahh-accent">Done</button>
+      <button onClick={onDone} className="w-full py-1 rounded text-xs bg-fahh-accent/90 text-white hover:bg-fahh-accent font-medium">Done</button>
     </div>
   );
 }
@@ -143,6 +195,43 @@ export function AgentPanel() {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
   }, [items, status]);
+
+  const [pastedImage, setPastedImage] = useState<{ name: string; size: number; preview: string } | null>(null);
+
+  // Alt+V image paste listener for AI prompt (Claude Code style)
+  useEffect(() => {
+    const handleGlobalAltV = async (e: KeyboardEvent) => {
+      if (e.altKey && e.key.toLowerCase() === "v") {
+        e.preventDefault();
+        try {
+          const clipItems = await navigator.clipboard.read();
+          for (const item of clipItems) {
+            const imgType = item.types.find((t) => t.startsWith("image/"));
+            if (imgType) {
+              const blob = await item.getType(imgType);
+              const reader = new FileReader();
+              reader.onload = () => {
+                const imgName = `pasted_${Date.now()}.png`;
+                setPastedImage({
+                  name: imgName,
+                  size: blob.size,
+                  preview: reader.result as string,
+                });
+                setInput((prev) => (prev ? `${prev}\n[Image: ${imgName} attached]` : `[Image: ${imgName} attached]`));
+                inputRef.current?.focus();
+              };
+              reader.readAsDataURL(blob);
+              break;
+            }
+          }
+        } catch {
+          // Plain clipboard text or permission denied
+        }
+      }
+    };
+    window.addEventListener("keydown", handleGlobalAltV);
+    return () => window.removeEventListener("keydown", handleGlobalAltV);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -185,6 +274,19 @@ export function AgentPanel() {
           {status === "running" ? "working…" : status === "needs_input" ? "needs your OK" : status === "done" ? "done" : status === "error" ? "error" : ""}
         </span>
         <div className="flex-1" />
+        <select
+          value={settings.model}
+          onChange={(e) => store.updateSettings({ model: e.target.value })}
+          className="text-[10px] bg-fahh-bg border border-fahh-surface rounded px-1.5 py-0.5 text-fahh-accent max-w-[125px] truncate focus:outline-none"
+          title={`Active model: ${settings.model} (${settings.provider})`}
+        >
+          {(PROVIDER_PRESETS.find((p) => p.id === settings.provider)?.popularModels || [settings.model]).map((m) => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+          {settings.model && !PROVIDER_PRESETS.find((p) => p.id === settings.provider)?.popularModels?.includes(settings.model) && (
+            <option value={settings.model}>{settings.model}</option>
+          )}
+        </select>
         <button onClick={store.newChat} title="New chat" className="text-fahh-muted hover:text-fahh-text"><Plus size={14} /></button>
         <button onClick={() => setShowSettings((s) => !s)} title="Provider and model" className={showSettings ? "text-fahh-accent" : "text-fahh-muted hover:text-fahh-text"}>
           <Settings2 size={13} />
@@ -316,10 +418,53 @@ export function AgentPanel() {
             ))}
           </div>
         )}
+        {pastedImage && (
+          <div className="mb-2 px-2 py-1 rounded bg-fahh-surface border border-fahh-accent/40 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <img src={pastedImage.preview} alt="" className="w-5 h-5 rounded object-cover shrink-0" />
+              <span className="text-[10.5px] text-fahh-text truncate font-sans">{pastedImage.name}</span>
+              <span className="text-[9px] text-fahh-muted">({(pastedImage.size / 1024).toFixed(1)} KB)</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPastedImage(null);
+                setInput((prev) => prev.replace(/\[Image:.*?\]/g, "").trim());
+              }}
+              className="text-fahh-muted hover:text-fahh-error p-0.5"
+            >
+              <X size={11} />
+            </button>
+          </div>
+        )}
         <textarea
           ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onPaste={(e) => {
+            const items = e.clipboardData?.items;
+            if (!items) return;
+            for (let i = 0; i < items.length; i++) {
+              if (items[i].type.startsWith("image/")) {
+                e.preventDefault();
+                const file = items[i].getAsFile();
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const imgName = file.name || `image_${Date.now()}.png`;
+                    setPastedImage({
+                      name: imgName,
+                      size: file.size,
+                      preview: reader.result as string,
+                    });
+                    setInput((prev) => (prev ? `${prev}\n[Image: ${imgName} attached]` : `[Image: ${imgName} attached]`));
+                  };
+                  reader.readAsDataURL(file);
+                }
+                break;
+              }
+            }
+          }}
           onKeyDown={(e) => {
             if (e.key === "Escape" && busy) {
               e.preventDefault();
@@ -331,7 +476,7 @@ export function AgentPanel() {
               send();
             }
           }}
-          placeholder="Ask Fahh Local or /plan, /auto, /ask, /undo, /clear… (Ctrl+Enter to send)"
+          placeholder="Ask Fahh Local or /plan, /auto, /ask… (Alt+V to paste image)"
           rows={3}
           disabled={busy}
           className="w-full resize-none bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent disabled:opacity-60"

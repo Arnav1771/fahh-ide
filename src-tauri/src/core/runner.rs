@@ -103,11 +103,10 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> R
 
     let mut cmd = match language {
         "python" => {
-            // Prefer python3 if available, fall back to python.
-            let python = if which_exists("python3") { "python3" } else { "python" };
-            let mut args = vec![file_str];
+            let python = resolve_python();
+            let mut args = vec!["-u".to_string(), file_str];
             args.extend_from_slice(user_args);
-            RunCommand { program: python.to_string(), args }
+            RunCommand { program: python, args }
         }
         "javascript" => {
             let mut args = vec![file_str];
@@ -273,6 +272,34 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> R
         }
     };
     Ok(cmd)
+}
+
+/// Resolves the real Python executable, avoiding dummy WindowsApps stubs on Windows.
+fn resolve_python() -> String {
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(p) = which::which("python") {
+            let s = p.to_string_lossy();
+            if !s.contains("WindowsApps") {
+                return "python".to_string();
+            }
+        }
+        if let Ok(p) = which::which("py") {
+            let s = p.to_string_lossy();
+            if !s.contains("WindowsApps") {
+                return "py".to_string();
+            }
+        }
+        "python".to_string()
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        if which_exists("python3") {
+            "python3".to_string()
+        } else {
+            "python".to_string()
+        }
+    }
 }
 
 /// Returns true if a given program name exists on PATH.

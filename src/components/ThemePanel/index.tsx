@@ -131,12 +131,63 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
     },
     swatches: ["#002b36", "#073642", "#073642", "#268bd2"],
   },
+  {
+    id: "cate-obsidian",
+    name: "CATE Spatial",
+    monacoTheme: "cate-obsidian",
+    description: "Deep obsidian warm black and bone text from CATE (cate.cero-ai.com).",
+    cssVars: {
+      "--fahh-bg": "#141311",
+      "--fahh-sidebar": "#161513",
+      "--fahh-surface": "#1a1917",
+      "--fahh-accent": "#4a9eff",
+      "--fahh-text": "#e8e6e3",
+      "--fahh-muted": "#8a8780",
+      "--fahh-error": "#ff5f56",
+      "--fahh-warn": "#ffbd2e",
+      "--fahh-success": "#27c93f",
+      "--fahh-info": "#4a9eff",
+    },
+    swatches: ["#141311", "#161513", "#1a1917", "#4a9eff"],
+  },
 ];
 
 // ─── Monaco custom theme registration ────────────────────────────────────────
 // Call once after Monaco is ready. Registers fahh-* theme IDs so setTheme() works.
 
 export function defineMonacoThemes(monaco: Monaco): void {
+  monaco.editor.defineTheme("cate-obsidian", {
+    base: "vs-dark",
+    inherit: true,
+    rules: [
+      { token: "keyword", foreground: "4a9eff" },
+      { token: "string", foreground: "e0a96d" },
+      { token: "comment", foreground: "6b6762", fontStyle: "italic" },
+      { token: "number", foreground: "ff9f0a" },
+      { token: "type", foreground: "4dd964" },
+      { token: "function", foreground: "e8e6e3" },
+      { token: "variable", foreground: "e8e6e3" },
+      { token: "operator", foreground: "a8a49e" },
+      { token: "delimiter", foreground: "6b6762" },
+    ],
+    colors: {
+      "editor.background": "#141311",
+      "editor.foreground": "#e8e6e3",
+      "editorLineNumber.foreground": "#423e3b",
+      "editorLineNumber.activeForeground": "#8a8780",
+      "editor.selectionBackground": "#4a9eff33",
+      "editor.lineHighlightBackground": "#1a1917",
+      "editorCursor.foreground": "#4a9eff",
+      "editorIndentGuide.background": "#1f1e1c",
+      "editorIndentGuide.activeBackground": "#2d2c2a",
+      "editorGutter.background": "#141311",
+      "editorError.foreground": "#ff5f56",
+      "editorWarning.foreground": "#ffbd2e",
+      "scrollbarSlider.background": "#26252388",
+      "scrollbarSlider.hoverBackground": "#4a9eff44",
+      "minimap.background": "#141311",
+    },
+  });
   monaco.editor.defineTheme("fahh-gold", {
     base: "vs-dark", inherit: true,
     rules: [

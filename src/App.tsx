@@ -39,7 +39,17 @@ import { openBrowser } from "./lib/browser";
 import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
-import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe } from "lucide-react";
+import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe, Cpu } from "lucide-react";
+import { MenuBar } from "./components/MenuBar";
+import { Breadcrumbs } from "./components/Breadcrumbs";
+import { ProblemsPanel } from "./components/ProblemsPanel";
+import { OutputPanel } from "./components/OutputPanel";
+import { PortsPanel } from "./components/PortsPanel";
+import { useDiagnosticsStore, type DiagnosticItem } from "./store/diagnosticsStore";
+import { SpatialCanvas } from "./components/SpatialCanvas";
+import { useSpatialStore } from "./store/spatialStore";
+import { ReaAnalysisPanel } from "./components/ReaAnalysis";
+import { InlineEdit } from "./components/InlineEdit";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -49,8 +59,8 @@ const BOTTOM = { key: "fahh-bottom-h", def: 208, min: 80 };
 /** Leave room for the editor: the bottom panel may take at most the window minus 220px. */
 const bottomMax = () => (typeof window === "undefined" ? 600 : Math.max(BOTTOM.min, window.innerHeight - 220));
 
-type SidebarTab = "files" | "git" | "ai" | "extensions" | "debug" | "theme";
-type BottomTab = "terminal" | "run" | "debug";
+export type SidebarTab = "files" | "git" | "ai" | "extensions" | "debug" | "theme" | "rea";
+export type BottomTab = "terminal" | "run" | "debug" | "problems" | "output" | "ports";
 
 // ─── Activity bar button ──────────────────────────────────────────────────────
 
@@ -121,10 +131,14 @@ export default function App() {
   useEffect(() => saveSize(SIDEBAR.key, sidebarW, store()), [sidebarW]);
   useEffect(() => saveSize(BOTTOM.key, bottomH, store()), [bottomH]);
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
+  const diagnostics = useDiagnosticsStore((s) => s.diagnostics);
+  const problemErrors = useMemo(() => diagnostics.filter((d: DiagnosticItem) => d.severity === "error").length, [diagnostics]);
+  const isSpatialMode = useSpatialStore((s) => s.isSpatialMode);
 
   const { activeTheme, setTheme } = useThemeStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [showInlineEdit, setShowInlineEdit] = useState(false);
   const tree = useFileStore((s) => s.tree);
   const { openFileInEditor, openFolder } = useWorkspace();
   const editorRegionRef = useRef<HTMLDivElement>(null);
@@ -180,19 +194,39 @@ export default function App() {
     };
     const intensity = (i: Intensity) => () => useFahhStore.getState().setIntensity(i);
     return [
-      { id: "folder.open", group: "File", label: "Open Folder…", keywords: "workspace project", run: () => {
+      { id: "folder.open", group: "File", label: "Open Folder…", keys: ["Ctrl", "O"], keywords: "workspace project", run: () => {
         setSidebarTab("files");
         window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
       } },
-      { id: "view.explorer", group: "View", label: "Explorer", keywords: "files tree", run: view("files") },
-      { id: "view.git", group: "View", label: "Source Control", keywords: "git branch commit", run: view("git") },
+      { id: "file.save", group: "File", label: "Save File", keys: ["Ctrl", "S"], keywords: "save write disk", run: () => void saveActive() },
+      { id: "file.closeTab", group: "File", label: "Close Active Tab", keys: ["Ctrl", "W"], keywords: "close tab window", run: () => {
+        const tab = useEditorStore.getState().activeTab;
+        if (tab) useEditorStore.getState().closeTab(tab);
+      } },
+      { id: "edit.undo", group: "Edit", label: "Undo", keys: ["Ctrl", "Z"], keywords: "revert", run: () => runEditorAction("undo") },
+      { id: "edit.redo", group: "Edit", label: "Redo", keys: ["Ctrl", "Y"], keywords: "repeat", run: () => runEditorAction("redo") },
+      { id: "edit.find", group: "Edit", label: "Find in File", keys: ["Ctrl", "F"], keywords: "search text", run: () => runEditorAction("actions.find") },
+      { id: "edit.replace", group: "Edit", label: "Replace in File", keys: ["Ctrl", "H"], keywords: "substitute", run: () => runEditorAction("editor.action.startFindReplaceAction") },
+      { id: "edit.format", group: "Edit", label: "Format Document", keys: ["Shift", "Alt", "F"], keywords: "prettier formatting indent", run: () => runEditorAction("editor.action.formatDocument") },
+      { id: "selection.all", group: "Selection", label: "Select All", keys: ["Ctrl", "A"], keywords: "everything", run: () => runEditorAction("editor.action.selectAll") },
+      { id: "view.explorer", group: "View", label: "Explorer", keys: ["Ctrl", "Shift", "E"], keywords: "files tree", run: view("files") },
+      { id: "view.git", group: "View", label: "Source Control", keys: ["Ctrl", "Shift", "G"], keywords: "git branch commit", run: view("git") },
       { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
       { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keys: ["Ctrl", "L"], keywords: "agent chat llm ollama groq composer devin cursor", run: view("ai") },
-      { id: "view.extensions", group: "View", label: "Extensions", keywords: "plugins language packs", run: view("extensions") },
+      { id: "view.extensions", group: "View", label: "Extensions (Marketplace)", keys: ["Ctrl", "Shift", "X"], keywords: "plugins language packs marketplace open vsx", run: view("extensions") },
       { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
+      { id: "view.wordwrap", group: "View", label: "Toggle Word Wrap", keys: ["Alt", "Z"], keywords: "wrap lines soft", run: () => runEditorAction("editor.action.toggleWordWrap") },
       { id: "panel.toggle", group: "View", label: "Toggle Panel", keys: ["Ctrl", "`"], keywords: "terminal bottom", run: () => setShowBottomPanel((v) => !v) },
-      { id: "panel.terminal", group: "View", label: "Terminal", keywords: "shell console", run: bottom("terminal") },
-      { id: "panel.run", group: "Run", label: "Run Panel", keywords: "execute active file", run: bottom("run") },
+      { id: "panel.problems", group: "View", label: "Problems", keywords: "errors diagnostics warnings lsp", run: bottom("problems") },
+      { id: "panel.output", group: "View", label: "Output", keywords: "logs console tasks server background", run: bottom("output") },
+      { id: "panel.debug", group: "View", label: "Debug Console", keywords: "eval debugger console", run: bottom("debug") },
+      { id: "panel.terminal", group: "View", label: "Terminal", keywords: "shell console powershell bash", run: bottom("terminal") },
+      { id: "panel.ports", group: "View", label: "Ports", keywords: "localhost server forwarded ports 8888 5173", run: bottom("ports") },
+      { id: "panel.run", group: "Run", label: "Run Panel", keywords: "execute active file runner", run: bottom("run") },
+      { id: "run.active", group: "Run", label: "Run Active File", keys: ["F5"], keywords: "execute script python node rust", run: () => {
+        setBottomTab("run");
+        setShowBottomPanel(true);
+      } },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
       ...THEME_DEFINITIONS.map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
@@ -220,6 +254,9 @@ export default function App() {
         const typed = window.prompt("Open in the built-in browser (a port like 5173, or a URL):", suggested);
         if (typed && typed.trim()) openBrowser(typed);
       } },
+      { id: "view.spatial", group: "View", label: "Toggle Spatial Canvas Mode (CATE)", keys: ["Ctrl", "Shift", "C"], keywords: "cate canvas spatial zoom infinite figma floating windows", run: () => useSpatialStore.getState().toggleSpatialMode() },
+      { id: "edit.inline", group: "Edit", label: "Inline Edit (Cursor Ctrl+K)", keys: ["Ctrl", "K"], keywords: "inline edit cursor ai generate refactor", run: () => setShowInlineEdit(true) },
+      { id: "view.rea", group: "View", label: "REA Code Analysis (Reverse Engineering & AST)", keywords: "rea reverse engineering bytecode strings hex ast symbols", run: () => setSidebarTab("rea") },
     ];
   }, [setTheme]);
 
@@ -346,18 +383,47 @@ export default function App() {
         e.preventDefault();
         setShowBottomPanel((prev) => !prev);
       }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K") && !e.shiftKey) {
+        e.preventDefault();
+        setShowInlineEdit((prev) => !prev);
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-fahh-bg text-fahh-text">
-      {/* Non-rendering LSP bridge */}
-      <LspBridge />
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-fahh-bg text-fahh-text select-none">
+      {/* ── Native Menu Bar ── */}
+      <MenuBar
+        onOpenPalette={() => setPaletteOpen(true)}
+        onOpenQuickOpen={() => setQuickOpen(true)}
+        onToggleSidebar={() => setSidebarTab((s) => (s === "files" ? "ai" : "files"))}
+        onToggleBottomPanel={() => setShowBottomPanel((p) => !p)}
+        onSetSidebarTab={(tab) => setSidebarTab(tab)}
+        onSetBottomTab={(tab) => {
+          setBottomTab(tab);
+          setShowBottomPanel(true);
+        }}
+        onSaveActive={() => void saveActive()}
+        onShowWelcome={() => setShowWelcome(true)}
+        onShowInstaller={() => setShowInstaller(true)}
+      />
 
-      {/* ── Activity bar ── */}
-      <div className="w-10 shrink-0 flex flex-col items-center gap-1 pt-2 bg-fahh-sidebar border-r border-fahh-surface">
+      {/* ── Spatial Canvas Mode (CATE) vs Docked Workspace Area ── */}
+      {isSpatialMode ? (
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          <LspBridge />
+          <SpatialCanvas />
+        </div>
+      ) : (
+        /* ── Workspace Area (Activity bar + Sidebar + Main area) ── */
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+          {/* Non-rendering LSP bridge */}
+          <LspBridge />
+
+          {/* ── Activity bar ── */}
+          <div className="w-10 shrink-0 flex flex-col items-center gap-1 pt-2 bg-fahh-sidebar border-r border-fahh-surface">
         <ActivityBtn
           active={sidebarTab === "files"}
           title="Explorer"
@@ -403,6 +469,14 @@ export default function App() {
           onClick={() => setSidebarTab("extensions")}
         >
           <Blocks size={18} />
+        </ActivityBtn>
+
+        <ActivityBtn
+          active={sidebarTab === "rea"}
+          title="REA Code Analysis (Reverse Engineering & AST)"
+          onClick={() => setSidebarTab("rea")}
+        >
+          <Cpu size={18} />
         </ActivityBtn>
 
         <div className="flex-1" />
@@ -462,6 +536,8 @@ export default function App() {
             </div>
           </div>
         )}
+
+        {sidebarTab === "rea" && <ReaAnalysisPanel />}
       </div>
 
       <ResizeHandle dir="col" size={sidebarW} onResize={(n) => setSidebarW(clampSize(n, SIDEBAR.min, SIDEBAR.max))} label="Resize sidebar" />
@@ -471,18 +547,44 @@ export default function App() {
         {/* Editor region (the fahh effects play over this, and only this) */}
         <div ref={editorRegionRef} className="relative flex flex-col flex-1 min-h-0">
           <TabBar />
+          <Breadcrumbs />
           <EditorPane monacoTheme={monacoTheme} />
           <ImpactLayer targetRef={editorRegionRef} />
         </div>
 
-        {/* Bottom panel (Terminal / Run / Debug) */}
+        {/* Bottom panel (Problems / Output / Debug Console / Terminal / Ports / Run) */}
         {showBottomPanel && (
           <ResizeHandle dir="row" growsBackward size={bottomH} onResize={(n) => setBottomH(clampSize(n, BOTTOM.min, bottomMax()))} label="Resize panel" />
         )}
         {showBottomPanel && (
           <div style={{ height: Math.min(bottomH, bottomMax()) }} className="shrink-0 flex flex-col">
             {/* Panel tab bar */}
-            <div className="flex items-center shrink-0 border-b border-fahh-surface bg-fahh-sidebar">
+            <div className="flex items-center shrink-0 border-b border-fahh-surface bg-fahh-sidebar overflow-x-auto">
+              <BottomTabBtn
+                active={bottomTab === "problems"}
+                onClick={() => setBottomTab("problems")}
+              >
+                Problems
+                {diagnostics.length > 0 && (
+                  <span className={`ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] ${
+                    problemErrors > 0 ? "bg-red-500/20 text-red-400 font-bold" : "bg-yellow-500/20 text-yellow-400"
+                  }`}>
+                    {diagnostics.length}
+                  </span>
+                )}
+              </BottomTabBtn>
+              <BottomTabBtn
+                active={bottomTab === "output"}
+                onClick={() => setBottomTab("output")}
+              >
+                Output
+              </BottomTabBtn>
+              <BottomTabBtn
+                active={bottomTab === "debug"}
+                onClick={() => setBottomTab("debug")}
+              >
+                Debug Console
+              </BottomTabBtn>
               <BottomTabBtn
                 active={bottomTab === "terminal"}
                 onClick={() => setBottomTab("terminal")}
@@ -490,16 +592,16 @@ export default function App() {
                 Terminal
               </BottomTabBtn>
               <BottomTabBtn
+                active={bottomTab === "ports"}
+                onClick={() => setBottomTab("ports")}
+              >
+                Ports
+              </BottomTabBtn>
+              <BottomTabBtn
                 active={bottomTab === "run"}
                 onClick={() => setBottomTab("run")}
               >
                 Run
-              </BottomTabBtn>
-              <BottomTabBtn
-                active={bottomTab === "debug"}
-                onClick={() => setBottomTab("debug")}
-              >
-                Debug
               </BottomTabBtn>
               <div className="flex-1" />
               <button
@@ -513,9 +615,12 @@ export default function App() {
 
             {/* Panel content */}
             <div className="flex-1 min-h-0 overflow-hidden">
-              {bottomTab === "terminal" && <TerminalPanel />}
-              {bottomTab === "run" && <RunPanel />}
+              {bottomTab === "problems" && <ProblemsPanel />}
+              {bottomTab === "output" && <OutputPanel />}
               {bottomTab === "debug" && <DebugPanel />}
+              {bottomTab === "terminal" && <TerminalPanel />}
+              {bottomTab === "ports" && <PortsPanel />}
+              {bottomTab === "run" && <RunPanel />}
             </div>
           </div>
         )}
@@ -557,6 +662,8 @@ export default function App() {
           <span className="max-[680px]:hidden">v0.5.0</span>
         </div>
       </div>
+      </div>
+      )}
 
       {showInstaller && (
         <InstallerWizard onClose={() => setShowInstaller(false)} />
@@ -574,6 +681,7 @@ export default function App() {
       )}
 
       <Toasts />
+      <InlineEdit open={showInlineEdit} onClose={() => setShowInlineEdit(false)} />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
       <CommandPalette
         open={quickOpen}

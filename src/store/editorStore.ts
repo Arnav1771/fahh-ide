@@ -8,6 +8,7 @@ interface EditorStore {
   fileContents: Record<string, string>;
   openFile: (doc: Document, content: string) => void;
   closeFile: (path: string) => void;
+  closeTab: (path: string) => void;
   setActiveTab: (path: string) => void;
   setContent: (path: string, content: string) => void;
   markDirty: (path: string, dirty: boolean) => void;
@@ -31,6 +32,20 @@ export const useEditorStore = create<EditorStore>((set) => ({
     }),
 
   closeFile: (path) =>
+    set((state) => {
+      const tabs = state.openTabs.filter((t) => t.path !== path);
+      const contents = { ...state.fileContents };
+      delete contents[path];
+      const active =
+        state.activeTab === path
+          ? tabs.length > 0
+            ? tabs[tabs.length - 1].path
+            : null
+          : state.activeTab;
+      return { openTabs: tabs, activeTab: active, fileContents: contents };
+    }),
+
+  closeTab: (path) =>
     set((state) => {
       const tabs = state.openTabs.filter((t) => t.path !== path);
       const contents = { ...state.fileContents };
