@@ -88,18 +88,18 @@ jobs:
       matrix:
         include:
           - platform: ubuntu-22.04
-            args: ""
+            args: "--bin fahh-editor"
             label: linux-x64
           - platform: macos-latest
-            args: "--target aarch64-apple-darwin"
+            args: "--bin fahh-editor --target aarch64-apple-darwin"
             rust-target: aarch64-apple-darwin
             label: macos-arm64
           - platform: macos-latest
-            args: "--target x86_64-apple-darwin"
+            args: "--bin fahh-editor --target x86_64-apple-darwin"
             rust-target: x86_64-apple-darwin
             label: macos-x64
           - platform: windows-latest
-            args: "--target x86_64-pc-windows-msvc"
+            args: "--bin fahh-editor --target x86_64-pc-windows-msvc"
             rust-target: x86_64-pc-windows-msvc
             label: windows-x64
 

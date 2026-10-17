@@ -1,9 +1,18 @@
 [package]
 name = "fahh-editor"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 description = "Fahh Editor — a Tauri 2 desktop IDE"
 license = "MIT"
+default-run = "fahh-editor"
+
+[[bin]]
+name = "fahh-editor"
+path = "src/main.rs"
+
+[[bin]]
+name = "fahh-agent"
+path = "src/bin/fahh-agent.rs"
 
 [lib]
 name = "fahh_editor_lib"

@@ -2,7 +2,7 @@
 
 > A cross-platform desktop IDE that plays a sound every time your code has an error. Built with Tauri 2, Rust, and React.
 
-**[Download v0.5.1](https://github.com/Arnav1771/fahh-ide/releases/latest)** · **[Try it in the browser](https://arnav1771.github.io/fahh-ide/play.html)** · **[Docs](https://arnav1771.github.io/fahh-ide/docs.html)**
+**[Download v0.5.2](https://github.com/Arnav1771/fahh-ide/releases/latest)** · **[Try it in the browser](https://arnav1771.github.io/fahh-ide/play.html)** · **[Docs](https://arnav1771.github.io/fahh-ide/docs.html)**
 
 ---
 
@@ -16,18 +16,18 @@ Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.
 
 | Platform | Installer | Size |
 |----------|-----------|------|
-| Windows 10/11 (x64) | [Fahh.Editor_0.5.1_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.1/Fahh.Editor_0.5.1_x64-setup.exe) | ~6MB |
-| Windows (MSI) | [Fahh.Editor_0.5.1_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.1/Fahh.Editor_0.5.1_x64_en-US.msi) | ~7.6MB |
-| macOS (Apple Silicon) | [Fahh.Editor_0.5.1_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.1/Fahh.Editor_0.5.1_aarch64.dmg) | ~7.3MB |
-| macOS (Intel) | [Fahh.Editor_0.5.1_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.1/Fahh.Editor_0.5.1_x64.dmg) | ~7.4MB |
-| Linux (AppImage) | [Fahh.Editor_0.5.1_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.1/Fahh.Editor_0.5.1_amd64.AppImage) | ~82MB |
-| Linux (Debian/Ubuntu) | [Fahh.Editor_0.5.1_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.1/Fahh.Editor_0.5.1_amd64.deb) | ~7.7MB |
+| Windows 10/11 (x64) | [Fahh.Editor_0.5.2_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64-setup.exe) | ~6MB |
+| Windows (MSI) | [Fahh.Editor_0.5.2_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64_en-US.msi) | ~7.6MB |
+| macOS (Apple Silicon) | [Fahh.Editor_0.5.2_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_aarch64.dmg) | ~7.3MB |
+| macOS (Intel) | [Fahh.Editor_0.5.2_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64.dmg) | ~7.4MB |
+| Linux (AppImage) | [Fahh.Editor_0.5.2_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_amd64.AppImage) | ~82MB |
+| Linux (Debian/Ubuntu) | [Fahh.Editor_0.5.2_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_amd64.deb) | ~7.7MB |
 
 > **Windows**: The installer is small (3MB) because it uses the system WebView2 runtime pre-installed on Windows 10/11. Not Electron — 10× smaller binary.
 
 ---
 
-## What works in v0.5.1
+## What works in v0.5.2
 
 Verified on the real desktop app (tauri-driver + WebKitWebDriver, 108 + 24 checks), and by a recorded session that went from `mkdir` to `git push` entirely inside the Fahh window ([result](https://github.com/Arnav1771/fahh-hello)).
 
