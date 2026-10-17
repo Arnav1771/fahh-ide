@@ -8,7 +8,7 @@
  * backend only for the request; nothing is written into the project.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Plus, Send, Settings2, Sparkles, Square } from "lucide-react";
+import { Bot, Plus, Send, Settings2, Square } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
 import { parseSlashCommand, pendingReview } from "../../lib/agentState";
@@ -123,7 +123,6 @@ export function AgentPanel() {
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const busy = status === "running" || status === "needs_input";
 
-  const activeTab = useEditorStore((s) => s.activeTab);
   const activeContent = useEditorStore((s) => (s.activeTab ? s.fileContents[s.activeTab] : null));
 
   const tokenBreakdown = useMemo(() => {
