@@ -1,10 +1,11 @@
 import { useEffect, useRef } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
+import type { IDockviewPanelProps } from "dockview-react";
 import { useEditorStore } from "../../store/editorStore";
 import { useFahhStore } from "../../store/fahhStore";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
-import { TitleScreen } from "../Fahh/TitleScreen";
-import { defineMonacoThemes } from "../ThemePanel";
+import { useThemeStore } from "../../store/themeStore";
+import { THEME_DEFINITIONS, defineMonacoThemes } from "../ThemePanel";
 import {
   attachMonaco,
   detachMonaco,
@@ -17,20 +18,20 @@ import { usePreviewStore } from "../../store/previewStore";
 import { runCommand } from "../../lib/commands";
 import { ensureBaseline, isDirtyAt } from "../../lib/saveBaseline";
 
-interface EditorPaneProps {
-  /** Monaco editor theme name — pass from themeStore to keep in sync */
-  monacoTheme?: string;
-}
-
 // Shape of the detail emitted by ThemePanel's fahh-theme-change event.
 interface ThemeChangeDetail {
   monacoTheme: string;
 }
 
-export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
-  const { activeTab, fileContents, openTabs, setContent, markDirty } =
-    useEditorStore();
-    
+/**
+ * One editor tab in the dock. Several of these can show the same file (a split):
+ * they share one Monaco model, because the model is looked up by path.
+ */
+export function EditorPanel({ api: panelApi, params }: IDockviewPanelProps<{ path: string }>) {
+  const path = params.path;
+  const activeTheme = useThemeStore((s) => s.activeTheme);
+  const monacoTheme = THEME_DEFINITIONS.find((d) => d.id === activeTheme)?.monacoTheme ?? "vs-dark";
+  const { fileContents, openTabs, setContent, markDirty } = useEditorStore();
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
@@ -40,12 +41,12 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   /** Has the user typed in the file on screen since it became active? */
   const editedRef = useRef(false);
 
-  const activeDoc = openTabs.find((t) => t.path === activeTab);
-  const content = activeTab ? fileContents[activeTab] ?? "" : "";
+  const activeDoc = openTabs.find((t) => t.path === path);
+  const content = path ? fileContents[path] ?? "" : "";
   // Which preview this file can have, and how it is shown (VS Code's editor resolver, in small).
-  const kind = activeTab ? previewKindFor(activeTab) : null;
-  const previewOnly = activeTab ? isPreviewOnly(activeTab) : false;
-  const storedMode = usePreviewStore((s) => (activeTab ? s.modes[activeTab] : undefined));
+  const kind = path ? previewKindFor(path) : null;
+  const previewOnly = path ? isPreviewOnly(path) : false;
+  const storedMode = usePreviewStore((s) => (path ? s.modes[path] : undefined));
   const setPreviewMode = usePreviewStore((s) => s.setMode);
   const mode = previewOnly ? "only" : kind ? storedMode ?? "off" : "off";
 
@@ -63,16 +64,29 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     return () => window.removeEventListener("fahh-theme-change", handler);
   }, []);
   
-  // Tell the diagnostics bridge which file the shared Monaco model is showing,
-  // so LSP markers for the wrong file never end up on screen.
+  // This editor is the one the diagnostics bridge, the status bar and Ctrl+S talk to
+  // while its tab is the active one (or while the cursor is in it).
+  const takeFocus = () => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (editor && monaco) attachMonaco(monaco, editor);
+    setActiveDocument(path);
+    if (useEditorStore.getState().activeTab !== path) useEditorStore.getState().setActiveTab(path);
+  };
+  const takeFocusRef = useRef(takeFocus);
+  takeFocusRef.current = takeFocus;
+  const isCurrent = () => panelApi.isActive && panelApi.isGroupActive;
   useEffect(() => {
-    setActiveDocument(activeTab);
-  }, [activeTab]);
+    if (isCurrent()) takeFocusRef.current();
+    const ds = [panelApi.onDidActiveChange(() => isCurrent() && takeFocusRef.current()), panelApi.onDidActiveGroupChange(() => isCurrent() && takeFocusRef.current())];
+    return () => ds.forEach((d) => d.dispose());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [panelApi]);
 
   // Never let the bridge hold a reference to a disposed editor.
   useEffect(() => {
     return () => {
-      detachMonaco();
+      if (editorRef.current) detachMonaco(editorRef.current);
       for (const d of disposablesRef.current) d.dispose();
       disposablesRef.current = [];
       window.clearTimeout(settleRef.current);
@@ -87,7 +101,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     const editor = editorRef.current;
     const monaco = monacoRef.current;
     if (!impact || impact.kind !== "fahh" || !impact.line || !editor || !monaco) return;
-    if (intensity !== "epic" || reduced) return;
+    if (intensity !== "epic" || reduced || !isCurrent()) return;
     const ids: string[] = editor.deltaDecorations([], [
       {
         range: new monaco.Range(impact.line, 1, impact.line, 1),
@@ -102,16 +116,12 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [impact?.seq]);
 
-  if (!activeTab) {
-    return <TitleScreen />;
-  }
-
   const handleChange = (value: string | undefined) => {
-    if (!activeTab || value === undefined) return;
-    setContent(activeTab, value);
+    if (!path || value === undefined) return;
+    setContent(path, value);
     // Dirty means "differs from the last save": undoing back to it clears the dot.
     const v = editorRef.current?.getModel()?.getAlternativeVersionId();
-    markDirty(activeTab, v === undefined ? true : isDirtyAt(activeTab, v));
+    markDirty(path, v === undefined ? true : isDirtyAt(path, v));
   };
 
   const handleEditorDidMount = (
@@ -122,7 +132,8 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     monacoRef.current = monaco;
     // Remember each model's version when it first appears, to know when it is back to its saved text.
     const baseline = () => {
-      const { activeTab: p, openTabs: tabs } = useEditorStore.getState();
+      const { openTabs: tabs } = useEditorStore.getState();
+      const p = path;
       const model = editor.getModel();
       if (p && model) ensureBaseline(p, model.getAlternativeVersionId(), !!tabs.find((t) => t.path === p)?.dirty);
     };
@@ -133,8 +144,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
 
     // Hand the live editor to the diagnostics bridge. Anything LSP published
     // before Monaco mounted is flushed onto the model immediately.
-    attachMonaco(monaco, editor);
-    setActiveDocument(activeTab);
+    if (isCurrent()) takeFocusRef.current();
 
     // Feed the HUD. Every checker's markers count (Monaco's own TypeScript,
     // JSON, CSS and HTML workers, and the language servers via the bridge),
@@ -173,6 +183,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
         const current = editor.getModel()?.uri.toString();
         if (current && uris.some((u) => u.toString() === current)) settle();
       }),
+      editor.onDidFocusEditorWidget(() => takeFocusRef.current()),
       editor.onDidChangeModel(() => {
         baseline();
         editedRef.current = false;
@@ -198,7 +209,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   };
 
   return (
-    <div className="flex-1 flex min-h-0 relative">
+    <div className="flex h-full w-full min-h-0 relative">
       {/* The text editor stays mounted (hidden) when the preview replaces it,
           so the diagnostics bridge never holds a disposed editor. */}
       <div
@@ -210,7 +221,8 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
           height="100%"
           /* One model per file: TypeScript sees the real extension (so .tsx
              parses JSX) and each tab keeps its own undo history. */
-          path={modelPathFor(activeTab)}
+          path={modelPathFor(path)}
+          keepCurrentModel /* a split shows the same model; closing a tab disposes it (tabActions.forceClose) */
           language={activeDoc?.language ?? "plaintext"}
           value={content}
           onChange={handleChange}
@@ -241,11 +253,11 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
       {kind && mode !== "off" && (
         <div className={mode === "side" ? "flex w-1/2 min-w-0 border-l border-fahh-surface" : "flex flex-1 min-w-0"}>
           <PreviewPane
-            path={activeTab}
+            path={path}
             content={content}
             kind={kind}
-            onClose={mode === "side" ? () => setPreviewMode(activeTab, "off") : undefined}
-            onShowSource={mode === "only" && !previewOnly ? () => setPreviewMode(activeTab, "off") : undefined}
+            onClose={mode === "side" ? () => setPreviewMode(path, "off") : undefined}
+            onShowSource={mode === "only" && !previewOnly ? () => setPreviewMode(path, "off") : undefined}
           />
         </div>
       )}

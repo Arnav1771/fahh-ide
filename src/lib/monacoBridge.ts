@@ -84,11 +84,14 @@ export function attachMonaco(
 ): void {
   monacoApi = api;
   editorInstance = editor;
+  if (import.meta.env.DEV && typeof window !== "undefined") (window as unknown as { __monaco?: unknown }).__monaco = api; // browser QA reads the models
   flush();
 }
 
 /** Called when the editor unmounts, so we never touch a dead model. */
-export function detachMonaco(): void {
+export function detachMonaco(editor?: MonacoEditorLike): void {
+  // With several editor groups, only the editor the bridge is holding may let go of it.
+  if (editor && editor !== editorInstance) return;
   monacoApi = null;
   editorInstance = null;
 }

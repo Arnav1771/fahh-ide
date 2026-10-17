@@ -3,7 +3,7 @@ export const clampSize = (v: number, min: number, max: number): number =>
 
 type Store = Pick<Storage, "getItem" | "setItem">;
 
-export function loadSize(key: string, def: number, min: number, max: number, store?: Store): number {
+export function loadSize(key: string, def: number, min: number, max: number, store?: Pick<Store, "getItem">): number {
   try {
     const n = Number(store?.getItem(key));
     return Number.isFinite(n) && n > 0 ? clampSize(n, min, max) : def;
