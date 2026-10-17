@@ -7,14 +7,16 @@
  * Keys live in this machine's localStorage, like the old panel, and go to the
  * backend only for the request; nothing is written into the project.
  */
-import { useEffect, useRef, useState } from "react";
-import { Bot, Plus, Send, Settings2, Square } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Bot, Plus, Send, Settings2, Sparkles, Square } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
 import { parseSlashCommand, pendingReview } from "../../lib/agentState";
+import { calculateContextTokens } from "../../lib/tokenEstimator";
 import type { AgentMode } from "../../lib/types";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useAgentStore } from "../../store/agentStore";
+import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { ApprovalCard, PlanCard, ReviewCard, ToolCard } from "./cards";
 
@@ -22,6 +24,14 @@ const MODES: { id: AgentMode; label: string; hint: string }[] = [
   { id: "ask", label: "Ask", hint: "Asks before every edit and command" },
   { id: "auto-edit", label: "Auto-edit", hint: "Edits files freely; still asks before commands" },
   { id: "plan", label: "Plan", hint: "Read-only: researches and writes a plan first" },
+];
+
+const SLASH_SUGGESTIONS = [
+  { cmd: "/plan", label: "Plan Mode", desc: "Read-only research; writes a plan first" },
+  { cmd: "/auto", label: "Auto-edit Mode", desc: "Direct file editing without per-file approval" },
+  { cmd: "/ask", label: "Ask Mode", desc: "Interactive; asks for your confirmation on each edit" },
+  { cmd: "/undo", label: "Revert Turn", desc: "Revert files touched in the latest turn" },
+  { cmd: "/clear", label: "Clear Chat", desc: "Reset and clear conversation history" },
 ];
 
 const QUICK_ACTIONS = [
@@ -109,8 +119,26 @@ export function AgentPanel() {
   const problem = settingsProblem(settings);
   const [showSettings, setShowSettings] = useState(!!problem);
   const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const busy = status === "running" || status === "needs_input";
+
+  const activeTab = useEditorStore((s) => s.activeTab);
+  const activeContent = useEditorStore((s) => (s.activeTab ? s.fileContents[s.activeTab] : null));
+
+  const tokenBreakdown = useMemo(() => {
+    return calculateContextTokens({
+      prompt: input,
+      activeFileContent: activeContent,
+    });
+  }, [input, activeContent]);
+
+  const showSlashMenu = input.startsWith("/") && !input.includes(" ");
+  const matchingSlashCommands = useMemo(() => {
+    if (!showSlashMenu) return [];
+    const q = input.toLowerCase();
+    return SLASH_SUGGESTIONS.filter((s) => s.cmd.startsWith(q));
+  }, [showSlashMenu, input]);
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -255,7 +283,42 @@ export function AgentPanel() {
             </button>
           ))}
         </div>
+        {showSlashMenu && matchingSlashCommands.length > 0 && (
+          <div
+            className="rounded border border-fahh-surface bg-[#111318] p-1 shadow-lg space-y-0.5 text-xs animate-in fade-in duration-150"
+            data-testid="slash-suggestions"
+          >
+            <div className="px-1.5 py-0.5 text-[9px] uppercase tracking-wider text-fahh-muted font-semibold">
+              Commands
+            </div>
+            {matchingSlashCommands.map((s) => (
+              <button
+                key={s.cmd}
+                type="button"
+                onClick={() => {
+                  if (s.cmd === "/undo" || s.cmd === "/clear") {
+                    setInput("");
+                    void store.send(s.cmd);
+                  } else {
+                    setInput(`${s.cmd} `);
+                    inputRef.current?.focus();
+                  }
+                }}
+                className="w-full flex items-center justify-between px-2 py-1 rounded text-left hover:bg-fahh-surface/80 text-fahh-text transition-colors group"
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="font-mono text-fahh-accent font-semibold">{s.cmd}</span>
+                  <span className="text-[11px] text-fahh-text">{s.label}</span>
+                </div>
+                <span className="text-[10px] text-fahh-muted group-hover:text-fahh-text truncate max-w-[140px]">
+                  {s.desc}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
         <textarea
+          ref={inputRef}
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
@@ -288,7 +351,16 @@ export function AgentPanel() {
             </button>
           )}
         </div>
-        <div className="text-[10px] text-fahh-muted truncate">{settings.model || "no model"} · {turnsLabel(Object.keys(turns).length)}</div>
+        <div className="flex items-center justify-between text-[10px] text-fahh-muted">
+          <span className="truncate">{settings.model || "no model"} · {turnsLabel(Object.keys(turns).length)}</span>
+          <span
+            className="shrink-0 px-1.5 py-0.5 rounded bg-fahh-surface/60 font-mono text-[9px] text-fahh-muted hover:text-fahh-text transition-colors cursor-help"
+            title={`Context Telemetry:\n• Prompt: ~${tokenBreakdown.promptTokens} tok\n• Active File: ~${tokenBreakdown.activeFileTokens} tok\n• Selection: ~${tokenBreakdown.selectionTokens} tok\nTotal estimated context: ~${tokenBreakdown.totalTokens} tokens`}
+            data-testid="context-tokens-badge"
+          >
+            ~{tokenBreakdown.formatted} tok
+          </span>
+        </div>
       </div>
     </div>
   );

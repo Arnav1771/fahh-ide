@@ -187,7 +187,7 @@ export default function App() {
       { id: "view.explorer", group: "View", label: "Explorer", keywords: "files tree", run: view("files") },
       { id: "view.git", group: "View", label: "Source Control", keywords: "git branch commit", run: view("git") },
       { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
-      { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keywords: "agent chat llm ollama groq composer", run: view("ai") },
+      { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keys: ["Ctrl", "L"], keywords: "agent chat llm ollama groq composer devin cursor", run: view("ai") },
       { id: "view.extensions", group: "View", label: "Extensions", keywords: "plugins language packs", run: view("extensions") },
       { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
       { id: "panel.toggle", group: "View", label: "Toggle Panel", keys: ["Ctrl", "`"], keywords: "terminal bottom", run: () => setShowBottomPanel((v) => !v) },
@@ -257,6 +257,11 @@ export default function App() {
         e.stopPropagation();
         setPaletteOpen(false);
         setQuickOpen((v) => !v);
+      } else if ((mod && !e.shiftKey && e.key.toLowerCase() === "l") || (mod && e.shiftKey && e.key.toLowerCase() === "a")) {
+        // Ctrl+L or Ctrl+Shift+A: Toggle Fahh Local agent panel
+        e.preventDefault();
+        e.stopPropagation();
+        setSidebarTab((current) => (current === "ai" ? "files" : "ai"));
       }
     };
     window.addEventListener("keydown", onKey, true);
