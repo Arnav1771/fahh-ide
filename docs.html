@@ -56,7 +56,7 @@
           <svg class="icon" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/></svg>
           <p>The sound is <code>src-tauri/assets/fahh.mp3</code>, and <code>src/lib/fahh.ts</code> loads it by that exact name. Renaming the file silences the editor.</p>
         </div>
-        <h2 class="h3">Status in v0.5.1</h2>
+        <h2 class="h3">Status in v0.5.2</h2>
         <div class="status-grid">
           <div class="card flat"><p class="k ok">Works</p><p>File tree, Monaco editor with tabs, previews (Markdown, HTML, images, SVG, CSV), built-in localhost browser, Quick Open, terminal, Run panel, Git sidebar, AI assistant panel with slash commands (/plan, /ask, auto-edit), theme switcher, extensions list, 3-step skippable welcome wizard, optional-tools installer, diagnostic sound engine with cooldown, and multi-OS native packaging.</p></div>
           <div class="card flat"><p class="k wip">In progress</p><p>Completion, hover and go-to-definition from language servers (the replies are received but not yet shown), and the step-through debugger (the panel and commands exist; event handling is incomplete).</p></div>
@@ -267,7 +267,7 @@ pnpm test           # Vitest unit tests</code></pre>
         <pre class="code"><code>pnpm tauri build                 # all bundle targets for this OS
 cd src-tauri && cargo test       # Rust unit tests
 cargo clippy --all-targets -- -D warnings   # the CI lint gate</code></pre>
-        <p>Bundles land in <code>src-tauri/target/release/bundle/</code>. The v0.5.1 release was built into:</p>
+        <p>Bundles land in <code>src-tauri/target/release/bundle/</code>. The v0.5.2 release was built into:</p>
         <div class="table-wrap">
           <table>
             <thead><tr><th>Platform</th><th>Files</th></tr></thead>
@@ -286,7 +286,7 @@ cargo clippy --all-targets -- -D warnings   # the CI lint gate</code></pre>
   <footer class="footer-wrapper">
     <div class="footer-panel">
       <div class="footer-bottom">
-        <span>Fahh Editor v0.5.1 · Stealth Keqing · MIT</span>
+        <span>Fahh Editor v0.5.2 · Stealth Keqing · MIT</span>
         <span><a href="./">Home</a> · <a href="play.html">Playground</a> · <a href="download.html">Download</a> · <a href="https://github.com/Arnav1771/fahh-ide">GitHub</a></span>
       </div>
     </div>
