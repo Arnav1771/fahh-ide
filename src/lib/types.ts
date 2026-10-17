@@ -173,3 +173,95 @@ export interface GitStatus {
   staged: GitFileChange[];
   unstaged: GitFileChange[];
 }
+
+// ─── Fahh Local (agent) ───────────────────────────────────────────────────────
+// Mirrors src-tauri/src/agent/mod.rs. Events arrive on agent://event as
+// { session, event }.
+
+export type AgentMode = "ask" | "auto-edit" | "plan";
+export type AgentToolKind = "read" | "edit" | "run" | "plan";
+export type AgentProviderKind = "openai" | "anthropic";
+
+export interface AgentProviderConfig {
+  kind: AgentProviderKind;
+  base_url: string;
+  model: string;
+  api_key?: string | null;
+}
+
+export interface AgentContext {
+  active_file?: string | null;
+  selection?: string | null;
+  open_files: string[];
+  /** Open files with unsaved changes: edits to these always ask. */
+  dirty_files: string[];
+}
+
+export interface AgentStartParams {
+  session?: string | null;
+  workspace: string;
+  prompt: string;
+  mode: AgentMode;
+  provider: AgentProviderConfig;
+  context: AgentContext;
+}
+
+export interface AgentStartResult {
+  session: string;
+  turn: number;
+}
+
+export interface AgentDecision {
+  allow: boolean;
+  always?: boolean;
+  /** The (possibly edited) command, for run_command approvals. */
+  command?: string | null;
+}
+
+export interface AgentFileDiff {
+  path: string;
+  before: string | null;
+  after: string | null;
+}
+
+export interface AgentDiagFile {
+  path: string;
+  items: { line: number; severity: string; message: string }[];
+}
+
+export type AgentEvent =
+  | { type: "turn_started"; turn: number }
+  | { type: "text_delta"; turn: number; text: string }
+  | { type: "tool_call"; turn: number; id: string; name: string; args: Record<string, unknown>; kind: AgentToolKind }
+  | {
+      type: "approval_request";
+      turn: number;
+      id: string;
+      tool: string;
+      kind: AgentToolKind;
+      summary: string;
+      command: string | null;
+      path: string | null;
+      old_text: string | null;
+      new_text: string | null;
+    }
+  | { type: "tool_result"; turn: number; id: string; ok: boolean; output: string; elapsed_ms?: number }
+  | { type: "file_changed"; turn: number; path: string }
+  | { type: "plan_written"; turn: number; id: string; path: string; markdown: string }
+  | { type: "done"; turn: number; steps: number; files: string[] }
+  | { type: "error"; turn: number; message: string };
+
+export interface AgentEnvelope {
+  session: string;
+  event: AgentEvent;
+}
+
+// ─── `fahh <path>` command line (src-tauri/src/app/cli.rs) ────────────────────
+
+export interface OpenRequest {
+  /** Absolute, already resolved against the caller's working directory. */
+  path: string;
+  /** 1-based, from `fahh file:line`; only for files. */
+  line: number | null;
+  kind: "dir" | "file" | "missing";
+}

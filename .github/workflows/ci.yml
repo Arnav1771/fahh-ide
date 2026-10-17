@@ -33,6 +33,11 @@ jobs:
             libayatana-appindicator3-dev \
             librsvg2-dev \
             patchelf
+      - name: No direct process spawns (use core::proc::cmd)
+        run: |
+          if grep -rn "Command::new(" src-tauri/src --include=*.rs | grep -v "src-tauri/src/core/proc.rs"; then
+            echo "Use crate::core::proc::cmd() instead of Command::new()"; exit 1
+          fi
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
         with:

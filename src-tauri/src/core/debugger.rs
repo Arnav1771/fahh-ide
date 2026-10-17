@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Write};
 use std::net::TcpStream;
-use std::process::{Child, Command, Stdio};
+use std::process::{Child, Stdio};
 use std::sync::{
     atomic::{AtomicU32, Ordering},
     Mutex,
@@ -275,7 +275,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
             cmd_args.extend(config.args.clone());
 
             let python = if which::which("python3").is_ok() { "python3" } else { "python" };
-            let child = Command::new(python)
+            let child = crate::core::proc::cmd(python)
                 .args(&cmd_args)
                 .current_dir(config.working_dir())
                 .stdin(Stdio::null())
@@ -292,7 +292,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
             let mut cmd_args = vec![format!("--inspect-brk=127.0.0.1:{port}"), config.program.clone()];
             cmd_args.extend(config.args.clone());
 
-            let child = Command::new("node")
+            let child = crate::core::proc::cmd("node")
                 .args(&cmd_args)
                 .current_dir(config.working_dir())
                 .stdin(Stdio::null())
@@ -305,7 +305,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
         }
         "go" | "dlv-dap" | "delve" => {
             // Delve debug adapter — dlv dap --listen :2345
-            let child = Command::new("dlv")
+            let child = crate::core::proc::cmd("dlv")
                 .args([
                     "dap",
                     &format!("--listen=127.0.0.1:{port}"),
@@ -331,7 +331,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
         }
         "lldb" | "codelldb" | "lldb-dap" => {
             // lldb-dap (formerly lldb-vscode) listens on a port when passed --port.
-            let child = Command::new("lldb-dap")
+            let child = crate::core::proc::cmd("lldb-dap")
                 .args(["--port", &port.to_string()])
                 .current_dir(config.working_dir())
                 .stdin(Stdio::null())
@@ -501,7 +501,7 @@ mod tests {
 
     #[test]
     fn an_adapter_that_exits_early_is_an_error_with_a_hint() {
-        let mut child = Some(Command::new("sh").args(["-c", "exit 1"]).spawn().unwrap());
+        let mut child = Some(crate::core::proc::cmd("sh").args(["-c", "exit 1"]).spawn().unwrap());
         let port = free_port().unwrap();
         let t0 = std::time::Instant::now();
         let err = wait_for_adapter(&mut child, "debugpy", port, 10_000).unwrap_err();
@@ -514,14 +514,14 @@ mod tests {
     fn a_listening_adapter_is_ready() {
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let port = listener.local_addr().unwrap().port();
-        let mut child = Some(Command::new("sleep").arg("5").spawn().unwrap());
+        let mut child = Some(crate::core::proc::cmd("sleep").arg("5").spawn().unwrap());
         assert!(wait_for_adapter(&mut child, "debugpy", port, 3_000).is_ok());
         let _ = child.as_mut().unwrap().kill();
     }
 
     #[test]
     fn a_silent_adapter_times_out_and_is_killed() {
-        let mut child = Some(Command::new("sleep").arg("30").spawn().unwrap());
+        let mut child = Some(crate::core::proc::cmd("sleep").arg("30").spawn().unwrap());
         let port = free_port().unwrap();
         let err = wait_for_adapter(&mut child, "lldb-dap", port, 600).unwrap_err();
         assert!(err.contains("did not open port"), "{err}");

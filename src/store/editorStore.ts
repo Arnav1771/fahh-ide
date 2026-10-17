@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Document } from "../lib/types";
+import { remapPath } from "../lib/tabs";
 
 interface EditorStore {
   openTabs: Document[];
@@ -10,6 +11,8 @@ interface EditorStore {
   setActiveTab: (path: string) => void;
   setContent: (path: string, content: string) => void;
   markDirty: (path: string, dirty: boolean) => void;
+  /** A file or folder was renamed on disk: move every open tab under it. */
+  renamePath: (from: string, to: string) => void;
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -54,4 +57,16 @@ export const useEditorStore = create<EditorStore>((set) => ({
         t.path === path ? { ...t, dirty } : t
       ),
     })),
+
+  renamePath: (from, to) =>
+    set((state) => {
+      const map = (p: string) => remapPath(p, from, to) ?? p;
+      const contents: Record<string, string> = {};
+      for (const [p, c] of Object.entries(state.fileContents)) contents[map(p)] = c;
+      return {
+        openTabs: state.openTabs.map((t) => ({ ...t, path: map(t.path) })),
+        activeTab: state.activeTab ? map(state.activeTab) : null,
+        fileContents: contents,
+      };
+    }),
 }));

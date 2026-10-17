@@ -52,7 +52,7 @@ Verified on the real desktop app (tauri-driver + WebKitWebDriver, 108 + 24 check
 | Cross-platform builds | ✅ Windows, macOS (arm64 + x64), Linux (AppImage/deb/rpm) |
 | Fahh SFX | ✅ Wired and audible — ships a synthesized stand-in tone, swap in your own clip |
 | Git sidebar | ✅ Branch, staged/unstaged lists, stage/unstage, commit, per-file diff |
-| AI panel | ✅ Bring-your-own OpenAI-compatible endpoint (Ollama, LM Studio, hosted) |
+| Fahh Local agent | ✅ Bring-your-own key (Groq, NVIDIA NIM, OpenRouter, Gemini, Ollama, Anthropic); edits, commands, plan mode, revert |
 | LSP diagnostics | ✅ Errors and warnings appear as Monaco markers, and drive the SFX |
 | LSP completions / hover | 🔧 Servers start and respond, but no Monaco provider is registered yet |
 | Step-through debugger | 🔧 DAP client exists, UI wiring in Phase 2 |
@@ -118,28 +118,36 @@ cd src-tauri && cargo clippy -- -D warnings && cargo test
 The vitest suite covers the pure logic: the SFX cooldown rule, LSP
 diagnostic → Monaco marker conversion, the marker bridge, the git status
 model, the `src/lib/tauri.ts` IPC wrappers (with `@tauri-apps/api` mocked),
-the AI request/SSE layer, and the zustand stores.
+the agent panel state, provider settings, and the zustand stores.
 
 ---
 
-## AI assistant
+## Fahh Local (AI agent)
 
-Fahh Editor ships with **no AI provider and no API key**. The AI panel talks
-to any OpenAI-compatible `/v1/chat/completions` endpoint you point it at.
-Open the panel (robot icon), hit the settings gear, and fill in:
+Fahh Editor ships with **no AI provider and no API key**. The robot icon opens
+Fahh Local, a coding agent that runs on your machine with your own key: chat,
+a card per tool call (read, search, edit, run), approvals you can edit before
+a command runs, per-file diff review and "revert turn". Modes: **Ask** (approve
+every edit and command), **Auto-edit** (edits apply, commands still ask),
+**Plan** (read-only; writes `.fahh/plans/<id>.md`, then an Implement button).
 
-| Field | Example |
-|-------|---------|
-| Base URL | `http://localhost:11434/v1` (Ollama) or `https://api.openai.com/v1` |
-| Model | `llama3.2`, `gpt-4o-mini`, … |
-| API key | leave blank for local servers |
+| Provider | Base URL |
+|----------|----------|
+| Groq | `https://api.groq.com/openai/v1` |
+| NVIDIA NIM | `https://integrate.api.nvidia.com/v1` |
+| OpenRouter | `https://openrouter.ai/api/v1` |
+| Gemini | `https://generativelanguage.googleapis.com/v1beta/openai` |
+| Ollama | `http://localhost:11434/v1` |
+| Anthropic | `https://api.anthropic.com` |
 
-Settings are stored in the app's `localStorage`, including the key. Until a
-base URL and a model are set, the panel says it is not configured and
-refuses to send anything.
+The key is kept in the app's `localStorage` and sent only to the provider; it is
+never written into your project. Rules live per project in
+`.fahh/permissions.json` (deny always wins), project instructions in
+`AGENTS.md` or `.fahh/rules.md`. Details: [IMP_DOCS/FAHH_LOCAL.md](IMP_DOCS/FAHH_LOCAL.md).
 
-**Local servers and CORS:** the desktop app runs on a `tauri://` origin, so a
-local server has to allow it. For Ollama, start it with `OLLAMA_ORIGINS=*`.
+From a terminal: `fahh-agent --provider groq --mode auto-edit "add a test for foo"`
+(keys from `GROQ_API_KEY`, `GEMINI_API_KEY`, `NVIDIA_API_KEY`, `OPENROUTER_API_KEY`,
+`ANTHROPIC_API_KEY`); no prompt starts a REPL.
 
 ### Run in WSL (Ubuntu)
 

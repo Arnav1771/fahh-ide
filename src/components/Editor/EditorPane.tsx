@@ -4,7 +4,6 @@ import { useEditorStore } from "../../store/editorStore";
 import { useFahhStore } from "../../store/fahhStore";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { TitleScreen } from "../Fahh/TitleScreen";
-import { writeFile } from "../../lib/tauri";
 import { defineMonacoThemes } from "../ThemePanel";
 import {
   attachMonaco,
@@ -16,6 +15,7 @@ import { PreviewPane } from "../Preview/PreviewPane";
 import { isPreviewOnly, previewKindFor } from "../../lib/preview";
 import { usePreviewStore } from "../../store/previewStore";
 import { runCommand } from "../../lib/commands";
+import { ensureBaseline, isDirtyAt } from "../../lib/saveBaseline";
 
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
@@ -109,17 +109,9 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   const handleChange = (value: string | undefined) => {
     if (!activeTab || value === undefined) return;
     setContent(activeTab, value);
-    markDirty(activeTab, true);
-  };
-
-  const handleSave = async () => {
-    if (!activeTab) return;
-    try {
-      await writeFile(activeTab, content);
-      markDirty(activeTab, false);
-    } catch (err) {
-      console.error("save failed:", err);
-    }
+    // Dirty means "differs from the last save": undoing back to it clears the dot.
+    const v = editorRef.current?.getModel()?.getAlternativeVersionId();
+    markDirty(activeTab, v === undefined ? true : isDirtyAt(activeTab, v));
   };
 
   const handleEditorDidMount = (
@@ -128,6 +120,13 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   ) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    // Remember each model's version when it first appears, to know when it is back to its saved text.
+    const baseline = () => {
+      const { activeTab: p, openTabs: tabs } = useEditorStore.getState();
+      const model = editor.getModel();
+      if (p && model) ensureBaseline(p, model.getAlternativeVersionId(), !!tabs.find((t) => t.path === p)?.dirty);
+    };
+    baseline();
     // The custom themes are registered in beforeMount; apply the chosen one
     // again now, in case Monaco fell back while the editor was being created.
     monaco.editor.setTheme(monacoTheme);
@@ -175,6 +174,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
         if (current && uris.some((u) => u.toString() === current)) settle();
       }),
       editor.onDidChangeModel(() => {
+        baseline();
         editedRef.current = false;
         settle();
       }),
@@ -205,12 +205,6 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
         id="monaco-container"
         className="flex-1 flex flex-col min-h-0 min-w-0 relative"
         style={mode === "only" ? { display: "none" } : undefined}
-        onKeyDown={(e) => {
-          if ((e.ctrlKey || e.metaKey) && e.key === "s") {
-            e.preventDefault();
-            handleSave();
-          }
-        }}
       >
         <Editor
           height="100%"

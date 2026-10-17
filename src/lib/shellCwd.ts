@@ -11,6 +11,15 @@ export const CWD_MARKER = "__FAHH_CWD__:";
 
 export type ShellKind = "posix" | "cmd";
 
+/** The backend runs commands with `cmd /C` on Windows and `sh -c` elsewhere. */
+export function detectShell(userAgent?: string): ShellKind {
+  const ua = userAgent ?? (typeof navigator !== "undefined" ? navigator.userAgent : "");
+  return /Windows/i.test(ua) ? "cmd" : "posix";
+}
+
+/** The name shown in the terminal header. */
+export const shellName = (kind: ShellKind): string => (kind === "cmd" ? "cmd" : "sh");
+
 /** The command to hand the backend (which runs it with `sh -c` / `cmd /C`). */
 export function wrapForCwd(command: string, shell: ShellKind): string {
   if (shell === "cmd") {

@@ -4,6 +4,7 @@
 
 mod core;
 mod app;
+pub mod agent;
 
 use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git, preview};
 
@@ -11,13 +12,20 @@ pub fn run() {
     core::runtime::init_logging();
 
     tauri::Builder::default()
+        // First, so a second `fahh <path>` is forwarded to the running window instead of starting another.
+        .plugin(tauri_plugin_single_instance::init(app::on_second_launch))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
         .manage(state::AppState::default())
+        .manage(app::cli::PendingOpen::default())
         .manage(lsp_client::LspState::default())
         .manage(error_detector::ErrorDetector::default())
+        .manage(agent::AgentState::default())
         .invoke_handler(tauri::generate_handler![
+            // `fahh <path>` command line
+            app::take_pending_open,
+            app::cli::install_cli,
             // Workspace / file operations
             workspace::get_file_tree,
             workspace::read_file,
@@ -71,6 +79,15 @@ pub fn run() {
             git::git_diff,
             // Previews: let the asset protocol load the opened folder
             preview::allow_preview,
+            // Fahh Local agent
+            agent::agent_start,
+            agent::agent_approve,
+            agent::agent_stop,
+            agent::agent_list_models,
+            agent::agent_revert_turn,
+            agent::agent_revert_file,
+            agent::agent_turn_diff,
+            agent::agent_set_diagnostics,
         ])
         .setup(|app| {
             app::setup(app)?;

@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useRef, useState } from "react";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import { useFahhStore } from "../../store/fahhStore";
 import { UPDATES_URL } from "../../lib/welcome";
 
@@ -31,11 +32,8 @@ export function Welcome({ onClose, onOpenFolder, onOpenAI }: Props) {
   const last = step === STEPS.length - 1;
   const s = STEPS[step];
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useFocusTrap(dialogRef, onClose);
 
   const act = () => {
     if (step === 0) useFahhStore.getState().ringBell();
@@ -49,7 +47,7 @@ export function Welcome({ onClose, onOpenFolder, onOpenAI }: Props) {
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
-      <div className="bg-fahh-bg border border-fahh-surface rounded-lg p-6 w-[480px]">
+      <div ref={dialogRef} tabIndex={-1} className="bg-fahh-bg border border-fahh-surface rounded-lg p-6 w-[480px] max-w-[92vw]">
         <p className="text-fahh-muted text-xs mb-3">{step + 1} of {STEPS.length}</p>
         <h2 id="welcome-title" className="text-fahh-accent text-lg font-semibold mb-2">{s.title}</h2>
         <p className="text-fahh-text text-sm mb-5 leading-relaxed">{s.body}</p>

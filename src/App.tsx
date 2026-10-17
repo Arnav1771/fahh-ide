@@ -3,10 +3,19 @@ import { FileTree } from "./components/FileTree/FileTree";
 import { TabBar } from "./components/Editor/TabBar";
 import { EditorPane } from "./components/Editor/EditorPane";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
-import { AIPanel } from "./components/AIPanel";
+import { AgentPanel } from "./components/AgentPanel";
+import { initAgentEvents, useAgentStore } from "./store/agentStore";
 import { GitSidebar } from "./components/GitSidebar";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
+import { ResizeHandle } from "./components/ResizeHandle";
+import { Toasts } from "./components/Toasts";
+import { clampSize, loadSize, saveSize } from "./lib/panelSize";
+import { saveActive, unsavedMessage } from "./lib/tabActions";
+import { handleOpenRequest } from "./lib/openRequest";
+import { installCli, takePendingOpen } from "./lib/tauri";
+import { useToastStore } from "./store/toastStore";
+import type { OpenRequest } from "./lib/types";
 import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
 import { RunPanel } from "./components/RunPanel";
 import { DebugPanel } from "./components/DebugPanel";
@@ -20,7 +29,7 @@ import { ImpactLayer } from "./components/Fahh/ImpactLayer";
 import { StatusHud, HudControls, CleanSweep, LspStatusItem } from "./components/Fahh/StatusHud";
 import { CommandPalette } from "./components/Fahh/CommandPalette";
 import { FAHH_COMMAND, OPEN_FOLDER_EVENT } from "./lib/commands";
-import { runEditorAction } from "./lib/monacoBridge";
+import { getActiveDocument, revealLine, runEditorAction } from "./lib/monacoBridge";
 import type { PaletteCommand } from "./lib/palette";
 import { usePreviewStore } from "./store/previewStore";
 import { useEditorStore } from "./store/editorStore";
@@ -33,6 +42,12 @@ import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
 import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe } from "lucide-react";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
+
+const store = () => (typeof localStorage === "undefined" ? undefined : localStorage);
+const SIDEBAR = { key: "fahh-sidebar-w", def: 240, min: 160, max: 560 };
+const BOTTOM = { key: "fahh-bottom-h", def: 208, min: 80 };
+/** Leave room for the editor: the bottom panel may take at most the window minus 220px. */
+const bottomMax = () => (typeof window === "undefined" ? 600 : Math.max(BOTTOM.min, window.innerHeight - 220));
 
 type SidebarTab = "files" | "git" | "ai" | "extensions" | "debug" | "theme";
 type BottomTab = "terminal" | "run" | "debug";
@@ -101,14 +116,44 @@ export default function App() {
     setShowWelcome(false);
   };
   const [showBottomPanel, setShowBottomPanel] = useState(true);
+  const [sidebarW, setSidebarW] = useState(() => loadSize(SIDEBAR.key, SIDEBAR.def, SIDEBAR.min, SIDEBAR.max, store()));
+  const [bottomH, setBottomH] = useState(() => loadSize(BOTTOM.key, BOTTOM.def, BOTTOM.min, bottomMax(), store()));
+  useEffect(() => saveSize(SIDEBAR.key, sidebarW, store()), [sidebarW]);
+  useEffect(() => saveSize(BOTTOM.key, bottomH, store()), [bottomH]);
   const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
 
   const { activeTheme, setTheme } = useThemeStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const tree = useFileStore((s) => s.tree);
-  const { openFileInEditor } = useWorkspace();
+  const { openFileInEditor, openFolder } = useWorkspace();
   const editorRegionRef = useRef<HTMLDivElement>(null);
+
+  // `fahh <folder|file>` from a shell: the first launch's path, then any later ones the
+  // running window is handed (src-tauri/src/app/mod.rs, single-instance).
+  useEffect(() => {
+    const run = (req: OpenRequest) =>
+      handleOpenRequest(req, {
+        openFolder,
+        openFile: openFileInEditor,
+        hasFolder: () => !!useFileStore.getState().root,
+        isActive: (p) => getActiveDocument() === p,
+        goToLine: revealLine,
+        notify: (t, k) => useToastStore.getState().show(t, k),
+      });
+    let off: (() => void) | undefined;
+    let gone = false;
+    takePendingOpen().then((req) => req && run(req)).catch(() => {});
+    import("@tauri-apps/api/event")
+      .then(({ listen }) => listen<OpenRequest>("fahh://open", (e) => void run(e.payload)))
+      .then((fn) => (gone ? fn() : (off = fn)))
+      .catch(() => {});
+    return () => {
+      gone = true;
+      off?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Apply theme CSS vars on mount and whenever the active theme changes
   useEffect(() => {
@@ -122,6 +167,9 @@ export default function App() {
     initFahhSfx(() => useFahhStore.getState().external());
     return () => teardownFahhSfx();
   }, []);
+
+  // Fahh Local: keep hearing the agent while its panel is hidden.
+  useEffect(() => initAgentEvents(), []);
 
   // Everything the palette (and the welcome screen) can do.
   const commands = useMemo<PaletteCommand[]>(() => {
@@ -139,7 +187,7 @@ export default function App() {
       { id: "view.explorer", group: "View", label: "Explorer", keywords: "files tree", run: view("files") },
       { id: "view.git", group: "View", label: "Source Control", keywords: "git branch commit", run: view("git") },
       { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
-      { id: "view.ai", group: "View", label: "AI Assistant", keywords: "chat llm ollama", run: view("ai") },
+      { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keys: ["Ctrl", "L"], keywords: "agent chat llm ollama groq composer devin cursor", run: view("ai") },
       { id: "view.extensions", group: "View", label: "Extensions", keywords: "plugins language packs", run: view("extensions") },
       { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
       { id: "panel.toggle", group: "View", label: "Toggle Panel", keys: ["Ctrl", "`"], keywords: "terminal bottom", run: () => setShowBottomPanel((v) => !v) },
@@ -154,6 +202,9 @@ export default function App() {
       { id: "fahh.off", group: "Fahh", label: "Effects: Off", keywords: "intensity silent disable", run: intensity("off") },
       { id: "fahh.mute", group: "Fahh", label: "Mute / Unmute Sound", keywords: "volume silence", run: () => useFahhStore.getState().toggleMute() },
       { id: "help.welcome", group: "Help", label: "Show Welcome", keywords: "onboarding tour getting started intro", run: () => setShowWelcome(true) },
+      { id: "cli.install", group: "Tools", label: "Install 'fahh' Command in PATH", keywords: "shell terminal code command line cli", run: () => {
+        installCli().then((m) => useToastStore.getState().show(m)).catch((e) => useToastStore.getState().show(String(e), "error"));
+      } },
       { id: "tools.optional", group: "Tools", label: "Optional Tools…", keywords: "installer n8n flowise setup", run: () => setShowInstaller(true) },
       { id: "file.quickOpen", group: "Go", label: "Go to File…", keys: ["Ctrl", "P"], keywords: "quick open find file", run: () => setQuickOpen(true) },
       { id: "preview.side", group: "Preview", label: "Open Preview to the Side", keys: ["Ctrl", "K", "V"], keywords: "markdown html image csv split", run: () => {
@@ -206,6 +257,11 @@ export default function App() {
         e.stopPropagation();
         setPaletteOpen(false);
         setQuickOpen((v) => !v);
+      } else if ((mod && !e.shiftKey && e.key.toLowerCase() === "l") || (mod && e.shiftKey && e.key.toLowerCase() === "a")) {
+        // Ctrl+L or Ctrl+Shift+A: Toggle Fahh Local agent panel
+        e.preventDefault();
+        e.stopPropagation();
+        setSidebarTab((current) => (current === "ai" ? "files" : "ai"));
       }
     };
     window.addEventListener("keydown", onKey, true);
@@ -248,6 +304,39 @@ export default function App() {
     };
     window.addEventListener("keydown", blockReload);
     return () => window.removeEventListener("keydown", blockReload);
+  }, []);
+
+  // Ctrl+S saves the open file from anywhere: editor, explorer, terminal, panels.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        void saveActive();
+      }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  // Closing the window with unsaved tabs asks first (Tauri close-requested).
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let gone = false;
+    import("@tauri-apps/api/window")
+      .then(({ getCurrentWindow }) =>
+        getCurrentWindow().onCloseRequested((e) => {
+          const msg = unsavedMessage();
+          if (msg && !window.confirm(msg)) e.preventDefault();
+        })
+      )
+      .then((fn) => (gone ? fn() : (off = fn)))
+      .catch(() => {
+        // plain browser build: no native window to guard
+      });
+    return () => {
+      gone = true;
+      off?.();
+    };
   }, []);
 
   // Toggle bottom panel via keyboard shortcut (Ctrl+`)
@@ -299,10 +388,13 @@ export default function App() {
 
         <ActivityBtn
           active={sidebarTab === "ai"}
-          title="AI Assistant"
+          title="Fahh Local (AI agent)"
           onClick={() => setSidebarTab("ai")}
         >
-          <Bot size={18} />
+          <span className="relative">
+            <Bot size={18} />
+            <AgentStatusDot />
+          </span>
         </ActivityBtn>
 
         <ActivityBtn
@@ -335,7 +427,7 @@ export default function App() {
       </div>
 
       {/* ── Sidebar panel ── */}
-      <div className="w-60 shrink-0 flex flex-col border-r border-fahh-surface overflow-hidden">
+      <div style={{ width: sidebarW }} className="fahh-sidebar shrink-0 flex flex-col overflow-hidden">
         {sidebarTab === "files" && <FileTree />}
 
         {sidebarTab === "git" && <GitSidebar />}
@@ -349,7 +441,7 @@ export default function App() {
           </div>
         )}
 
-        {sidebarTab === "ai" && <AIPanel />}
+        {sidebarTab === "ai" && <AgentPanel />}
 
         {sidebarTab === "theme" && (
           <div className="flex flex-col h-full overflow-y-auto bg-fahh-sidebar">
@@ -372,6 +464,8 @@ export default function App() {
         )}
       </div>
 
+      <ResizeHandle dir="col" size={sidebarW} onResize={(n) => setSidebarW(clampSize(n, SIDEBAR.min, SIDEBAR.max))} label="Resize sidebar" />
+
       {/* ── Main area ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Editor region (the fahh effects play over this, and only this) */}
@@ -383,7 +477,10 @@ export default function App() {
 
         {/* Bottom panel (Terminal / Run / Debug) */}
         {showBottomPanel && (
-          <div className="h-52 shrink-0 border-t border-fahh-surface flex flex-col">
+          <ResizeHandle dir="row" growsBackward size={bottomH} onResize={(n) => setBottomH(clampSize(n, BOTTOM.min, bottomMax()))} label="Resize panel" />
+        )}
+        {showBottomPanel && (
+          <div style={{ height: Math.min(bottomH, bottomMax()) }} className="shrink-0 flex flex-col">
             {/* Panel tab bar */}
             <div className="flex items-center shrink-0 border-b border-fahh-surface bg-fahh-sidebar">
               <BottomTabBtn
@@ -424,14 +521,14 @@ export default function App() {
         )}
 
         {/* Status bar */}
-        <div className="fahh-statusbar relative overflow-hidden h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 text-xs text-fahh-muted">
+        <div className="fahh-statusbar relative overflow-hidden h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 max-[900px]:gap-3 text-xs text-fahh-muted [&>*]:shrink-0 [&>*]:whitespace-nowrap">
           <CleanSweep />
           <StatusHud />
           <LocalServerItem />
 
           <button
             onClick={() => setShowBottomPanel((p) => !p)}
-            className="hover:text-fahh-text transition-colors"
+            className="hover:text-fahh-text transition-colors max-[760px]:hidden"
           >
             {showBottomPanel ? "Hide Panel" : "Show Panel"}
           </button>
@@ -453,11 +550,11 @@ export default function App() {
           <HudControls />
 
           {/* Active theme indicator */}
-          <span className="text-fahh-muted capitalize">
+          <span className="text-fahh-muted capitalize max-[860px]:hidden">
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span>v0.5.0</span>
+          <span className="max-[680px]:hidden">v0.5.0</span>
         </div>
       </div>
 
@@ -476,6 +573,7 @@ export default function App() {
         />
       )}
 
+      <Toasts />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
       <CommandPalette
         open={quickOpen}
@@ -488,6 +586,18 @@ export default function App() {
         emptyText="Open a folder first: Ctrl+Shift+P, then “Open Folder…”."
       />
     </div>
+  );
+}
+
+/** Fahh Local state on the activity bar: pulses while working, solid when it needs you. */
+function AgentStatusDot() {
+  const status = useAgentStore((s) => s.status);
+  if (status !== "running" && status !== "needs_input") return null;
+  return (
+    <span
+      aria-label={status === "needs_input" ? "Fahh Local needs your approval" : "Fahh Local is working"}
+      className={`absolute -top-1 -right-1 w-2 h-2 rounded-full ${status === "needs_input" ? "bg-fahh-error" : "bg-fahh-accent animate-pulse"}`}
+    />
   );
 }
 

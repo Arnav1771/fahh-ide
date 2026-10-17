@@ -1,0 +1,14 @@
+{
+  "mainBinaryName": "fahh-editor",
+  "bundle": {
+    "resources": {
+      "assets/fahh.mp3": "assets/fahh.mp3",
+      "cli/fahh.cmd": "bin/fahh.cmd"
+    },
+    "windows": {
+      "nsis": {
+        "installerHooks": "windows/hooks.nsh"
+      }
+    }
+  }
+}

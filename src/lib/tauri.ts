@@ -6,6 +6,7 @@ import type {
   FahhConfig,
   FileEntry,
   GitStatus,
+  OpenRequest,
   Plugin,
   RunConfig,
   RunResult,
@@ -173,3 +174,11 @@ export const gitDiff = (path: string, file: string, staged: boolean) =>
 /** Let the previews load files from this folder (or this file's folder) through the asset protocol. */
 export const allowPreview = (path: string) =>
   invoke<string>("allow_preview", { path });
+
+// ─── `fahh` command ───────────────────────────────────────────────────────────
+
+/** The path from the first launch (`fahh .`), once; null when started normally. */
+export const takePendingOpen = () => invoke<OpenRequest | null>("take_pending_open");
+
+/** macOS / AppImage: put a `fahh` command on the PATH. Resolves to a message to show. */
+export const installCli = () => invoke<string>("install_cli");

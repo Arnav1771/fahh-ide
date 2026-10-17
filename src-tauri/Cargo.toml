@@ -30,6 +30,13 @@ walkdir = "2"
 which = "6"
 lazy_static = "1"
 git2 = { version = "0.19", default-features = false }
+# Fahh Local: provider HTTP + streaming, and the search tool
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls"] }
+futures-util = "0.3"
+regex = "1"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
@@ -43,3 +50,6 @@ codegen-units = 1
 lto = true
 opt-level = "s"
 strip = true
+
+[dev-dependencies]
+tempfile = "3"
