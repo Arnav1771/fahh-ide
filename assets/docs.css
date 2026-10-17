@@ -49,3 +49,234 @@
 .steps li::before { content: counter(s); position: absolute; left: 16px; top: 13px; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 8px; font: 600 12px var(--font-mono); color: var(--accent-bright); box-shadow: inset 0 0 0 1px var(--border-accent); }
 .steps b { color: var(--text-primary); font-weight: 600; }
 .note { font-size: 14px; color: var(--text-tertiary); }
+
+/* ── Documentation Search UI (Command Palette & TOC Filter) ── */
+.doc-search-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-tertiary);
+  font: 400 13px var(--font-sans);
+  padding: 6px 12px;
+  border-radius: var(--r-md);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+  box-shadow: inset 0 1px 0 rgba(255, 248, 230, 0.04);
+}
+.doc-search-trigger:hover {
+  border-color: var(--border-accent);
+  color: var(--text-primary);
+  background: var(--bg-card);
+}
+.kbd-badge {
+  font: 500 11px var(--font-mono);
+  background: rgba(255, 248, 230, 0.06);
+  color: var(--accent);
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+}
+
+/* TOC Filter input */
+.toc-search-wrap {
+  margin-bottom: 12px;
+}
+.toc-filter-input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  color: var(--text-primary);
+  font: 400 13px var(--font-mono);
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color var(--dur-fast);
+}
+.toc-filter-input:focus {
+  border-color: var(--border-accent);
+  background: var(--bg-card);
+}
+.toc-filter-input::placeholder {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* Modal Overlay */
+.doc-search-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  background: rgba(10, 9, 7, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 100px 16px 40px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.doc-search-modal-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.doc-search-modal {
+  width: 100%;
+  max-width: 640px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--r-lg);
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.7), 0 0 0 1px var(--border-accent);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  transform: translateY(-8px) scale(0.98);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.doc-search-modal-backdrop.open .doc-search-modal {
+  transform: translateY(0) scale(1);
+}
+.doc-search-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-card);
+}
+.doc-search-input-wrap svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+.doc-search-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font: 500 16px var(--font-sans);
+  outline: none;
+}
+.doc-search-input::placeholder {
+  color: var(--text-muted);
+}
+.doc-search-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  border-radius: 4px;
+}
+.doc-search-clear:hover {
+  color: var(--text-primary);
+}
+.doc-search-results {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.doc-search-results::-webkit-scrollbar {
+  width: 6px;
+}
+.doc-search-results::-webkit-scrollbar-thumb {
+  background: var(--border-medium);
+  border-radius: 3px;
+}
+.search-result-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  text-decoration: none;
+  color: var(--fg-body);
+  transition: background var(--dur-fast), color var(--dur-fast);
+  cursor: pointer;
+}
+.search-result-item:hover,
+.search-result-item.selected {
+  background: rgba(212, 160, 60, 0.12);
+  color: var(--text-primary);
+}
+.search-result-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.search-result-title {
+  font: 600 14px var(--font-sans);
+  color: var(--text-primary);
+}
+.search-result-badge {
+  font: 600 10.5px var(--font-mono);
+  color: var(--accent);
+  background: rgba(212, 160, 60, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.search-result-snippet {
+  font-size: 13px;
+  color: var(--fg-body);
+  line-height: 1.45;
+}
+.search-result-snippet mark {
+  background: rgba(212, 160, 60, 0.35);
+  color: var(--accent-bright);
+  font-weight: 600;
+  padding: 0 2px;
+  border-radius: 2px;
+}
+.doc-search-empty {
+  padding: 32px 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.doc-search-footer {
+  padding: 10px 20px;
+  background: #090806;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font: 12px var(--font-mono);
+  color: var(--text-tertiary);
+}
+.doc-search-shortcuts {
+  display: flex;
+  gap: 12px;
+}
+.doc-search-shortcuts span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.doc-search-shortcuts kbd {
+  background: rgba(255, 248, 230, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  color: var(--accent);
+}
+
+/* Highlight target section on jump */
+@keyframes target-pulse {
+  0% { background: rgba(212, 160, 60, 0.2); }
+  100% { background: transparent; }
+}
+.doc section.highlight-target {
+  animation: target-pulse 1.8s ease-out;
+  border-radius: var(--r-md);
+}

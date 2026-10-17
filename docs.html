@@ -25,6 +25,11 @@
         <a href="download.html">Download</a>
       </nav>
       <div class="nav-cta">
+        <button type="button" class="doc-search-trigger" id="docSearchTrigger" aria-label="Search documentation">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          <span>Search docs...</span>
+          <span class="kbd-badge">Ctrl K</span>
+        </button>
         <a class="btn btn-secondary btn-sm" href="https://github.com/Arnav1771/fahh-ide">GitHub</a>
       </div>
     </div>
@@ -32,8 +37,11 @@
 
   <div class="wrap docs">
     <aside class="toc" aria-label="On this page">
+      <div class="toc-search-wrap">
+        <input type="text" id="tocFilter" class="toc-filter-input" placeholder="Filter sections... (/)" aria-label="Filter table of contents">
+      </div>
       <p class="toc-h">[Contents]</p>
-      <ol>
+      <ol id="tocList">
         <li><a href="#intro">Introduction</a></li>
         <li><a href="#quick-start">Quick start</a></li>
         <li><a href="#architecture">Architecture</a></li>
@@ -291,6 +299,30 @@ cargo clippy --all-targets -- -D warnings   # the CI lint gate</code></pre>
       </div>
     </div>
   </footer>
+  <!-- Documentation Search Command Palette Modal -->
+  <div class="doc-search-modal-backdrop" id="docSearchModal" aria-hidden="true">
+    <div class="doc-search-modal" role="dialog" aria-modal="true" aria-label="Search Documentation">
+      <div class="doc-search-input-wrap">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" class="doc-search-input" id="docSearchInput" placeholder="Search commands, configs, events, guide..." autocomplete="off" spellcheck="false">
+        <button type="button" class="doc-search-clear" id="docSearchClear" aria-label="Clear search" style="display: none;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+      </div>
+      <div class="doc-search-results" id="docSearchResults" role="listbox">
+        <div class="doc-search-empty">Type a query to search commands, architecture, configuration...</div>
+      </div>
+      <div class="doc-search-footer">
+        <div class="doc-search-shortcuts">
+          <span><kbd>↑</kbd> <kbd>↓</kbd> navigate</span>
+          <span><kbd>Enter</kbd> select</span>
+          <span><kbd>Esc</kbd> close</span>
+        </div>
+        <span>Fahh Editor Docs</span>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="sim/docs.js"></script>
 </body>
 </html>
