@@ -974,7 +974,7 @@ mod tests {
     #[test]
     fn judge_verdict_parsing() {
         assert_eq!(parse_verdict("SAFE: only reads"), (true, "only reads".into()));
-        assert_eq!(parse_verdict("safe - fine").0, true);
+        assert!(parse_verdict("safe - fine").0);
         assert_eq!(parse_verdict("UNSAFE it deletes"), (false, "it deletes".into()));
         assert!(!parse_verdict("maybe").0);
         assert!(!parse_verdict("").0);
@@ -1083,7 +1083,7 @@ mod tests {
         write_agent(&h, "writer", "accept-edits");
         run(&h, delegate_to("writer"), Mode::Plan, "x", 1).await;
         assert!(!h.dir.path().join("child.txt").exists());
-        assert_eq!(count(&h, |e| approval_ev(e)), 0);
+        assert_eq!(count(&h, approval_ev), 0);
         assert!(events(&h).iter().any(|e| matches!(e, AgentEvent::SubStarted { mode: Mode::Plan, .. })));
 
         // ask-mode parent: the child's edit asks (surfaced through the same prompt, tagged with the agent)
@@ -1099,7 +1099,7 @@ mod tests {
         write_agent(&h, "writer", "accept-edits");
         run(&h, delegate_to("writer"), Mode::AutoEdit, "x", 1).await;
         assert_eq!(std::fs::read_to_string(h.dir.path().join("child.txt")).unwrap(), "from child");
-        assert_eq!(count(&h, |e| approval_ev(e)), 0);
+        assert_eq!(count(&h, approval_ev), 0);
 
         // deny rules reach children
         let h = harness(|_| yes());

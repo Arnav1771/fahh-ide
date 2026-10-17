@@ -34,7 +34,7 @@ pub fn parse(line: &str) -> Option<Result<Slash, String>> {
         return None; // "/usr/bin/x ..." or a lone slash is a prompt, not a command
     }
     let word = word.to_lowercase();
-    let def = registry().into_iter().find(|d| d.name == word || d.aliases.iter().any(|a| *a == word));
+    let def = registry().into_iter().find(|d| d.name == word || d.aliases.contains(&word));
     Some(match def {
         Some(d) => Ok(Slash { name: d.name, arg: arg.trim().to_string() }),
         None => Err(format!("unknown command /{word}; /help lists them")),

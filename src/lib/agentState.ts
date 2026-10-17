@@ -230,8 +230,23 @@ function applyEvent(state: AgentState, ev: AgentEvent): AgentState {
     case "sub_done":
       return {
         ...state,
+        // whatever was still running or waiting inside it is over
         items: state.items.map((i) =>
-          i.kind === "sub" && i.child === ev.child ? { ...(i as SubItem), status: ev.ok ? "done" : "failed", steps: ev.steps, summary: ev.summary } : i
+          i.kind === "sub" && i.child === ev.child
+            ? {
+                ...(i as SubItem),
+                status: ev.ok ? "done" : "failed",
+                steps: ev.steps,
+                summary: ev.summary,
+                items: i.items.map((c) =>
+                  c.kind === "tool" && c.status === "running"
+                    ? { ...c, status: ev.ok ? "ok" : "error" }
+                    : c.kind === "approval" && c.state === "pending"
+                      ? { ...c, state: "denied" }
+                      : c
+                ),
+              }
+            : i
         ),
       };
     case "loop_round":

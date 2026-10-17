@@ -735,8 +735,7 @@ pub async fn main_cli(args: Vec<String>, provider_override: Option<Provider>) ->
             None => repl.prompt(p, repl.mode, RunSpec::Turn, quiet).await,
         }
     } else {
-        loop {
-            let Some(line) = prompt_user("\nfahh> ") else { break };
+        while let Some(line) = prompt_user("\nfahh> ") {
             if matches!(line.as_str(), "" | "exit" | "quit") {
                 break;
             }

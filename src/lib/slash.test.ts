@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { filterSlash, groupSlash, insertion, menuQuery, parseMode, parseSlash, SLASH_COMMANDS } from "./slash";
 
@@ -54,6 +55,16 @@ describe("the menu", () => {
     for (const d of SLASH_COMMANDS) {
       expect(d.icon).toBeTruthy();
       expect(d.desc).toBeTruthy();
+    }
+  });
+});
+
+describe("docs", () => {
+  it("IMP_DOCS/FAHH_LOCAL.md lists every command and alias", () => {
+    const md = readFileSync(new URL("../../IMP_DOCS/FAHH_LOCAL.md", import.meta.url), "utf8");
+    for (const d of SLASH_COMMANDS) {
+      expect(md, `/${d.name}`).toContain(`\`/${d.name}`);
+      for (const a of d.aliases) expect(md, `/${a}`).toContain(`/${a}`);
     }
   });
 });

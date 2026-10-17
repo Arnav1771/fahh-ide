@@ -1,6 +1,8 @@
 # Rust / Tauri
 target/
 src-tauri/target/
+# fahh-agent sidecar, made by scripts/prepare-sidecar.mjs and src-tauri/build.rs
+src-tauri/binaries/
 
 # Node
 node_modules/

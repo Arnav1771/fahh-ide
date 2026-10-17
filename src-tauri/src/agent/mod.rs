@@ -118,6 +118,8 @@ pub enum RunSpec {
 
 pub type Sink = Arc<dyn Fn(AgentEvent) + Send + Sync>;
 
+type Pending = HashMap<String, (Option<String>, oneshot::Sender<Decision>)>;
+
 // ─── session ──────────────────────────────────────────────────────────────────
 
 struct Meta {
@@ -134,7 +136,7 @@ pub struct Session {
     meta: Mutex<Meta>,
     checkpoints: Mutex<Checkpoints>,
     /// approval id -> (owning subagent, answer channel)
-    pending: Mutex<HashMap<String, (Option<String>, oneshot::Sender<Decision>)>>,
+    pending: Mutex<Pending>,
     children: Mutex<HashMap<String, Arc<AtomicBool>>>,
     cancel: Arc<AtomicBool>,
     running: AtomicBool,

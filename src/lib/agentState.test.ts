@@ -161,6 +161,18 @@ describe("subagents, judge, loop and sessions", () => {
     expect(card.items[0]).toMatchObject({ kind: "tool", status: "ok", output: "a.rs:1" });
   });
 
+  it("a stopped subagent leaves no spinner or open approval behind", () => {
+    const s = run([
+      ev(started),
+      sub({ type: "tool_call", turn: 1, id: "t1", name: "run_command", args: {}, kind: "run" }),
+      sub({ ...(approval as object), id: "appr-5" } as AgentEvent),
+      ev({ type: "sub_done", turn: 1, child: "c1", name: "explore", ok: false, steps: 0, summary: "stopped" }),
+    ]);
+    const card = s.items[0];
+    if (card.kind !== "sub") throw new Error();
+    expect(card.items.map((c) => (c.kind === "tool" ? c.status : c.kind === "approval" ? c.state : c.kind))).toEqual(["error", "denied"]);
+  });
+
   it("two subagents stay separate", () => {
     const s = run([
       ev(started),
