@@ -1,18 +1,21 @@
-import { Columns2, Eye } from "lucide-react";
+import { Columns2, Eye, Globe } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { usePreviewStore } from "../../store/previewStore";
 import { isPreviewOnly, previewKindFor } from "../../lib/preview";
 import { runCommand } from "../../lib/commands";
 import { requestClose } from "../../lib/tabActions";
+import { openBrowser } from "../../lib/browser";
 
 export function TabBar() {
   const { openTabs, activeTab, setActiveTab } = useEditorStore();
   const mode = usePreviewStore((s) => (activeTab ? s.modes[activeTab] : undefined));
+  const localUrl = usePreviewStore((s) => s.localUrl);
 
   if (openTabs.length === 0) return null;
 
-  // Editor title actions, as in VS Code: only for files that have a preview.
-  const showActions = !!activeTab && !!previewKindFor(activeTab) && !isPreviewOnly(activeTab);
+  // Editor title actions: direct preview for supported files (Markdown, HTML, SVG, CSV)
+  const directPreviewKind = activeTab ? previewKindFor(activeTab) : null;
+  const showDirectPreview = !!activeTab && !!directPreviewKind && !isPreviewOnly(activeTab);
 
   return (
     <div className="flex shrink-0 items-stretch bg-fahh-sidebar border-b border-fahh-surface">
@@ -48,30 +51,53 @@ export function TabBar() {
           );
         })}
       </div>
-      {showActions && (
-        <div className="fahh-preview-actions flex shrink-0 items-center gap-0.5 px-2">
+
+      {/* ── Preview Controls Bar ── */}
+      <div className="fahh-preview-actions flex shrink-0 items-center gap-1 px-2">
+        {showDirectPreview ? (
+          <>
+            <button
+              type="button"
+              onClick={() => runCommand("preview.side")}
+              title="Open Preview to the Side (Ctrl+K V)"
+              aria-label="Open preview to the side"
+              aria-pressed={mode === "side"}
+              className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors hover:bg-fahh-surface ${
+                mode === "side" ? "bg-fahh-accent/15 text-fahh-accent font-medium" : "text-fahh-muted hover:text-fahh-text"
+              }`}
+            >
+              <Columns2 size={13} aria-hidden="true" />
+              <span>Split Preview</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => runCommand("preview.toggle")}
+              title="Toggle In-place Preview (Ctrl+Shift+V)"
+              aria-label="Open preview"
+              aria-pressed={mode === "only"}
+              className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors hover:bg-fahh-surface ${
+                mode === "only" ? "bg-fahh-accent/15 text-fahh-accent font-medium" : "text-fahh-muted hover:text-fahh-text"
+              }`}
+            >
+              <Eye size={13} aria-hidden="true" />
+              <span>{mode === "only" ? "Show Code" : "Full Preview"}</span>
+            </button>
+          </>
+        ) : (
           <button
             type="button"
-            onClick={() => runCommand("preview.side")}
-            title="Open Preview to the Side (Ctrl+K V)"
-            aria-label="Open preview to the side"
-            aria-pressed={mode === "side"}
-            className={`rounded p-1.5 hover:bg-fahh-surface ${mode === "side" ? "text-fahh-accent" : "text-fahh-muted hover:text-fahh-text"}`}
+            onClick={() => {
+              openBrowser(localUrl || "http://localhost:5173");
+            }}
+            title="Open Web / UI Live Preview (Ctrl+Shift+B)"
+            aria-label="Open UI Preview"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#4a9eff]/10 hover:bg-[#4a9eff]/20 border border-[#4a9eff]/30 text-xs font-medium text-[#4a9eff] hover:text-[#7bb7ff] transition-all"
           >
-            <Columns2 size={15} aria-hidden="true" />
+            <Globe size={13} />
+            <span>UI Preview</span>
           </button>
-          <button
-            type="button"
-            onClick={() => runCommand("preview.toggle")}
-            title="Open Preview (Ctrl+Shift+V)"
-            aria-label="Open preview"
-            aria-pressed={mode === "only"}
-            className={`flex items-center gap-1 rounded px-1.5 py-1 text-xs hover:bg-fahh-surface ${mode === "only" ? "text-fahh-accent" : "text-fahh-muted hover:text-fahh-text"}`}
-          >
-            <Eye size={15} aria-hidden="true" /> {mode === "only" ? "Source" : "Preview"}
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }

@@ -122,10 +122,14 @@ function FileNode({
       : newFileParentPath === entry.path);
 
   const handleClick = async () => {
-    if (entry.is_dir) {
-      setExpanded((p) => !p);
-    } else {
-      await openFileInEditor(entry.path);
+    try {
+      if (entry.is_dir) {
+        setExpanded((p) => !p);
+      } else {
+        await openFileInEditor(entry.path);
+      }
+    } catch (err) {
+      console.error("Error opening file/dir:", err);
     }
   };
 

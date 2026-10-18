@@ -20,15 +20,18 @@ fn build_tree(path: &Path, depth: usize) -> Result<FileEntry> {
     let is_dir = path.is_dir();
 
     let children = if is_dir && depth < 5 {
-        let mut entries: Vec<FileEntry> = std::fs::read_dir(path)?
-            .filter_map(|e| e.ok())
-            .filter(|e| {
-                let name = e.file_name();
-                let s = name.to_string_lossy();
-                !s.starts_with('.') && s != "node_modules" && s != "target"
-            })
-            .filter_map(|e| build_tree(&e.path(), depth + 1).ok())
-            .collect();
+        let mut entries: Vec<FileEntry> = match std::fs::read_dir(path) {
+            Ok(read_dir) => read_dir
+                .filter_map(|e| e.ok())
+                .filter(|e| {
+                    let name = e.file_name();
+                    let s = name.to_string_lossy();
+                    !s.starts_with('.') && s != "node_modules" && s != "target"
+                })
+                .filter_map(|e| build_tree(&e.path(), depth + 1).ok())
+                .collect(),
+            Err(_) => Vec::new(),
+        };
         entries.sort_by(|a, b| {
             b.is_dir
                 .cmp(&a.is_dir)
@@ -58,7 +61,10 @@ pub fn get_file_tree(root: String) -> Result<FileEntry, String> {
 
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
-    std::fs::read_to_string(&path).map_err(|e| e.to_string())
+    match std::fs::read(&path) {
+        Ok(bytes) => Ok(String::from_utf8_lossy(&bytes).to_string()),
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[tauri::command]

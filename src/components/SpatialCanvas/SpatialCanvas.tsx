@@ -86,6 +86,25 @@ export function SpatialCanvas() {
     return () => el.removeEventListener("wheel", onWheel);
   }, [setPan, zoomBy]);
 
+  // Prevent any ancestor/child scroll events from displacing the canvas viewport
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+    el.scrollLeft = 0;
+
+    const preventScroll = () => {
+      if (el.scrollTop !== 0) el.scrollTop = 0;
+      if (el.scrollLeft !== 0) el.scrollLeft = 0;
+    };
+
+    el.addEventListener("scroll", preventScroll, { passive: true });
+    if (window.scrollY !== 0 || window.scrollX !== 0) {
+      window.scrollTo(0, 0);
+    }
+    return () => el.removeEventListener("scroll", preventScroll);
+  }, []);
+
   // Global shortcut: Ctrl+Shift+C to toggle spatial mode
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
