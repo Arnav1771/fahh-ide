@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fahh Editor</title>
-  <meta name="description" content="A desktop code editor that plays a sound when your code breaks. Tauri 2, Monaco, live diagnostics from 18 language servers. Try the simulator in your browser.">
+  <meta name="description" content="A next-generation desktop code editor with CATE 2D spatial canvas, Cursor-grade AI Composer, Monaco Error Lens, and the iconic audio engine that plays when your code breaks. Tauri 2, Monaco, 18 language servers.">
   <meta name="theme-color" content="#0a0907">
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -24,6 +24,8 @@
       </a>
       <nav class="nav-links" aria-label="Sections">
         <a href="#simulator">Simulator</a>
+        <a href="#canvas">Spatial Canvas</a>
+        <a href="#composer">Composer AI</a>
         <a href="#features">Features</a>
         <a href="play.html">Playground</a>
         <a href="docs.html">Docs</a>
@@ -33,7 +35,7 @@
           <svg class="icon" viewBox="0 0 24 24"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
           <span class="hide-sm">Source</span>
         </a>
-        <a class="btn btn-primary btn-sm" href="#download">Download</a>
+        <a class="btn btn-primary btn-sm" href="#download">Download v0.6.0</a>
       </div>
     </div>
   </header>
@@ -42,20 +44,24 @@
     <section class="hero">
       <div class="wrap hero-inner">
         <span class="badge reveal">
-          <svg class="icon" viewBox="0 0 24 24"><path d="M11 5 6 9H2v6h4l5 4V5Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
-          v0.5.2 · a desktop editor built on Tauri 2
+          <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+          v0.6.0 · 2D Spatial Canvas & Cursor AI · Tauri 2
         </span>
         <h1 class="display reveal">
           <span class="hl-muted">Your code broke.</span><br>
           <span class="hl-muted">You'll </span><span class="hl-bright cycle">hear it.</span>
         </h1>
-        <p class="lede reveal">Fahh Editor is a Monaco-based code editor for Windows, macOS and Linux. When a language server reports an error in your file, it plays one short, unforgettable sound, then stays quiet for three seconds, so a cascade of forty errors is still one sound.</p>
+        <p class="lede reveal">Fahh Editor is a high-performance desktop code editor built on Tauri 2 and Monaco. Featuring the CATE 2D infinite spatial canvas, Cursor-grade Composer with multi-file diffs, inline Error Lens diagnostics, and the legendary audio engine that plays one unforgettable sound when your code breaks.</p>
         <div class="hero-ctas reveal">
-          <a class="btn btn-primary" href="#simulator">
+          <a class="btn btn-primary" href="#download">
+            <svg class="icon" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Download v0.6.0
+          </a>
+          <a class="btn btn-secondary" href="#simulator">
             <svg class="icon" viewBox="0 0 24 24"><path d="m6 4 13 8-13 8V4z"/></svg>
             Break some code
           </a>
-          <a class="btn btn-secondary" href="#download">Download v0.5.2</a>
+          <a class="btn btn-secondary" href="#canvas">Spatial Canvas</a>
         </div>
       </div>
       <div class="hero-orb" aria-hidden="true"></div>
@@ -151,7 +157,165 @@
       </div>
     </section>
 
-    <section class="section alt" id="features" aria-labelledby="feat-h">
+    <section class="section" id="canvas" aria-labelledby="canvas-h">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="section-label">[CATE Spatial Canvas]</span>
+          <h2 id="canvas-h"><span class="hl-muted">Infinite 2D canvas.</span> <span class="hl-bright">Zero window clutter.</span></h2>
+          <p>Break out of rigid tab bars into an expansive 2D workspace inspired by CATE. Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> to float Monaco editors, live terminal instances, AI assistants, and responsive web preview nodes across infinite zoomable space.</p>
+        </div>
+
+        <div class="canvas-showcase-box reveal">
+          <div class="canvas-hud-pill">
+            <svg class="icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>
+            <span>CATE Spatial Mode Active · Zoom: 100% · <kbd>Ctrl+Shift+C</kbd></span>
+          </div>
+
+          <div class="canvas-nodes-cluster">
+            <div class="canvas-node">
+              <div class="node-header">
+                <div class="node-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+                <span>SpatialCanvas.tsx</span>
+                <span class="sub">Monaco</span>
+              </div>
+              <div class="node-body">
+                <p><span class="hl-muted">1</span> <span class="k">export const</span> SpatialCanvas = () =&gt; {</p>
+                <p><span class="hl-muted">2</span>   <span class="k">const</span> { zoom, pan } = useCanvasStore();</p>
+                <p><span class="hl-muted">3</span>   <span class="k">return</span> &lt;<span class="hl-bright">InfinitePlane</span> scale={zoom} /&gt;;</p>
+                <p><span class="hl-muted">4</span> };</p>
+              </div>
+            </div>
+
+            <div class="canvas-node">
+              <div class="node-header">
+                <div class="node-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+                <span>cargo test</span>
+                <span class="sub">Terminal</span>
+              </div>
+              <div class="node-body">
+                <p><span class="k">$</span> cargo test --workspace</p>
+                <p class="hl-muted">running 238 tests</p>
+                <p style="color: var(--success);">test result: ok. 238 passed; 0 failed</p>
+                <p class="sub">✓ LSP bridge · ✓ Error lens · ✓ Runner</p>
+              </div>
+            </div>
+
+            <div class="canvas-node">
+              <div class="node-header">
+                <div class="node-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
+                <span>Fahh Composer</span>
+                <span class="sub">AI Agent</span>
+              </div>
+              <div class="node-body">
+                <p style="color: var(--accent);">● Step 2/3 · Executing Plan</p>
+                <p class="hl-muted">✓ Synthesized multi-file diff</p>
+                <p class="hl-muted">✓ Verified zero syntax regressions</p>
+                <p><span class="sub">Ready to apply to 3 files...</span></p>
+              </div>
+            </div>
+          </div>
+
+          <div class="canvas-footer-row">
+            <div class="canvas-teleport">
+              <span>Quick Teleport:</span>
+              <code>[1] Monaco Editor</code>
+              <code>[2] Terminal</code>
+              <code>[3] Agent</code>
+              <code>[0] Reset (100%)</code>
+            </div>
+
+            <div class="canvas-minimap-card" aria-label="Interactive Radar Minimap">
+              <span class="minimap-node-dot" style="left: 14px; top: 18px;"></span>
+              <span class="minimap-node-dot" style="left: 36px; top: 22px;"></span>
+              <span class="minimap-node-dot" style="left: 72px; top: 16px;"></span>
+              <div class="minimap-screen-box"></div>
+              <span class="minimap-label">Radar Minimap</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section alt" id="composer" aria-labelledby="comp-h">
+      <div class="wrap">
+        <div class="section-head reveal">
+          <span class="section-label">[Cursor / Devin Intelligence]</span>
+          <h2 id="comp-h"><span class="hl-muted">Autonomous Composer.</span> <span class="hl-bright">Inline Edit. Error Lens.</span></h2>
+          <p>Cursor-grade developer velocity built into your local environment. Work across multiple files with <kbd>Ctrl</kbd> + <kbd>I</kbd>, edit selected code blocks with <kbd>Ctrl</kbd> + <kbd>K</kbd>, and see errors explained directly in your code with Monaco Error Lens.</p>
+        </div>
+
+        <div class="feature-grid">
+          <div class="composer-card reveal">
+            <div class="composer-header">
+              <span>Cursor Composer (<kbd>Ctrl+I</kbd>)</span>
+              <span class="sub">Multi-File Agent</span>
+            </div>
+            <div class="composer-body">
+              <div class="composer-chips">
+                <span class="composer-chip">@src/lib/fahh.ts</span>
+                <span class="composer-chip">@src/core/runner.rs</span>
+                <span class="composer-chip">@workspace</span>
+              </div>
+              <div class="diff-box">
+                <div class="diff-file-head">
+                  <span>src/components/ErrorLens.tsx</span>
+                  <span>+18 -2 lines</span>
+                </div>
+                <div class="diff-line diff-same"> const renderDiagnostic = (diag: Marker) =&gt; {</div>
+                <div class="diff-line diff-del">-  return null;</div>
+                <div class="diff-line diff-add">+  return &lt;span className="error-lens-badge"&gt;</div>
+                <div class="diff-line diff-add">+    {diag.message} [{diag.source}]</div>
+                <div class="diff-line diff-add">+  &lt;/span&gt;;</div>
+                <div class="diff-line diff-same"> };</div>
+              </div>
+              <div class="controls">
+                <button type="button" class="btn btn-primary btn-sm">Accept All (Ctrl+Enter)</button>
+                <button type="button" class="btn btn-secondary btn-sm">Reject</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer-card reveal">
+            <div class="composer-header">
+              <span>Monaco Error Lens &amp; Ghost Text</span>
+              <span class="sub">Real-Time Diagnostics</span>
+            </div>
+            <div class="composer-body">
+              <div class="diff-box" style="padding: 14px;">
+                <p><span class="hl-muted">42</span> <span class="k">const</span> sound = <span class="k">await</span> decodeAudioData(bytes);</p>
+                <p><span class="hl-muted">43</span> playSound(sund); <span class="error-lens-tag">⊗ Cannot find name 'sund'. Did you mean 'sound'? [tsc]</span></p>
+                <p><span class="hl-muted">44</span> </p>
+                <p><span class="hl-muted">45</span> <span class="k">export const</span> handleCommit = <span class="k">async</span> () =&gt; {</p>
+                <p><span class="hl-muted">46</span>   <span class="ghost-text">const message = await generateCommitMessage(); // Tab to accept</span></p>
+                <p><span class="hl-muted">47</span> };</p>
+              </div>
+              <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <span class="composer-chip" style="color: var(--error); border-color: rgba(208, 82, 77, 0.4); background: rgba(208, 82, 77, 0.1);">Terminal "Fix with AI"</span>
+                <span class="composer-chip">Inline Edit (Ctrl+K)</span>
+                <span class="composer-chip">Git Commit Generator</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="composer-card reveal">
+            <div class="composer-header">
+              <span>REA Reverse Engineering &amp; Hex</span>
+              <span class="sub">Binary Analysis</span>
+            </div>
+            <div class="composer-body">
+              <div class="hex-view">
+                <div><span class="hex-offset">00000000</span><span class="hex-bytes">7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span><span class="hex-ascii">.ELF............</span></div>
+                <div><span class="hex-offset">00000010</span><span class="hex-bytes">03 00 3e 00 01 00 00 00 e0 61 00 00 00 00 00 00</span><span class="hex-ascii">..&gt;......a......</span></div>
+                <div><span class="hex-offset">00000020</span><span class="hex-bytes">40 00 00 00 00 00 00 00 28 35 01 00 00 00 00 00</span><span class="hex-ascii">@.......(5......</span></div>
+              </div>
+              <p style="font-size: 13.5px; color: var(--fg-body);">AST symbol hierarchy, printable binary string extraction, and 16-byte hex inspection with side-by-side ASCII.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="features" aria-labelledby="feat-h">
       <div class="wrap">
         <div class="section-head reveal">
           <span class="section-label">[Features]</span>
@@ -195,7 +359,7 @@
             </div>
             <div class="feature-body">
               <h3>Run and terminal built in</h3>
-              <p>A Run panel with a language picker, and an xterm.js terminal in the bottom dock. Show or hide it with <kbd>Ctrl</kbd> + <kbd>`</kbd>.</p>
+              <p>A Run panel with a language picker, and an xterm.js terminal in the bottom dock with "Fix with AI". Show or hide it with <kbd>Ctrl</kbd> + <kbd>`</kbd>.</p>
             </div>
           </article>
         </div>
@@ -203,8 +367,8 @@
         <div class="mini-grid">
           <article class="card mini reveal">
             <svg class="icon big" viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.5"/><circle cx="6" cy="18" r="2.5"/><circle cx="18" cy="8" r="2.5"/><path d="M6 8.5v7M18 10.5c0 4-6 3.5-10.5 6"/></svg>
-            <h3>Git sidebar</h3>
-            <p>Status, diffs, staging and commits without leaving the editor.</p>
+            <h3>Git sidebar &amp; AI Commits</h3>
+            <p>Status, diffs, staging and one-click Conventional Commit messages with AI.</p>
           </article>
           <article class="card mini reveal">
             <svg class="icon big" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.9 0 1.6-.7 1.6-1.6 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.7-1.6 1.6-1.6H17c2.8 0 5-2.2 5-5C22 6 17.5 2 12 2z"/></svg>
@@ -214,12 +378,12 @@
           <article class="card mini reveal">
             <svg class="icon big" viewBox="0 0 24 24"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4M8 4h8M9 14h.01M15 14h.01"/></svg>
             <h3>AI panel, your endpoint</h3>
-            <p>Point it at Ollama, LM Studio, OpenRouter, Groq or OpenAI. Nothing is bundled, and no key ships with the app.</p>
+            <p>Point it at Ollama, LM Studio, OpenRouter, Groq or OpenAI. Fully private and local-first.</p>
           </article>
           <article class="card mini reveal">
-            <svg class="icon big" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9z"/></svg>
-            <h3>Being built</h3>
-            <p>Completion, hover and go-to-definition from the servers, and the step-through debugger. The panels exist; the wiring is in progress.</p>
+            <svg class="icon big" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16m-7 6h7"/></svg>
+            <h3>Open VSX Marketplace</h3>
+            <p>Browse and install community extensions directly from Open VSX in one click.</p>
           </article>
         </div>
       </div>
@@ -283,32 +447,32 @@
         <div class="section-head reveal">
           <span class="section-label">[Download]</span>
           <h2 id="dl-h"><span class="hl-muted">Free and open source.</span> <span class="hl-bright">MIT.</span></h2>
-          <p>Version 0.5.2, published by Stealth Keqing. The installers are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper will ask before the first launch.</p>
+          <p>Version 0.6.0, published by Stealth Keqing. Pre-built binaries for Windows, macOS, and Linux. The installers are not code-signed yet, so Windows SmartScreen and macOS Gatekeeper will ask before the first launch.</p>
         </div>
         <div class="dl-grid">
           <article class="card dl reveal" data-os="windows">
             <div class="dl-head"><span class="os-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M3 5.5 10.5 4.5v7H3zM12 4.3 21 3v8.5h-9zM3 12.5h7.5v7L3 18.5zM12 12.5h9V21l-9-1.3z"/></svg></span><h3>Windows</h3><span class="for-you">your system</span></div>
             <p class="meta">x64 // Windows 10 and 11 // WebView2</p>
-            <a class="btn btn-secondary dl-main" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64-setup.exe">Download installer (.exe)</a>
-            <ul class="dl-alt"><li><a href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64_en-US.msi">.msi package</a></li></ul>
+            <a class="btn btn-secondary dl-main" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_x64-setup.exe">Download installer (.exe)</a>
+            <ul class="dl-alt"><li><a href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_x64_en-US.msi">.msi package</a></li></ul>
             <p class="dl-note">SmartScreen: choose More info, then Run anyway.</p>
           </article>
           <article class="card dl reveal" data-os="mac">
             <div class="dl-head"><span class="os-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M16.5 12.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.8-2-1.6-.2-3.1.9-3.9.9s-2-.9-3.4-.9C5.8 6.8 4 7.9 3 9.6c-2 3.5-.5 8.6 1.4 11.4 1 1.4 2.1 2.9 3.6 2.9 1.4-.1 2-.9 3.7-.9s2.2.9 3.7.9 2.5-1.4 3.4-2.8c1.1-1.6 1.5-3.1 1.5-3.2-.1 0-2.9-1.1-2.9-4.3zM13.9 4.9c.8-.9 1.3-2.2 1.2-3.4-1.1 0-2.4.7-3.2 1.6-.7.8-1.3 2.1-1.2 3.3 1.2.1 2.4-.6 3.2-1.5z"/></svg></span><h3>macOS</h3><span class="for-you">your system</span></div>
             <p class="meta">Apple silicon and Intel // .dmg</p>
-            <a class="btn btn-secondary dl-main" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_aarch64.dmg">Apple silicon (.dmg)</a>
-            <ul class="dl-alt"><li><a href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64.dmg">Intel .dmg</a></li></ul>
+            <a class="btn btn-secondary dl-main" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_aarch64.dmg">Apple silicon (.dmg)</a>
+            <ul class="dl-alt"><li><a href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_x64.dmg">Intel .dmg</a></li></ul>
             <p class="dl-note">Gatekeeper: right-click the app, choose Open, then Open again.</p>
           </article>
           <article class="card dl reveal" data-os="linux">
             <div class="dl-head"><span class="os-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 2c-2 0-3.2 1.8-3.2 4.2 0 1.6.5 2.6-.5 4.3C7 12.4 5 14.8 5 17.5 5 20 7 22 9.5 22h5c2.5 0 4.5-2 4.5-4.5 0-2.7-2-5.1-3.3-7-1-1.7-.5-2.7-.5-4.3C15.2 3.8 14 2 12 2z"/><path d="M10 7h.01M14 7h.01M10.5 9.5c.9.6 2.1.6 3 0"/></svg></span><h3>Linux</h3><span class="for-you">your system</span></div>
             <p class="meta">x86_64 // AppImage, Debian, Fedora</p>
-            <a class="btn btn-secondary dl-main" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_amd64.AppImage">Download AppImage</a>
-            <ul class="dl-alt"><li><a href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_amd64.deb">.deb</a></li><li><a href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor-0.5.2-1.x86_64.rpm">.rpm</a></li></ul>
+            <a class="btn btn-secondary dl-main" href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_amd64.AppImage">Download AppImage</a>
+            <ul class="dl-alt"><li><a href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_amd64.deb">.deb</a></li><li><a href="https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor-0.6.0-1.x86_64.rpm">.rpm</a></li></ul>
             <p class="dl-note">AppImage: <code>chmod +x</code> the file, then run it.</p>
           </article>
         </div>
-        <p class="fine reveal">Every file for this version: <a href="https://github.com/Arnav1771/fahh-ide/releases/tag/v0.5.2">the v0.5.2 release</a>. To build it yourself, see <a href="docs.html">the docs</a>.</p>
+        <p class="fine reveal">Every file for this version: <a href="https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.0">the v0.6.0 release</a>. To build it yourself, see <a href="docs.html">the docs</a>.</p>
       </div>
     </section>
 
@@ -319,12 +483,13 @@
           <h2 id="faq-h"><span class="hl-muted">Asked,</span> <span class="hl-bright">loudly.</span></h2>
         </div>
         <div class="faq">
+          <details class="card reveal"><summary>What is CATE Spatial Canvas Mode?</summary><p>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> to unlock an infinite 2D canvas workspace inspired by CATE. Code editors, terminals, AI agents, and browser previews float as draggable, resizable nodes with an interactive radar minimap, freeing you from traditional single-file tab overload.</p></details>
+          <details class="card reveal"><summary>How does the AI Composer work?</summary><p>Press <kbd>Ctrl</kbd> + <kbd>I</kbd> to open Cursor Composer. It plans and executes multi-file modifications across your workspace with <code>@file</code>, <code>@folder</code>, and <code>@codebase</code> context tags. Review clean unified diffs before accepting with <kbd>Ctrl</kbd> + <kbd>Enter</kbd>.</p></details>
           <details class="card reveal"><summary>Does it really play on every error?</summary><p>On every error-severity diagnostic, at most once per cooldown window. The window is 3 seconds by default and set by <code>sfx_cooldown_secs</code> in <code>~/.fahh/config.json</code>. Warnings, information and hints never play.</p></details>
           <details class="card reveal"><summary>Can I turn the cooldown off?</summary><p>Set <code>sfx_cooldown_secs</code> to <code>0</code> and every error message plays. Choose 0 in the simulator above to hear what that is like.</p></details>
-          <details class="card reveal"><summary>Is it Electron?</summary><p>No. The shell is Tauri 2: a Rust core and the operating system's own web view, with Monaco as the editor.</p></details>
-          <details class="card reveal"><summary>Which languages get squiggles?</summary><p>Rust, TypeScript, JavaScript, Python, Go, C, C++, Java, Lua, Ruby, HTML, CSS, JSON, YAML, C#, Dart, Kotlin and Bash, once that language's server (pyright, rust-analyzer, gopls, clangd and so on) is installed and on your PATH.</p></details>
-          <details class="card reveal"><summary>Is there autocomplete?</summary><p>Monaco's built-in completion works. Completion, hover and go-to-definition from the language servers are still being wired up.</p></details>
-          <details class="card reveal"><summary>Why does my system warn about the installer?</summary><p>The builds are not code-signed. Signing needs a paid certificate; until then Windows and macOS ask before the first launch. The source and the build workflow are public if you would rather build it yourself.</p></details>
+          <details class="card reveal"><summary>Is it Electron?</summary><p>No. The shell is Tauri 2: a lightweight Rust core and the operating system's native web view, paired with Monaco Editor for high performance.</p></details>
+          <details class="card reveal"><summary>Which AI models can I use?</summary><p>Any model you want. Connect locally to Ollama or LM Studio with zero telemetry, or enter an API key for OpenRouter, Groq, or OpenAI. No keys are bundled and your code never leaves your computer unless you explicitly ask.</p></details>
+          <details class="card reveal"><summary>Why does my system warn about the installer?</summary><p>The builds are not code-signed yet. Signing requires a paid developer certificate; until then Windows SmartScreen and macOS Gatekeeper will prompt before first launch. The source code and GitHub Actions build pipelines are 100% public and verifiable.</p></details>
         </div>
       </div>
     </section>
@@ -334,8 +499,9 @@
         <span class="section-label">[Ready]</span>
         <h2 id="cta-h"><span class="hl-muted">Ready to be</span> <span class="hl-bright">loudly judged?</span></h2>
         <div class="hero-ctas">
-          <a class="btn btn-primary" href="#download">Download v0.5.2</a>
+          <a class="btn btn-primary" href="#download">Download v0.6.0</a>
           <a class="btn btn-secondary" href="play.html">Open the playground</a>
+          <a class="btn btn-secondary" href="docs.html">Read the docs</a>
         </div>
       </div>
       <div class="hero-orb small" aria-hidden="true"></div>
@@ -349,12 +515,12 @@
           <a class="brand" href="./"><img class="brand-mark" src="assets/mark.svg" alt="" width="26" height="26">fahh</a>
           <p class="foot-tag">The editor that tells you when you messed up. By Stealth Keqing.</p>
         </div>
-        <div><h4>Product</h4><ul><li><a href="#simulator">Simulator</a></li><li><a href="play.html">Playground</a></li><li><a href="#download">Download</a></li></ul></div>
+        <div><h4>Product</h4><ul><li><a href="#simulator">Simulator</a></li><li><a href="#canvas">Spatial Canvas</a></li><li><a href="#composer">Composer AI</a></li><li><a href="play.html">Playground</a></li><li><a href="#download">Download</a></li></ul></div>
         <div><h4>Learn</h4><ul><li><a href="docs.html">Docs</a></li><li><a href="download.html">All platforms</a></li><li><a href="https://github.com/Arnav1771/fahh-ide/releases">Releases</a></li></ul></div>
         <div><h4>Source</h4><ul><li><a href="https://github.com/Arnav1771/fahh-ide">GitHub</a></li><li><a href="https://github.com/Arnav1771/fahh-ide/issues">Issues</a></li><li><a href="https://github.com/Arnav1771/fahh-ide/blob/main/LICENSE">MIT licence</a></li></ul></div>
       </div>
       <div class="footer-bottom">
-        <span>Fahh Editor v0.5.2 · Stealth Keqing</span>
+        <span>Fahh Editor v0.6.0 · Stealth Keqing</span>
         <span class="status" id="sound-status"><span class="dot"></span><span class="status-text">[CHECKING SOUND]</span></span>
       </div>
     </div>
