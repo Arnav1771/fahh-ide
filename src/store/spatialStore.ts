@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type SpatialNodeType = "editor" | "terminal" | "agent" | "browser" | "diagnostics" | "note";
+export type SpatialNodeType = "editor" | "terminal" | "agent" | "browser" | "diagnostics" | "note" | "rea" | "files" | "extensions";
 
 export interface SpatialNodeData {
   id: string;
@@ -71,15 +71,25 @@ const DEFAULT_NODES: SpatialNodeData[] = [
   {
     id: "spatial-browser",
     type: "browser",
-    title: "Live Dev Browser · :1420",
+    title: "Live Browser Viewport",
     x: 1330,
     y: 80,
     w: 480,
     h: 580,
     zIndex: 12,
     meta: {
-      url: "http://localhost:1420",
+      url: "about:blank",
     },
+  },
+  {
+    id: "spatial-rea",
+    type: "rea",
+    title: "REA Code Analysis · AST & Hex",
+    x: 1840,
+    y: 80,
+    w: 460,
+    h: 580,
+    zIndex: 13,
   },
   {
     id: "spatial-terminal",
@@ -89,7 +99,7 @@ const DEFAULT_NODES: SpatialNodeData[] = [
     y: 690,
     w: 780,
     h: 380,
-    zIndex: 13,
+    zIndex: 14,
   },
   {
     id: "spatial-diagnostics",
@@ -126,7 +136,14 @@ function loadSavedNodes(): SpatialNodeData[] {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return DEFAULT_NODES;
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_NODES;
+    if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_NODES;
+    // Sanitize any nodes referencing recursive localhost:1420 to prevent memory explosion
+    return parsed.map((n: SpatialNodeData) => {
+      if (n.type === "browser" && n.meta?.url === "http://localhost:1420") {
+        return { ...n, title: "Live Browser Viewport", meta: { ...n.meta, url: "about:blank" } };
+      }
+      return n;
+    });
   } catch {
     return DEFAULT_NODES;
   }
@@ -267,6 +284,9 @@ export const useSpatialStore = create<SpatialStore>((set, get) => ({
       browser: { w: 480, h: 540, title: "Browser Viewport" },
       diagnostics: { w: 420, h: 360, title: "Diagnostics Panel" },
       note: { w: 320, h: 220, title: "Sticky Note" },
+      rea: { w: 460, h: 560, title: "REA Code Analysis" },
+      files: { w: 320, h: 480, title: "Project Explorer" },
+      extensions: { w: 420, h: 560, title: "Extensions Store" },
     };
     const def = defaults[type];
     const { highestZ, nodes } = get();

@@ -34,7 +34,8 @@ Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, and **
 
 | Capability | Hotkey / Status | What It Does |
 |------------|-----------------|--------------|
-| **CATE Spatial Canvas** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Infinite 2D zooming canvas with floating traffic-light window nodes (Monaco, live Terminal, AI companion, responsive Browser) and radar Minimap with teleport shortcuts. |
+| **CATE Spatial Canvas** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Infinite 2D zooming canvas with floating traffic-light window nodes (Monaco, live Terminal, AI companion, responsive Browser, REA reverse engineering) and radar Minimap with teleport shortcuts. |
+| **Multi-Window Support** | `fahh <folder>` / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | Open and manage multiple distinct projects in independent Fahh Editor windows simultaneously without replacing active workspaces. |
 | **Cursor Composer** | <kbd>Ctrl</kbd>+<kbd>I</kbd> | Multi-file autonomous editing agent with dynamic file chips, side-by-side unified diff review, and batch Accept/Reject controls. |
 | **Inline Edit** | <kbd>Ctrl</kbd>+<kbd>K</kbd> | Floating Monaco prompt pill for in-place code transformations with live diff previews. |
 | **`@` Mentions Engine** | Type `@` in prompt | Context resolution popover dynamically attaching `@problems`, `@terminal`, `@git`, `@codebase`, and workspace files. |

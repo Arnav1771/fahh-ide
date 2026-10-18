@@ -13,7 +13,7 @@ import { Toasts } from "./components/Toasts";
 import { clampSize, loadSize, saveSize } from "./lib/panelSize";
 import { saveActive, unsavedMessage } from "./lib/tabActions";
 import { handleOpenRequest } from "./lib/openRequest";
-import { installCli, takePendingOpen } from "./lib/tauri";
+import { installCli, openNewWindow, takePendingOpen } from "./lib/tauri";
 import { useToastStore } from "./store/toastStore";
 import type { OpenRequest } from "./lib/types";
 import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
@@ -36,6 +36,7 @@ import { useEditorStore } from "./store/editorStore";
 import { useFileStore } from "./store/fileStore";
 import { previewKindFor } from "./lib/preview";
 import { openBrowser } from "./lib/browser";
+import { launchAgyTerminal } from "./lib/tauri";
 import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
@@ -171,6 +172,23 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Global open folder listener — works in both docked mode and spatial canvas mode
+  useEffect(() => {
+    const handleOpenFolder = async () => {
+      try {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const selected = await open({ directory: true, multiple: false });
+        if (typeof selected === "string") {
+          await openFolder(selected);
+        }
+      } catch (err) {
+        console.error("Failed to open folder:", err);
+      }
+    };
+    window.addEventListener(OPEN_FOLDER_EVENT, handleOpenFolder);
+    return () => window.removeEventListener(OPEN_FOLDER_EVENT, handleOpenFolder);
+  }, [openFolder]);
+
   // Apply theme CSS vars on mount and whenever the active theme changes
   useEffect(() => {
     const def = THEME_DEFINITIONS.find((d) => d.id === activeTheme);
@@ -196,6 +214,7 @@ export default function App() {
     };
     const intensity = (i: Intensity) => () => useFahhStore.getState().setIntensity(i);
     return [
+      { id: "window.new", group: "File", label: "New Window", keys: ["Ctrl", "Shift", "N"], keywords: "new window multi instance process", run: () => void openNewWindow() },
       { id: "folder.open", group: "File", label: "Open Folder…", keys: ["Ctrl", "O"], keywords: "workspace project", run: () => {
         setSidebarTab("files");
         window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
@@ -215,6 +234,7 @@ export default function App() {
       { id: "view.git", group: "View", label: "Source Control", keys: ["Ctrl", "Shift", "G"], keywords: "git branch commit", run: view("git") },
       { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
       { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keys: ["Ctrl", "L"], keywords: "agent chat llm ollama groq composer devin cursor", run: view("ai") },
+      { id: "view.rea", group: "View", label: "REA Code Analysis (AST & Hex Dump)", keys: ["Ctrl", "Shift", "R"], keywords: "rea reverse engineering ast symbols hex dump binary disassemble inspect", run: view("rea") },
       { id: "view.extensions", group: "View", label: "Extensions (Marketplace)", keys: ["Ctrl", "Shift", "X"], keywords: "plugins language packs marketplace open vsx", run: view("extensions") },
       { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
       { id: "view.wordwrap", group: "View", label: "Toggle Word Wrap", keys: ["Alt", "Z"], keywords: "wrap lines soft", run: () => runEditorAction("editor.action.toggleWordWrap") },
@@ -260,6 +280,7 @@ export default function App() {
       { id: "ai.composer", group: "AI", label: "Composer: Multi-File Agent (Cursor Ctrl+I)", keys: ["Ctrl", "I"], keywords: "composer multi file agent edit autonomous refactor cursor devin", run: () => useComposerStore.getState().toggleComposer() },
       { id: "edit.inline", group: "Edit", label: "Inline Edit (Cursor Ctrl+K)", keys: ["Ctrl", "K"], keywords: "inline edit cursor ai generate refactor", run: () => setShowInlineEdit(true) },
       { id: "view.rea", group: "View", label: "REA Code Analysis (Reverse Engineering & AST)", keywords: "rea reverse engineering bytecode strings hex ast symbols", run: () => setSidebarTab("rea") },
+      { id: "terminal.agy", group: "Terminal", label: "Launch Antigravity CLI (agy)", keywords: "agy antigravity terminal agent console interactive gemini cli", run: () => launchAgyTerminal().catch((e) => alert(String(e))) },
     ];
   }, [setTheme]);
 

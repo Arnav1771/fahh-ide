@@ -7,6 +7,9 @@ import { AgentNodeView } from "./Nodes/AgentNodeView";
 import { BrowserNodeView } from "./Nodes/BrowserNodeView";
 import { DiagnosticsNodeView } from "./Nodes/DiagnosticsNodeView";
 import { StickyNoteNodeView } from "./Nodes/StickyNoteNodeView";
+import { ReaNodeView } from "./Nodes/ReaNodeView";
+import { FilesNodeView } from "./Nodes/FilesNodeView";
+import { ExtensionsNodeView } from "./Nodes/ExtensionsNodeView";
 import { SpatialHud } from "./SpatialHud";
 import { SpatialMinimap } from "./SpatialMinimap";
 import { LayoutGrid } from "lucide-react";
@@ -187,6 +190,9 @@ export function SpatialCanvas() {
             {node.type === "browser" && <BrowserNodeView node={node} />}
             {node.type === "diagnostics" && <DiagnosticsNodeView />}
             {node.type === "note" && <StickyNoteNodeView node={node} />}
+            {node.type === "rea" && <ReaNodeView />}
+            {node.type === "files" && <FilesNodeView />}
+            {node.type === "extensions" && <ExtensionsNodeView />}
           </CanvasNode>
         ))}
       </div>

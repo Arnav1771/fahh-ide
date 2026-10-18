@@ -90,9 +90,11 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
       editorRef.current?.layout?.();
     };
     window.addEventListener("resize", handleResize);
+    window.addEventListener("fahh-layout", handleResize);
 
     return () => {
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("fahh-layout", handleResize);
       detachMonaco();
       for (const d of disposablesRef.current) d.dispose();
       disposablesRef.current = [];
@@ -261,7 +263,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   };
 
   return (
-    <div className="flex-1 flex min-h-0 relative">
+    <div className="flex-1 flex min-h-0 relative w-full h-full">
       {/* The text editor stays mounted (hidden) when the preview replaces it,
           so the diagnostics bridge never holds a disposed editor. */}
       <div

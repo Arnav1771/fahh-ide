@@ -138,6 +138,7 @@ export function TerminalPanel() {
   };
 
   const shortcuts = [
+    { label: "agy (cli)", cmd: "agy" },
     { label: "python <file>", cmd: "python " },
     { label: "fahh .", cmd: "fahh ." },
     { label: "pnpm dev", cmd: "pnpm dev" },

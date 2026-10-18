@@ -10,7 +10,10 @@ import {
   Globe,
   StickyNote,
   AlertCircle,
-  LayoutGrid
+  LayoutGrid,
+  Cpu,
+  FolderTree,
+  Blocks,
 } from "lucide-react";
 import { useSpatialStore, type SpatialNodeType } from "../../store/spatialStore";
 
@@ -155,6 +158,30 @@ export function SpatialHud() {
               >
                 <StickyNote size={13} className="text-[#ffd666]" />
                 <span>Sticky Note</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdd("rea", "REA Code Analysis")}
+                className="flex items-center gap-2 px-3 py-1.5 text-left text-xs text-[#e8e6e3] hover:bg-white/[0.08] transition-colors"
+              >
+                <Cpu size={13} className="text-[#a78bfa]" />
+                <span>REA Code Analysis</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdd("files", "Project Files")}
+                className="flex items-center gap-2 px-3 py-1.5 text-left text-xs text-[#e8e6e3] hover:bg-white/[0.08] transition-colors"
+              >
+                <FolderTree size={13} className="text-[#38bdf8]" />
+                <span>Project Explorer</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleAdd("extensions", "Extensions Store")}
+                className="flex items-center gap-2 px-3 py-1.5 text-left text-xs text-[#e8e6e3] hover:bg-white/[0.08] transition-colors"
+              >
+                <Blocks size={13} className="text-[#c084fc]" />
+                <span>Extensions Store</span>
               </button>
             </div>
           )}

@@ -9,7 +9,10 @@ import {
   X,
   Minus,
   Maximize2,
-  Move
+  Move,
+  Cpu,
+  FolderTree,
+  Blocks,
 } from "lucide-react";
 import { useSpatialStore, type SpatialNodeData } from "../../store/spatialStore";
 
@@ -105,6 +108,7 @@ export function CanvasNode({ node, children }: CanvasNodeProps) {
         isResizing.current = false;
         window.removeEventListener("mousemove", onMouseMove);
         window.removeEventListener("mouseup", onMouseUp);
+        window.dispatchEvent(new Event("fahh-layout"));
       };
 
       window.addEventListener("mousemove", onMouseMove);
@@ -128,6 +132,12 @@ export function CanvasNode({ node, children }: CanvasNodeProps) {
         return <AlertCircle size={13} className="text-[#ff5f56]" />;
       case "note":
         return <StickyNote size={13} className="text-[#ffd666]" />;
+      case "rea":
+        return <Cpu size={13} className="text-[#a78bfa]" />;
+      case "files":
+        return <FolderTree size={13} className="text-[#38bdf8]" />;
+      case "extensions":
+        return <Blocks size={13} className="text-[#c084fc]" />;
       default:
         return <Move size={13} className="text-fahh-muted" />;
     }

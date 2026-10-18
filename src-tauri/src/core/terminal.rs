@@ -109,3 +109,97 @@ pub async fn execute_command(
 pub async fn write_stdin(_pid: u32, _data: String) -> Result<(), String> {
     Ok(())
 }
+
+#[tauri::command]
+pub async fn launch_agy_terminal(
+    cwd: Option<String>,
+    args: Option<Vec<String>>,
+) -> Result<String, String> {
+    let mut working_dir = cwd.unwrap_or_default();
+    if working_dir.is_empty() || working_dir == "~" {
+        working_dir = dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default();
+    }
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NEW_CONSOLE: u32 = 0x0000_0010;
+
+        let extra_args = args.unwrap_or_default().join(" ");
+        let agy_exe = if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            let candidate = std::path::PathBuf::from(&local_app_data)
+                .join("agy")
+                .join("bin")
+                .join("agy.exe");
+            if candidate.exists() {
+                candidate.to_string_lossy().to_string()
+            } else {
+                "agy.exe".to_string()
+            }
+        } else {
+            "agy.exe".to_string()
+        };
+
+        let cmd_payload = if extra_args.is_empty() {
+            format!("chcp 65001 >nul && \"{}\"", agy_exe)
+        } else {
+            format!("chcp 65001 >nul && \"{}\" {}", agy_exe, extra_args)
+        };
+
+        let mut cmd = std::process::Command::new("cmd.exe");
+        cmd.creation_flags(CREATE_NEW_CONSOLE);
+        cmd.args(["/k", &cmd_payload]);
+        if !working_dir.is_empty() {
+            cmd.current_dir(&working_dir);
+        }
+        cmd.spawn()
+            .map_err(|e| format!("Failed to spawn Antigravity CLI console: {}", e))?;
+        Ok("Antigravity CLI console launched successfully.".to_string())
+    }
+
+    #[cfg(not(windows))]
+    {
+        let extra_args = args.unwrap_or_default().join(" ");
+        let agy_cmd = if extra_args.is_empty() {
+            "agy".to_string()
+        } else {
+            format!("agy {}", extra_args)
+        };
+
+        #[cfg(target_os = "macos")]
+        {
+            let script = format!(
+                "tell application \"Terminal\" to do script \"cd '{}' && {}\"",
+                working_dir, agy_cmd
+            );
+            std::process::Command::new("osascript")
+                .args(["-e", &script])
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+        #[cfg(not(target_os = "macos"))]
+        {
+            let terminals = ["x-terminal-emulator", "gnome-terminal", "konsole", "xterm"];
+            let mut spawned = false;
+            for term in terminals {
+                if let Ok(_) = std::process::Command::new(term)
+                    .args([
+                        "-e",
+                        &format!("sh -c \"cd '{}' && {}; exec sh\"", working_dir, agy_cmd),
+                    ])
+                    .spawn()
+                {
+                    spawned = true;
+                    break;
+                }
+            }
+            if !spawned {
+                return Err("No supported terminal emulator found".into());
+            }
+        }
+        Ok("Antigravity CLI terminal spawned.".to_string())
+    }
+}
+
