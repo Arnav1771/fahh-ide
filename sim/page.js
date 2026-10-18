@@ -530,4 +530,72 @@ if (bin) {
   }).catch(() => {});
 }
 
+// ───────────────────────── hero app & showcase interactivity ─────────────────────────
+const btnHeroCanvas = $("#btn-hero-canvas");
+const btnHeroClassic = $("#btn-hero-classic");
+const heroCanvasView = $("#hero-canvas-view");
+const heroClassicView = $("#hero-classic-view");
+
+if (btnHeroCanvas && btnHeroClassic && heroCanvasView && heroClassicView) {
+  btnHeroCanvas.addEventListener("click", () => {
+    btnHeroCanvas.classList.add("active");
+    btnHeroClassic.classList.remove("active");
+    heroCanvasView.hidden = false;
+    heroClassicView.hidden = true;
+  });
+  btnHeroClassic.addEventListener("click", () => {
+    btnHeroClassic.classList.add("active");
+    btnHeroCanvas.classList.remove("active");
+    heroCanvasView.hidden = true;
+    heroClassicView.hidden = false;
+  });
+}
+
+const btnHeroSound = $("#btn-hero-sound");
+if (btnHeroSound) {
+  btnHeroSound.addEventListener("click", () => {
+    sound.play();
+    btnHeroSound.textContent = "🔊 Playing Fahh...";
+    setTimeout(() => { btnHeroSound.textContent = "🔊 Hear Error"; }, 1500);
+  });
+}
+
+const btnCopyCmd = $("#btn-copy-cmd");
+const cmdText = $("#terminal-cmd-text");
+if (btnCopyCmd && cmdText) {
+  btnCopyCmd.addEventListener("click", () => {
+    navigator.clipboard?.writeText(cmdText.textContent.trim()).then(() => {
+      btnCopyCmd.textContent = "Copied!";
+      setTimeout(() => { btnCopyCmd.textContent = "Copy"; }, 2000);
+    }).catch(() => {});
+  });
+}
+
+const tabButtons = document.querySelectorAll(".superpower-tab-btn");
+const tabPanels = document.querySelectorAll(".superpower-panel");
+if (tabButtons.length && tabPanels.length) {
+  tabButtons.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const targetId = btn.dataset.tab;
+      tabButtons.forEach((b) => b.classList.toggle("active", b === btn));
+      tabPanels.forEach((p) => p.classList.toggle("active", p.id === `tab-panel-${targetId}`));
+    });
+  });
+}
+
+document.querySelectorAll(".teleport-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const target = chip.dataset.target;
+    const targetNode = document.querySelector(`.node-card[data-node="${target}"]`);
+    if (targetNode) {
+      targetNode.style.transform = "scale(1.05)";
+      targetNode.style.borderColor = "var(--accent-bright)";
+      setTimeout(() => {
+        targetNode.style.transform = "";
+        targetNode.style.borderColor = "";
+      }, 700);
+    }
+  });
+});
+
 sound.load();
