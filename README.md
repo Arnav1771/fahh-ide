@@ -43,7 +43,7 @@ Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, and **
 | **Terminal "Fix with AI"** | Hover stderr | One-click button on terminal errors automatically launching Composer with pre-attached terminal diagnostic context. |
 | **AI Conventional Commits** | Git Sidebar | One-click synthesis of structured Conventional Commits (`feat`, `fix`, `test`, `docs`) from staged diffs. |
 | **REA Code Analysis** | Activity Bar CPU | AST Symbol recovery, GNU `strings` binary string extractor with byte offsets, and 16-byte hex dump inspector. |
-| **Open VSX Marketplace** | Extensions tab | Browse and install community extensions directly from Open VSX in one click. |
+| **Open VSX Marketplace** | Extensions tab | Browse, search, and install from 50,000+ community extensions with detail drawer, direct `.vsix` download links, and local persistence. |
 | **The Fahh SFX Engine** | Built-in | Audible feedback on compile/LSP errors with a strict 3000ms cooldown window. |
 | **Desktop Shell** | Native | Native desktop MenuBar, file symbol breadcrumbs, unbuffered Python runner, multi-tab bottom dock. |
 
@@ -101,7 +101,7 @@ pnpm tauri build
 
 ```bash
 pnpm exec tsc --noEmit    # type check
-pnpm test                 # 238 unit tests across 25 suites
+pnpm test                 # 243 unit tests across 26 suites
 cd src-tauri && cargo clippy -- -D warnings && cargo test
 ```
 

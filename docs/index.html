@@ -255,8 +255,8 @@
       <div class="wrap">
         <div class="section-head reveal">
           <span class="section-label">[Superpowers]</span>
-          <h2 id="super-h"><span class="hl-muted">Engineered for velocity.</span> <span class="hl-bright">Five breakthroughs.</span></h2>
-          <p>Fahh Editor unites spatial thinking, multi-file agent intelligence, Monaco inline diagnostics, instant audio feedback, and reverse engineering into one unified Tauri 2 powerhouse.</p>
+          <h2 id="super-h"><span class="hl-muted">Engineered for velocity.</span> <span class="hl-bright">Six breakthroughs.</span></h2>
+          <p>Fahh Editor unites spatial thinking, multi-file agent intelligence, Monaco inline diagnostics, Open VSX extension ecosystem, instant audio feedback, and reverse engineering into one unified Tauri 2 powerhouse.</p>
         </div>
 
         <!-- Superpower Navigation Pills -->
@@ -264,6 +264,7 @@
           <button type="button" class="superpower-tab-btn active" data-tab="canvas">🌌 CATE 2D Canvas</button>
           <button type="button" class="superpower-tab-btn" data-tab="composer">🤖 Cursor Composer</button>
           <button type="button" class="superpower-tab-btn" data-tab="lens">🔍 Error Lens &amp; Ghost Text</button>
+          <button type="button" class="superpower-tab-btn" data-tab="extensions">🧩 Open VSX Store</button>
           <button type="button" class="superpower-tab-btn" data-tab="simulator">🔊 Audio Simulator</button>
           <button type="button" class="superpower-tab-btn" data-tab="rea">🔬 REA Hex &amp; Binary</button>
         </div>
@@ -403,13 +404,98 @@
           </div>
         </div>
 
-        <!-- Tab 4: Audio Simulator (Interactive Web Audio) -->
+        <!-- Tab 4: Open VSX Extension Store -->
+        <div class="superpower-panel" id="tab-panel-extensions">
+          <div class="feature-grid">
+            <div class="composer-card reveal" style="grid-column: span 3;">
+              <div class="composer-header">
+                <span>Open VSX Extension Marketplace &amp; VSIX Hub</span>
+                <span class="sub">50,000+ Community Extensions · Zero Telemetry</span>
+              </div>
+              <div class="composer-body">
+                <p style="color: var(--fg-body); font-size: 14.5px;">Search, browse, and install community extensions directly from the decentralized Open VSX registry, or download offline <code>.vsix</code> packages with one click.</p>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 8px;">
+                  <!-- Curated Card: Python -->
+                  <div style="background: rgba(16, 14, 12, 0.9); border: 1px solid var(--border-medium); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                          <strong style="color: var(--text-primary); font-size: 13px;">Python (ms-python)</strong>
+                          <span style="display: block; font-size: 11px; color: var(--accent); margin-top: 2px;">Languages · 19.4M downloads · ★ 4.6</span>
+                        </div>
+                        <span style="font-size: 10px; padding: 2px 6px; background: rgba(61, 158, 92, 0.2); color: #4ade80; border-radius: 4px;">Verified</span>
+                      </div>
+                      <p style="font-size: 12px; color: var(--fg-body); margin: 8px 0 12px;">Rich Python language support with IntelliSense, linting, debugging, formatting and refactoring.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <a href="https://open-vsx.org/api/ms-python/python/2024.18.0/file/ms-python.python-2024.18.0.vsix" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">Download .vsix</a>
+                      <a href="https://open-vsx.org/extension/ms-python/python" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">Registry ↗</a>
+                    </div>
+                  </div>
+                  <!-- Curated Card: rust-analyzer -->
+                  <div style="background: rgba(16, 14, 12, 0.9); border: 1px solid var(--border-medium); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                          <strong style="color: var(--text-primary); font-size: 13px;">rust-analyzer (rust-lang)</strong>
+                          <span style="display: block; font-size: 11px; color: var(--accent); margin-top: 2px;">Languages · 8.9M downloads · ★ 4.9</span>
+                        </div>
+                        <span style="font-size: 10px; padding: 2px 6px; background: rgba(61, 158, 92, 0.2); color: #4ade80; border-radius: 4px;">Verified</span>
+                      </div>
+                      <p style="font-size: 12px; color: var(--fg-body); margin: 8px 0 12px;">High-performance language server implementation for the Rust programming language.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <a href="https://open-vsx.org/api/rust-lang/rust-analyzer/0.4.2140/file/rust-lang.rust-analyzer-0.4.2140.vsix" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">Download .vsix</a>
+                      <a href="https://open-vsx.org/extension/rust-lang/rust-analyzer" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">Registry ↗</a>
+                    </div>
+                  </div>
+                  <!-- Curated Card: Prettier -->
+                  <div style="background: rgba(16, 14, 12, 0.9); border: 1px solid var(--border-medium); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                          <strong style="color: var(--text-primary); font-size: 13px;">Prettier - Code formatter</strong>
+                          <span style="display: block; font-size: 11px; color: var(--accent); margin-top: 2px;">Formatters · 16.8M downloads · ★ 4.7</span>
+                        </div>
+                        <span style="font-size: 10px; padding: 2px 6px; background: rgba(61, 158, 92, 0.2); color: #4ade80; border-radius: 4px;">Verified</span>
+                      </div>
+                      <p style="font-size: 12px; color: var(--fg-body); margin: 8px 0 12px;">Opinionated code formatter supporting JS, TS, CSS, HTML, JSON, Markdown and YAML.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <a href="https://open-vsx.org/api/esbenp/prettier-vscode/10.4.1/file/esbenp.prettier-vscode-10.4.1.vsix" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">Download .vsix</a>
+                      <a href="https://open-vsx.org/extension/esbenp/prettier-vscode" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">Registry ↗</a>
+                    </div>
+                  </div>
+                  <!-- Curated Card: Dracula Theme -->
+                  <div style="background: rgba(16, 14, 12, 0.9); border: 1px solid var(--border-medium); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; justify-content: space-between;">
+                    <div>
+                      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                          <strong style="color: var(--text-primary); font-size: 13px;">Dracula Official Theme</strong>
+                          <span style="display: block; font-size: 11px; color: var(--accent); margin-top: 2px;">Themes · 5.4M downloads · ★ 4.9</span>
+                        </div>
+                        <span style="font-size: 10px; padding: 2px 6px; background: rgba(61, 158, 92, 0.2); color: #4ade80; border-radius: 4px;">Verified</span>
+                      </div>
+                      <p style="font-size: 12px; color: var(--fg-body); margin: 8px 0 12px;">The official dark gothic theme with vibrant neon highlights for Monaco and modern editors.</p>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                      <a href="https://open-vsx.org/api/dracula-theme/theme-dracula/2.25.1/file/dracula-theme.theme-dracula-2.25.1.vsix" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">Download .vsix</a>
+                      <a href="https://open-vsx.org/extension/dracula-theme/theme-dracula" target="_blank" class="btn btn-secondary btn-sm" style="font-size: 11px; padding: 4px 10px;">Registry ↗</a>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Audio Simulator (Interactive Web Audio) -->
         <div class="superpower-panel" id="tab-panel-simulator">
           <p style="margin-bottom: 20px; font-size: 16px; color: var(--fg-body);">The simulator below executes the exact sound rule logic running inside the desktop app. Click Break it to test the audio feedback:</p>
           <a class="btn btn-primary btn-sm" href="#simulator">Jump to Full Simulator Pipeline ↓</a>
         </div>
 
-        <!-- Tab 5: REA Reverse Engineering -->
+        <!-- Tab 6: REA Reverse Engineering -->
         <div class="superpower-panel" id="tab-panel-rea">
           <div class="feature-grid">
             <div class="composer-card reveal" style="grid-column: span 3;">
