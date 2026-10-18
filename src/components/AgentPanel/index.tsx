@@ -8,7 +8,7 @@
  * backend only for the request; nothing is written into the project.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Plus, Send, Settings2, Square, X } from "lucide-react";
+import { Bot, Plus, Send, Settings2, Square, X, Layers } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
 import { parseSlashCommand, pendingReview } from "../../lib/agentState";
@@ -18,6 +18,8 @@ import { useWorkspace } from "../../hooks/useWorkspace";
 import { useAgentStore } from "../../store/agentStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
+import { useComposerStore, type AttachedContext } from "../../store/composerStore";
+import { MentionMenu } from "../MentionMenu";
 import { ApprovalCard, PlanCard, ReviewCard, ToolCard } from "./cards";
 
 const MODES: { id: AgentMode; label: string; hint: string }[] = [
@@ -197,6 +199,31 @@ export function AgentPanel() {
   }, [items, status]);
 
   const [pastedImage, setPastedImage] = useState<{ name: string; size: number; preview: string } | null>(null);
+  const [showMention, setShowMention] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setInput(val);
+    const lastAt = val.lastIndexOf("@");
+    if (lastAt !== -1 && lastAt >= val.length - 15) {
+      const q = val.slice(lastAt + 1);
+      if (!q.includes(" ")) {
+        setShowMention(true);
+        setMentionQuery(q);
+        return;
+      }
+    }
+    setShowMention(false);
+  };
+
+  const handleSelectMention = (ctx: AttachedContext) => {
+    setShowMention(false);
+    const lastAt = input.lastIndexOf("@");
+    const prefix = lastAt !== -1 ? input.slice(0, lastAt) : input;
+    setInput(`${prefix}${ctx.label} `);
+    inputRef.current?.focus();
+  };
 
   // Alt+V image paste listener for AI prompt (Claude Code style)
   useEffect(() => {
@@ -288,6 +315,13 @@ export function AgentPanel() {
           )}
         </select>
         <button onClick={store.newChat} title="New chat" className="text-fahh-muted hover:text-fahh-text"><Plus size={14} /></button>
+        <button
+          onClick={() => useComposerStore.getState().toggleComposer()}
+          title="Open Cursor Composer (Ctrl+I)"
+          className="text-fahh-muted hover:text-[#4a9eff] transition-colors"
+        >
+          <Layers size={13} />
+        </button>
         <button onClick={() => setShowSettings((s) => !s)} title="Provider and model" className={showSettings ? "text-fahh-accent" : "text-fahh-muted hover:text-fahh-text"}>
           <Settings2 size={13} />
         </button>
@@ -358,7 +392,21 @@ export function AgentPanel() {
           }
         })}
 
-        {status === "running" && <p className="px-3 py-1.5 text-[11px] text-fahh-muted animate-pulse">Working…</p>}
+        {status === "running" && (
+          <div className="mx-2 my-2 p-2 rounded-lg bg-fahh-surface/60 border border-fahh-accent/30 flex flex-col gap-1.5 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between text-[10px] text-fahh-accent font-semibold tracking-wide uppercase">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-fahh-accent animate-ping" />
+                Devin Task Execution Loop
+              </span>
+              <span className="font-mono text-fahh-muted text-[9px]">autonomous</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] text-fahh-text">
+              <span className="text-[#4a9eff]">⚡</span>
+              <span className="animate-pulse">Inspecting workspace, analyzing AST & synthesizing code changes...</span>
+            </div>
+          </div>
+        )}
 
         {review.map((t) => (
           <ReviewCard key={t.turn} turn={t} onOpen={(rel) => root && void openFileInEditor(`${root.replace(/[\\/]+$/, "")}/${rel}`)} />
@@ -437,50 +485,70 @@ export function AgentPanel() {
             </button>
           </div>
         )}
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onPaste={(e) => {
-            const items = e.clipboardData?.items;
-            if (!items) return;
-            for (let i = 0; i < items.length; i++) {
-              if (items[i].type.startsWith("image/")) {
-                e.preventDefault();
-                const file = items[i].getAsFile();
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    const imgName = file.name || `image_${Date.now()}.png`;
-                    setPastedImage({
-                      name: imgName,
-                      size: file.size,
-                      preview: reader.result as string,
-                    });
-                    setInput((prev) => (prev ? `${prev}\n[Image: ${imgName} attached]` : `[Image: ${imgName} attached]`));
-                  };
-                  reader.readAsDataURL(file);
+        <div className="relative">
+          {showMention && (
+            <MentionMenu
+              query={mentionQuery}
+              onSelect={handleSelectMention}
+              onClose={() => setShowMention(false)}
+            />
+          )}
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={handleInputChange}
+            onPaste={(e) => {
+              const items = e.clipboardData?.items;
+              if (!items) return;
+              for (let i = 0; i < items.length; i++) {
+                if (items[i].type.startsWith("image/")) {
+                  e.preventDefault();
+                  const file = items[i].getAsFile();
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const imgName = file.name || `image_${Date.now()}.png`;
+                      setPastedImage({
+                        name: imgName,
+                        size: file.size,
+                        preview: reader.result as string,
+                      });
+                      setInput((prev) => (prev ? `${prev}\n[Image: ${imgName} attached]` : `[Image: ${imgName} attached]`));
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                  break;
                 }
-                break;
               }
-            }
-          }}
-          onKeyDown={(e) => {
-            if (e.key === "Escape" && busy) {
-              e.preventDefault();
-              void store.stop();
-              return;
-            }
-            if ((e.key === "Enter" && (e.ctrlKey || e.metaKey)) || (e.key === "Enter" && !e.shiftKey)) {
-              e.preventDefault();
-              send();
-            }
-          }}
-          placeholder="Ask Fahh Local or /plan, /auto, /ask… (Alt+V to paste image)"
-          rows={3}
-          disabled={busy}
-          className="w-full resize-none bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent disabled:opacity-60"
-        />
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Escape") {
+                if (showMention) {
+                  e.preventDefault();
+                  setShowMention(false);
+                  return;
+                }
+                if (busy) {
+                  e.preventDefault();
+                  void store.stop();
+                  return;
+                }
+              }
+              if (e.key === "@") {
+                setShowMention(true);
+                setMentionQuery("");
+              }
+              if ((e.key === "Enter" && (e.ctrlKey || e.metaKey)) || (e.key === "Enter" && !e.shiftKey)) {
+                e.preventDefault();
+                send();
+              }
+            }}
+            placeholder="Ask Fahh Local, type @ to reference files/problems, or /plan… (Alt+V for image)"
+            rows={3}
+            disabled={busy}
+            className="w-full resize-none bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent disabled:opacity-60"
+          />
+        </div>
         <div className="flex gap-2">
           <button
             onClick={send}

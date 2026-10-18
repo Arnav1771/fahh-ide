@@ -5,6 +5,7 @@ import { useFahhStore } from "../../store/fahhStore";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { TitleScreen } from "../Fahh/TitleScreen";
 import { defineMonacoThemes } from "../ThemePanel";
+import { registerGhostTextProvider } from "../../lib/inlineCompletions";
 import {
   attachMonaco,
   detachMonaco,
@@ -193,6 +194,10 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
       })
     );
 
+    // Register Copilot/Cursor Ghost Text inline completions
+    const ghostDisposable = registerGhostTextProvider(monaco);
+    disposablesRef.current.push(ghostDisposable);
+
     editedRef.current = false;
     settle();
   };
@@ -234,6 +239,13 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
             renderLineHighlight: "all",
             padding: { top: 8 },
             readOnly: previewOnly,
+            inlineSuggest: {
+              enabled: true,
+              mode: "prefix",
+            },
+            suggest: {
+              preview: true,
+            },
           }}
         />
       </div>

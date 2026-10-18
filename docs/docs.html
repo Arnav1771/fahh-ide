@@ -465,6 +465,8 @@ td code { font-size: .78em; }
     <span class="sb-label">Spatial & AI</span>
     <a class="sb-link" href="#spatial-canvas">CATE Spatial Canvas</a>
     <a class="sb-link" href="#inline-edit">Cursor Inline Edit (Ctrl+K)</a>
+    <a class="sb-link" href="#composer">Cursor Composer (Ctrl+I)</a>
+    <a class="sb-link" href="#ghost-text">Copilot Ghost Text</a>
     <a class="sb-link" href="#rea-analysis">REA Code Analysis</a>
   </div>
   <div class="sb-group">
@@ -676,6 +678,60 @@ Middle Drag    <span class="cm"># Pan canvas across 2D plane</span></pre></div>
       <li>Menu Bar: Navigate to <strong>View</strong> → <strong>REA Code Analysis</strong>.</li>
       <li>Command Palette (<kbd>Ctrl+Shift+P</kbd>): Search for <code>view.rea</code> or <code>REA Analysis</code>.</li>
     </ul>
+  </section>
+
+  <!-- CURSOR COMPOSER -->
+  <section class="doc-section" id="composer">
+    <span class="section-tag">// multi-file autonomous agent</span>
+    <h1 class="doc-h1">Cursor Composer (Ctrl+I)</h1>
+    <p class="doc-lead">
+      Multi-file autonomous editing agent modal inspired by Cursor Composer. Edit multiple files in parallel, attach live context (@file, @problems, @terminal, @git, @codebase), watch an autonomous plan execute, and review synchronized multi-file diffs before merging.
+    </p>
+
+    <h2 class="doc-h2">Key Capabilities</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Feature</th><th>Description</th><th>Shortcut / Trigger</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Multi-File Scoping</strong></td><td>Select multiple target files or add open workspace files to edit synchronously in one pass.</td><td><code>+ Add File</code> chip</td></tr>
+          <tr><td><strong>@ Mention Engine</strong></td><td>Type <code>@</code> to trigger an autocomplete popover referencing <code>@problems</code> (diagnostics), <code>@terminal</code> (logs), <code>@git</code> (diffs), <code>@codebase</code> (project root), or workspace files.</td><td>Type <code>@</code> in prompt</td></tr>
+          <tr><td><strong>Autonomous Execution Plan</strong></td><td>Devin-style real-time task timeline displaying intent analysis, plan formulation, edit generation, and diagnostic validation.</td><td>Automatic upon execution</td></tr>
+          <tr><td><strong>Unified Diff Review</strong></td><td>Inspect side-by-side or unified green/red diffs for each modified file with per-file Accept / Reject or batch Accept All / Reject All controls.</td><td><kbd>Ctrl+Enter</kbd> to accept</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="doc-h2">Keyboard Shortcuts</h2>
+    <p class="doc-p">Composer is designed for rapid keyboard-first workflows:</p>
+    <ul style="color:var(--text-2);font-size:0.88rem;line-height:1.8;padding-left:20px;margin-bottom:20px;">
+      <li><kbd>Ctrl+I</kbd>: Open or close Cursor Composer window.</li>
+      <li><kbd>@</kbd>: Open context attachment menu.</li>
+      <li><kbd>Ctrl+Enter</kbd>: Execute prompt or Accept All generated changes during review.</li>
+      <li><kbd>Esc</kbd>: Dismiss Composer and restore editor focus.</li>
+    </ul>
+  </section>
+
+  <!-- COPILOT GHOST TEXT -->
+  <section class="doc-section" id="ghost-text">
+    <span class="section-tag">// inline completions</span>
+    <h1 class="doc-h1">Copilot / Cursor Ghost Text (Tab)</h1>
+    <p class="doc-lead">
+      Monaco-integrated ghost text inline completions provider. Displays predictive inline completions rendered ahead of the cursor in muted gray text that can be accepted with a single <kbd>Tab</kbd> keystroke.
+    </p>
+
+    <h2 class="doc-h2">Supported Languages & Heuristics</h2>
+    <p class="doc-p">Powered by <code>monaco.languages.registerInlineCompletionsProvider</code> with smart pattern awareness across:</p>
+    <ul style="color:var(--text-2);font-size:0.88rem;line-height:1.8;padding-left:20px;margin-bottom:20px;">
+      <li><strong>TypeScript / JavaScript</strong>: Error handling (<code>try/catch</code>), interfaces, React hooks (<code>useState</code>, <code>useEffect</code>), arrow functions, and logging.</li>
+      <li><strong>Python</strong>: Function definitions with docstring stubs, class constructors (<code>__init__</code>), <code>__main__</code> guards, and exception blocks.</li>
+      <li><strong>Rust</strong>: Function signatures with <code>Result</code> returns, struct declarations, and pattern matching arms.</li>
+      <li><strong>Additional Languages</strong>: HTML, CSS, JSON, Markdown, C, and C++.</li>
+    </ul>
+
+    <div class="callout note">
+      <div class="callout-icon">💡</div>
+      <p>Ghost text completions accept immediately upon pressing <kbd>Tab</kbd> or can be dismissed simply by continuing to type. Toggle ghost text at any time from the status bar or editor settings.</p>
+    </div>
   </section>
 
   <!-- ARCHITECTURE -->

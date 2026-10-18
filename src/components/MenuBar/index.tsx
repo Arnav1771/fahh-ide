@@ -18,7 +18,8 @@ import {
   ExternalLink,
   PanelBottom,
   PanelLeft,
-  Bot
+  Bot,
+  Wand2,
 } from "lucide-react";
 import { runEditorAction } from "../../lib/monacoBridge";
 import { OPEN_FOLDER_EVENT } from "../../lib/commands";
@@ -26,6 +27,7 @@ import { useFahhStore } from "../../store/fahhStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { useSpatialStore } from "../../store/spatialStore";
+import { useComposerStore } from "../../store/composerStore";
 import type { SidebarTab, BottomTab } from "../../App";
 
 interface MenuItem {
@@ -168,6 +170,20 @@ export function MenuBar({
           keys: ["Shift", "Alt", "F"],
           icon: <Sparkles size={13} />,
           action: () => runEditorAction("editor.action.formatDocument"),
+        },
+        {
+          label: "Composer (Cursor Multi-File Agent)",
+          keys: ["Ctrl", "I"],
+          icon: <Sparkles size={13} className="text-[#4a9eff]" />,
+          action: () => useComposerStore.getState().toggleComposer(),
+        },
+        {
+          label: "Inline Edit (Cursor Ctrl+K)",
+          keys: ["Ctrl", "K"],
+          icon: <Wand2 size={13} className="text-[#4a9eff]" />,
+          action: () => {
+            window.dispatchEvent(new CustomEvent("fahh-command", { detail: "edit.inline" }));
+          },
         },
       ],
     },
@@ -352,7 +368,7 @@ export function MenuBar({
       {/* Brand logo & name */}
       <div className="flex items-center gap-1.5 mr-3 pr-2 border-r border-fahh-surface">
         <span className="font-semibold text-fahh-accent tracking-wider text-[11px]">FAHH</span>
-        <span className="text-[9px] text-fahh-muted/70 font-mono">v0.5.2</span>
+        <span className="text-[9px] text-fahh-muted/70 font-mono">v0.6.0</span>
       </div>
 
       {/* Menus */}
