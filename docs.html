@@ -11,22 +11,22 @@
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg:        #050510;
-  --bg-1:      #0a0a1c;
-  --bg-2:      #111126;
-  --sb-bg:     #080818;
-  --border:    rgba(160,155,220,.10);
-  --border-md: rgba(160,155,220,.18);
-  --v:         #7c3aed;
-  --vl:        #a78bfa;
-  --rose:      #e11d48;
-  --rose-l:    #fb7185;
-  --text:      #f0eeff;
-  --text-2:    #9d9bbf;
-  --text-3:    #5a5878;
-  --green:     #34d399;
-  --gold:      #fbbf24;
-  --blue:      #60a5fa;
+  --bg:        #0a0907;
+  --bg-1:      #100f0d;
+  --bg-2:      #161412;
+  --sb-bg:     #0d0c0a;
+  --border:    rgba(255, 248, 230, 0.08);
+  --border-md: rgba(255, 248, 230, 0.16);
+  --v:         #d4a03c;
+  --vl:        #e8b84e;
+  --rose:      #d0524d;
+  --rose-l:    #ff7670;
+  --text:      #f0ebe0;
+  --text-2:    #a89f91;
+  --text-3:    #6e675b;
+  --green:     #3d9e5c;
+  --gold:      #d4a03c;
+  --blue:      #e8b84e;
 
   --mono: 'Space Mono', monospace;
   --body: 'DM Sans', system-ui, sans-serif;
@@ -432,9 +432,9 @@ td code { font-size: .78em; }
 <!-- Nav -->
 <nav>
   <div class="nav-left">
-    <a href="index.html" class="nav-logo">
-      <span class="nav-dot"></span>
-      fahh
+    <a href="index.html" class="nav-logo" style="display:flex;align-items:center;gap:10px;">
+      <svg width="22" height="22" viewBox="0 0 64 64"><rect x="2" y="2" width="60" height="60" rx="15" fill="#161412"/><rect x="2.5" y="2.5" width="59" height="59" rx="14.5" fill="none" stroke="#d4a03c" stroke-opacity=".6"/><g fill="#f0ebe0"><rect x="17" y="15" width="6.5" height="34" rx="1.6"/><rect x="17" y="15" width="20" height="6.5" rx="1.6"/><rect x="17" y="29" width="15" height="6.3" rx="1.6"/></g><g fill="#d4a03c"><rect x="38" y="36" width="4" height="13" rx="2"/><rect x="44" y="28" width="4" height="21" rx="2"/><rect x="50" y="32" width="4" height="17" rx="2"/></g></svg>
+      <span>fahh</span>
     </a>
     <span class="nav-divider"></span>
     <span class="nav-section">docs</span>
@@ -445,10 +445,13 @@ td code { font-size: .78em; }
       <span>Search docs...</span>
       <kbd>Ctrl K</kbd>
     </button>
-    <a href="index.html#fahh-section" class="nav-link">The Sound</a>
+    <a href="index.html#simulator" class="nav-link">Simulator</a>
+    <a href="index.html#canvas" class="nav-link">Spatial Canvas</a>
+    <a href="index.html#composer" class="nav-link">Composer AI</a>
     <a href="index.html#features" class="nav-link">Features</a>
-    <a href="https://github.com/Arnav1771/fahh-ide" target="_blank" class="nav-btn">⭐ GitHub</a>
-    <a href="download.html" class="nav-btn" style="background:var(--v);border-color:var(--v);color:#fff">Download</a>
+    <a href="play.html" class="nav-link">Playground</a>
+    <a href="https://github.com/Arnav1771/fahh-ide" target="_blank" class="nav-link">GitHub</a>
+    <a href="index.html#download" class="nav-btn" style="background:var(--v);border-color:var(--v);color:#0a0907;font-weight:700;">Download v0.6.0</a>
   </div>
 </nav>
 
