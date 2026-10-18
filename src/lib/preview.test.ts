@@ -8,12 +8,15 @@ describe("which preview a file gets", () => {
     expect(previewKindFor("/a/logo.PNG")).toBe("image");
     expect(previewKindFor("/a/icon.svg")).toBe("svg");
     expect(previewKindFor("/a/data.csv")).toBe("csv");
+    expect(previewKindFor("/a/paper.pdf")).toBe("pdf");
+    expect(previewKindFor("C:\\docs\\REPORT.PDF")).toBe("pdf");
     expect(previewKindFor("/a/main.rs")).toBeNull();
     expect(previewKindFor("/a/.md")).toBeNull();
   });
 
-  it("only binary images are preview-only", () => {
+  it("only binary images and PDFs are preview-only", () => {
     expect(isPreviewOnly("/a/photo.jpg")).toBe(true);
+    expect(isPreviewOnly("/a/paper.pdf")).toBe(true);
     expect(isPreviewOnly("/a/icon.svg")).toBe(false);
     expect(isPreviewOnly("/a/README.md")).toBe(false);
   });

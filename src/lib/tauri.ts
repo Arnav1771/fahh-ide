@@ -189,3 +189,35 @@ export const openNewWindow = (path?: string) =>
 
 /** macOS / AppImage: put a `fahh` command on the PATH. Resolves to a message to show. */
 export const installCli = () => invoke<string>("install_cli");
+
+// ─── Window controls ──────────────────────────────────────────────────────────
+
+export const minimizeWindow = async () => {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().minimize();
+  } catch {}
+};
+
+export const toggleMaximizeWindow = async () => {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().toggleMaximize();
+  } catch {}
+};
+
+export const isWindowMaximized = async (): Promise<boolean> => {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    return await getCurrentWindow().isMaximized();
+  } catch {
+    return false;
+  }
+};
+
+export const closeWindow = async () => {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    await getCurrentWindow().close();
+  } catch {}
+};

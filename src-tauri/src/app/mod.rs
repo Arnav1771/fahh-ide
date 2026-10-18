@@ -66,7 +66,8 @@ pub fn on_second_launch(app: &tauri::AppHandle, argv: Vec<String>, cwd: String) 
             .title(&title)
             .inner_size(1400.0, 900.0)
             .min_inner_size(600.0, 400.0)
-            .resizable(true);
+            .resizable(true)
+            .decorations(false);
 
             match builder.build() {
                 Ok(new_win) => {
@@ -143,7 +144,8 @@ pub fn open_new_window(
     .title(&title)
     .inner_size(1400.0, 900.0)
     .min_inner_size(600.0, 400.0)
-    .resizable(true);
+    .resizable(true)
+    .decorations(false);
 
     let win = builder.build().map_err(|e| e.to_string())?;
     let _ = win.show();

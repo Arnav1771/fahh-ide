@@ -9,7 +9,7 @@
  * No React, Monaco or Tauri imports, so everything here is unit-tested in Node.
  */
 
-export type PreviewKind = "markdown" | "html" | "image" | "svg" | "csv" | "browser";
+export type PreviewKind = "markdown" | "html" | "image" | "svg" | "csv" | "browser" | "pdf";
 
 /** A tab whose "path" is a web address opens in the built-in browser. */
 export function isUrl(path: string): boolean {
@@ -61,6 +61,7 @@ const BY_EXT: Record<string, PreviewKind> = {
   svg: "svg",
   csv: "csv",
   tsv: "csv",
+  pdf: "pdf",
 };
 
 export function extOf(path: string): string {
@@ -77,7 +78,7 @@ export function previewKindFor(path: string): PreviewKind | null {
 /** Binary files and web pages cannot be opened as text: their preview is the editor. */
 export function isPreviewOnly(path: string): boolean {
   const kind = previewKindFor(path);
-  return kind === "image" || kind === "browser";
+  return kind === "image" || kind === "browser" || kind === "pdf";
 }
 
 export function dirOf(path: string): string {
