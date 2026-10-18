@@ -32,7 +32,14 @@ pub async fn execute_command(
     }
 
     let mut child = if cfg!(target_os = "windows") {
-        crate::core::proc::cmd("cmd")
+        let mut cmd_builder = crate::core::proc::cmd("cmd");
+        if let Ok(local_app_data) = std::env::var("LOCALAPPDATA") {
+            let agy_bin = format!("{}\\agy\\bin", local_app_data);
+            if let Ok(current_path) = std::env::var("PATH") {
+                cmd_builder.env("PATH", format!("{};{}", agy_bin, current_path));
+            }
+        }
+        cmd_builder
             .args(["/C", &command])
             .args(&args)
             .current_dir(&working_dir)

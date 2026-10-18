@@ -24,11 +24,13 @@ export function TerminalPanel() {
   const { run } = useTerminal();
   const { tree } = useFileStore();
   const [input, setInput] = useState("");
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const terminalOutputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (terminalOutputRef.current) {
+      terminalOutputRef.current.scrollTop = terminalOutputRef.current.scrollHeight;
+    }
   }, [lines]);
 
   // Alt+V image paste listener (Claude Code style)
@@ -198,7 +200,11 @@ export function TerminalPanel() {
       )}
 
       {/* Terminal Output */}
-      <div id="terminal-output" className="flex-1 overflow-y-auto px-3 py-2 text-fahh-text">
+      <div
+        id="terminal-output"
+        ref={terminalOutputRef}
+        className="flex-1 overflow-y-auto px-3 py-2 text-fahh-text"
+      >
         {lines.map((line, i) => (
           <div
             key={i}
@@ -233,7 +239,6 @@ export function TerminalPanel() {
             )}
           </div>
         ))}
-        <div ref={bottomRef} />
       </div>
 
       {/* Pasted Image Preview Chip */}

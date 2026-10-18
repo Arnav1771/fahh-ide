@@ -13,10 +13,22 @@ export function useWorkspace() {
   const openFolder = useCallback(async (path: string) => {
     setRoot(path);
     setCwd(path);
-    const tree = await getFileTree(path);
-    setTree(tree);
-    // Previews (Markdown images, pictures, HTML assets) may load from this folder.
-    allowPreview(path).catch(() => {});
+    try {
+      const tree = await getFileTree(path);
+      setTree(tree);
+      // Previews (Markdown images, pictures, HTML assets) may load from this folder.
+      allowPreview(path).catch(() => {});
+    } catch (err) {
+      console.warn("getFileTree fallback for:", path, err);
+      // Fallback single root entry so explorer still opens
+      const folderName = path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+      setTree({
+        name: folderName,
+        path,
+        is_dir: true,
+        children: [],
+      });
+    }
   }, [setRoot, setTree, setCwd]);
 
   const openFileInEditor = useCallback(async (path: string) => {
@@ -25,18 +37,30 @@ export function useWorkspace() {
       openFile({ path, language: "image", dirty: false }, "");
       return;
     }
-    const content = await readFile(path);
-    const ext = path.split(".").pop() ?? "";
+    const ext = path.split(".").pop()?.toLowerCase() ?? "";
     const langMap: Record<string, string> = {
       rs: "rust", ts: "typescript", tsx: "typescript",
       js: "javascript", jsx: "javascript", py: "python",
       json: "json", toml: "toml", md: "markdown",
       html: "html", htm: "html", css: "css", svg: "xml", csv: "plaintext", tsv: "plaintext",
+      yml: "yaml", yaml: "yaml", c: "c", cpp: "cpp", h: "c", hpp: "cpp",
+      sh: "shell", bat: "bat", ps1: "powershell", sql: "sql",
     };
-    openFile(
-      { path, language: langMap[ext] ?? "plaintext", dirty: false },
-      content
-    );
+    const language = langMap[ext] ?? "plaintext";
+
+    try {
+      const content = await readFile(path);
+      openFile(
+        { path, language, dirty: false },
+        content ?? ""
+      );
+    } catch (err) {
+      console.warn("Failed reading file content:", path, err);
+      openFile(
+        { path, language, dirty: false },
+        ""
+      );
+    }
   }, [openFile]);
 
   return { openFolder, openFileInEditor };

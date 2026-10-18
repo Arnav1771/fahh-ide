@@ -32,14 +32,16 @@ const DEFAULT_LOGS: LogEntry[] = [
 export function OutputPanel() {
   const [channel, setChannel] = useState("Tasks");
   const [logs, setLogs] = useState<LogEntry[]>(DEFAULT_LOGS);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const outputContentRef = useRef<HTMLDivElement>(null);
 
   const channels = ["Tasks", "Fahh Core", "Git", "Language Server", "Dev Server"];
 
   const filtered = logs.filter((l) => l.channel === channel);
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (outputContentRef.current) {
+      outputContentRef.current.scrollTop = outputContentRef.current.scrollHeight;
+    }
   }, [logs, channel]);
 
   const clearChannel = () => {
@@ -89,7 +91,10 @@ export function OutputPanel() {
       </div>
 
       {/* Output Content */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-1 select-text">
+      <div
+        ref={outputContentRef}
+        className="flex-1 overflow-y-auto p-3 space-y-1 select-text"
+      >
         {filtered.length === 0 ? (
           <div className="text-fahh-muted/70 py-4 italic">No output for channel &quot;{channel}&quot;.</div>
         ) : (
@@ -110,7 +115,6 @@ export function OutputPanel() {
             </div>
           ))
         )}
-        <div ref={bottomRef} />
       </div>
     </div>
   );

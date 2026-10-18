@@ -71,9 +71,28 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     setActiveDocument(activeTab);
   }, [activeTab]);
 
+  // Synchronize Monaco model content with store content when switching tabs or when content loads asynchronously
+  useEffect(() => {
+    if (!editorRef.current || !activeTab) return;
+    const model = editorRef.current.getModel();
+    if (model) {
+      const currentVal = model.getValue();
+      if (currentVal !== content) {
+        model.setValue(content);
+      }
+    }
+    editorRef.current.layout?.();
+  }, [activeTab, content]);
+
   // Never let the bridge hold a reference to a disposed editor.
   useEffect(() => {
+    const handleResize = () => {
+      editorRef.current?.layout?.();
+    };
+    window.addEventListener("resize", handleResize);
+
     return () => {
+      window.removeEventListener("resize", handleResize);
       detachMonaco();
       for (const d of disposablesRef.current) d.dispose();
       disposablesRef.current = [];
@@ -140,6 +159,15 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     // before Monaco mounted is flushed onto the model immediately.
     attachMonaco(monaco, editor);
     setActiveDocument(activeTab);
+
+    // Ensure model content is populated if loaded before onMount
+    const model = editor.getModel();
+    if (model && content && model.getValue() !== content) {
+      model.setValue(content);
+    }
+    setTimeout(() => {
+      editor.layout?.();
+    }, 100);
 
     // Feed the HUD. Every checker's markers count (Monaco's own TypeScript,
     // JSON, CSS and HTML workers, and the language servers via the bridge),
@@ -238,11 +266,12 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
           so the diagnostics bridge never holds a disposed editor. */}
       <div
         id="monaco-container"
-        className="flex-1 flex flex-col min-h-0 min-w-0 relative"
+        className="flex-1 flex flex-col min-h-0 min-w-0 relative w-full h-full"
         style={mode === "only" ? { display: "none" } : undefined}
       >
         <Editor
           height="100%"
+          width="100%"
           /* One model per file: TypeScript sees the real extension (so .tsx
              parses JSX) and each tab keeps its own undo history. */
           path={modelPathFor(activeTab)}

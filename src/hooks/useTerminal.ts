@@ -62,6 +62,21 @@ export function useTerminal() {
         }
         return;
       }
+
+      // `agy` launch handler: launch interactive Antigravity CLI in a standalone console window
+      const agyMatch = /^agy(?:\s+(.*))?$/i.exec(command.trim());
+      if (agyMatch) {
+        const agyArgs = agyMatch[1] ?? "";
+        addLine("Launching Antigravity CLI interactive terminal session...", "info");
+        try {
+          const launchCmd = `start "Antigravity CLI" cmd /k "chcp 65001 >nul && (if exist \"%LOCALAPPDATA%\\agy\\bin\\agy.exe\" (\"%LOCALAPPDATA%\\agy\\bin\\agy.exe\" ${agyArgs}) else (agy ${agyArgs}))"`;
+          await executeCommand(launchCmd, [], cwd);
+          addLine("Antigravity terminal session launched.", "info");
+        } catch (err) {
+          addLine(`fahh: could not launch agy: ${String(err)}`, "stderr");
+        }
+        return;
+      }
       try {
         const result = await executeCommand(wrapForCwd(command, SHELL), [], cwd);
         // We no longer print result.stdout/stderr here since it's streamed
