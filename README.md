@@ -1,61 +1,51 @@
 # Fahh Editor
 
-> A cross-platform desktop IDE that plays a sound every time your code has an error. Built with Tauri 2, Rust, and React.
+> A spatial AI code editor with loud opinions. Built with Tauri 2, Rust, Monaco, and React.
 
-**[Download v0.5.2](https://github.com/Arnav1771/fahh-ide/releases/latest)** · **[Try it in the browser](https://arnav1771.github.io/fahh-ide/play.html)** · **[Docs](https://arnav1771.github.io/fahh-ide/docs.html)**
-
----
-
-## The one feature
-
-Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.mp3`. It has a 3-second cooldown. You can't remove it.
+**[Download v0.6.0](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.0)** · **[Website](https://fahhide.duckdns.org)** · **[Docs](https://fahhide.duckdns.org/docs.html)** · **[Playground](https://fahhide.duckdns.org/play.html)**
 
 ---
 
-## Download
+## The Core Philosophy
+
+Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.mp3`. It has a strict 3-second cooldown window so 40 cascading errors trigger exactly one sound.
+
+Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, and **Monaco Error Lens**, Fahh Editor is designed for hyper-focused, joyful developer flow.
+
+---
+
+## Download v0.6.0
 
 | Platform | Installer | Size |
 |----------|-----------|------|
-| Windows 10/11 (x64) | [Fahh.Editor_0.5.2_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64-setup.exe) | ~6MB |
-| Windows (MSI) | [Fahh.Editor_0.5.2_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64_en-US.msi) | ~7.6MB |
-| macOS (Apple Silicon) | [Fahh.Editor_0.5.2_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_aarch64.dmg) | ~7.3MB |
-| macOS (Intel) | [Fahh.Editor_0.5.2_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_x64.dmg) | ~7.4MB |
-| Linux (AppImage) | [Fahh.Editor_0.5.2_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_amd64.AppImage) | ~82MB |
-| Linux (Debian/Ubuntu) | [Fahh.Editor_0.5.2_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.5.2/Fahh.Editor_0.5.2_amd64.deb) | ~7.7MB |
+| Windows 10/11 (x64) | [Fahh.Editor_0.6.0_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_x64-setup.exe) | ~6.1MB |
+| Windows (MSI) | [Fahh.Editor_0.6.0_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_x64_en-US.msi) | ~7.8MB |
+| macOS (Apple Silicon) | [Fahh.Editor_0.6.0_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_aarch64.dmg) | ~7.5MB |
+| macOS (Intel) | [Fahh.Editor_0.6.0_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_x64.dmg) | ~7.6MB |
+| Linux (AppImage) | [Fahh.Editor_0.6.0_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_amd64.AppImage) | ~83MB |
+| Linux (Debian/Ubuntu) | [Fahh.Editor_0.6.0_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor_0.6.0_amd64.deb) | ~7.9MB |
+| Linux (Fedora/RHEL) | [Fahh.Editor-0.6.0-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.0/Fahh.Editor-0.6.0-1.x86_64.rpm) | ~7.9MB |
 
-> **Windows**: The installer is small (3MB) because it uses the system WebView2 runtime pre-installed on Windows 10/11. Not Electron — 10× smaller binary.
+> **Native Performance**: Built on Tauri 2 with native OS web engines (WebView2 on Windows, WebKitGTK on Linux, WebKit on macOS). Not Electron — 10× lighter memory footprint and instant startup.
 
 ---
 
-## What works in v0.5.2
+## What's in Fahh Editor v0.6.0
 
-Verified on the real desktop app (tauri-driver + WebKitWebDriver, 108 + 24 checks), and by a recorded session that went from `mkdir` to `git push` entirely inside the Fahh window ([result](https://github.com/Arnav1771/fahh-hello)).
-
-| Feature | Status |
-|---------|--------|
-| The fahh moment | ✅ When the error count goes up: sound, editor shake, red edge, line pulse and a FAHH ×n combo chip. Fixing the last error gives CLEAN. Epic / Subtle / Off, plus mute |
-| Status bar | ✅ Live error/warning counts (click for the next problem), clean streak, language-server status |
-| Command palette | ✅ Ctrl+Shift+P / F1, fuzzy search, keycaps, recently used first |
-| Quick Open | ✅ Ctrl+P finds any file in the opened folder |
-| Previews | ✅ Ctrl+K V beside, Ctrl+Shift+V in place. Markdown (live, scroll sync, local images), HTML (sandboxed, scripts opt-in), images with zoom, SVG, CSV tables |
-| Monaco editor (VS Code engine) | ✅ Full syntax highlighting, 15+ languages, Ctrl+S save; one model per file (per-tab undo, real TSX checking) |
-| File explorer | ✅ Open folder, recursive tree, depth-5, context menu (Rename/Delete/Copy Path) |
-| New file creation | ✅ Click 📄 in explorer → inline name input |
-| 6 built-in themes | ✅ Fahh Gold (default), Fahh Dark, Fahh Light, GitHub Dark, Dracula, Solarized Dark |
-| Terminal | ✅ Runs shell commands; `cd` sticks and the prompt follows; `fahh .` opens a folder (like `code .`) |
-| Run panel | ✅ One-click code execution for Python, JS, TS, Go, Rust, Java, C++ |
-| Debug panel UI | ✅ Breakpoints, call stack, variables; a missing adapter says how to install it — DAP wiring in progress |
-| Optional tools installer | ✅ n8n, Flowise, browser-use, GitHub CLI, Claude CLI |
-| Right-click context menu | ✅ No browser Share/Reload — custom IDE menu only |
-| F5 / Ctrl+R blocked | ✅ Page reload can't wipe your code |
-| Task Manager name | ✅ Shows "Fahh Editor" not "WebView2 Gpu Process" |
-| Cross-platform builds | ✅ Windows, macOS (arm64 + x64), Linux (AppImage/deb/rpm) |
-| Fahh SFX | ✅ Wired and audible — ships a synthesized stand-in tone, swap in your own clip |
-| Git sidebar | ✅ Branch, staged/unstaged lists, stage/unstage, commit, per-file diff |
-| Fahh Local agent | ✅ Bring-your-own key (Groq, NVIDIA NIM, OpenRouter, Gemini, Ollama, Anthropic); edits, commands, plan mode, revert |
-| LSP diagnostics | ✅ Errors and warnings appear as Monaco markers, and drive the SFX |
-| LSP completions / hover | 🔧 Servers start and respond, but no Monaco provider is registered yet |
-| Step-through debugger | 🔧 DAP client exists, UI wiring in Phase 2 |
+| Capability | Hotkey / Status | What It Does |
+|------------|-----------------|--------------|
+| **CATE Spatial Canvas** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Infinite 2D zooming canvas with floating traffic-light window nodes (Monaco, live Terminal, AI companion, responsive Browser) and radar Minimap with teleport shortcuts. |
+| **Cursor Composer** | <kbd>Ctrl</kbd>+<kbd>I</kbd> | Multi-file autonomous editing agent with dynamic file chips, side-by-side unified diff review, and batch Accept/Reject controls. |
+| **Inline Edit** | <kbd>Ctrl</kbd>+<kbd>K</kbd> | Floating Monaco prompt pill for in-place code transformations with live diff previews. |
+| **`@` Mentions Engine** | Type `@` in prompt | Context resolution popover dynamically attaching `@problems`, `@terminal`, `@git`, `@codebase`, and workspace files. |
+| **Monaco Error Lens** | Built-in | Inline colored diagnostics drawn directly at the tail of offending code lines — no mouse hovering required. |
+| **Predictive Ghost Text** | <kbd>Tab</kbd> to accept | Monaco inline completions provider predicting multi-line snippets ahead of the caret across 12+ languages. |
+| **Terminal "Fix with AI"** | Hover stderr | One-click button on terminal errors automatically launching Composer with pre-attached terminal diagnostic context. |
+| **AI Conventional Commits** | Git Sidebar | One-click synthesis of structured Conventional Commits (`feat`, `fix`, `test`, `docs`) from staged diffs. |
+| **REA Code Analysis** | Activity Bar CPU | AST Symbol recovery, GNU `strings` binary string extractor with byte offsets, and 16-byte hex dump inspector. |
+| **Open VSX Marketplace** | Extensions tab | Browse and install community extensions directly from Open VSX in one click. |
+| **The Fahh SFX Engine** | Built-in | Audible feedback on compile/LSP errors with a strict 3000ms cooldown window. |
+| **Desktop Shell** | Native | Native desktop MenuBar, file symbol breadcrumbs, unbuffered Python runner, multi-tab bottom dock. |
 
 ---
 
@@ -111,14 +101,13 @@ pnpm tauri build
 
 ```bash
 pnpm exec tsc --noEmit    # type check
-pnpm test                 # 136 vitest tests
+pnpm test                 # 238 unit tests across 25 suites
 cd src-tauri && cargo clippy -- -D warnings && cargo test
 ```
 
-The vitest suite covers the pure logic: the SFX cooldown rule, LSP
-diagnostic → Monaco marker conversion, the marker bridge, the git status
-model, the `src/lib/tauri.ts` IPC wrappers (with `@tauri-apps/api` mocked),
-the agent panel state, provider settings, and the zustand stores.
+The vitest suite covers the complete logic: Composer multi-file diffs and `@` mentions,
+CATE Spatial Canvas zoom/pan store, Monaco Error Lens diagnostics, Ghost Text inline completions,
+the SFX cooldown rule, LSP marker bridges, and native Tauri IPC wrappers.
 
 ---
 
