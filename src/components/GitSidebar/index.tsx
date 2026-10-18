@@ -21,6 +21,7 @@ import {
   Minus,
   Plus,
   RefreshCw,
+  Sparkles,
   X,
 } from "lucide-react";
 
@@ -39,6 +40,7 @@ import {
   statusColor,
   statusLabel,
   statusLetter,
+  suggestCommitMessage,
 } from "../../lib/git";
 import type { GitFileChange } from "../../lib/types";
 
@@ -323,6 +325,21 @@ export function GitSidebar() {
 
       {/* Commit box */}
       <div className="px-2 py-2 border-b border-fahh-surface shrink-0">
+        <div className="flex items-center justify-between pb-1">
+          <span className="text-[10px] text-fahh-muted uppercase tracking-wider font-semibold">Commit</span>
+          <button
+            type="button"
+            onClick={() => {
+              const suggested = suggestCommitMessage(status);
+              if (suggested) setCommitMessage(suggested);
+            }}
+            disabled={status.staged.length === 0 && status.unstaged.length === 0}
+            className="flex items-center gap-1 text-[10px] text-fahh-accent hover:text-fahh-accent/80 transition-colors disabled:opacity-30"
+            title="Generate Conventional Commit message with AI"
+          >
+            <Sparkles size={10} /> AI Generate
+          </button>
+        </div>
         <textarea
           value={commitMessage}
           onChange={(e) => setCommitMessage(e.target.value)}

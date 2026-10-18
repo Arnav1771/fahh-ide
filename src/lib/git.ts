@@ -141,3 +141,46 @@ export function sortChanges(changes: GitFileChange[]): GitFileChange[] {
     return fileName(a.path).localeCompare(fileName(b.path));
   });
 }
+
+/**
+ * Synthesizes a clean Conventional Commits message based on staged or unstaged changes.
+ */
+export function suggestCommitMessage(status: GitStatus): string {
+  const list = status.staged.length > 0 ? status.staged : status.unstaged;
+  if (!list || list.length === 0) return "";
+
+  const paths = list.map((c) => c.path.toLowerCase());
+  let type = "feat";
+  let scope = "";
+  let desc = "";
+
+  // Extract scope from directory structure
+  const firstParts = list[0].path.split(/[/\\]/);
+  if (firstParts.length > 1) {
+    const candidate = firstParts[firstParts.length - 2].toLowerCase();
+    if (candidate !== "src" && candidate !== "app") {
+      scope = candidate;
+    }
+  }
+
+  if (paths.every((p) => p.includes(".test.") || p.includes(".spec.") || p.includes("tests/"))) {
+    type = "test";
+    desc = "update unit test suites";
+  } else if (paths.every((p) => p.includes("doc") || p.endsWith(".md") || p.endsWith(".html"))) {
+    type = "docs";
+    desc = "update documentation and guides";
+  } else if (paths.some((p) => p.includes("fix") || p.includes("error") || p.includes("bug"))) {
+    type = "fix";
+    desc = `resolve issue in ${list.map((c) => fileName(c.path)).slice(0, 2).join(", ")}`;
+  } else if (paths.every((p) => p.endsWith(".css") || p.includes("theme") || p.includes("style"))) {
+    type = "style";
+    desc = `update styling and themes in ${scope || "ui"}`;
+  } else {
+    type = "feat";
+    const names = list.map((c) => fileName(c.path).replace(/\.[^/.]+$/, "")).slice(0, 2).join(", ");
+    desc = `enhance ${names}${list.length > 2 ? ` and ${list.length - 2} more files` : ""}`;
+  }
+
+  const scopeStr = scope ? `(${scope})` : "";
+  return `${type}${scopeStr}: ${desc}`;
+}

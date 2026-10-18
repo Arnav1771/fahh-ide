@@ -328,3 +328,22 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
   .fahh-shake, .fahh-chip, .fahh-rings span, .fahh-press, .fahh-sweep, .fahh-palette { animation: none !important; }
   .fahh-rings span { opacity: 0; }
 }
+
+/* ─── Inline Error Lens (Zed / Cursor diagnostics) ─────────────────────── */
+.fahh-error-lens-error {
+  color: rgba(248, 113, 113, 0.75);
+  font-style: italic;
+  font-size: 11px;
+  margin-left: 14px;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.fahh-error-lens-warn {
+  color: rgba(251, 191, 36, 0.75);
+  font-style: italic;
+  font-size: 11px;
+  margin-left: 14px;
+  pointer-events: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}

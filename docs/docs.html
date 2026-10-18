@@ -467,6 +467,8 @@ td code { font-size: .78em; }
     <a class="sb-link" href="#inline-edit">Cursor Inline Edit (Ctrl+K)</a>
     <a class="sb-link" href="#composer">Cursor Composer (Ctrl+I)</a>
     <a class="sb-link" href="#ghost-text">Copilot Ghost Text</a>
+    <a class="sb-link" href="#error-lens">Monaco Error Lens</a>
+    <a class="sb-link" href="#terminal-git-ai">Terminal & Git AI</a>
     <a class="sb-link" href="#rea-analysis">REA Code Analysis</a>
   </div>
   <div class="sb-group">
@@ -732,6 +734,44 @@ Middle Drag    <span class="cm"># Pan canvas across 2D plane</span></pre></div>
       <div class="callout-icon">💡</div>
       <p>Ghost text completions accept immediately upon pressing <kbd>Tab</kbd> or can be dismissed simply by continuing to type. Toggle ghost text at any time from the status bar or editor settings.</p>
     </div>
+  </section>
+
+  <!-- ERROR LENS -->
+  <section class="doc-section" id="error-lens">
+    <span class="section-tag">// inline diagnostics</span>
+    <h1 class="doc-h1">Monaco Error Lens</h1>
+    <p class="doc-lead">
+      Instant inline diagnostics inspired by Zed and the Error Lens extension. Errors and warnings are projected directly at the end of the line in Monaco with colored diagnostic symbols and readable messages, eliminating the need to hover over squiggly underlines.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Diagnostic Type</th><th>Visual Indicator</th><th>Styling</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Compiler Errors</strong></td><td><code>● &lt;Error message&gt;</code></td><td>Faint crimson italic text anchored to the end of the line.</td></tr>
+          <tr><td><strong>Linter Warnings</strong></td><td><code>▲ &lt;Warning message&gt;</code></td><td>Muted amber italic text with automatic truncation past 90 characters.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TERMINAL & GIT AI -->
+  <section class="doc-section" id="terminal-git-ai">
+    <span class="section-tag">// developer productivity</span>
+    <h1 class="doc-h1">Terminal & Git AI Workflows</h1>
+    <p class="doc-lead">
+      Deep integration between terminal errors, version control, and Fahh AI agents:
+    </p>
+
+    <h2 class="doc-h2">Terminal Fix with AI</h2>
+    <p class="doc-p">
+      Whenever a CLI command or runtime produces error output (<code>stderr</code>), a <strong>Fix with AI</strong> button dynamically appears on hover. Clicking it instantly launches Cursor Composer with the terminal output attached as context and generates the appropriate fix plan.
+    </p>
+
+    <h2 class="doc-h2">AI Commit Message Generator</h2>
+    <p class="doc-p">
+      In the Source Control sidebar, click <strong>AI Generate</strong> above the commit box. Fahh inspects staged (or unstaged) file paths and diffs, classifies the changes into Conventional Commits (<code>feat</code>, <code>fix</code>, <code>test</code>, <code>docs</code>, <code>style</code>), and infers the directory scope automatically.
+    </p>
   </section>
 
   <!-- ARCHITECTURE -->
