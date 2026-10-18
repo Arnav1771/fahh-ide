@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import { executeCommand } from "../lib/tauri";
+import { executeCommand, launchAgyTerminal } from "../lib/tauri";
 import { useTerminalStore } from "../store/terminalStore";
 import { listen } from "@tauri-apps/api/event";
 import { detectShell, splitCwdLine, wrapForCwd } from "../lib/shellCwd";
@@ -66,12 +66,11 @@ export function useTerminal() {
       // `agy` launch handler: launch interactive Antigravity CLI in a standalone console window
       const agyMatch = /^agy(?:\s+(.*))?$/i.exec(command.trim());
       if (agyMatch) {
-        const agyArgs = agyMatch[1] ?? "";
+        const agyArgs = (agyMatch[1] ?? "").split(" ").filter(Boolean);
         addLine("Launching Antigravity CLI interactive terminal session...", "info");
         try {
-          const launchCmd = `start "Antigravity CLI" cmd /k "chcp 65001 >nul && (if exist \"%LOCALAPPDATA%\\agy\\bin\\agy.exe\" (\"%LOCALAPPDATA%\\agy\\bin\\agy.exe\" ${agyArgs}) else (agy ${agyArgs}))"`;
-          await executeCommand(launchCmd, [], cwd);
-          addLine("Antigravity terminal session launched.", "info");
+          const res = await launchAgyTerminal(cwd, agyArgs);
+          addLine(res || "Antigravity CLI console launched in a new window.", "info");
         } catch (err) {
           addLine(`fahh: could not launch agy: ${String(err)}`, "stderr");
         }

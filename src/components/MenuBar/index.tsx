@@ -20,7 +20,10 @@ import {
   PanelLeft,
   Bot,
   Wand2,
+  PlusSquare,
+  Cpu,
 } from "lucide-react";
+import { openNewWindow } from "../../lib/tauri";
 import { runEditorAction } from "../../lib/monacoBridge";
 import { OPEN_FOLDER_EVENT } from "../../lib/commands";
 import { useFahhStore } from "../../store/fahhStore";
@@ -95,6 +98,12 @@ export function MenuBar({
     {
       label: "File",
       items: [
+        {
+          label: "New Window",
+          keys: ["Ctrl", "Shift", "N"],
+          icon: <PlusSquare size={13} />,
+          action: () => void openNewWindow(),
+        },
         {
           label: "Open Folder…",
           keys: ["Ctrl", "O"],
@@ -259,6 +268,12 @@ export function MenuBar({
           keys: ["Ctrl", "L"],
           icon: <Bot size={13} />,
           action: () => onSetSidebarTab("ai"),
+        },
+        {
+          label: "REA Code Analysis (AST & Hex Dump)",
+          keys: ["Ctrl", "Shift", "R"],
+          icon: <Cpu size={13} className="text-[#a78bfa]" />,
+          action: () => onSetSidebarTab("rea"),
         },
         {
           label: isSpatial ? "Exit Spatial Canvas Mode" : "Spatial Canvas Mode (CATE)",

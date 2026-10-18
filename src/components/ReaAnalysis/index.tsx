@@ -4,8 +4,10 @@ import {
   Search,
   Copy,
   Check,
+  Code2,
 } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
+import { revealLine } from "../../lib/monacoBridge";
 
 interface StringEvidence {
   offset: string;
@@ -19,15 +21,45 @@ interface SymbolNode {
   line: number;
 }
 
+const SAMPLE_MODULE = `// REA Architecture & Binary Analysis Demo
+import { useState, useEffect } from "react";
+
+export interface ServerEndpoint {
+  url: string;
+  protocol: "https" | "wss";
+  active: boolean;
+}
+
+export class EngineDriver {
+  private host = "https://fahhide.duckdns.org/api/v1/telemetry";
+  private socket = "wss://fahhide.duckdns.org/stream";
+
+  async connect(retries = 3) {
+    console.log("Connecting to", this.host);
+  }
+}
+
+export function initializeBuffer(size: number) {
+  const magic = "FAHH_BINARY_HDR_0x42";
+  return new Uint8Array(size);
+}
+`;
+
 export function ReaAnalysisPanel() {
   const { activeTab, fileContents } = useEditorStore();
+  const [showDemo, setShowDemo] = useState(false);
 
   const [activeTabMode, setActiveTabMode] = useState<"ast" | "strings" | "hex">("ast");
   const [filter, setFilter] = useState("");
   const [copied, setCopied] = useState(false);
 
-  const content = (activeTab && fileContents[activeTab]) || "";
-  const fileName = activeTab ? activeTab.split(/[/\\]/).pop() || "untitled" : "No file open";
+  const rawContent = (activeTab && fileContents[activeTab]) || "";
+  const content = rawContent || (showDemo ? SAMPLE_MODULE : "");
+  const fileName = activeTab
+    ? activeTab.split(/[/\\]/).pop() || "untitled"
+    : showDemo
+    ? "demo_module.ts"
+    : "No file open";
 
   // 1. Static Module / AST & Symbol Analysis
   const symbols = useMemo<SymbolNode[]>(() => {
@@ -202,8 +234,18 @@ export function ReaAnalysisPanel() {
         {activeTabMode === "ast" && (
           <div className="flex flex-col gap-1">
             {symbols.length === 0 ? (
-              <div className="text-center py-8 text-[#8a8780]">
-                No symbols detected in active document.
+              <div className="text-center py-8 text-[#8a8780] space-y-3">
+                <p>No symbols detected in active document.</p>
+                {!showDemo && (
+                  <button
+                    type="button"
+                    onClick={() => setShowDemo(true)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#4a9eff]/15 text-[#4a9eff] border border-[#4a9eff]/30 hover:bg-[#4a9eff]/25 text-xs transition-colors"
+                  >
+                    <Code2 size={12} />
+                    <span>Load Demo Analysis</span>
+                  </button>
+                )}
               </div>
             ) : (
               symbols
@@ -211,7 +253,9 @@ export function ReaAnalysisPanel() {
                 .map((s, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center justify-between px-2.5 py-1.5 rounded bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] transition-colors"
+                    onClick={() => s.line && revealLine(s.line)}
+                    title={`Click to jump to line ${s.line}`}
+                    className="flex items-center justify-between px-2.5 py-1.5 rounded bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.04] transition-colors cursor-pointer"
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span

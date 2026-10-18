@@ -25,6 +25,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // `fahh <path>` command line
             app::take_pending_open,
+            app::open_new_window,
             app::cli::install_cli,
             // Workspace / file operations
             workspace::get_file_tree,
@@ -40,6 +41,7 @@ pub fn run() {
             // Terminal
             terminal::execute_command,
             terminal::write_stdin,
+            terminal::launch_agy_terminal,
             // Fahh SFX trigger (core feature)
             error_detector::trigger_error_sound,
             // Optional tool installer

@@ -52,6 +52,9 @@ export const executeCommand = (
   cwd?: string
 ) => invoke<CommandOutput>("execute_command", { command, args, cwd });
 
+export const launchAgyTerminal = (cwd?: string, args?: string[]) =>
+  invoke<string>("launch_agy_terminal", { cwd, args });
+
 export const writeStdin = (pid: number, data: string) =>
   invoke<void>("write_stdin", { pid, data });
 
@@ -177,8 +180,12 @@ export const allowPreview = (path: string) =>
 
 // ─── `fahh` command ───────────────────────────────────────────────────────────
 
-/** The path from the first launch (`fahh .`), once; null when started normally. */
+/** The path from launch (`fahh .`), once; null when started normally. */
 export const takePendingOpen = () => invoke<OpenRequest | null>("take_pending_open");
+
+/** Open a fresh Fahh window, optionally with a target path. */
+export const openNewWindow = (path?: string) =>
+  invoke<string>("open_new_window", { path: path ?? null }).catch(() => null);
 
 /** macOS / AppImage: put a `fahh` command on the PATH. Resolves to a message to show. */
 export const installCli = () => invoke<string>("install_cli");

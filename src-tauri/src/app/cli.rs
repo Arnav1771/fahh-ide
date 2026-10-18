@@ -35,10 +35,37 @@ pub enum Launch {
     Agent(Vec<String>),
 }
 
-/// The request from the first launch, held until the window asks for it
+use std::collections::HashMap;
+
+/// The request from launches, held until windows ask for it
 /// (an event sent during startup would arrive before anyone listens).
 #[derive(Default)]
-pub struct PendingOpen(pub Mutex<Option<OpenRequest>>);
+pub struct PendingOpen {
+    pub main: Mutex<Option<OpenRequest>>,
+    pub windows: Mutex<HashMap<String, OpenRequest>>,
+}
+
+impl PendingOpen {
+    pub fn set_main(&self, req: OpenRequest) {
+        *self.main.lock().unwrap() = Some(req);
+    }
+
+    pub fn set_for_window(&self, label: &str, req: OpenRequest) {
+        self.windows.lock().unwrap().insert(label.to_string(), req);
+    }
+
+    pub fn take_for_window(&self, label: &str) -> Option<OpenRequest> {
+        let mut map = self.windows.lock().unwrap();
+        if let Some(req) = map.remove(label) {
+            return Some(req);
+        }
+        if label == "main" {
+            self.main.lock().unwrap().take()
+        } else {
+            None
+        }
+    }
+}
 
 /// Lexical clean-up: drop `.` and fold `..`, without touching the disk.
 fn normalize(p: &Path) -> PathBuf {
