@@ -253,8 +253,8 @@ async function runCanarySuite() {
   };
 
   try {
-    // ── STEP 1: Load IDE Interface in Docked Mode ──
-    console.log("[Canary] Step 1: Loading Docked IDE Interface...");
+    // ── STEP 1: Load IDE Interface in Docked Mode & Verify Custom Window Chrome ──
+    console.log("[Canary] Step 1: Loading Docked IDE Interface & Custom Window Controls...");
     await page.goto("http://localhost:5188", { waitUntil: "networkidle" });
     await page.waitForTimeout(1000);
 
@@ -266,114 +266,158 @@ async function runCanarySuite() {
 
     const title = await page.title();
     const hasActivityBar = (await page.locator(".bg-fahh-sidebar").count()) > 0;
+    const hasMinimize = (await page.locator('button[title="Minimize"]').count()) > 0;
+    const hasMaximize = (await page.locator('button[title*="Maximize"], button[title*="Restore"]').count()) > 0;
+    const hasClose = (await page.locator('button[title="Close"]').count()) > 0;
+    const hasMenuBar = (await page.locator('button:has-text("File")').count()) > 0;
+
     await page.screenshot({ path: path.join(EVIDENCE_DIR, "01_docked_ide.png") });
     results.steps.push({
       step: 1,
-      name: "Docked IDE Initial State",
-      status: "PASS",
-      details: { title, hasActivityBar, screenshot: "01_docked_ide.png" },
+      name: "Unified Window Chrome & Window Controls",
+      status: hasMinimize && hasMaximize && hasClose && hasMenuBar ? "PASS" : "FAIL",
+      details: { title, hasActivityBar, hasMinimize, hasMaximize, hasClose, hasMenuBar, screenshot: "01_docked_ide.png" },
     });
 
-    // ── STEP 2: Verify Monaco Editor & Code Visibility ──
-    console.log("[Canary] Step 2: Verifying Monaco Editor & Code Rendering...");
+    // ── STEP 2: Verify Expanded MenuBar Dropdown ──
+    console.log("[Canary] Step 2: Testing Expanded MenuBar Dropdown...");
+    await page.locator('button:has-text("File")').click();
+    await page.waitForTimeout(400);
+
+    const hasNewFile = (await page.locator("text=New File").count()) > 0;
+    const hasNewWindow = (await page.locator("text=New Window").count()) > 0;
+    const hasOpenFile = (await page.locator("text=Open File…").count()) > 0;
+    const hasOpenFolder = (await page.locator("text=Open Folder…").count()) > 0;
+    const hasSaveAll = (await page.locator("text=Save All").count()) > 0;
+    const hasAutoSave = (await page.locator("text=Auto Save").count()) > 0;
+
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, "02_menubar_file_dropdown.png") });
+    // Dismiss menu
+    await page.keyboard.press("Escape");
+    await page.waitForTimeout(300);
+
+    results.steps.push({
+      step: 2,
+      name: "Expanded MenuBar Options",
+      status: hasNewFile && hasNewWindow && hasOpenFile && hasSaveAll && hasAutoSave ? "PASS" : "FAIL",
+      details: { hasNewFile, hasNewWindow, hasOpenFile, hasOpenFolder, hasSaveAll, hasAutoSave, screenshot: "02_menubar_file_dropdown.png" },
+    });
+
+    // ── STEP 3: Verify Monaco Editor & Code Visibility ──
+    console.log("[Canary] Step 3: Verifying Monaco Editor & Code Rendering...");
     await page.waitForSelector(".monaco-editor", { timeout: 8000 });
     const monacoText = await page.locator(".view-lines").innerText();
     const isCodeVisible = monacoText.includes("TelemetryGauge") || monacoText.includes("Fahh Editor");
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, "02_monaco_code_rendered.png") });
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, "03_monaco_code_rendered.png") });
     results.steps.push({
-      step: 2,
+      step: 3,
       name: "Monaco Editor Code Visibility",
       status: isCodeVisible ? "PASS" : "FAIL",
-      details: { isCodeVisible, codeSample: monacoText.slice(0, 80), screenshot: "02_monaco_code_rendered.png" },
+      details: { isCodeVisible, codeSample: monacoText.slice(0, 80), screenshot: "03_monaco_code_rendered.png" },
     });
 
-    // ── STEP 3: REA Code Analysis Docked Mode ──
-    console.log("[Canary] Step 3: Testing REA Code Analysis in Docked Mode...");
+    // ── STEP 4: REA Code Analysis Docked Mode ──
+    console.log("[Canary] Step 4: Testing REA Code Analysis in Docked Mode...");
     const reaBtn = page.locator('button[title*="REA Code Analysis"]');
     if (await reaBtn.count() > 0) {
       await reaBtn.first().click();
       await page.waitForTimeout(600);
     }
     const hasReaHeader = (await page.locator("text=REA Code Analysis").count()) > 0;
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, "03_rea_docked_panel.png") });
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, "04_rea_docked_panel.png") });
     results.steps.push({
-      step: 3,
+      step: 4,
       name: "REA Code Analysis Docked Panel",
       status: hasReaHeader ? "PASS" : "FAIL",
-      details: { hasReaHeader, screenshot: "03_rea_docked_panel.png" },
+      details: { hasReaHeader, screenshot: "04_rea_docked_panel.png" },
     });
 
-    // ── STEP 4: Switch to CATE Spatial Canvas Mode ──
-    console.log("[Canary] Step 4: Toggling CATE Spatial Canvas Mode...");
-    const canvasToggle = page.locator('button:has-text("Canvas Mode")');
+    // ── STEP 5: Switch to CATE Spatial Canvas Mode ──
+    console.log("[Canary] Step 5: Toggling CATE Spatial Canvas Mode...");
+    const canvasToggle = page.locator('button[title*="Spatial Canvas"], button:has-text("Canvas")');
     if (await canvasToggle.count() > 0) {
-      await canvasToggle.click();
+      await canvasToggle.first().click();
     } else {
       await page.keyboard.press("Control+Shift+C");
     }
     await page.waitForTimeout(1000);
 
     const isSpatialMounted = (await page.locator("text=Canvas Spatial Mode").count()) > 0;
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, "04_spatial_canvas_mode.png") });
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, "05_spatial_canvas_mode.png") });
     results.steps.push({
-      step: 4,
+      step: 5,
       name: "CATE Spatial Canvas Workspace",
       status: isSpatialMounted ? "PASS" : "FAIL",
-      details: { isSpatialMounted, screenshot: "04_spatial_canvas_mode.png" },
+      details: { isSpatialMounted, screenshot: "05_spatial_canvas_mode.png" },
     });
 
-    // ── STEP 5: Verify Canvas Editor Code Visibility ──
-    console.log("[Canary] Step 5: Verifying Canvas Editor Node Code Rendering...");
+    // ── STEP 6: Verify Canvas Editor Code Visibility ──
+    console.log("[Canary] Step 6: Verifying Canvas Editor Node Code Rendering...");
     const canvasEditorMounted = (await page.locator(".monaco-editor").count()) > 0;
     const canvasCode = await page.locator(".view-lines").first().innerText().catch(() => "");
     const canvasCodeRendered = canvasCode.length > 0;
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, "05_canvas_editor_code.png") });
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, "06_canvas_editor_code.png") });
     results.steps.push({
-      step: 5,
+      step: 6,
       name: "Spatial Canvas Editor Code Visibility",
       status: canvasCodeRendered ? "PASS" : "FAIL",
-      details: { canvasEditorMounted, canvasCodeLength: canvasCode.length, screenshot: "05_canvas_editor_code.png" },
+      details: { canvasEditorMounted, canvasCodeLength: canvasCode.length, screenshot: "06_canvas_editor_code.png" },
     });
 
-    // ── STEP 6: Verify Spatial HUD & Add Window Dropdown ──
-    console.log("[Canary] Step 6: Testing Spatial HUD Add Window Controls...");
+    // ── STEP 7: Verify Spatial HUD & Add Window Dropdown ──
+    console.log("[Canary] Step 7: Testing Spatial HUD Add Window Controls...");
     const addWindowBtn = page.locator('button:has-text("Add Window")');
     if (await addWindowBtn.count() > 0) {
       await addWindowBtn.click();
       await page.waitForTimeout(500);
     }
     const hasReaOption = (await page.locator("text=REA Code Analysis").count()) > 0;
-    const hasFilesOption = (await page.locator("text=Project Explorer").count()) > 0;
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, "06_spatial_hud_menu.png") });
-    results.steps.push({
-      step: 6,
-      name: "Spatial HUD Add Window Menu",
-      status: hasReaOption && hasFilesOption ? "PASS" : "FAIL",
-      details: { hasReaOption, hasFilesOption, screenshot: "06_spatial_hud_menu.png" },
-    });
+    const hasTerminalOption = (await page.locator("text=Terminal").count()) > 0;
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, "07_spatial_hud_menu.png") });
+    // Dismiss HUD menu
+    await page.keyboard.press("Escape");
 
-    // ── STEP 7: Verify Zero-RAM Browser Viewport Placeholder ──
-    console.log("[Canary] Step 7: Verifying Memory-Optimized Browser Viewport...");
-    const hasBrowserTitle = (await page.locator("text=Live Browser Viewport").count()) > 0;
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, "07_browser_viewport_placeholder.png") });
     results.steps.push({
       step: 7,
-      name: "Low-Memory Live Browser Node",
-      status: hasBrowserTitle ? "PASS" : "FAIL",
-      details: { hasBrowserTitle, screenshot: "07_browser_viewport_placeholder.png" },
+      name: "Spatial HUD Add Window Menu",
+      status: hasReaOption && hasTerminalOption ? "PASS" : "FAIL",
+      details: { hasReaOption, hasTerminalOption, screenshot: "07_spatial_hud_menu.png" },
     });
 
-    // ── STEP 8: Verify Command Palette & Multi-Window Hotkey ──
-    console.log("[Canary] Step 8: Testing Command Palette & Multi-Window...");
+    // ── STEP 8: Verify Zero-RAM Browser Viewport Placeholder ──
+    console.log("[Canary] Step 8: Verifying Memory-Optimized Browser Viewport...");
+    const hasBrowserTitle = (await page.locator("text=Live Browser Viewport").count()) > 0;
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, "08_browser_viewport_placeholder.png") });
+    results.steps.push({
+      step: 8,
+      name: "Low-Memory Live Browser Node",
+      status: hasBrowserTitle ? "PASS" : "FAIL",
+      details: { hasBrowserTitle, screenshot: "08_browser_viewport_placeholder.png" },
+    });
+
+    // ── STEP 9: Verify Curated Command Palette ──
+    console.log("[Canary] Step 9: Testing Curated Command Palette...");
     await page.keyboard.press("Control+Shift+P");
     await page.waitForTimeout(600);
     const hasPalette = (await page.locator('input[placeholder*="Type a command"]').count()) > 0;
-    await page.screenshot({ path: path.join(EVIDENCE_DIR, "08_command_palette.png") });
+
+    // Check that power developer commands are present
+    const paletteText = await page.locator(".fixed").first().innerText().catch(() => "");
+    const hasNewUntitled = (await page.locator("text=New Untitled File").count()) > 0 || paletteText.includes("New Untitled");
+    const hasSpatialCmd = (await page.locator("text=Spatial Canvas Mode").count()) > 0 || paletteText.includes("Spatial Canvas");
+    const hasReaCmd = (await page.locator("text=REA Code Analysis").count()) > 0 || paletteText.includes("REA");
+
+    // Check that trivial basic operations (Undo, Redo, Select All) are pruned
+    const hasUndo = (await page.locator("text=Undo").count()) > 0;
+    const hasSelectAll = (await page.locator("text=Select All").count()) > 0;
+    const isCurated = !hasUndo && !hasSelectAll;
+
+    await page.screenshot({ path: path.join(EVIDENCE_DIR, "09_command_palette_curated.png") });
     results.steps.push({
-      step: 8,
-      name: "Command Palette & Multi-Window Command",
-      status: hasPalette ? "PASS" : "FAIL",
-      details: { hasPalette, screenshot: "08_command_palette.png" },
+      step: 9,
+      name: "Curated Command Palette (Developer Workflows)",
+      status: hasPalette && isCurated ? "PASS" : "FAIL",
+      details: { hasPalette, isCurated, hasNewUntitled, hasSpatialCmd, hasReaCmd, screenshot: "09_command_palette_curated.png" },
     });
 
     results.completedAt = new Date().toISOString();

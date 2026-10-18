@@ -28,7 +28,7 @@ import { useFahhStore, type Intensity } from "./store/fahhStore";
 import { ImpactLayer } from "./components/Fahh/ImpactLayer";
 import { StatusHud, HudControls, CleanSweep, LspStatusItem } from "./components/Fahh/StatusHud";
 import { CommandPalette } from "./components/Fahh/CommandPalette";
-import { FAHH_COMMAND, OPEN_FOLDER_EVENT } from "./lib/commands";
+import { FAHH_COMMAND, OPEN_FOLDER_EVENT, OPEN_FILE_EVENT } from "./lib/commands";
 import { getActiveDocument, revealLine, runEditorAction } from "./lib/monacoBridge";
 import type { PaletteCommand } from "./lib/palette";
 import { usePreviewStore } from "./store/previewStore";
@@ -172,7 +172,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Global open folder listener — works in both docked mode and spatial canvas mode
+  // Global open folder & open file listeners — works in both docked mode and spatial canvas mode
   useEffect(() => {
     const handleOpenFolder = async () => {
       try {
@@ -185,9 +185,24 @@ export default function App() {
         console.error("Failed to open folder:", err);
       }
     };
+    const handleOpenFile = async () => {
+      try {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const selected = await open({ directory: false, multiple: false });
+        if (typeof selected === "string") {
+          await openFileInEditor(selected);
+        }
+      } catch (err) {
+        console.error("Failed to open file:", err);
+      }
+    };
     window.addEventListener(OPEN_FOLDER_EVENT, handleOpenFolder);
-    return () => window.removeEventListener(OPEN_FOLDER_EVENT, handleOpenFolder);
-  }, [openFolder]);
+    window.addEventListener(OPEN_FILE_EVENT, handleOpenFile);
+    return () => {
+      window.removeEventListener(OPEN_FOLDER_EVENT, handleOpenFolder);
+      window.removeEventListener(OPEN_FILE_EVENT, handleOpenFile);
+    };
+  }, [openFolder, openFileInEditor]);
 
   // Apply theme CSS vars on mount and whenever the active theme changes
   useEffect(() => {
@@ -214,27 +229,59 @@ export default function App() {
     };
     const intensity = (i: Intensity) => () => useFahhStore.getState().setIntensity(i);
     return [
+      {
+        id: "file.new",
+        group: "File",
+        label: "New Untitled File",
+        keys: ["Ctrl", "N"],
+        keywords: "new file scratch buffer draft",
+        run: () => {
+          const id = Date.now().toString(36).slice(-4);
+          useEditorStore.getState().openFile(
+            { path: `untitled-${id}.ts`, language: "typescript", dirty: true },
+            "// Untitled Document\n"
+          );
+        },
+      },
       { id: "window.new", group: "File", label: "New Window", keys: ["Ctrl", "Shift", "N"], keywords: "new window multi instance process", run: () => void openNewWindow() },
-      { id: "folder.open", group: "File", label: "Open Folder…", keys: ["Ctrl", "O"], keywords: "workspace project", run: () => {
+      { id: "file.open", group: "File", label: "Open File…", keys: ["Ctrl", "O"], keywords: "open file picker document", run: () => {
+        window.dispatchEvent(new Event(OPEN_FILE_EVENT));
+      } },
+      { id: "folder.open", group: "File", label: "Open Folder…", keys: ["Ctrl", "K", "Ctrl", "O"], keywords: "workspace project directory", run: () => {
         setSidebarTab("files");
         window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
       } },
       { id: "file.save", group: "File", label: "Save File", keys: ["Ctrl", "S"], keywords: "save write disk", run: () => void saveActive() },
+      { id: "file.saveAll", group: "File", label: "Save All Files", keys: ["Ctrl", "K", "S"], keywords: "save all write dirty", run: () => void saveActive() },
+      { id: "file.copyPath", group: "File", label: "Copy Active File Path", keywords: "copy full absolute path clipboard", run: () => {
+        const tab = useEditorStore.getState().activeTab;
+        if (tab) navigator.clipboard.writeText(tab);
+      } },
+      { id: "file.copyRelativePath", group: "File", label: "Copy Relative File Path", keywords: "copy relative path clipboard", run: () => {
+        const tab = useEditorStore.getState().activeTab;
+        const rootPath = useFileStore.getState().root;
+        if (tab && rootPath) {
+          navigator.clipboard.writeText(tab.replace(rootPath, "").replace(/^[\\/]/, ""));
+        } else if (tab) {
+          navigator.clipboard.writeText(tab);
+        }
+      } },
       { id: "file.closeTab", group: "File", label: "Close Active Tab", keys: ["Ctrl", "W"], keywords: "close tab window", run: () => {
         const tab = useEditorStore.getState().activeTab;
         if (tab) useEditorStore.getState().closeTab(tab);
       } },
-      { id: "edit.undo", group: "Edit", label: "Undo", keys: ["Ctrl", "Z"], keywords: "revert", run: () => runEditorAction("undo") },
-      { id: "edit.redo", group: "Edit", label: "Redo", keys: ["Ctrl", "Y"], keywords: "repeat", run: () => runEditorAction("redo") },
-      { id: "edit.find", group: "Edit", label: "Find in File", keys: ["Ctrl", "F"], keywords: "search text", run: () => runEditorAction("actions.find") },
-      { id: "edit.replace", group: "Edit", label: "Replace in File", keys: ["Ctrl", "H"], keywords: "substitute", run: () => runEditorAction("editor.action.startFindReplaceAction") },
-      { id: "edit.format", group: "Edit", label: "Format Document", keys: ["Shift", "Alt", "F"], keywords: "prettier formatting indent", run: () => runEditorAction("editor.action.formatDocument") },
-      { id: "selection.all", group: "Selection", label: "Select All", keys: ["Ctrl", "A"], keywords: "everything", run: () => runEditorAction("editor.action.selectAll") },
+      { id: "edit.replace", group: "Edit", label: "Replace in File", keys: ["Ctrl", "H"], keywords: "substitute regex", run: () => runEditorAction("editor.action.startFindReplaceAction") },
+      { id: "edit.commentLine", group: "Edit", label: "Toggle Line Comment", keys: ["Ctrl", "/"], keywords: "comment line", run: () => runEditorAction("editor.action.commentLine") },
+      { id: "edit.commentBlock", group: "Edit", label: "Toggle Block Comment", keys: ["Shift", "Alt", "A"], keywords: "comment block", run: () => runEditorAction("editor.action.blockComment") },
+      { id: "edit.format", group: "Edit", label: "Format Document", keys: ["Shift", "Alt", "F"], keywords: "prettier formatting indent lsp", run: () => runEditorAction("editor.action.formatDocument") },
+      { id: "view.spatial", group: "View", label: "Spatial Canvas Mode (CATE Infinite Canvas)", keys: ["Ctrl", "Shift", "C"], keywords: "cate canvas spatial zoom infinite figma floating windows", run: () => useSpatialStore.getState().toggleSpatialMode() },
+      { id: "ai.composer", group: "AI", label: "Composer: Multi-File Agent (Cursor Ctrl+I)", keys: ["Ctrl", "I"], keywords: "composer multi file agent edit autonomous refactor cursor devin", run: () => useComposerStore.getState().toggleComposer() },
+      { id: "edit.inline", group: "AI", label: "Inline Edit: AI Generation & Refactor (Ctrl+K)", keys: ["Ctrl", "K"], keywords: "inline edit cursor ai generate refactor", run: () => setShowInlineEdit(true) },
+      { id: "view.rea", group: "View", label: "REA Code Analysis (AST, Symbols & Hex Dump)", keys: ["Ctrl", "Shift", "R"], keywords: "rea reverse engineering ast symbols hex dump binary disassemble inspect", run: view("rea") },
       { id: "view.explorer", group: "View", label: "Explorer", keys: ["Ctrl", "Shift", "E"], keywords: "files tree", run: view("files") },
-      { id: "view.git", group: "View", label: "Source Control", keys: ["Ctrl", "Shift", "G"], keywords: "git branch commit", run: view("git") },
+      { id: "view.git", group: "View", label: "Source Control", keys: ["Ctrl", "Shift", "G"], keywords: "git branch commit diff", run: view("git") },
       { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
       { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keys: ["Ctrl", "L"], keywords: "agent chat llm ollama groq composer devin cursor", run: view("ai") },
-      { id: "view.rea", group: "View", label: "REA Code Analysis (AST & Hex Dump)", keys: ["Ctrl", "Shift", "R"], keywords: "rea reverse engineering ast symbols hex dump binary disassemble inspect", run: view("rea") },
       { id: "view.extensions", group: "View", label: "Extensions (Marketplace)", keys: ["Ctrl", "Shift", "X"], keywords: "plugins language packs marketplace open vsx", run: view("extensions") },
       { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
       { id: "view.wordwrap", group: "View", label: "Toggle Word Wrap", keys: ["Alt", "Z"], keywords: "wrap lines soft", run: () => runEditorAction("editor.action.toggleWordWrap") },
@@ -252,6 +299,20 @@ export default function App() {
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
       ...THEME_DEFINITIONS.map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
+      { id: "preview.toggle", group: "Preview", label: "Toggle Preview (PDF, Markdown, HTML, SVG, CSV)", keys: ["Ctrl", "Shift", "V"], keywords: "markdown html image csv pdf document preview source", run: () => {
+        const path = useEditorStore.getState().activeTab;
+        if (path && previewKindFor(path)) usePreviewStore.getState().toggleInPlace(path);
+      } },
+      { id: "preview.side", group: "Preview", label: "Open Preview to the Side", keys: ["Ctrl", "K", "V"], keywords: "markdown html image csv pdf split", run: () => {
+        const path = useEditorStore.getState().activeTab;
+        if (path && previewKindFor(path)) usePreviewStore.getState().toggleSide(path);
+      } },
+      { id: "browser.open", group: "Browser", label: "Open Dev Browser…", keywords: "localhost web page dev server url preview site", run: () => {
+        const suggested = usePreviewStore.getState().localUrl ?? "http://localhost:5173";
+        const typed = window.prompt("Open in the built-in browser (a port like 5173, or a URL):", suggested);
+        if (typed && typed.trim()) openBrowser(typed);
+      } },
+      { id: "terminal.agy", group: "Terminal", label: "Launch Antigravity CLI (agy)", keywords: "agy antigravity terminal agent console interactive gemini cli", run: () => launchAgyTerminal().catch((e) => alert(String(e))) },
       { id: "fahh.ring", group: "Fahh", label: "Ring the Bell", keywords: "test sound play", run: () => useFahhStore.getState().ringBell() },
       { id: "fahh.epic", group: "Fahh", label: "Effects: Epic", keywords: "shake intensity power mode", run: intensity("epic") },
       { id: "fahh.subtle", group: "Fahh", label: "Effects: Subtle", keywords: "intensity quiet", run: intensity("subtle") },
@@ -263,24 +324,6 @@ export default function App() {
       } },
       { id: "tools.optional", group: "Tools", label: "Optional Tools…", keywords: "installer n8n flowise setup", run: () => setShowInstaller(true) },
       { id: "file.quickOpen", group: "Go", label: "Go to File…", keys: ["Ctrl", "P"], keywords: "quick open find file", run: () => setQuickOpen(true) },
-      { id: "preview.side", group: "Preview", label: "Open Preview to the Side", keys: ["Ctrl", "K", "V"], keywords: "markdown html image csv split", run: () => {
-        const path = useEditorStore.getState().activeTab;
-        if (path && previewKindFor(path)) usePreviewStore.getState().toggleSide(path);
-      } },
-      { id: "preview.toggle", group: "Preview", label: "Toggle Preview", keys: ["Ctrl", "Shift", "V"], keywords: "markdown html image csv source", run: () => {
-        const path = useEditorStore.getState().activeTab;
-        if (path && previewKindFor(path)) usePreviewStore.getState().toggleInPlace(path);
-      } },
-      { id: "browser.open", group: "Browser", label: "Open Browser…", keywords: "localhost web page dev server url preview site", run: () => {
-        const suggested = usePreviewStore.getState().localUrl ?? "http://localhost:5173";
-        const typed = window.prompt("Open in the built-in browser (a port like 5173, or a URL):", suggested);
-        if (typed && typed.trim()) openBrowser(typed);
-      } },
-      { id: "view.spatial", group: "View", label: "Toggle Spatial Canvas Mode (CATE)", keys: ["Ctrl", "Shift", "C"], keywords: "cate canvas spatial zoom infinite figma floating windows", run: () => useSpatialStore.getState().toggleSpatialMode() },
-      { id: "ai.composer", group: "AI", label: "Composer: Multi-File Agent (Cursor Ctrl+I)", keys: ["Ctrl", "I"], keywords: "composer multi file agent edit autonomous refactor cursor devin", run: () => useComposerStore.getState().toggleComposer() },
-      { id: "edit.inline", group: "Edit", label: "Inline Edit (Cursor Ctrl+K)", keys: ["Ctrl", "K"], keywords: "inline edit cursor ai generate refactor", run: () => setShowInlineEdit(true) },
-      { id: "view.rea", group: "View", label: "REA Code Analysis (Reverse Engineering & AST)", keywords: "rea reverse engineering bytecode strings hex ast symbols", run: () => setSidebarTab("rea") },
-      { id: "terminal.agy", group: "Terminal", label: "Launch Antigravity CLI (agy)", keywords: "agy antigravity terminal agent console interactive gemini cli", run: () => launchAgyTerminal().catch((e) => alert(String(e))) },
     ];
   }, [setTheme]);
 
@@ -414,6 +457,10 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && (e.key === "i" || e.key === "I") && !e.shiftKey) {
         e.preventDefault();
         useComposerStore.getState().toggleComposer();
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        useSpatialStore.getState().toggleSpatialMode();
       }
     };
     window.addEventListener("keydown", handler);

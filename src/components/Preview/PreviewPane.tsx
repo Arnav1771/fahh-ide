@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { AppWindow, Code, ExternalLink, RotateCw, ShieldAlert, X } from "lucide-react";
+import { AppWindow, Code, ExternalLink, FileText, RotateCw, ShieldAlert, X } from "lucide-react";
 import { renderMarkdown, SAFE_URL } from "../../lib/markdown";
 import { dirOf, extOf, formatBytes, nextZoom, normalizeUrl, parseCsv, resolvePath, syncTarget, type PreviewKind } from "../../lib/preview";
 import { openExternal, openInWindow } from "../../lib/browser";
@@ -72,6 +72,7 @@ export function PreviewPane({ path, content, kind, onClose, onShowSource }: Prop
         {kind === "image" && <ImagePreview src={assetUrl(path)} path={path} />}
         {kind === "svg" && <ImagePreview src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`} path={path} bytes={new Blob([content]).size} />}
         {kind === "csv" && <CsvPreview content={content} delimiter={extOf(path) === "tsv" ? "\t" : ","} />}
+        {kind === "pdf" && <PdfPreview path={path} />}
       </div>
     </div>
   );
@@ -360,3 +361,61 @@ function CsvPreview({ content, delimiter }: { content: string; delimiter: string
     </div>
   );
 }
+
+function PdfPreview({ path }: { path: string }) {
+  const url = assetUrl(path);
+  const [loadError, setLoadError] = useState(false);
+  const name = path.split(/[\\/]/).pop() ?? path;
+
+  return (
+    <div className="relative w-full h-full flex flex-col bg-[#1c1b18] overflow-hidden select-none" data-testid="pdf-preview">
+      {/* PDF Action Bar */}
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#141311] border-b border-fahh-surface text-xs text-fahh-muted shrink-0">
+        <div className="flex items-center gap-2 min-w-0 truncate">
+          <FileText size={14} className="text-[#ff5f56] shrink-0" />
+          <span className="font-medium text-fahh-text truncate">{name}</span>
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 font-mono shrink-0">
+            PDF Document
+          </span>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onClick={() => openExternal(url)}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-fahh-surface/60 hover:bg-fahh-surface hover:text-fahh-text transition-colors text-[11px]"
+            title="Open in System Default PDF Reader"
+          >
+            <ExternalLink size={12} />
+            <span>Open in System App</span>
+          </button>
+        </div>
+      </div>
+
+      {/* PDF Viewport */}
+      <div className="flex-1 min-h-0 relative w-full h-full">
+        {!loadError ? (
+          <iframe
+            src={`${url}#toolbar=1&navpanes=1`}
+            title={`PDF: ${name}`}
+            className="w-full h-full border-0 bg-[#2b2b2b]"
+            onError={() => setLoadError(true)}
+          />
+        ) : (
+          <div className="flex flex-col items-center justify-center h-full gap-3 text-center p-6 text-fahh-muted">
+            <FileText size={48} className="text-red-400 opacity-60" />
+            <p className="text-sm font-medium text-fahh-text">Could not load embedded PDF preview</p>
+            <p className="text-xs max-w-sm">You can open this document directly in your default system PDF reader.</p>
+            <button
+              type="button"
+              onClick={() => openExternal(url)}
+              className="px-3 py-1.5 rounded bg-fahh-accent text-[#0a0907] font-semibold text-xs hover:brightness-110 transition-all"
+            >
+              Open in External Viewer
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+

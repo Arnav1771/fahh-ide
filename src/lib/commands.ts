@@ -6,6 +6,7 @@
 export const FAHH_COMMAND = "fahh-command";
 /** Asked of the file tree, which owns the folder dialog. */
 export const OPEN_FOLDER_EVENT = "fahh-open-folder";
+export const OPEN_FILE_EVENT = "fahh-open-file";
 
 export function runCommand(id: string): void {
   window.dispatchEvent(new CustomEvent<string>(FAHH_COMMAND, { detail: id }));
