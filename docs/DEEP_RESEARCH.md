@@ -134,7 +134,55 @@ For systems programming, security research, and binary analysis:
 | **Fahh Sound Engine** | `src/lib/fahh.ts`, `src/lib/cooldown.ts`, `src-tauri/src/core/error_detector.rs` | 3000ms cooldown rule, single sound on error cascade |
 
 ### 7.1 Automated Test Suite
-- Total Tests: **238 passed** across 25 test suites (`pnpm test`).
+- Total Tests: **243 passed** across 26 test suites (`pnpm test`).
 - TypeScript: `pnpm exec tsc --noEmit` clean with 0 errors.
 - Build: `pnpm build` Vite production bundle compiles cleanly.
 - Native Releases: Published at `https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.0`.
+
+---
+
+## 8. Open VSX Extension Architecture & Ecosystem Integration
+
+### 8.1 Decentralized Marketplace vs Vendor Lock-In
+Unlike proprietary editors that restrict extensions to closed marketplace terms, Fahh Editor integrates directly with the **Eclipse Open VSX Registry**:
+- **REST API Integration**: Queries `https://open-vsx.org/api/-/search` with debounced search, category filters, and download counts.
+- **VSIX Package Standard**: Extensions are delivered as standard `.vsix` packages containing:
+  - `extension/package.json`: Declares commands, language grammars, syntax highlighters, snippets, and themes.
+  - Runtime bundles and web-compatible modules.
+- **Offline & Air-Gapped VSIX Download**: Direct binary download endpoint (`https://open-vsx.org/api/{namespace}/{name}/{version}/file/{namespace}.{name}-{version}.vsix`) enabling manual installation in air-gapped security environments.
+- **Local Persistence**: Installed extension state is stored locally in `fahh-installed-extensions` without telemetry or external tracking.
+
+---
+
+## 9. Next-Horizon Capabilities: What More Can Be Added (2026/2027 Roadmap)
+
+Based on frontier research into agentic developer environments and developer psychology:
+
+### 9.1 Multi-Sound SFX Soundboards & Custom Audio Packs
+While the iconic "Fahh" sound is legendary, developers in different environments (open offices, streaming, pairing) desire customized acoustic profiles:
+- **Audio Themes**:
+  - `Fahh Classic` (the iconic original).
+  - `Retro 8-Bit Arcade` (arcade crash / game over).
+  - `Metal Gear Alert (!)` (instant adrenaline).
+  - `Subtle Soft Pop` (acoustic minimalism for quiet team rooms).
+  - `Custom Audio Drop`: Drop any `.mp3` or `.wav` directly into settings to define your own error sound.
+
+### 9.2 Devin Reversible Execution Checkpoints & Rollback Tree
+When an autonomous agent modifies 5+ files, developers need the ability to rewind without manual git archaeology:
+- Git worktree shadow branch created before every multi-file edit.
+- Visual execution graph showing step nodes: `[1. Read AST] -> [2. Edit Config] -> [3. Run Tests]`.
+- One-click `Rewind to Step N` button that rolls back workspace state instantly.
+
+### 9.3 Cursor Fast-Apply Speculative Decoding
+Fast apply uses specialized speculative models to stream code modifications directly into the AST:
+- Instead of generating full files, the model outputs localized search/replace blocks with fuzzy anchors.
+- Language server validates syntax in memory before presenting the diff to the developer, reducing compilation errors to near-zero.
+
+### 9.4 CATE Spatial Canvas Reactive Node Connections
+Connecting the 2D spatial canvas with live reactive dependency arrows:
+- Draw an arrow between an editor node (`SpatialCanvas.tsx`) and a terminal node (`cargo test`).
+- Saving the editor automatically triggers the linked terminal test run.
+- Sticky notes and color-coded zones for architecture brainstorming.
+
+### 9.5 WASM-Native In-Browser Language Servers
+Compiling language servers (like `pyodide` for Python, `quickjs` for JS, and `tree-sitter` for all syntaxes) to WebAssembly to provide 100% full language intelligence inside the browser preview (`play.html`) without needing local binary installation.

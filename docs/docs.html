@@ -473,6 +473,7 @@ td code { font-size: .78em; }
     <a class="sb-link" href="#error-lens">Monaco Error Lens</a>
     <a class="sb-link" href="#terminal-git-ai">Terminal & Git AI</a>
     <a class="sb-link" href="#rea-analysis">REA Code Analysis</a>
+    <a class="sb-link" href="#extensions-store">Open VSX Extension Store</a>
   </div>
   <div class="sb-group">
     <span class="sb-label">Architecture</span>
@@ -682,6 +683,35 @@ Middle Drag    <span class="cm"># Pan canvas across 2D plane</span></pre></div>
       <li>Activity Bar: Click the <strong>CPU icon</strong> (REA Analysis tab).</li>
       <li>Menu Bar: Navigate to <strong>View</strong> → <strong>REA Code Analysis</strong>.</li>
       <li>Command Palette (<kbd>Ctrl+Shift+P</kbd>): Search for <code>view.rea</code> or <code>REA Analysis</code>.</li>
+    </ul>
+  </section>
+
+  <!-- OPEN VSX EXTENSION STORE -->
+  <section class="doc-section" id="extensions-store">
+    <span class="section-tag">// ecosystem & marketplace</span>
+    <h1 class="doc-h1">Open VSX Extension Store</h1>
+    <p class="doc-lead">
+      Fahh Editor integrates directly with the decentralized <a href="https://open-vsx.org" target="_blank" style="color:var(--vl)">Eclipse Open VSX Registry</a>, providing access to over 50,000+ community extensions, themes, formatters, and language servers with zero telemetry.
+    </p>
+
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Capability</th><th>Engine</th><th>Details</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Live Registry Search</strong></td><td>Open VSX REST API</td><td>Real-time debounced query execution against <code>https://open-vsx.org/api/-/search</code> with download counts, average star ratings, and verified publisher badges.</td></tr>
+          <tr><td><strong>Curated Zero-Latency Catalog</strong></td><td>Built-in Offline Cache</td><td>Instant browsing of premier extensions (Python, Prettier, ESLint, rust-analyzer, Tailwind CSS, GitLens, Dracula, Ruff, Error Lens, Go) even when offline.</td></tr>
+          <tr><td><strong>Direct VSIX Download</strong></td><td>Package Hub</td><td>One-click <code>.vsix</code> package download linking directly to official Open VSX binary storage for air-gapped or manual enterprise installations.</td></tr>
+          <tr><td><strong>Local-First State</strong></td><td>Browser / Tauri Storage</td><td>Extension activation and installation states are stored locally in <code>localStorage</code> (<code>fahh-installed-extensions</code>) and synchronized with native plugins.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2 class="doc-h2">How to Access</h2>
+    <p class="doc-p">Open the extension marketplace via:</p>
+    <ul style="color:var(--text-2);font-size:0.88rem;line-height:1.8;padding-left:20px;margin-bottom:20px;">
+      <li>Activity Bar: Click the <strong>Blocks icon</strong> (Extensions tab).</li>
+      <li>Keyboard Shortcut: Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd>.</li>
+      <li>Menu Bar: Navigate to <strong>View</strong> → <strong>Extensions</strong>.</li>
     </ul>
   </section>
 
