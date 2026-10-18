@@ -1,14 +1,26 @@
 # TODOS
 
-**Document version:** v1
-**Date:** 2026-08-04
-**Branch:** `fix/mod-2026-07-24`
-
-Open items only. What was closed is in `HANDOFF.md` and `PROMPT_TRAIL.md`.
+**Document version:** v0.6.0  
+**Date:** October 2026  
+**Status:** Major Landmark Milestones Delivered in v0.6.0  
 
 ---
 
-## Blocking for anyone calling this an IDE
+## Shipped in v0.6.0 (Milestone Resolution)
+
+1. **CATE Spatial Canvas Mode (`Ctrl+Shift+C`)**: Infinite 2D zoom/pan workspace with traffic-light floating Monaco, Terminal, AI companion, and Browser nodes, plus radar Minimap and viewport teleportation.
+2. **Cursor Composer (`Ctrl+I`) & Inline Edit (`Ctrl+K`)**: Multi-file autonomous editing agent with dynamic file chips, side-by-side unified diff reviews, and batch Accept/Reject controls.
+3. **`@` Mention Context Engine**: Popover resolving `@problems`, `@terminal`, `@git`, `@codebase`, and workspace files.
+4. **Monaco Error Lens**: Inline diagnostics rendered at line tails without mouse hover.
+5. **Predictive Ghost Text**: Monaco inline completions provider predicting multi-line snippets ahead of the cursor.
+6. **Terminal AI & Git Commits**: Stderr "Fix with AI" action and AI Conventional Commit generator.
+7. **REA Code Analysis**: AST symbol recovery, GNU `strings` binary string extractor, and 16-byte hex dump inspector.
+8. **Automated Testing & Build**: 238 unit tests passing across 25 test suites (`pnpm test`); Vite production bundle compiling cleanly.
+9. **Release Distribution**: Full set of native binaries published to GitHub Releases `v0.6.0` (`.exe`, `.msi`, `.dmg`, `.AppImage`, `.deb`, `.rpm`).
+
+---
+
+## Remaining Backlog & Future Enhancements
 
 ### 1. LSP completion, hover and go-to-definition are parsed and dropped
 

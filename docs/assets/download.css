@@ -1,0 +1,25 @@
+/* Download page. */
+.dl-hero { padding-bottom: 96px; }
+.display.small { font-size: clamp(40px, 6vw, 80px); }
+.fine.center { text-align: center; margin: 24px auto 0; }
+.files { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.files li { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.files li .dl-main { flex: 1; }
+.size { font: 12px var(--font-mono); color: var(--text-tertiary); white-space: nowrap; }
+.cli { padding: 8px 20px 20px; }
+.cli .tabs { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; padding: 10px 0 12px; border-bottom: 1px solid var(--border-subtle); margin-bottom: 14px; }
+.cli [role="tab"] { font: 500 13px var(--font-sans); color: var(--text-tertiary); background: none; border: 0; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+.cli [role="tab"]:hover { color: var(--text-primary); }
+.cli [role="tab"][aria-selected="true"] { color: var(--text-primary); background: rgba(255, 248, 230, 0.05); box-shadow: inset 0 -2px 0 var(--accent); }
+.cli .copy { margin-left: auto; }
+.cli-code { margin: 0; padding: 16px 18px; background: #0c0b09; border-radius: var(--r-md); font: 13px/1.7 var(--font-mono); color: var(--text-primary); overflow-x: auto; white-space: pre; }
+.cli-code .c { color: var(--text-tertiary); }
+.inside-grid { display: grid; gap: 20px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 760px) { .inside-grid { grid-template-columns: minmax(0, 1fr); } }
+.inside { padding: 28px; }
+.inside ul { margin: 0; padding-left: 18px; display: grid; gap: 8px; font-size: 15px; }
+.inside ul li::marker { color: var(--accent); }
+.inside .k { font: 600 12px var(--font-mono); letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 14px; }
+.k.ok { color: var(--success); }
+.k.wip { color: var(--accent); }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--bg-card); color: var(--text-primary); padding: 10px 16px; border-radius: 10px; font-size: 14px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 248, 230, 0.08); z-index: 400; }
