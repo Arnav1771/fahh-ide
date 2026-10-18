@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { Sparkles, Check, X, ArrowUpRight, Wand2 } from "lucide-react";
 import { focusEditor } from "../../lib/monacoBridge";
 import { useEditorStore } from "../../store/editorStore";
+import { MentionMenu } from "../MentionMenu";
+import type { AttachedContext } from "../../store/composerStore";
 
 interface InlineEditProps {
   open: boolean;
@@ -64,21 +66,62 @@ export function InlineEdit({ open, onClose }: InlineEditProps) {
     }, 600);
   };
 
+  const [showMention, setShowMention] = useState(false);
+  const [mentionQuery, setMentionQuery] = useState("");
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setPrompt(val);
+    const lastAt = val.lastIndexOf("@");
+    if (lastAt !== -1 && lastAt >= val.length - 15) {
+      const q = val.slice(lastAt + 1);
+      if (!q.includes(" ")) {
+        setShowMention(true);
+        setMentionQuery(q);
+        return;
+      }
+    }
+    setShowMention(false);
+  };
+
+  const handleSelectMention = (ctx: AttachedContext) => {
+    setShowMention(false);
+    const lastAt = prompt.lastIndexOf("@");
+    const prefix = lastAt !== -1 ? prompt.slice(0, lastAt) : prompt;
+    setPrompt(`${prefix}${ctx.label} `);
+    inputRef.current?.focus();
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       e.preventDefault();
+      if (showMention) {
+        setShowMention(false);
+        return;
+      }
       onClose();
       focusEditor();
     } else if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
       e.preventDefault();
       if (diffPreview) handleApply();
       else handleGenerate();
+    } else if (e.key === "@") {
+      setShowMention(true);
+      setMentionQuery("");
     }
   };
 
   return (
     <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 w-full max-w-xl px-4 animate-in fade-in zoom-in-95 duration-150 select-none">
-      <div className="rounded-xl bg-[#181816]/95 border border-[#4a9eff]/60 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_0_1px_rgba(74,158,255,0.4)] backdrop-blur-2xl p-3 text-xs font-sans">
+      <div className="relative rounded-xl bg-[#181816]/95 border border-[#4a9eff]/60 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_0_1px_rgba(74,158,255,0.4)] backdrop-blur-2xl p-3 text-xs font-sans">
+        {showMention && (
+          <MentionMenu
+            query={mentionQuery}
+            onSelect={handleSelectMention}
+            onClose={() => setShowMention(false)}
+          />
+        )}
+
         {/* Top Header */}
         <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/[0.08]">
           <div className="flex items-center gap-1.5 text-xs font-medium text-[#e8e6e3]">
@@ -103,9 +146,9 @@ export function InlineEdit({ open, onClose }: InlineEditProps) {
             ref={inputRef}
             type="text"
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Edit, refactor, add types, or write code..."
+            placeholder="Edit code... Type @ to reference @problems, @terminal, or @file"
             className="flex-1 px-3 py-1.5 rounded-lg bg-[#141311] border border-white/10 text-xs text-[#e8e6e3] outline-none focus:border-[#4a9eff] transition-colors"
           />
 

@@ -50,6 +50,8 @@ import { SpatialCanvas } from "./components/SpatialCanvas";
 import { useSpatialStore } from "./store/spatialStore";
 import { ReaAnalysisPanel } from "./components/ReaAnalysis";
 import { InlineEdit } from "./components/InlineEdit";
+import { Composer } from "./components/Composer";
+import { useComposerStore } from "./store/composerStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -255,6 +257,7 @@ export default function App() {
         if (typed && typed.trim()) openBrowser(typed);
       } },
       { id: "view.spatial", group: "View", label: "Toggle Spatial Canvas Mode (CATE)", keys: ["Ctrl", "Shift", "C"], keywords: "cate canvas spatial zoom infinite figma floating windows", run: () => useSpatialStore.getState().toggleSpatialMode() },
+      { id: "ai.composer", group: "AI", label: "Composer: Multi-File Agent (Cursor Ctrl+I)", keys: ["Ctrl", "I"], keywords: "composer multi file agent edit autonomous refactor cursor devin", run: () => useComposerStore.getState().toggleComposer() },
       { id: "edit.inline", group: "Edit", label: "Inline Edit (Cursor Ctrl+K)", keys: ["Ctrl", "K"], keywords: "inline edit cursor ai generate refactor", run: () => setShowInlineEdit(true) },
       { id: "view.rea", group: "View", label: "REA Code Analysis (Reverse Engineering & AST)", keywords: "rea reverse engineering bytecode strings hex ast symbols", run: () => setSidebarTab("rea") },
     ];
@@ -386,6 +389,10 @@ export default function App() {
       if ((e.ctrlKey || e.metaKey) && (e.key === "k" || e.key === "K") && !e.shiftKey) {
         e.preventDefault();
         setShowInlineEdit((prev) => !prev);
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "i" || e.key === "I") && !e.shiftKey) {
+        e.preventDefault();
+        useComposerStore.getState().toggleComposer();
       }
     };
     window.addEventListener("keydown", handler);
@@ -659,7 +666,7 @@ export default function App() {
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span className="max-[680px]:hidden">v0.5.0</span>
+          <span className="max-[680px]:hidden">v0.6.0</span>
         </div>
       </div>
       </div>
@@ -682,6 +689,7 @@ export default function App() {
 
       <Toasts />
       <InlineEdit open={showInlineEdit} onClose={() => setShowInlineEdit(false)} />
+      <Composer />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
       <CommandPalette
         open={quickOpen}

@@ -67,3 +67,37 @@ export function rankCommands<T extends PaletteCommand>(query: string, commands: 
     .sort((a, b) => b.score - a.score || a.i - b.i)
     .map((r) => r.c);
 }
+
+/** Splits text into segments indicating whether each character matches the fuzzy query */
+export function highlightMatch(text: string, query: string): Array<{ text: string; match: boolean }> {
+  const q = query.trim().toLowerCase();
+  if (!q) return [{ text, match: false }];
+
+  const result: Array<{ text: string; match: boolean }> = [];
+  const lower = text.toLowerCase();
+  let lastIndex = 0;
+
+  for (let i = 0; i < q.length; i++) {
+    const ch = q[i];
+    const found = lower.indexOf(ch, lastIndex);
+    if (found === -1) {
+      if (lastIndex < text.length) {
+        result.push({ text: text.slice(lastIndex), match: false });
+      }
+      return result.length ? result : [{ text, match: false }];
+    }
+
+    if (found > lastIndex) {
+      result.push({ text: text.slice(lastIndex, found), match: false });
+    }
+    result.push({ text: text.slice(found, found + 1), match: true });
+    lastIndex = found + 1;
+  }
+
+  if (lastIndex < text.length) {
+    result.push({ text: text.slice(lastIndex), match: false });
+  }
+
+  return result;
+}
+

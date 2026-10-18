@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fuzzyScore, rankCommands, type PaletteCommand } from "./palette";
+import { fuzzyScore, rankCommands, highlightMatch, type PaletteCommand } from "./palette";
 
 const cmd = (id: string, group: string, label: string, keywords?: string): PaletteCommand => ({
   id, group, label, keywords, run: () => {},
@@ -41,5 +41,18 @@ describe("palette search", () => {
 
   it("prefers word starts over scattered letters", () => {
     expect(fuzzyScore("sc", "Source Control")).toBeGreaterThan(fuzzyScore("sc", "Describe"));
+  });
+});
+
+describe("highlightMatch", () => {
+  it("returns full text with match=false when query is empty", () => {
+    expect(highlightMatch("Explorer", "")).toEqual([{ text: "Explorer", match: false }]);
+  });
+
+  it("highlights matching letters in sequence", () => {
+    const segments = highlightMatch("Explorer", "ex");
+    expect(segments[0]).toEqual({ text: "E", match: true });
+    expect(segments[1]).toEqual({ text: "x", match: true });
+    expect(segments[2]).toEqual({ text: "plorer", match: false });
   });
 });

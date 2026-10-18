@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Command } from "lucide-react";
-import { rankCommands, type PaletteCommand } from "../../lib/palette";
+import { Command, X } from "lucide-react";
+import { rankCommands, highlightMatch, type PaletteCommand } from "../../lib/palette";
 
 const RECENT_KEY = "fahh-palette-recent";
 
@@ -146,6 +146,18 @@ function PaletteBody({
             autoFocus
             className="flex-1 bg-transparent py-3 text-sm text-fahh-text placeholder:text-fahh-muted outline-none focus-visible:outline-none"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setSelected(0);
+              }}
+              className="p-1 rounded text-fahh-muted hover:text-fahh-text transition-colors"
+            >
+              <X size={12} />
+            </button>
+          )}
         </div>
         <ul id="fahh-palette-list" ref={listRef} role="listbox" className="max-h-[50vh] overflow-y-auto py-1">
           {ordered.length === 0 && (
@@ -168,13 +180,45 @@ function PaletteBody({
             >
               {variant === "file" ? (
                 <span className="flex min-w-0 flex-1 items-baseline gap-2">
-                  <span className="truncate">{cmd.label}</span>
+                  <span className="truncate">
+                    {highlightMatch(cmd.label, query).map((part, pIdx) => (
+                      <span
+                        key={pIdx}
+                        className={part.match ? "text-[#4a9eff] font-bold underline underline-offset-2" : ""}
+                      >
+                        {part.text}
+                      </span>
+                    ))}
+                  </span>
                   <span className="truncate font-mono text-[11px] text-fahh-muted">{cmd.group}</span>
                 </span>
               ) : (
                 <>
-                  <span className="w-16 shrink-0 font-mono text-[11px] text-fahh-muted">{cmd.group}</span>
-                  <span className="flex-1 truncate">{cmd.label}</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono border shrink-0 ${
+                    cmd.group.toLowerCase().includes("ai") || cmd.group.toLowerCase().includes("composer")
+                      ? "bg-[#4a9eff]/15 text-[#4a9eff] border-[#4a9eff]/30"
+                      : cmd.group.toLowerCase().includes("file")
+                      ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                      : cmd.group.toLowerCase().includes("view") || cmd.group.toLowerCase().includes("theme")
+                      ? "bg-purple-500/15 text-purple-400 border-purple-500/30"
+                      : cmd.group.toLowerCase().includes("edit")
+                      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                      : cmd.group.toLowerCase().includes("run")
+                      ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                      : "bg-white/5 text-fahh-muted border-white/10"
+                  }`}>
+                    {cmd.group}
+                  </span>
+                  <span className="flex-1 truncate">
+                    {highlightMatch(cmd.label, query).map((part, pIdx) => (
+                      <span
+                        key={pIdx}
+                        className={part.match ? "text-[#4a9eff] font-bold underline underline-offset-2" : ""}
+                      >
+                        {part.text}
+                      </span>
+                    ))}
+                  </span>
                 </>
               )}
               {!query.trim() && i < recent.length && recent.includes(cmd.id) && (
