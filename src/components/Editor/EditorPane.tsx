@@ -38,6 +38,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
   const monacoRef = useRef<Monaco | null>(null);
   const disposablesRef = useRef<{ dispose(): void }[]>([]);
   const settleRef = useRef<number | undefined>(undefined);
+  const errorLensRef = useRef<string[]>([]);
   /** Has the user typed in the file on screen since it became active? */
   const editedRef = useRef(false);
 
@@ -77,6 +78,9 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
       for (const d of disposablesRef.current) d.dispose();
       disposablesRef.current = [];
       window.clearTimeout(settleRef.current);
+      if (editorRef.current && errorLensRef.current.length > 0) {
+        editorRef.current.deltaDecorations(errorLensRef.current, []);
+      }
     };
   }, []);
 
@@ -159,10 +163,35 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
       }
       return { errors, warnings, line };
     };
+    const updateErrorLens = () => {
+      const model = editor.getModel();
+      if (!model) return;
+      const markers = monaco.editor.getModelMarkers({ resource: model.uri });
+      const decs: Parameters<typeof editor.deltaDecorations>[1] = [];
+      for (const m of markers) {
+        if (m.severity === monaco.MarkerSeverity.Error || m.severity === monaco.MarkerSeverity.Warning) {
+          const isErr = m.severity === monaco.MarkerSeverity.Error;
+          const cleanMsg = m.message.split("\n")[0].slice(0, 90);
+          decs.push({
+            range: new monaco.Range(m.startLineNumber, 1, m.startLineNumber, 1),
+            options: {
+              isWholeLine: false,
+              after: {
+                content: `   ${isErr ? "●" : "▲"} ${cleanMsg}`,
+                inlineClassName: isErr ? "fahh-error-lens-error" : "fahh-error-lens-warn",
+              },
+            },
+          });
+        }
+      }
+      errorLensRef.current = editor.deltaDecorations(errorLensRef.current, decs);
+    };
+
     const settle = () => {
       window.clearTimeout(settleRef.current);
       settleRef.current = window.setTimeout(() => {
         const c = countMarkers();
+        updateErrorLens();
         const hud = useFahhStore.getState();
         if (editedRef.current) hud.report(c.errors, c.warnings, c.line);
         else hud.rebase(c.errors, c.warnings);
@@ -177,6 +206,7 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
       editor.onDidChangeModel(() => {
         baseline();
         editedRef.current = false;
+        errorLensRef.current = editor.deltaDecorations(errorLensRef.current, []);
         settle();
       }),
       editor.onDidChangeModelContent((e) => {

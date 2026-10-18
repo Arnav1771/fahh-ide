@@ -13,6 +13,7 @@ import {
   statusColor,
   statusLabel,
   statusLetter,
+  suggestCommitMessage,
 } from "./git";
 import type { GitFileChange, GitStatus } from "./types";
 
@@ -219,3 +220,38 @@ describe("sortChanges", () => {
     expect(input).toEqual(copy);
   });
 });
+
+describe("suggestCommitMessage", () => {
+  it("returns empty string when no staged or unstaged changes exist", () => {
+    expect(suggestCommitMessage(repo())).toBe("");
+  });
+
+  it("suggests test commit message when only test files changed", () => {
+    const status = repo({
+      staged: [change("src/store/composerStore.test.ts", "added", true)],
+    });
+    expect(suggestCommitMessage(status)).toBe("test(store): update unit test suites");
+  });
+
+  it("suggests docs commit message when docs or markdown files changed", () => {
+    const status = repo({
+      staged: [change("docs/docs.html", "modified", true)],
+    });
+    expect(suggestCommitMessage(status)).toBe("docs(docs): update documentation and guides");
+  });
+
+  it("suggests fix commit message when error or fix files changed", () => {
+    const status = repo({
+      unstaged: [change("src/lib/bugFix.ts", "modified", false)],
+    });
+    expect(suggestCommitMessage(status)).toContain("fix(lib): resolve issue in bugFix.ts");
+  });
+
+  it("suggests feat commit message for feature additions", () => {
+    const status = repo({
+      staged: [change("src/components/Composer.tsx", "added", true)],
+    });
+    expect(suggestCommitMessage(status)).toContain("feat(components): enhance Composer");
+  });
+});
+

@@ -6,7 +6,8 @@ import { detectShell, promptLabel, shellName } from "../../lib/shellCwd";
 import { stepHistory } from "../../lib/termHistory";
 import { focusEditor } from "../../lib/monacoBridge";
 import { homeDir } from "@tauri-apps/api/path";
-import { X, HelpCircle } from "lucide-react";
+import { X, HelpCircle, Sparkles } from "lucide-react";
+import { useComposerStore } from "../../store/composerStore";
 
 export function TerminalPanel() {
   const { lines, cwd, history, remember, clearLines } = useTerminalStore();
@@ -201,15 +202,35 @@ export function TerminalPanel() {
         {lines.map((line, i) => (
           <div
             key={i}
-            className={
+            className={`group flex items-start justify-between gap-2 py-0.5 ${
               line.type === "stderr"
                 ? "text-fahh-error"
                 : line.type === "info"
                 ? "text-fahh-info"
                 : "text-fahh-text"
-            }
+            }`}
           >
-            <pre className="whitespace-pre-wrap break-words">{line.text}</pre>
+            <pre className="whitespace-pre-wrap break-words flex-1 font-mono text-xs">{line.text}</pre>
+            {line.type === "stderr" && (
+              <button
+                type="button"
+                onClick={() => {
+                  const composer = useComposerStore.getState();
+                  composer.openComposer();
+                  composer.attachContext({
+                    id: `term-err-${i}`,
+                    type: "terminal",
+                    label: "@terminal error",
+                    content: line.text,
+                  });
+                  composer.setPrompt(`Fix terminal error:\n${line.text.slice(0, 150)}`);
+                }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity px-2 py-0.5 rounded bg-fahh-accent/15 hover:bg-fahh-accent/25 text-fahh-accent text-[10px] font-sans flex items-center gap-1 shrink-0 mt-0.5 border border-fahh-accent/30"
+                title="Send error to Cursor Composer (Ctrl+I)"
+              >
+                <Sparkles size={10} /> Fix with AI
+              </button>
+            )}
           </div>
         ))}
         <div ref={bottomRef} />
