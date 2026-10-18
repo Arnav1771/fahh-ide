@@ -60,19 +60,39 @@ function renderSoundStatus() {
   const el = $("#sound-status");
   if (!el) return;
   const text = el.querySelector(".status-text");
-  el.classList.remove("ok", "bad");
+  el.classList.remove("ok", "bad", "suspended");
   if (sound.state === "ready" || sound.state === "fallback") {
     el.classList.add("ok");
-    text.textContent = "[SOUND READY]";
+    if (text) text.textContent = "Web Audio Engine Ready";
   } else if (sound.state === "unavailable") {
     el.classList.add("bad");
-    text.textContent = "[SOUND UNAVAILABLE]";
+    if (text) text.textContent = "Web Audio Fallback";
   } else {
-    text.textContent = "[CHECKING SOUND]";
+    el.classList.add("suspended");
+    if (text) text.textContent = "Web Audio Ready (Click Test)";
   }
 }
 
-["pointerdown", "keydown"].forEach((ev) => document.addEventListener(ev, () => sound.unlock(), { passive: true }));
+function setupTestSoundButton() {
+  const btn = $("#btn-test-fahh");
+  if (!btn) return;
+  btn.addEventListener("click", () => {
+    sound.unlock();
+    sound.play();
+    renderSoundStatus();
+    btn.classList.add("playing");
+    const origHtml = btn.innerHTML;
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg><span>Playing...</span>`;
+    setTimeout(() => {
+      btn.innerHTML = origHtml;
+      btn.classList.remove("playing");
+    }, 700);
+  });
+}
+
+setupTestSoundButton();
+
+["pointerdown", "keydown"].forEach((ev) => document.addEventListener(ev, () => { sound.unlock(); renderSoundStatus(); }, { passive: true }));
 
 // ───────────────────────── simulator ─────────────────────────
 const SAMPLES = {
