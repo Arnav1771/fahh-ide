@@ -30,5 +30,5 @@ When canvas zooming scales elements down, text readability can degrade. Fahh Edi
 |---|---|
 | **Pan Canvas** | Middle-click + drag, or Space + left-click drag |
 | **Zoom In / Out** | Mouse wheel scroll, or `Ctrl +` / `Ctrl -` |
-| **Reset to 1:1** | Click `1:1 Focus` button or press `Ctrl+0` |
-| **Toggle Canvas Mode** | Click the Spatial Canvas icon in the left Activity Bar |
+| **Focus 1:1 Crisp View** | Click `1:1 Focus` on editor, click `Focus Editor` in HUD, or press `Alt+1` / `Alt+F` |
+| **Toggle Canvas Mode** | `Ctrl+Shift+C` or click the Spatial Canvas icon in the left Activity Bar |

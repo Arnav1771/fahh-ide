@@ -184,12 +184,13 @@ pub async fn launch_agy_terminal(
             let terminals = ["x-terminal-emulator", "gnome-terminal", "konsole", "xterm"];
             let mut spawned = false;
             for term in terminals {
-                if let Ok(_) = crate::core::proc::cmd(term)
+                if crate::core::proc::cmd(term)
                     .args([
                         "-e",
                         &format!("sh -c \"cd '{}' && {}; exec sh\"", working_dir, agy_cmd),
                     ])
                     .spawn()
+                    .is_ok()
                 {
                     spawned = true;
                     break;
