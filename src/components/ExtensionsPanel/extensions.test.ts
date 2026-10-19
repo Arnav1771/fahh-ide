@@ -4,6 +4,7 @@ import {
   getVsixDownloadUrl,
   sortExtensions,
   filterExtensions,
+  isPdfExtension,
   CURATED_MARKETPLACE,
 } from "./index";
 
@@ -58,5 +59,33 @@ describe("ExtensionsPanel Utilities", () => {
     expect(ids).toContain("rust-lang.rust-analyzer");
     expect(ids).toContain("esbenp.prettier-vscode");
     expect(ids).toContain("golang.go");
+  });
+
+  it("identifies PDF-related extensions for native feature banners", () => {
+    expect(
+      isPdfExtension({
+        id: "tomoki1207.pdf",
+        namespace: "tomoki1207",
+        name: "pdf",
+        displayName: "vscode-pdf",
+        description: "Display PDF file in VS Code",
+        version: "1.2.2",
+        downloadCount: 100000,
+        averageRating: 4.5,
+      })
+    ).toBe(true);
+
+    expect(
+      isPdfExtension({
+        id: "ms-python.python",
+        namespace: "ms-python",
+        name: "python",
+        displayName: "Python",
+        description: "Python language support",
+        version: "2024.18.0",
+        downloadCount: 19400000,
+        averageRating: 4.6,
+      })
+    ).toBe(false);
   });
 });

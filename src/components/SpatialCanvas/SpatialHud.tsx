@@ -14,6 +14,7 @@ import {
   Cpu,
   FolderTree,
   Blocks,
+  Crosshair,
 } from "lucide-react";
 import { useSpatialStore, type SpatialNodeType } from "../../store/spatialStore";
 
@@ -23,6 +24,7 @@ export function SpatialHud() {
     zoomBy,
     resetView,
     fitAll,
+    focusNode,
     addNode,
     toggleSpatialMode,
     nodes,
@@ -71,7 +73,7 @@ export function SpatialHud() {
         <button
           type="button"
           onClick={resetView}
-          title="Click to reset to 100%"
+          title="Click to reset to 100% and center editor"
           className="px-2 py-0.5 rounded text-[11px] font-mono text-[#e8e6e3] hover:bg-white/[0.08] transition-colors"
         >
           {Math.round(zoom * 100)}%
@@ -93,6 +95,16 @@ export function SpatialHud() {
           className="p-1 rounded-full text-[#8a8780] hover:text-[#4a9eff] hover:bg-white/[0.08] transition-colors ml-0.5"
         >
           <Maximize size={13} />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => focusNode("spatial-editor")}
+          title="Focus Monaco Editor 1:1 (Center code editor at 100% zoom)"
+          className="flex items-center gap-1 px-2 py-0.5 rounded text-[11px] text-[#4a9eff] hover:bg-[#4a9eff]/15 transition-colors font-medium ml-0.5"
+        >
+          <Crosshair size={12} />
+          <span>Focus Editor</span>
         </button>
 
         <div className="w-[1px] h-4 bg-white/10 mx-1" />
