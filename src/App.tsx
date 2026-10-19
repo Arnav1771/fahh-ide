@@ -464,6 +464,10 @@ export default function App() {
         e.preventDefault();
         useSpatialStore.getState().toggleSpatialMode();
       }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "n" || e.key === "N")) {
+        e.preventDefault();
+        void openNewWindow();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
