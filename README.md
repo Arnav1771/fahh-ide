@@ -2,7 +2,7 @@
 
 > A spatial AI code editor with loud opinions. Built with Tauri 2, Rust, Monaco, and React.
 
-**[Download v0.6.1](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.1)** · **[Website](https://fahhide.duckdns.org)** · **[Docs](https://fahhide.duckdns.org/docs.html)** · **[Playground](https://fahhide.duckdns.org/play.html)**
+**[Download v0.6.2](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.2)** · **[Website](https://fahhide.duckdns.org)** · **[Wiki Docs](https://github.com/Arnav1771/fahh-ide/wiki)** · **[Playground](https://fahhide.duckdns.org/play.html)**
 
 ---
 
@@ -10,31 +10,34 @@
 
 Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.mp3`. It has a strict 3-second cooldown window so 40 cascading errors trigger exactly one sound.
 
-Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, and **Monaco Error Lens**, Fahh Editor is designed for hyper-focused, joyful developer flow.
+Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, **VS Code Multi-Terminal Split View**, **File Icon Themes**, and **Monaco Error Lens**, Fahh Editor is designed for hyper-focused, joyful developer flow.
 
 ---
 
-## Download v0.6.1
+## Download v0.6.2
 
 | Platform | Installer | Size |
 |----------|-----------|------|
-| Windows 10/11 (x64) | [Fahh.Editor_0.6.1_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.1/Fahh.Editor_0.6.1_x64-setup.exe) | ~6.1MB |
-| Windows (MSI) | [Fahh.Editor_0.6.1_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.1/Fahh.Editor_0.6.1_x64_en-US.msi) | ~7.8MB |
-| macOS (Apple Silicon) | [Fahh.Editor_0.6.1_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.1/Fahh.Editor_0.6.1_aarch64.dmg) | ~7.5MB |
-| macOS (Intel) | [Fahh.Editor_0.6.1_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.1/Fahh.Editor_0.6.1_x64.dmg) | ~7.6MB |
-| Linux (AppImage) | [Fahh.Editor_0.6.1_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.1/Fahh.Editor_0.6.1_amd64.AppImage) | ~83MB |
-| Linux (Debian/Ubuntu) | [Fahh.Editor_0.6.1_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.1/Fahh.Editor_0.6.1_amd64.deb) | ~7.9MB |
-| Linux (Fedora/RHEL) | [Fahh.Editor-0.6.1-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.1/Fahh.Editor-0.6.1-1.x86_64.rpm) | ~7.9MB |
+| Windows 10/11 (x64) | [Fahh.Editor_0.6.2_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_x64-setup.exe) | ~6.1MB |
+| Windows (MSI) | [Fahh.Editor_0.6.2_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_x64_en-US.msi) | ~7.8MB |
+| macOS (Apple Silicon) | [Fahh.Editor_0.6.2_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_aarch64.dmg) | ~7.5MB |
+| macOS (Intel) | [Fahh.Editor_0.6.2_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_x64.dmg) | ~7.6MB |
+| Linux (AppImage) | [Fahh.Editor_0.6.2_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_amd64.AppImage) | ~83MB |
+| Linux (Debian/Ubuntu) | [Fahh.Editor_0.6.2_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_amd64.deb) | ~7.9MB |
+| Linux (Fedora/RHEL) | [Fahh.Editor-0.6.2-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor-0.6.2-1.x86_64.rpm) | ~7.9MB |
 
 > **Native Performance**: Built on Tauri 2 with native OS web engines (WebView2 on Windows, WebKitGTK on Linux, WebKit on macOS). Not Electron — 10× lighter memory footprint and instant startup.
 
 ---
 
-## What's in Fahh Editor v0.6.1
+## What's in Fahh Editor v0.6.2
 
 | Capability | Hotkey / Status | What It Does |
 |------------|-----------------|--------------|
-| **CATE Spatial Canvas** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Infinite 2D zooming canvas with floating traffic-light window nodes (Monaco, live Terminal, AI companion, responsive Browser, REA reverse engineering) and radar Minimap with teleport shortcuts. |
+| **CATE Spatial Canvas** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Infinite 2D zooming canvas with 1:1 crisp focus, camera centering, readability toolbar (`Wrap`, `Map`, font stepper 12-28px, <kbd>Alt</kbd>+<kbd>1</kbd>), floating traffic-light window nodes, and radar Minimap with teleport shortcuts. |
+| **VS Code Multi-Terminal & Split View** | <kbd>Ctrl</kbd>+<kbd>\`</kbd> / <kbd>Ctrl</kbd>+<kbd>\\</kbd> | Multi-tab terminal manager with side-by-side / stacked split panes, shell switcher (PowerShell, CMD, Git Bash, WSL), status dots, and one-click split toggles. |
+| **File Icon Themes** | Themes tab / Open VSX | Dynamic SVG file & folder icon engine supporting Material Icon Theme, Seti UI, Catppuccin Pastel, and Modern Minimal with auto-activation from Open VSX. |
+| **Native PDF & Media Preview** | Built-in | Native WebView2-accelerated PDF viewer with zoom controls, text selection, page navigation, and system reader handoff without third-party extensions. |
 | **Multi-Window Support** | `fahh <folder>` / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | Open and manage multiple distinct projects in independent Fahh Editor windows simultaneously without replacing active workspaces. |
 | **Cursor Composer** | <kbd>Ctrl</kbd>+<kbd>I</kbd> | Multi-file autonomous editing agent with dynamic file chips, side-by-side unified diff review, and batch Accept/Reject controls. |
 | **Inline Edit** | <kbd>Ctrl</kbd>+<kbd>K</kbd> | Floating Monaco prompt pill for in-place code transformations with live diff previews. |
@@ -44,7 +47,7 @@ Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, and **
 | **Terminal "Fix with AI"** | Hover stderr | One-click button on terminal errors automatically launching Composer with pre-attached terminal diagnostic context. |
 | **AI Conventional Commits** | Git Sidebar | One-click synthesis of structured Conventional Commits (`feat`, `fix`, `test`, `docs`) from staged diffs. |
 | **REA Code Analysis** | Activity Bar CPU | AST Symbol recovery, GNU `strings` binary string extractor with byte offsets, and 16-byte hex dump inspector. |
-| **Open VSX Marketplace** | Extensions tab | Browse, search, and install from 50,000+ community extensions with detail drawer, direct `.vsix` download links, and local persistence. |
+| **Open VSX Marketplace** | Extensions tab | Browse, search, and install from 50,000+ community extensions with detail drawer, direct `.vsix` download links, and native feature callouts. |
 | **The Fahh SFX Engine** | Built-in | Audible feedback on compile/LSP errors with a strict 3000ms cooldown window. |
 | **Desktop Shell** | Native | Native desktop MenuBar, file symbol breadcrumbs, unbuffered Python runner, multi-tab bottom dock. |
 

@@ -16,5 +16,16 @@ Fahh Editor provides out-of-the-box rendering for non-code assets directly withi
 ## How It Works
 
 1. Clicking any `.pdf` or media asset in the File Explorer opens a new editor tab.
-2. Fahh Editor detects the binary MIME type and routes to the appropriate viewer component (`PdfViewer` or `MediaPreviewPane`).
-3. For PDFs, the document renders inside an isolated, hardware-accelerated viewport with zoom in/out, page jump, and download capabilities.
+2. Fahh Editor detects the binary MIME type and routes to the appropriate viewer component (`PdfPreview` or `MediaPreviewPane`).
+3. For PDFs, the document renders inside an isolated, hardware-accelerated viewport with zoom in/out, page jump, and text selection capabilities.
+4. **Open in System App**: A dedicated button in the PDF header allows one-click handoff to your default OS PDF viewer (e.g. Adobe Acrobat, Microsoft Edge, Preview on macOS).
+
+---
+
+## Open VSX Extensions vs. Native Previews
+
+Users frequently ask whether they need to install PDF viewer extensions from Open VSX (e.g. `vscode-pdf` or `tomoki1207.pdf`).
+
+- **No Extensions Required**: Fahh Editor includes full native PDF support directly in the application core.
+- **Node.js Extension Host**: VS Code marketplace extensions rely on Microsoft's proprietary Node.js extension host daemon (`vscode.window.createWebviewPanel`), which is not bundled with lean native desktop editors.
+- **Instant Access**: Simply open any `.pdf` from the workspace or file tree — it works out-of-the-box.
