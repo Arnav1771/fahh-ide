@@ -72,7 +72,7 @@ export function EditorNodeView() {
 
   const { activeTab, openTabs, setActiveTab } = useEditorStore();
   const tree = useFileStore((s) => s.tree);
-  const { nodes, setPan, setZoom } = useSpatialStore();
+  const { focusNode: storeFocusNode } = useSpatialStore();
   const { openFileInEditor } = useWorkspace();
 
   // Auto-open active file if entering canvas with unselected tab or root project file
@@ -121,16 +121,11 @@ export function EditorNodeView() {
 
   // 1:1 Crisp Focus: centers camera on editor node and resets zoom to 1.0 for pixel-perfect readability
   const focusNode = useCallback(() => {
-    const node = nodes.find((n) => n.id === "spatial-editor");
-    if (!node) return;
-    const targetX = Math.round(window.innerWidth / 2 - (node.x + node.w / 2));
-    const targetY = Math.round(window.innerHeight / 2 - (node.y + node.h / 2));
-    setZoom(1.0);
-    setPan({ x: targetX, y: targetY });
+    storeFocusNode("spatial-editor");
     setTimeout(() => {
       window.dispatchEvent(new Event("fahh-layout"));
     }, 50);
-  }, [nodes, setPan, setZoom]);
+  }, [storeFocusNode]);
 
   return (
     <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#141311] h-full w-full">

@@ -36,6 +36,7 @@ interface SpatialStore {
   zoomBy: (delta: number, clientX?: number, clientY?: number) => void;
   resetView: () => void;
   fitAll: () => void;
+  focusNode: (id: string) => void;
 
   bringToFront: (id: string) => void;
   updateNodePos: (id: string, x: number, y: number) => void;
@@ -160,10 +161,28 @@ function saveNodes(nodes: SpatialNodeData[]) {
   } catch {}
 }
 
+export function calculateCenterPan(
+  node: { x: number; y: number; w: number; h: number },
+  viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1440,
+  viewportHeight = typeof window !== "undefined" ? window.innerHeight : 900
+): { x: number; y: number } {
+  const targetX = Math.round(viewportWidth / 2 - (node.x + node.w / 2));
+  const targetY = Math.max(30, Math.round(viewportHeight / 2 - (node.y + node.h / 2)));
+  return { x: targetX, y: targetY };
+}
+
+function getInitialPan(): { x: number; y: number } {
+  const editor = DEFAULT_NODES.find((n) => n.id === "spatial-editor");
+  if (editor) {
+    return calculateCenterPan(editor);
+  }
+  return { x: -260, y: 40 };
+}
+
 export const useSpatialStore = create<SpatialStore>((set, get) => ({
   isSpatialMode: typeof localStorage !== "undefined" ? localStorage.getItem(MODE_STORAGE_KEY) === "true" : false,
-  pan: { x: 40, y: 30 },
-  zoom: 0.9,
+  pan: getInitialPan(),
+  zoom: 1.0,
   activeNodeId: "spatial-editor",
   nodes: loadSavedNodes(),
   highestZ: 20,
@@ -201,7 +220,21 @@ export const useSpatialStore = create<SpatialStore>((set, get) => ({
     });
   },
 
-  resetView: () => set({ pan: { x: 40, y: 30 }, zoom: 0.9 }),
+  resetView: () => {
+    const editor = get().nodes.find((n) => n.id === "spatial-editor");
+    if (editor) {
+      set({ pan: calculateCenterPan(editor), zoom: 1.0 });
+    } else {
+      set({ pan: getInitialPan(), zoom: 1.0 });
+    }
+  },
+
+  focusNode: (id: string) => {
+    const node = get().nodes.find((n) => n.id === id);
+    if (node) {
+      set({ pan: calculateCenterPan(node), zoom: 1.0, activeNodeId: id });
+    }
+  },
 
   fitAll: () => {
     const { nodes } = get();

@@ -14,6 +14,7 @@ import {
   Info,
   Tag,
   Palette,
+  FileText,
 } from "lucide-react";
 import { getPlugins } from "../../lib/tauri";
 import type { Plugin } from "../../lib/types";
@@ -238,6 +239,11 @@ export function filterExtensions(
   });
 }
 
+export function isPdfExtension(ext: MarketplaceExtension): boolean {
+  const s = `${ext.id} ${ext.name} ${ext.displayName} ${ext.description}`.toLowerCase();
+  return s.includes("pdf");
+}
+
 export function ExtensionsPanel() {
   const [panelTab, setPanelTab] = useState<"marketplace" | "installed">("marketplace");
   const [search, setSearch] = useState("");
@@ -287,6 +293,11 @@ export function ExtensionsPanel() {
     return s.includes("icon");
   };
 
+  const isPdfExtension = (ext: MarketplaceExtension) => {
+    const s = `${ext.id} ${ext.name} ${ext.displayName} ${ext.description}`.toLowerCase();
+    return s.includes("pdf");
+  };
+
   const getTargetThemeId = (ext: MarketplaceExtension): IconThemeId => {
     const s = `${ext.id} ${ext.name}`.toLowerCase();
     if (s.includes("seti")) return "seti";
@@ -313,6 +324,14 @@ export function ExtensionsPanel() {
     if (applied) {
       setThemeToast(`Applied "${ext.displayName}" as your active File Icon Theme!`);
       setTimeout(() => setThemeToast(null), 4000);
+      return;
+    }
+
+    // Inform user if this is a PDF extension that Fahh has built-in PDF viewer
+    if (isPdfExtension(ext)) {
+      setThemeToast(`Fahh Editor includes native PDF viewing! Open any .pdf in your workspace directly.`);
+      setTimeout(() => setThemeToast(null), 5000);
+      return;
     }
   };
 
@@ -506,6 +525,19 @@ export function ExtensionsPanel() {
         )}
       </div>
 
+      {/* Native PDF Viewer Helper Callout */}
+      {search.trim().toLowerCase().includes("pdf") && (
+        <div className="mx-3 mt-2.5 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-fahh-text space-y-1 shrink-0">
+          <div className="flex items-center gap-1.5 text-red-400 font-semibold text-[11px]">
+            <FileText size={13} />
+            <span>Built-in Native Feature: PDF Viewer</span>
+          </div>
+          <p className="text-[10.5px] text-fahh-muted leading-relaxed">
+            Fahh Editor includes a native PDF viewer powered by WebView2 with zoom, scroll, text selection, and system app handoff. You do <strong>not</strong> need a VS Code extension to open PDFs — simply click any <code className="text-red-400">.pdf</code> file in your workspace!
+          </p>
+        </div>
+      )}
+
       {/* Extension Details Modal/Drawer */}
       {selectedExt ? (
         <div className="flex-1 overflow-y-auto p-3 flex flex-col bg-fahh-surface/30">
@@ -551,6 +583,19 @@ export function ExtensionsPanel() {
                 )}
               </div>
             </div>
+
+            {/* Native PDF Notice */}
+            {isPdfExtension(selectedExt) && (
+              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-[11px] text-red-200 space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-red-400">
+                  <FileText size={13} />
+                  <span>Built-in Native PDF Viewer in Fahh Editor</span>
+                </div>
+                <p className="text-white/80 leading-relaxed text-[10.5px]">
+                  This extension was built for Microsoft VS Code&apos;s Node.js extension host. Fahh Editor already includes a native, hardware-accelerated PDF viewer built into the core. Opening any <code>.pdf</code> file in your project opens directly in the viewer with zero extensions needed.
+                </p>
+              </div>
+            )}
 
             <div className="flex items-center gap-2 pt-2 border-t border-fahh-surface/60">
               {installedMap[selectedExt.id] ? (
@@ -689,8 +734,13 @@ export function ExtensionsPanel() {
                                 </span>
                               )}
                             </div>
-                            <span className="text-[10px] text-fahh-muted truncate block">
-                              {ext.namespace} · v{ext.version}
+                            <span className="text-[10px] text-fahh-muted truncate flex items-center gap-1.5">
+                              <span>{ext.namespace} · v{ext.version}</span>
+                              {isPdfExtension(ext) && (
+                                <span className="px-1.5 py-0.2 rounded text-[9px] bg-red-500/15 text-red-400 border border-red-500/25 font-medium shrink-0">
+                                  Native PDF
+                                </span>
+                              )}
                             </span>
                           </div>
                         </div>

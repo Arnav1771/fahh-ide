@@ -21,6 +21,7 @@ export function SpatialCanvas() {
     zoom,
     setPan,
     zoomBy,
+    focusNode,
     toggleSpatialMode,
   } = useSpatialStore();
 
@@ -108,17 +109,23 @@ export function SpatialCanvas() {
     return () => el.removeEventListener("scroll", preventScroll);
   }, []);
 
-  // Global shortcut: Ctrl+Shift+C to toggle spatial mode
+  // Global shortcuts: Ctrl+Shift+C (toggle spatial mode), Alt+1 / Alt+F (focus editor 1:1)
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "C" || e.key === "c")) {
         e.preventDefault();
         toggleSpatialMode();
+        return;
+      }
+      if (e.altKey && (e.key === "1" || e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        focusNode("spatial-editor");
+        return;
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [toggleSpatialMode]);
+  }, [toggleSpatialMode, focusNode]);
 
   return (
     <div
