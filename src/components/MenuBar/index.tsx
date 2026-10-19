@@ -281,10 +281,22 @@ export function MenuBar({
           action: () => runEditorAction("actions.find"),
         },
         {
+          label: "Find in Files",
+          keys: ["Ctrl", "Shift", "F"],
+          icon: <Search size={13} className="text-fahh-accent" />,
+          action: () => onSetSidebarTab("search"),
+        },
+        {
           label: "Replace",
           keys: ["Ctrl", "H"],
           icon: <Replace size={13} />,
           action: () => runEditorAction("editor.action.startFindReplaceAction"),
+        },
+        {
+          label: "Replace in Files",
+          keys: ["Ctrl", "Shift", "H"],
+          icon: <Replace size={13} className="text-fahh-accent" />,
+          action: () => onSetSidebarTab("search"),
         },
         { separator: true, label: "", action: () => {} },
         {
@@ -446,6 +458,12 @@ export function MenuBar({
           keys: ["Ctrl", "Shift", "E"],
           icon: <FolderTree size={13} />,
           action: () => onSetSidebarTab("files"),
+        },
+        {
+          label: "Search across Files",
+          keys: ["Ctrl", "Shift", "F"],
+          icon: <Search size={13} />,
+          action: () => onSetSidebarTab("search"),
         },
         {
           label: "Source Control",

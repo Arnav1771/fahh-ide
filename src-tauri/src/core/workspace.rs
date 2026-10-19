@@ -99,3 +99,311 @@ pub fn delete_file(path: String) -> Result<(), String> {
 pub fn rename_file(from: String, to: String) -> Result<(), String> {
     std::fs::rename(&from, &to).map_err(|e| e.to_string())
 }
+
+const SEARCH_SKIP_DIRS: &[&str] = &[
+    ".git", "node_modules", "target", "dist", ".fahh", ".next", "build", ".cache", "coverage", ".turbo",
+];
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchMatch {
+    pub file: String,
+    pub line_number: usize,
+    pub line_text: String,
+    pub match_start: usize,
+    pub match_end: usize,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SearchResult {
+    pub query: String,
+    pub total_matches: usize,
+    pub files_searched: usize,
+    pub matches: Vec<SearchMatch>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ReplaceResult {
+    pub files_modified: usize,
+    pub total_replacements: usize,
+}
+
+#[tauri::command]
+pub fn search_workspace(
+    root: String,
+    query: String,
+    case_sensitive: Option<bool>,
+    whole_word: Option<bool>,
+    is_regex: Option<bool>,
+    include_glob: Option<String>,
+    exclude_glob: Option<String>,
+    max_results: Option<usize>,
+) -> Result<SearchResult, String> {
+    if query.is_empty() {
+        return Ok(SearchResult {
+            query,
+            total_matches: 0,
+            files_searched: 0,
+            matches: Vec::new(),
+        });
+    }
+
+    let root_path = PathBuf::from(&root);
+    if !root_path.exists() {
+        return Err(format!("Workspace root does not exist: {root}"));
+    }
+
+    let is_case = case_sensitive.unwrap_or(false);
+    let is_word = whole_word.unwrap_or(false);
+    let is_reg = is_regex.unwrap_or(false);
+    let max_hits = max_results.unwrap_or(1000);
+
+    let pattern_str = if is_reg {
+        if is_word {
+            format!(r"\b(?:{})\b", query)
+        } else {
+            query.clone()
+        }
+    } else {
+        let escaped = regex::escape(&query);
+        if is_word {
+            format!(r"\b{}\b", escaped)
+        } else {
+            escaped
+        }
+    };
+
+    let mut regex_builder = regex::RegexBuilder::new(&pattern_str);
+    regex_builder.case_insensitive(!is_case);
+    let re = regex_builder.build().map_err(|e| format!("Invalid regex: {e}"))?;
+
+    let mut matches = Vec::new();
+    let mut files_searched = 0;
+
+    let walker = WalkDir::new(&root_path)
+        .into_iter()
+        .filter_entry(|e| {
+            if e.file_type().is_dir() {
+                let name = e.file_name().to_string_lossy();
+                !SEARCH_SKIP_DIRS.contains(&name.as_ref())
+            } else {
+                true
+            }
+        });
+
+    for entry in walker.filter_map(Result::ok) {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+
+        if let Ok(meta) = entry.metadata() {
+            if meta.len() > 2_000_000 {
+                continue;
+            }
+        }
+
+        let abs_path = entry.path();
+        let rel_path = abs_path
+            .strip_prefix(&root_path)
+            .unwrap_or(abs_path)
+            .to_string_lossy()
+            .replace('\\', "/");
+
+        if let Some(ref incl) = include_glob {
+            let incl_trimmed = incl.trim();
+            if !incl_trimmed.is_empty() {
+                let matches_any = incl_trimmed.split(',').any(|pattern| {
+                    let pat = pattern.trim();
+                    if pat.is_empty() {
+                        return true;
+                    }
+                    crate::agent::perm::glob_match(pat, &rel_path)
+                        || crate::agent::perm::glob_match(pat, entry.file_name().to_string_lossy().as_ref())
+                });
+                if !matches_any {
+                    continue;
+                }
+            }
+        }
+
+        if let Some(ref excl) = exclude_glob {
+            let excl_trimmed = excl.trim();
+            if !excl_trimmed.is_empty() {
+                let matches_excl = excl_trimmed.split(',').any(|pattern| {
+                    let pat = pattern.trim();
+                    if pat.is_empty() {
+                        return false;
+                    }
+                    crate::agent::perm::glob_match(pat, &rel_path)
+                        || crate::agent::perm::glob_match(pat, entry.file_name().to_string_lossy().as_ref())
+                });
+                if matches_excl {
+                    continue;
+                }
+            }
+        }
+
+        let Ok(text) = std::fs::read_to_string(abs_path) else {
+            continue;
+        };
+
+        files_searched += 1;
+
+        for (line_idx, line) in text.lines().enumerate() {
+            for m in re.find_iter(line) {
+                matches.push(SearchMatch {
+                    file: abs_path.to_string_lossy().to_string(),
+                    line_number: line_idx + 1,
+                    line_text: line.to_string(),
+                    match_start: m.start(),
+                    match_end: m.end(),
+                });
+
+                if matches.len() >= max_hits {
+                    return Ok(SearchResult {
+                        query,
+                        total_matches: matches.len(),
+                        files_searched,
+                        matches,
+                    });
+                }
+            }
+        }
+    }
+
+    Ok(SearchResult {
+        query,
+        total_matches: matches.len(),
+        files_searched,
+        matches,
+    })
+}
+
+#[tauri::command]
+pub fn replace_in_workspace(
+    root: String,
+    query: String,
+    replacement: String,
+    case_sensitive: Option<bool>,
+    whole_word: Option<bool>,
+    is_regex: Option<bool>,
+    include_glob: Option<String>,
+    exclude_glob: Option<String>,
+    files: Option<Vec<String>>,
+) -> Result<ReplaceResult, String> {
+    if query.is_empty() {
+        return Ok(ReplaceResult {
+            files_modified: 0,
+            total_replacements: 0,
+        });
+    }
+
+    let is_case = case_sensitive.unwrap_or(false);
+    let is_word = whole_word.unwrap_or(false);
+    let is_reg = is_regex.unwrap_or(false);
+
+    let pattern_str = if is_reg {
+        if is_word {
+            format!(r"\b(?:{})\b", query)
+        } else {
+            query.clone()
+        }
+    } else {
+        let escaped = regex::escape(&query);
+        if is_word {
+            format!(r"\b{}\b", escaped)
+        } else {
+            escaped
+        }
+    };
+
+    let mut regex_builder = regex::RegexBuilder::new(&pattern_str);
+    regex_builder.case_insensitive(!is_case);
+    let re = regex_builder.build().map_err(|e| format!("Invalid regex: {e}"))?;
+
+    let target_files: Vec<PathBuf> = if let Some(explicit_files) = files {
+        explicit_files.into_iter().map(PathBuf::from).collect()
+    } else {
+        let root_path = PathBuf::from(&root);
+        let mut list = Vec::new();
+        let walker = WalkDir::new(&root_path)
+            .into_iter()
+            .filter_entry(|e| {
+                if e.file_type().is_dir() {
+                    let name = e.file_name().to_string_lossy();
+                    !SEARCH_SKIP_DIRS.contains(&name.as_ref())
+                } else {
+                    true
+                }
+            });
+
+        for entry in walker.filter_map(Result::ok) {
+            if !entry.file_type().is_file() {
+                continue;
+            }
+            if let Ok(meta) = entry.metadata() {
+                if meta.len() > 2_000_000 {
+                    continue;
+                }
+            }
+            let abs_path = entry.path();
+            let rel_path = abs_path
+                .strip_prefix(&root_path)
+                .unwrap_or(abs_path)
+                .to_string_lossy()
+                .replace('\\', "/");
+
+            if let Some(ref incl) = include_glob {
+                let incl_trimmed = incl.trim();
+                if !incl_trimmed.is_empty() {
+                    let matches_any = incl_trimmed.split(',').any(|pat| {
+                        let p = pat.trim();
+                        p.is_empty()
+                            || crate::agent::perm::glob_match(p, &rel_path)
+                            || crate::agent::perm::glob_match(p, entry.file_name().to_string_lossy().as_ref())
+                    });
+                    if !matches_any {
+                        continue;
+                    }
+                }
+            }
+
+            if let Some(ref excl) = exclude_glob {
+                let excl_trimmed = excl.trim();
+                if !excl_trimmed.is_empty() {
+                    let matches_excl = excl_trimmed.split(',').any(|pat| {
+                        let p = pat.trim();
+                        !p.is_empty()
+                            && (crate::agent::perm::glob_match(p, &rel_path)
+                                || crate::agent::perm::glob_match(p, entry.file_name().to_string_lossy().as_ref()))
+                    });
+                    if matches_excl {
+                        continue;
+                    }
+                }
+            }
+            list.push(abs_path.to_path_buf());
+        }
+        list
+    };
+
+    let mut files_modified = 0;
+    let mut total_replacements = 0;
+
+    for file_path in target_files {
+        if let Ok(content) = std::fs::read_to_string(&file_path) {
+            let count = re.find_iter(&content).count();
+            if count > 0 {
+                let replaced = re.replace_all(&content, replacement.as_str());
+                if std::fs::write(&file_path, replaced.as_bytes()).is_ok() {
+                    files_modified += 1;
+                    total_replacements += count;
+                }
+            }
+        }
+    }
+
+    Ok(ReplaceResult {
+        files_modified,
+        total_replacements,
+    })
+}

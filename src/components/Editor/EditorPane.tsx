@@ -288,6 +288,17 @@ export function EditorPane({
     const ghostDisposable = registerGhostTextProvider(monaco);
     disposablesRef.current.push(ghostDisposable);
 
+    // Track cursor position for the status bar
+    const updateCursor = () => {
+      const pos = editor.getPosition();
+      const m = editor.getModel();
+      if (pos && m) {
+        useEditorStore.getState().setCursorPosition(pos.lineNumber, pos.column, m.getLineCount());
+      }
+    };
+    updateCursor();
+    disposablesRef.current.push(editor.onDidChangeCursorPosition(updateCursor));
+
     editedRef.current = false;
     settle();
   };

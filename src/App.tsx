@@ -40,7 +40,7 @@ import { launchAgyTerminal } from "./lib/tauri";
 import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
-import { FolderTree, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe, Cpu } from "lucide-react";
+import { FolderTree, Search, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe, Cpu } from "lucide-react";
 import { MenuBar } from "./components/MenuBar";
 import { Breadcrumbs } from "./components/Breadcrumbs";
 import { ProblemsPanel } from "./components/ProblemsPanel";
@@ -50,6 +50,7 @@ import { useDiagnosticsStore, type DiagnosticItem } from "./store/diagnosticsSto
 import { SpatialCanvas } from "./components/SpatialCanvas";
 import { useSpatialStore } from "./store/spatialStore";
 import { ReaAnalysisPanel } from "./components/ReaAnalysis";
+import { SearchSidebar } from "./components/SearchSidebar/SearchSidebar";
 import { InlineEdit } from "./components/InlineEdit";
 import { Composer } from "./components/Composer";
 import { useComposerStore } from "./store/composerStore";
@@ -62,7 +63,7 @@ const BOTTOM = { key: "fahh-bottom-h", def: 208, min: 80 };
 /** Leave room for the editor: the bottom panel may take at most the window minus 220px. */
 const bottomMax = () => (typeof window === "undefined" ? 600 : Math.max(BOTTOM.min, window.innerHeight - 220));
 
-export type SidebarTab = "files" | "git" | "ai" | "extensions" | "debug" | "theme" | "rea";
+export type SidebarTab = "files" | "search" | "git" | "ai" | "extensions" | "debug" | "theme" | "rea";
 export type BottomTab = "terminal" | "run" | "debug" | "problems" | "output" | "ports";
 
 // ─── Activity bar button ──────────────────────────────────────────────────────
@@ -142,6 +143,8 @@ export default function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [quickOpen, setQuickOpen] = useState(false);
   const [showInlineEdit, setShowInlineEdit] = useState(false);
+  const cursorPosition = useEditorStore((s) => s.cursorPosition);
+  const activeTab = useEditorStore((s) => s.activeTab);
   const tree = useFileStore((s) => s.tree);
   const { openFileInEditor, openFolder } = useWorkspace();
   const editorRegionRef = useRef<HTMLDivElement>(null);
@@ -281,6 +284,9 @@ export default function App() {
       { id: "edit.inline", group: "AI", label: "Inline Edit: AI Generation & Refactor (Ctrl+K)", keys: ["Ctrl", "K"], keywords: "inline edit cursor ai generate refactor", run: () => setShowInlineEdit(true) },
       { id: "view.rea", group: "View", label: "REA Code Analysis (AST, Symbols & Hex Dump)", keys: ["Ctrl", "Shift", "R"], keywords: "rea reverse engineering ast symbols hex dump binary disassemble inspect", run: view("rea") },
       { id: "view.explorer", group: "View", label: "Explorer", keys: ["Ctrl", "Shift", "E"], keywords: "files tree", run: view("files") },
+      { id: "view.search", group: "View", label: "Search across Files", keys: ["Ctrl", "Shift", "F"], keywords: "search find in files grep replace workspace", run: view("search") },
+      { id: "edit.findInFiles", group: "Edit", label: "Find in Files", keys: ["Ctrl", "Shift", "F"], keywords: "search find grep files workspace", run: view("search") },
+      { id: "edit.replaceInFiles", group: "Edit", label: "Replace in Files", keys: ["Ctrl", "Shift", "H"], keywords: "replace substitute global workspace", run: view("search") },
       { id: "view.git", group: "View", label: "Source Control", keys: ["Ctrl", "Shift", "G"], keywords: "git branch commit diff", run: view("git") },
       { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
       { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keys: ["Ctrl", "L"], keywords: "agent chat llm ollama groq composer devin cursor", run: view("ai") },
@@ -468,6 +474,14 @@ export default function App() {
         e.preventDefault();
         void openNewWindow();
       }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "f" || e.key === "F")) {
+        e.preventDefault();
+        setSidebarTab("search");
+      }
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "h" || e.key === "H")) {
+        e.preventDefault();
+        setSidebarTab("search");
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -507,15 +521,23 @@ export default function App() {
           <div className="w-10 shrink-0 flex flex-col items-center gap-1 pt-2 bg-fahh-sidebar border-r border-fahh-surface">
         <ActivityBtn
           active={sidebarTab === "files"}
-          title="Explorer"
+          title="Explorer (Ctrl+Shift+E)"
           onClick={() => setSidebarTab("files")}
         >
           <FolderTree size={18} />
         </ActivityBtn>
 
         <ActivityBtn
+          active={sidebarTab === "search"}
+          title="Search (Ctrl+Shift+F)"
+          onClick={() => setSidebarTab("search")}
+        >
+          <Search size={18} />
+        </ActivityBtn>
+
+        <ActivityBtn
           active={sidebarTab === "git"}
-          title="Source Control"
+          title="Source Control (Ctrl+Shift+G)"
           onClick={() => setSidebarTab("git")}
         >
           <GitBranch size={18} />
@@ -584,6 +606,8 @@ export default function App() {
       {/* ── Sidebar panel ── */}
       <div style={{ width: sidebarW }} className="fahh-sidebar shrink-0 flex flex-col overflow-hidden">
         {sidebarTab === "files" && <FileTree />}
+
+        {sidebarTab === "search" && <SearchSidebar />}
 
         {sidebarTab === "git" && <GitSidebar />}
 
@@ -732,6 +756,23 @@ export default function App() {
 
           <div className="flex-1" />
 
+          {/* Cursor position and Go To Line */}
+          {activeTab && (
+            <button
+              type="button"
+              onClick={() => runEditorAction("editor.action.gotoLine")}
+              title="Go to Line/Column (Ctrl+G)"
+              className="hover:text-fahh-text transition-colors font-mono text-[11px] flex items-center gap-1"
+            >
+              <span>Ln {cursorPosition.line}, Col {cursorPosition.column}</span>
+              {cursorPosition.totalLines && (
+                <span className="text-fahh-muted/50">({cursorPosition.totalLines} lines)</span>
+              )}
+            </button>
+          )}
+
+          <span className="max-[850px]:hidden text-fahh-muted/60 font-mono text-[11px]">UTF-8</span>
+
           <LspStatusItem />
           <HudControls />
 
@@ -740,7 +781,7 @@ export default function App() {
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span className="max-[680px]:hidden font-mono">v0.6.1</span>
+          <span className="max-[680px]:hidden font-mono">v0.6.2</span>
         </div>
       </div>
       </div>
