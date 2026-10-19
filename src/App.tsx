@@ -161,8 +161,10 @@ export default function App() {
     let off: (() => void) | undefined;
     let gone = false;
     takePendingOpen().then((req) => req && run(req)).catch(() => {});
-    import("@tauri-apps/api/event")
-      .then(({ listen }) => listen<OpenRequest>("fahh://open", (e) => void run(e.payload)))
+    import("@tauri-apps/api/webviewWindow")
+      .then(({ getCurrentWebviewWindow }) =>
+        getCurrentWebviewWindow().listen<OpenRequest>("fahh://open", (e) => void run(e.payload))
+      )
       .then((fn) => (gone ? fn() : (off = fn)))
       .catch(() => {});
     return () => {

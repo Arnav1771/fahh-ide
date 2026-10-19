@@ -13,6 +13,13 @@ export function useWorkspace() {
   const openFolder = useCallback(async (path: string) => {
     setRoot(path);
     setCwd(path);
+    const folderName = path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+    import("@tauri-apps/api/webviewWindow")
+      .then(({ getCurrentWebviewWindow }) => {
+        getCurrentWebviewWindow().setTitle(`Fahh Editor — ${folderName}`).catch(() => {});
+      })
+      .catch(() => {});
+
     try {
       const tree = await getFileTree(path);
       setTree(tree);
@@ -21,7 +28,6 @@ export function useWorkspace() {
     } catch (err) {
       console.warn("getFileTree fallback for:", path, err);
       // Fallback single root entry so explorer still opens
-      const folderName = path.split(/[\\/]/).filter(Boolean).pop() ?? path;
       setTree({
         name: folderName,
         path,
