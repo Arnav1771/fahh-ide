@@ -148,7 +148,7 @@ pub async fn launch_agy_terminal(
             format!("chcp 65001 >nul && \"{}\" {}", agy_exe, extra_args)
         };
 
-        let mut cmd = std::process::Command::new("cmd.exe");
+        let mut cmd = crate::core::proc::cmd("cmd.exe");
         cmd.creation_flags(CREATE_NEW_CONSOLE);
         cmd.args(["/k", &cmd_payload]);
         if !working_dir.is_empty() {
@@ -174,7 +174,7 @@ pub async fn launch_agy_terminal(
                 "tell application \"Terminal\" to do script \"cd '{}' && {}\"",
                 working_dir, agy_cmd
             );
-            std::process::Command::new("osascript")
+            crate::core::proc::cmd("osascript")
                 .args(["-e", &script])
                 .spawn()
                 .map_err(|e| e.to_string())?;
@@ -184,7 +184,7 @@ pub async fn launch_agy_terminal(
             let terminals = ["x-terminal-emulator", "gnome-terminal", "konsole", "xterm"];
             let mut spawned = false;
             for term in terminals {
-                if let Ok(_) = std::process::Command::new(term)
+                if let Ok(_) = crate::core::proc::cmd(term)
                     .args([
                         "-e",
                         &format!("sh -c \"cd '{}' && {}; exec sh\"", working_dir, agy_cmd),

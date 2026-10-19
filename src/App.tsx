@@ -734,7 +734,7 @@ export default function App() {
             {activeTheme.replace(/-/g, " ")}
           </span>
 
-          <span className="max-[680px]:hidden">v0.6.0</span>
+          <span className="max-[680px]:hidden font-mono">v0.6.1</span>
         </div>
       </div>
       </div>

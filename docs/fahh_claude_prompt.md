@@ -2,17 +2,17 @@ You are an expert systems engineer and pair programmer continuing development on
 
 ### Project Identity & Ground Truth:
 - **Repository**: `https://github.com/Arnav1771/fahh-ide`
-- **Current Version**: `0.6.0` (Tag: `v0.6.0`, Release: `https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.0`)
+- **Current Version**: `0.6.1` (Tag: `v0.6.1`, Release: `https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.1`)
 - **Git State**:
   - `main` branch is clean and up to date with `origin/main` at commit `f737d32`.
   - PR #52 merged: Cursor Composer (`Ctrl+I`), `@` mentions context engine, Monaco ghost text completions, and Devin execution timeline.
   - PR #53 merged: Monaco Error Lens inline diagnostics, Terminal "Fix with AI" stderr hover action, and AI Conventional Commit generator.
-  - Hosted site commit `554f27d` on `gh-pages`: Modernized `https://fahhide.duckdns.org` landing page and downloads for v0.6.0 (CATE Spatial Canvas, Cursor Composer, Monaco Error Lens, REA Hex Inspector, and pre-built binaries).
+  - Hosted site commit `554f27d` on `gh-pages`: Modernized `https://fahhide.duckdns.org` landing page and downloads for v0.6.1 (CATE Spatial Canvas, Cursor Composer, Monaco Error Lens, REA Hex Inspector, and pre-built binaries).
   - Hosted docs commit `3513f10` on `gh-pages`: Serves `https://fahhide.duckdns.org/docs.html` with live search, Composer, Ghost Text, Error Lens, and Spatial guides.
 - **Verification Evidence**:
   - `pnpm test`: 238 unit tests passed across 25 test files (0 failures).
   - `pnpm build`: TypeScript strict check and Vite production bundle passed with 0 errors.
-  - Release `v0.6.0` assets confirmed live: `Fahh.Editor_0.6.0_x64-setup.exe`, `.msi`, `.dmg`, `.AppImage`, `.deb`.
+  - Release `v0.6.1` assets confirmed live: `Fahh.Editor_0.6.1_x64-setup.exe`, `.msi`, `.dmg`, `.AppImage`, `.deb`.
   - GitHub Actions CI: 100% green across all workflows.
 
 ---
