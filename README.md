@@ -35,6 +35,9 @@ Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, **VS C
 | Capability | Hotkey / Status | What It Does |
 |------------|-----------------|--------------|
 | **CATE Spatial Canvas** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Infinite 2D zooming canvas with 1:1 crisp focus, camera centering, readability toolbar (`Wrap`, `Map`, font stepper 12-28px, <kbd>Alt</kbd>+<kbd>1</kbd>), floating traffic-light window nodes, and radar Minimap with teleport shortcuts. |
+| **Fahh Local Agent** | <kbd>Ctrl</kbd>+<kbd>L</kbd> / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> | Autonomous coding agent with FIFO prompt queueing, real-time mid-turn steering (<kbd>Ctrl</kbd>+<kbd>Enter</kbd>), syntax-highlighted code containers, 1-click clipboard copy, and Monaco caret insertion. |
+| **Workspace Search & Replace** | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>F</kbd> | Full-workspace text and regex search with case-sensitivity, whole-word matching, glob inclusions/exclusions, and batch multi-file replace. |
+| **Auto-Save & Workspace Portability** | Native Menu / <kbd>Ctrl</kbd>+<kbd>S</kbd> | Debounced 1000ms background saving, window blur persistence, and portable `.fahh-workspace` configuration export and import. |
 | **VS Code Multi-Terminal & Split View** | <kbd>Ctrl</kbd>+<kbd>\`</kbd> / <kbd>Ctrl</kbd>+<kbd>\\</kbd> | Multi-tab terminal manager with side-by-side / stacked split panes, shell switcher (PowerShell, CMD, Git Bash, WSL), status dots, and one-click split toggles. |
 | **File Icon Themes** | Themes tab / Open VSX | Dynamic SVG file & folder icon engine supporting Material Icon Theme, Seti UI, Catppuccin Pastel, and Modern Minimal with auto-activation from Open VSX. |
 | **Native PDF & Media Preview** | Built-in | Native WebView2-accelerated PDF viewer with zoom controls, text selection, page navigation, and system reader handoff without third-party extensions. |
