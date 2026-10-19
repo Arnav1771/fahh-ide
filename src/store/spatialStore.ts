@@ -55,27 +55,27 @@ const DEFAULT_NODES: SpatialNodeData[] = [
     x: 60,
     y: 80,
     w: 430,
-    h: 580,
+    h: 660,
     zIndex: 10,
   },
   {
     id: "spatial-editor",
     type: "editor",
     title: "Monaco Canvas Editor",
-    x: 520,
+    x: 510,
     y: 80,
-    w: 780,
-    h: 580,
+    w: 960,
+    h: 660,
     zIndex: 11,
   },
   {
     id: "spatial-browser",
     type: "browser",
     title: "Live Browser Viewport",
-    x: 1330,
+    x: 1490,
     y: 80,
-    w: 480,
-    h: 580,
+    w: 500,
+    h: 660,
     zIndex: 12,
     meta: {
       url: "about:blank",
@@ -85,20 +85,20 @@ const DEFAULT_NODES: SpatialNodeData[] = [
     id: "spatial-rea",
     type: "rea",
     title: "REA Code Analysis · AST & Hex",
-    x: 1840,
+    x: 2010,
     y: 80,
-    w: 460,
-    h: 580,
+    w: 480,
+    h: 660,
     zIndex: 13,
   },
   {
     id: "spatial-terminal",
     type: "terminal",
     title: "Interactive Terminal · PowerShell",
-    x: 520,
-    y: 690,
-    w: 780,
-    h: 380,
+    x: 510,
+    y: 760,
+    w: 960,
+    h: 420,
     zIndex: 14,
   },
   {
@@ -106,19 +106,19 @@ const DEFAULT_NODES: SpatialNodeData[] = [
     type: "diagnostics",
     title: "Problems & LSP Diagnostics",
     x: 60,
-    y: 690,
+    y: 760,
     w: 430,
-    h: 380,
+    h: 420,
     zIndex: 9,
   },
   {
     id: "spatial-note-1",
     type: "note",
     title: "Architecture Map",
-    x: 1330,
-    y: 690,
-    w: 480,
-    h: 240,
+    x: 1490,
+    y: 760,
+    w: 500,
+    h: 260,
     zIndex: 8,
     meta: {
       noteColor: "amber",
@@ -137,10 +137,14 @@ function loadSavedNodes(): SpatialNodeData[] {
     if (!raw) return DEFAULT_NODES;
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_NODES;
-    // Sanitize any nodes referencing recursive localhost:1420 to prevent memory explosion
+    // Sanitize any nodes referencing recursive localhost:1420 to prevent memory explosion,
+    // and upgrade editor dimensions if too narrow for readable code
     return parsed.map((n: SpatialNodeData) => {
       if (n.type === "browser" && n.meta?.url === "http://localhost:1420") {
         return { ...n, title: "Live Browser Viewport", meta: { ...n.meta, url: "about:blank" } };
+      }
+      if (n.id === "spatial-editor" && n.w < 900) {
+        return { ...n, w: 960, h: Math.max(n.h, 660) };
       }
       return n;
     });

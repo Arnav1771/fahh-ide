@@ -46,13 +46,13 @@ pub fn on_second_launch(app: &tauri::AppHandle, argv: Vec<String>, cwd: String) 
             let title = format!("Fahh Editor — {}", folder_name);
 
             // If the requested project is already open in an existing window, focus it directly
-            for (_, existing_win) in app.webview_windows() {
+            for (win_label, existing_win) in app.webview_windows() {
                 if let Ok(existing_title) = existing_win.title() {
                     if existing_title == title {
                         let _ = existing_win.unminimize();
                         let _ = existing_win.show();
                         let _ = existing_win.set_focus();
-                        let _ = existing_win.emit("fahh://open", req);
+                        let _ = existing_win.emit_to(&win_label, "fahh://open", req);
                         return;
                     }
                 }
@@ -73,15 +73,16 @@ pub fn on_second_launch(app: &tauri::AppHandle, argv: Vec<String>, cwd: String) 
                 Ok(new_win) => {
                     let _ = new_win.show();
                     let _ = new_win.set_focus();
-                    let _ = new_win.emit("fahh://open", req);
+                    // Note: new_win picks up req cleanly on mount via take_pending_open.
+                    // We intentionally do NOT broadcast emit here, protecting existing windows.
                 }
                 Err(err) => {
                     tracing::warn!("Failed opening new window ({err}), forwarding to main window");
-                    let _ = app.emit("fahh://open", req);
                     if let Some(w) = app.get_webview_window("main") {
                         let _ = w.unminimize();
                         let _ = w.show();
                         let _ = w.set_focus();
+                        let _ = w.emit_to("main", "fahh://open", req);
                     }
                 }
             }

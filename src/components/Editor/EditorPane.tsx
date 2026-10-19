@@ -21,6 +21,16 @@ import { ensureBaseline, isDirtyAt } from "../../lib/saveBaseline";
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
   monacoTheme?: string;
+  /** Custom base font size in pixels (e.g. 17 for canvas mode) */
+  fontSize?: number;
+  /** Word wrap mode */
+  wordWrap?: "on" | "off" | "wordWrapColumn" | "bounded";
+  /** Font weight */
+  fontWeight?: string;
+  /** Line height */
+  lineHeight?: number;
+  /** Toggle minimap visibility */
+  minimapEnabled?: boolean;
 }
 
 // Shape of the detail emitted by ThemePanel's fahh-theme-change event.
@@ -28,7 +38,14 @@ interface ThemeChangeDetail {
   monacoTheme: string;
 }
 
-export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
+export function EditorPane({
+  monacoTheme = "vs-dark",
+  fontSize = 14,
+  wordWrap = "off",
+  fontWeight = "500",
+  lineHeight,
+  minimapEnabled = true,
+}: EditorPaneProps) {
   const { activeTab, fileContents, openTabs, setContent, markDirty } =
     useEditorStore();
     
@@ -83,6 +100,19 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
     }
     editorRef.current.layout?.();
   }, [activeTab, content]);
+
+  // Dynamically update Monaco editor options on prop changes without remounting
+  useEffect(() => {
+    if (!editorRef.current) return;
+    editorRef.current.updateOptions({
+      fontSize,
+      wordWrap,
+      fontWeight,
+      lineHeight: lineHeight ?? Math.round(fontSize * 1.55),
+      minimap: { enabled: minimapEnabled },
+    });
+    editorRef.current.layout?.();
+  }, [fontSize, wordWrap, fontWeight, lineHeight, minimapEnabled]);
 
   // Never let the bridge hold a reference to a disposed editor.
   useEffect(() => {
@@ -288,11 +318,14 @@ export function EditorPane({ monacoTheme = "vs-dark" }: EditorPaneProps) {
           beforeMount={defineMonacoThemes}
           onMount={handleEditorDidMount}
           options={{
-            fontSize: 14,
-            fontFamily: "JetBrains Mono, Fira Code, monospace",
-            minimap: { enabled: true },
+            fontSize,
+            fontFamily: "JetBrains Mono, Fira Code, Menlo, Monaco, Consolas, monospace",
+            fontWeight,
+            lineHeight: lineHeight ?? Math.round(fontSize * 1.55),
+            letterSpacing: 0.3,
+            minimap: { enabled: minimapEnabled },
             scrollBeyondLastLine: false,
-            wordWrap: "off",
+            wordWrap,
             tabSize: 2,
             automaticLayout: true,
             smoothScrolling: true,

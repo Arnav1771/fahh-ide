@@ -180,6 +180,10 @@ export function SpatialCanvas() {
           transform: `translate3d(${pan.x}px, ${pan.y}px, 0) scale(${zoom})`,
           width: "10000px",
           height: "10000px",
+          willChange: "transform",
+          WebkitFontSmoothing: "antialiased",
+          MozOsxFontSmoothing: "grayscale",
+          textRendering: "optimizeLegibility",
         }}
       >
         {nodes.map((node) => (
