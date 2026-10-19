@@ -7,7 +7,9 @@ import { deleteFile, renameFile, createFile } from "../../lib/tauri";
 import { open } from "@tauri-apps/plugin-dialog";
 import { OPEN_FOLDER_EVENT } from "../../lib/commands";
 import { closeTabsUnder, dirtyPaths, renameTabs } from "../../lib/tabActions";
-import { FolderOpen, Edit2, Trash2, Copy, FilePlus, Folder as FolderIcon, File, FileCode2, FileJson, FileText, Globe, Palette, Terminal as TerminalIcon } from "lucide-react";
+import { FolderOpen, Edit2, Trash2, Copy, FilePlus, File } from "lucide-react";
+import { useIconThemeStore } from "../../store/iconThemeStore";
+import { renderFileIcon, renderFolderIcon } from "../../lib/iconTheme";
 
 // ─── Context menu ─────────────────────────────────────────────────────────────
 
@@ -156,7 +158,10 @@ function FileNode({
     onContextMenu(e, entry);
   };
 
-  const icon = entry.is_dir ? (expanded ? <FolderOpen size={14} className="text-fahh-accent" /> : <FolderIcon size={14} className="text-fahh-muted" />) : fileIcon(entry.name);
+  const { activeIconTheme } = useIconThemeStore();
+  const icon = entry.is_dir
+    ? renderFolderIcon(entry.name, expanded, activeIconTheme)
+    : renderFileIcon(entry.name, activeIconTheme);
 
   return (
     <div>
@@ -577,37 +582,6 @@ export function FileTree() {
   );
 }
 
-function fileIcon(name: string): React.ReactNode {
-  const ext = name.split(".").pop()?.toLowerCase() ?? "";
-  
-  switch (ext) {
-    case "rs":
-    case "ts":
-    case "tsx":
-    case "js":
-    case "jsx":
-    case "py":
-    case "c":
-    case "cpp":
-    case "java":
-    case "go":
-      return <FileCode2 size={14} className="text-blue-400" />;
-    case "json":
-      return <FileJson size={14} className="text-yellow-400" />;
-    case "md":
-      return <FileText size={14} className="text-purple-400" />;
-    case "html":
-      return <Globe size={14} className="text-orange-400" />;
-    case "css":
-      return <Palette size={14} className="text-pink-400" />;
-    case "sh":
-    case "bash":
-      return <TerminalIcon size={14} className="text-green-400" />;
-    case "toml":
-    case "yaml":
-    case "yml":
-      return <FileText size={14} className="text-gray-400" />;
-    default:
-      return <File size={14} className="text-fahh-muted" />;
-  }
+export function fileIcon(name: string): React.ReactNode {
+  return renderFileIcon(name, "material");
 }

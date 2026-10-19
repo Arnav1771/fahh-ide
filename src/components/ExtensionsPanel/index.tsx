@@ -13,9 +13,11 @@ import {
   X,
   Info,
   Tag,
+  Palette,
 } from "lucide-react";
 import { getPlugins } from "../../lib/tauri";
 import type { Plugin } from "../../lib/types";
+import { useIconThemeStore, type IconThemeId } from "../../store/iconThemeStore";
 
 // ─── Open VSX / Marketplace Types ────────────────────────────────────────────
 
@@ -157,6 +159,42 @@ export const CURATED_MARKETPLACE: MarketplaceExtension[] = [
     category: "Languages",
     verified: true,
   },
+  {
+    id: "PKief.material-icon-theme",
+    namespace: "PKief",
+    name: "material-icon-theme",
+    displayName: "Material Icon Theme",
+    description: "Material Design Icons for Files and Folders with vibrant colors and rich language glyphs.",
+    version: "5.17.0",
+    downloadCount: 22400000,
+    averageRating: 5.0,
+    category: "Themes",
+    verified: true,
+  },
+  {
+    id: "vscode-icons-team.vscode-icons",
+    namespace: "vscode-icons-team",
+    name: "vscode-icons",
+    displayName: "vscode-icons",
+    description: "Icons for Visual Studio Code, Atom, and modern file trees with extensive extension mapping.",
+    version: "12.9.0",
+    downloadCount: 15800000,
+    averageRating: 4.8,
+    category: "Themes",
+    verified: true,
+  },
+  {
+    id: "catppuccin.catppuccin-vsc-icons",
+    namespace: "catppuccin",
+    name: "catppuccin-vsc-icons",
+    displayName: "Catppuccin Icons",
+    description: "Soothing pastel file icon theme for low eye strain and warm aesthetic.",
+    version: "1.18.0",
+    downloadCount: 3400000,
+    averageRating: 4.9,
+    category: "Themes",
+    verified: true,
+  },
 ];
 
 export function formatDownloads(count: number): string {
@@ -241,6 +279,21 @@ export function ExtensionsPanel() {
     };
   }, []);
 
+  const { activeIconTheme, setIconTheme, registerFromExtension } = useIconThemeStore();
+  const [themeToast, setThemeToast] = useState<string | null>(null);
+
+  const isIconTheme = (ext: MarketplaceExtension) => {
+    const s = `${ext.id} ${ext.name} ${ext.displayName} ${ext.description}`.toLowerCase();
+    return s.includes("icon");
+  };
+
+  const getTargetThemeId = (ext: MarketplaceExtension): IconThemeId => {
+    const s = `${ext.id} ${ext.name}`.toLowerCase();
+    if (s.includes("seti")) return "seti";
+    if (s.includes("catppuccin") || s.includes("pastel")) return "catppuccin";
+    return "material";
+  };
+
   // Save installed map to localStorage
   const saveInstalled = (next: Record<string, MarketplaceExtension>) => {
     setInstalledMap(next);
@@ -254,6 +307,20 @@ export function ExtensionsPanel() {
   const handleInstall = (ext: MarketplaceExtension) => {
     const next = { ...installedMap, [ext.id]: ext };
     saveInstalled(next);
+
+    // Auto-activate icon theme if this is an icon pack
+    const applied = registerFromExtension(ext.id, ext.name);
+    if (applied) {
+      setThemeToast(`Applied "${ext.displayName}" as your active File Icon Theme!`);
+      setTimeout(() => setThemeToast(null), 4000);
+    }
+  };
+
+  const handleApplyTheme = (ext: MarketplaceExtension) => {
+    const target = getTargetThemeId(ext);
+    setIconTheme(target);
+    setThemeToast(`Applied "${ext.displayName}" as your active File Icon Theme!`);
+    setTimeout(() => setThemeToast(null), 4000);
   };
 
   const handleUninstall = (id: string) => {
@@ -345,6 +412,23 @@ export function ExtensionsPanel() {
           Installed ({Object.keys(installedMap).length + plugins.length})
         </button>
       </div>
+
+      {/* Dynamic Theme Activation Notification */}
+      {themeToast && (
+        <div className="mx-3 mt-2 px-2.5 py-1.5 rounded-lg bg-fahh-accent/15 border border-fahh-accent/40 text-fahh-accent text-[11px] flex items-center justify-between shrink-0">
+          <span className="flex items-center gap-1.5 truncate">
+            <Palette size={12} className="shrink-0" />
+            <span className="truncate">{themeToast}</span>
+          </span>
+          <button
+            type="button"
+            onClick={() => setThemeToast(null)}
+            className="text-xs hover:text-white ml-2 text-fahh-muted"
+          >
+            &times;
+          </button>
+        </div>
+      )}
 
       {/* Search Input & Filter Options */}
       <div className="px-3 py-2 shrink-0 border-b border-fahh-surface bg-fahh-sidebar space-y-2">
@@ -502,6 +586,28 @@ export function ExtensionsPanel() {
               </a>
             </div>
 
+            {/* Icon Theme Quick-Apply Option */}
+            {isIconTheme(selectedExt) && (
+              <div className="pt-2 border-t border-fahh-surface/60">
+                <button
+                  type="button"
+                  onClick={() => handleApplyTheme(selectedExt)}
+                  className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-colors ${
+                    activeIconTheme === getTargetThemeId(selectedExt)
+                      ? "bg-fahh-accent/20 text-fahh-accent border border-fahh-accent/40 shadow-sm"
+                      : "bg-fahh-surface text-fahh-text border border-fahh-muted/30 hover:border-fahh-accent hover:text-white"
+                  }`}
+                >
+                  <Palette size={12} />
+                  <span>
+                    {activeIconTheme === getTargetThemeId(selectedExt)
+                      ? "Active File Icon Theme ✓"
+                      : "Set as Active File Icon Theme"}
+                  </span>
+                </button>
+              </div>
+            )}
+
             <p className="text-xs text-fahh-text/90 leading-relaxed pt-2 border-t border-fahh-surface/60">
               {selectedExt.description}
             </p>
@@ -601,15 +707,34 @@ export function ExtensionsPanel() {
                           </button>
 
                           {isInstalled ? (
-                            <button
-                              type="button"
-                              onClick={() => handleUninstall(ext.id)}
-                              className="flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] bg-fahh-surface text-fahh-muted hover:text-fahh-error border border-fahh-surface hover:border-fahh-error/30 transition-colors"
-                              title="Click to uninstall"
-                            >
-                              <Check size={11} className="text-fahh-success" />
-                              <span>Installed</span>
-                            </button>
+                            <>
+                              {isIconTheme(ext) && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleApplyTheme(ext);
+                                  }}
+                                  className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
+                                    activeIconTheme === getTargetThemeId(ext)
+                                      ? "bg-fahh-accent/20 text-fahh-accent border border-fahh-accent/40 font-medium"
+                                      : "bg-fahh-surface text-fahh-muted hover:text-fahh-text border border-fahh-surface hover:border-fahh-muted"
+                                  }`}
+                                  title="Set as active file icon theme"
+                                >
+                                  {activeIconTheme === getTargetThemeId(ext) ? "Icons Active ✓" : "Apply Icons"}
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => handleUninstall(ext.id)}
+                                className="flex items-center gap-1 px-2 py-0.5 rounded text-[10.5px] bg-fahh-surface text-fahh-muted hover:text-fahh-error border border-fahh-surface hover:border-fahh-error/30 transition-colors"
+                                title="Click to uninstall"
+                              >
+                                <Check size={11} className="text-fahh-success" />
+                                <span>Installed</span>
+                              </button>
+                            </>
                           ) : (
                             <button
                               type="button"

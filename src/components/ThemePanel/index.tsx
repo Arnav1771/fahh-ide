@@ -1,6 +1,8 @@
 import type { Monaco } from "@monaco-editor/react";
 import { useThemeStore } from "../../store/themeStore";
 import type { ThemeId } from "../../lib/types";
+import { useIconThemeStore, ICON_THEMES } from "../../store/iconThemeStore";
+import { renderFileIcon, renderFolderIcon } from "../../lib/iconTheme";
 
 // ─── Theme definitions ────────────────────────────────────────────────────────
 
@@ -309,6 +311,7 @@ export function applyThemeCssVars(def: ThemeDef): void {
 
 export function ThemePanel() {
   const { activeTheme, setTheme } = useThemeStore();
+  const { activeIconTheme, setIconTheme } = useIconThemeStore();
 
   const handleSelect = (def: ThemeDef) => {
     setTheme(def.id);
@@ -329,7 +332,7 @@ export function ThemePanel() {
           <button
             key={def.id}
             onClick={() => handleSelect(def)}
-            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border transition-all text-left ${
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg border transition-all text-left mb-1 ${
               isActive
                 ? "border-fahh-accent bg-fahh-accent/10"
                 : "border-fahh-surface bg-fahh-surface hover:border-fahh-muted"
@@ -365,6 +368,57 @@ export function ThemePanel() {
           </button>
         );
       })}
+
+      {/* ─── File Icon Theme Selector ─── */}
+      <div className="border-t border-fahh-surface/80 my-3 pt-3">
+        <div className="flex items-center justify-between mb-2">
+          <p className="fahh-label text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
+            File Icon Theme
+          </p>
+          <span className="text-[10px] text-fahh-accent font-medium">VSIX Compatible</span>
+        </div>
+
+        {ICON_THEMES.map((iconDef) => {
+          const isActive = iconDef.id === activeIconTheme;
+
+          return (
+            <button
+              key={iconDef.id}
+              onClick={() => setIconTheme(iconDef.id)}
+              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg border transition-all text-left mb-1.5 ${
+                isActive
+                  ? "border-fahh-accent bg-fahh-accent/10 shadow-sm"
+                  : "border-fahh-surface bg-fahh-surface hover:border-fahh-muted"
+              }`}
+            >
+              {/* Preview icon badges */}
+              <div className="flex items-center gap-1 shrink-0 px-1.5 py-1 rounded bg-black/30 border border-white/5">
+                {renderFolderIcon("src", true, iconDef.id)}
+                {renderFileIcon("app.tsx", iconDef.id)}
+                {renderFileIcon("main.rs", iconDef.id)}
+                {renderFileIcon("server.py", iconDef.id)}
+              </div>
+
+              {/* Name & description */}
+              <div className="flex-1 min-w-0">
+                <p
+                  className={`text-xs font-semibold truncate ${
+                    isActive ? "text-fahh-accent" : "text-fahh-text"
+                  }`}
+                >
+                  {iconDef.name}
+                </p>
+                <p className="text-[10px] text-fahh-muted truncate">{iconDef.description}</p>
+              </div>
+
+              {/* Active checkmark */}
+              {isActive && (
+                <span className="text-fahh-accent text-sm shrink-0">✓</span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
