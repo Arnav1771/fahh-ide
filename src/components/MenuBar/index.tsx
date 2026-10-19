@@ -45,6 +45,8 @@ import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { useSpatialStore } from "../../store/spatialStore";
 import { useComposerStore } from "../../store/composerStore";
+import { saveWorkspaceAs, openWorkspaceFromFile } from "../../lib/workspaceManager";
+import { useWorkspace } from "../../hooks/useWorkspace";
 import type { SidebarTab, BottomTab } from "../../App";
 
 export interface MenuItem {
@@ -84,16 +86,9 @@ export function MenuBar({
 }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
-  const [autoSave, setAutoSave] = useState(() => {
-    try {
-      return localStorage.getItem("fahh-autosave") === "true";
-    } catch {
-      return false;
-    }
-  });
-
   const menuBarRef = useRef<HTMLDivElement>(null);
-  const { activeTab, closeTab, openTabs, openFile } = useEditorStore();
+  const { activeTab, closeTab, openTabs, openFile, autoSave, toggleAutoSave } = useEditorStore();
+  const { openFolder, openFileInEditor } = useWorkspace();
   const root = useFileStore((s) => s.root);
   const isSpatial = useSpatialStore((s) => s.isSpatialMode);
 
@@ -148,16 +143,6 @@ export function MenuBar({
     }
   };
 
-  const toggleAutoSave = () => {
-    setAutoSave((prev) => {
-      const next = !prev;
-      try {
-        localStorage.setItem("fahh-autosave", String(next));
-      } catch {}
-      return next;
-    });
-  };
-
   const menus: MenuDef[] = [
     {
       label: "File",
@@ -188,6 +173,16 @@ export function MenuBar({
             onSetSidebarTab("files");
             window.dispatchEvent(new Event(OPEN_FOLDER_EVENT));
           },
+        },
+        {
+          label: "Open Workspace…",
+          icon: <FolderTree size={13} />,
+          action: () => void openWorkspaceFromFile(openFolder, openFileInEditor),
+        },
+        {
+          label: "Save Workspace As…",
+          icon: <Save size={13} className="text-[#a0c4ff]" />,
+          action: () => void saveWorkspaceAs(),
         },
         { separator: true, label: "", action: () => {} },
         {

@@ -8,7 +8,7 @@
  * backend only for the request; nothing is written into the project.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Plus, Send, Settings2, Square, X, Layers } from "lucide-react";
+import { Bot, Plus, Send, Settings2, Square, X, Layers, ListPlus, Compass, Trash2 } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
 import { parseSlashCommand, pendingReview } from "../../lib/agentState";
@@ -21,6 +21,7 @@ import { useFileStore } from "../../store/fileStore";
 import { useComposerStore, type AttachedContext } from "../../store/composerStore";
 import { MentionMenu } from "../MentionMenu";
 import { ApprovalCard, PlanCard, ReviewCard, ToolCard } from "./cards";
+import { ChatMessageContent } from "./ChatMessageContent";
 
 const MODES: { id: AgentMode; label: string; hint: string }[] = [
   { id: "ask", label: "Ask", hint: "Asks before every edit and command" },
@@ -167,7 +168,7 @@ function Settings({ onDone }: { onDone: () => void }) {
 
 export function AgentPanel() {
   const store = useAgentStore();
-  const { settings, items, status, turns } = store;
+  const { settings, items, status, turns, queue, enqueue, removeQueueItem, clearQueue, steer } = store;
   const root = useFileStore((s) => s.root);
   const { openFileInEditor } = useWorkspace();
   const problem = settingsProblem(settings);
@@ -280,9 +281,21 @@ export function AgentPanel() {
       void store.send(text);
       return;
     }
+    if (status === "running") {
+      enqueue(text);
+      setInput("");
+      return;
+    }
     if (busy) return;
     setInput("");
     void store.send(text);
+  };
+
+  const handleSteer = () => {
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+    void steer(text);
   };
 
   const implement = (id: string, path: string) => {
@@ -367,16 +380,16 @@ export function AgentPanel() {
           switch (item.kind) {
             case "user":
               return (
-                <div key={i} className="px-2 py-1.5">
-                  <div className="text-[10px] uppercase tracking-wider text-fahh-muted mb-0.5">You</div>
-                  <div className="text-xs text-fahh-text whitespace-pre-wrap break-words">{item.text}</div>
+                <div key={i} className="px-2 py-1.5 select-text">
+                  <div className="text-[10px] uppercase tracking-wider text-fahh-muted mb-0.5 select-none">You</div>
+                  <div className="text-xs text-fahh-text whitespace-pre-wrap break-words select-text cursor-text selection:bg-fahh-accent/30">{item.text}</div>
                 </div>
               );
             case "assistant":
               return (
-                <div key={i} className="px-2 py-1.5">
-                  <div className="text-[10px] uppercase tracking-wider text-fahh-accent mb-0.5">Fahh Local</div>
-                  <div className="text-xs text-fahh-text whitespace-pre-wrap break-words leading-relaxed">{item.text}</div>
+                <div key={i} className="px-2 py-1.5 select-text">
+                  <div className="text-[10px] uppercase tracking-wider text-fahh-accent mb-0.5 select-none">Fahh Local</div>
+                  <ChatMessageContent text={item.text} />
                 </div>
               );
             case "tool":
@@ -485,6 +498,45 @@ export function AgentPanel() {
             </button>
           </div>
         )}
+
+        {/* ── Prompt Queue Shelf ── */}
+        {queue.length > 0 && (
+          <div className="mb-1.5 p-2 rounded-lg bg-fahh-surface/80 border border-fahh-surface space-y-1.5">
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="font-semibold text-fahh-accent uppercase tracking-wider flex items-center gap-1">
+                <ListPlus size={11} />
+                Prompt Queue ({queue.length})
+              </span>
+              <button
+                type="button"
+                onClick={clearQueue}
+                className="text-fahh-muted hover:text-fahh-error text-[9.5px] flex items-center gap-0.5 transition-colors"
+              >
+                <Trash2 size={10} /> Clear
+              </button>
+            </div>
+            <div className="space-y-1 max-h-24 overflow-y-auto no-scrollbar">
+              {queue.map((q, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between gap-1.5 px-2 py-1 rounded bg-[#111318] text-[11px] text-fahh-text/90 border border-fahh-surface/60"
+                >
+                  <span className="text-[10px] text-fahh-accent font-mono shrink-0 font-semibold">#{idx + 1}</span>
+                  <span className="truncate flex-1 select-text cursor-text">{q}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeQueueItem(idx)}
+                    title="Remove prompt from queue"
+                    className="text-fahh-muted hover:text-fahh-error shrink-0 p-0.5"
+                  >
+                    <X size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="relative">
           {showMention && (
             <MentionMenu
@@ -538,29 +590,89 @@ export function AgentPanel() {
                 setShowMention(true);
                 setMentionQuery("");
               }
-              if ((e.key === "Enter" && (e.ctrlKey || e.metaKey)) || (e.key === "Enter" && !e.shiftKey)) {
-                e.preventDefault();
-                send();
+              if (status === "running") {
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  handleSteer();
+                  return;
+                }
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                  return;
+                }
+              } else {
+                if ((e.key === "Enter" && (e.ctrlKey || e.metaKey)) || (e.key === "Enter" && !e.shiftKey)) {
+                  e.preventDefault();
+                  send();
+                }
               }
             }}
-            placeholder="Ask Fahh Local, type @ to reference files/problems, or /plan… (Alt+V for image)"
+            placeholder={
+              status === "running"
+                ? "Agent is running... Type to queue next prompt or steer active turn (Ctrl+Enter to Steer, Enter to Queue)..."
+                : "Ask Fahh Local, type @ to reference files/problems, or /plan… (Alt+V for image)"
+            }
             rows={3}
-            disabled={busy}
+            disabled={status === "needs_input"}
             className="w-full resize-none bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent disabled:opacity-60"
           />
         </div>
         <div className="flex gap-2">
-          <button
-            onClick={send}
-            disabled={busy || !input.trim()}
-            className="flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-xs font-medium bg-fahh-accent/90 text-white hover:bg-fahh-accent disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            <Send size={12} /> Send
-          </button>
-          {busy && (
-            <button onClick={() => void store.stop()} title="Stop (Escape)" className="px-2 py-1 rounded text-xs text-fahh-muted hover:text-fahh-error">
-              <Square size={12} />
-            </button>
+          {status === "running" ? (
+            <>
+              <button
+                onClick={send}
+                disabled={!input.trim()}
+                title="Enqueue this prompt to execute automatically once current turn completes"
+                className="flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-xs font-medium bg-[#1d2638] text-fahh-accent hover:bg-[#25324b] border border-fahh-accent/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <ListPlus size={12} /> Queue
+              </button>
+              <button
+                onClick={handleSteer}
+                disabled={!input.trim()}
+                title="Steer agent immediately with this guidance (halts current turn and redirects)"
+                className="flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-xs font-medium bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 border border-amber-500/40 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                <Compass size={12} /> Steer
+              </button>
+              <button
+                onClick={() => void store.stop()}
+                title="Stop (Escape)"
+                className="px-2.5 py-1 rounded text-xs text-fahh-muted hover:text-fahh-error bg-fahh-surface/60 hover:bg-fahh-surface border border-fahh-surface transition-colors"
+              >
+                <Square size={12} />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={send}
+                disabled={busy || !input.trim()}
+                className="flex-1 flex items-center justify-center gap-1.5 py-1 rounded text-xs font-medium bg-fahh-accent/90 text-white hover:bg-fahh-accent disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Send size={12} /> Send
+              </button>
+              {queue.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = store.dequeue();
+                    if (next) void store.send(next);
+                  }}
+                  title="Run next queued prompt now"
+                  className="px-2.5 py-1 rounded text-xs bg-fahh-surface hover:bg-fahh-accent/20 text-fahh-accent font-medium border border-fahh-surface transition-colors"
+                >
+                  Run Next ({queue.length})
+                </button>
+              )}
+              {busy && (
+                <button onClick={() => void store.stop()} title="Stop (Escape)" className="px-2 py-1 rounded text-xs text-fahh-muted hover:text-fahh-error">
+                  <Square size={12} />
+                </button>
+              )}
+            </>
           )}
         </div>
         <div className="flex items-center justify-between text-[10px] text-fahh-muted">

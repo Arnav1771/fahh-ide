@@ -39,6 +39,7 @@ import { openBrowser } from "./lib/browser";
 import { launchAgyTerminal } from "./lib/tauri";
 import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
+import { saveWorkspaceAs, openWorkspaceFromFile } from "./lib/workspaceManager";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
 import { FolderTree, Search, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe, Cpu } from "lucide-react";
 import { MenuBar } from "./components/MenuBar";
@@ -256,6 +257,9 @@ export default function App() {
         setSidebarTab("files");
         window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
       } },
+      { id: "workspace.open", group: "File", label: "Open Workspace from File…", keywords: "workspace config file open fahh-workspace json", run: () => void openWorkspaceFromFile(openFolder, openFileInEditor) },
+      { id: "workspace.saveAs", group: "File", label: "Save Workspace As…", keywords: "save workspace config export fahh-workspace json", run: () => void saveWorkspaceAs() },
+      { id: "file.toggleAutoSave", group: "File", label: "Toggle Auto Save", keywords: "auto save toggle automatic background disk write", run: () => useEditorStore.getState().toggleAutoSave() },
       { id: "file.save", group: "File", label: "Save File", keys: ["Ctrl", "S"], keywords: "save write disk", run: () => void saveActive() },
       { id: "file.saveAll", group: "File", label: "Save All Files", keys: ["Ctrl", "K", "S"], keywords: "save all write dirty", run: () => void saveActive() },
       { id: "file.copyPath", group: "File", label: "Copy Active File Path", keywords: "copy full absolute path clipboard", run: () => {

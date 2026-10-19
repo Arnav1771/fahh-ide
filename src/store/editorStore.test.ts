@@ -101,4 +101,18 @@ describe("editorStore content and dirty tracking", () => {
     store().setContent("/a.ts", "two");
     expect(store().fileContents).not.toBe(before);
   });
+
+  it("toggles and sets autoSave correctly", () => {
+    store().setAutoSave(false);
+    expect(store().autoSave).toBe(false);
+
+    store().toggleAutoSave();
+    expect(store().autoSave).toBe(true);
+
+    store().toggleAutoSave();
+    expect(store().autoSave).toBe(false);
+
+    store().setAutoSave(true);
+    expect(store().autoSave).toBe(true);
+  });
 });

@@ -59,7 +59,7 @@ export function unsavedMessage(): string | null {
 }
 
 /** Save the file on screen, from wherever the keyboard focus is. */
-export async function saveActive(): Promise<boolean> {
+export async function saveActive(silent = false): Promise<boolean> {
   const { activeTab, fileContents, markDirty } = useEditorStore.getState();
   if (!activeTab || isPreviewOnly(activeTab)) return false;
   const name = nameOf(activeTab);
@@ -68,10 +68,14 @@ export async function saveActive(): Promise<boolean> {
     await writeFile(activeTab, fileContents[activeTab] ?? "");
     if (v !== null) setBaseline(activeTab, v);
     if (v === null || v === getActiveVersionId()) markDirty(activeTab, false);
-    useToastStore.getState().show(`Saved ${name}`);
+    if (!silent) {
+      useToastStore.getState().show(`Saved ${name}`);
+    }
     return true;
   } catch (err) {
-    useToastStore.getState().show(`Could not save ${name}: ${String(err)}`, "error");
+    if (!silent) {
+      useToastStore.getState().show(`Could not save ${name}: ${String(err)}`, "error");
+    }
     return false;
   }
 }
