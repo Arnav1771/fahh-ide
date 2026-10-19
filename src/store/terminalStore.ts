@@ -28,9 +28,16 @@ const createInitialSession = (): TerminalSession => ({
   history: [],
 });
 
+export type TerminalSplitLayout = "horizontal" | "vertical";
+
 interface TerminalStore {
   sessions: TerminalSession[];
   activeSessionId: string;
+
+  // Split pane support (side-by-side terminal panes like VS Code):
+  splitSessionIds: string[];
+  isSplitView: boolean;
+  splitLayout: TerminalSplitLayout;
 
   // Active session shortcuts:
   lines: TerminalLine[];
@@ -42,6 +49,12 @@ interface TerminalStore {
   closeSession: (id: string) => void;
   setActiveSession: (id: string) => void;
   renameSession: (id: string, title: string) => void;
+
+  // Split view management:
+  splitTerminal: (customShell?: string) => string;
+  toggleSplitView: () => void;
+  setSplitLayout: (layout: TerminalSplitLayout) => void;
+  closeSplitPane: (id: string) => void;
 
   // Output & state for active or specific session:
   remember: (cmd: string, sessionId?: string) => void;
@@ -55,6 +68,10 @@ const initialSession = createInitialSession();
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
   sessions: [initialSession],
   activeSessionId: initialSession.id,
+
+  splitSessionIds: [initialSession.id],
+  isSplitView: false,
+  splitLayout: "horizontal",
 
   lines: initialSession.lines,
   cwd: initialSession.cwd,
@@ -85,6 +102,59 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
     return newSession.id;
   },
 
+  splitTerminal: (customShell) => {
+    const state = get();
+    const newId = state.createSession(customShell);
+    set((prev) => {
+      const nextSplitIds = prev.splitSessionIds.includes(prev.activeSessionId)
+        ? [...prev.splitSessionIds, newId]
+        : [prev.activeSessionId, newId];
+      return {
+        splitSessionIds: nextSplitIds,
+        isSplitView: true,
+      };
+    });
+    return newId;
+  },
+
+  toggleSplitView: () => {
+    const state = get();
+    if (!state.isSplitView) {
+      if (state.sessions.length > 1) {
+        const other = state.sessions.find((s) => s.id !== state.activeSessionId);
+        set({
+          isSplitView: true,
+          splitSessionIds: [state.activeSessionId, other!.id],
+        });
+      } else {
+        state.splitTerminal();
+      }
+    } else {
+      set({ isSplitView: false });
+    }
+  },
+
+  setSplitLayout: (layout) => {
+    set({ splitLayout: layout });
+  },
+
+  closeSplitPane: (id) => {
+    const state = get();
+    const nextSplit = state.splitSessionIds.filter((sId) => sId !== id);
+    if (nextSplit.length <= 1) {
+      set({
+        splitSessionIds: nextSplit.length === 1 ? nextSplit : [state.sessions[0].id],
+        isSplitView: false,
+        activeSessionId: nextSplit[0] ?? state.sessions[0].id,
+      });
+    } else {
+      set({
+        splitSessionIds: nextSplit,
+        activeSessionId: state.activeSessionId === id ? nextSplit[0] : state.activeSessionId,
+      });
+    }
+  },
+
   closeSession: (id: string) => {
     const state = get();
     if (state.sessions.length <= 1) {
@@ -96,6 +166,8 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       set({
         sessions: [resetSession],
         lines: resetSession.lines,
+        isSplitView: false,
+        splitSessionIds: [resetSession.id],
       });
       return;
     }
@@ -106,12 +178,16 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
       ? nextSessions[nextSessions.length - 1]
       : state.sessions.find((s) => s.id === state.activeSessionId) ?? nextSessions[0];
 
+    const nextSplit = state.splitSessionIds.filter((sId) => sId !== id);
+
     set({
       sessions: nextSessions,
       activeSessionId: nextActive.id,
       lines: nextActive.lines,
       cwd: nextActive.cwd,
       history: nextActive.history,
+      splitSessionIds: nextSplit.length > 0 ? nextSplit : [nextActive.id],
+      isSplitView: nextSplit.length > 1 ? state.isSplitView : false,
     });
   },
 

@@ -1,40 +1,49 @@
 import { useEffect, useRef, useState } from "react";
-import { useTerminalStore } from "../../store/terminalStore";
+import { useTerminalStore, TerminalSession } from "../../store/terminalStore";
 import { useTerminal } from "../../hooks/useTerminal";
 import { useFileStore } from "../../store/fileStore";
 import { promptLabel } from "../../lib/shellCwd";
 import { stepHistory } from "../../lib/termHistory";
 import { focusEditor } from "../../lib/monacoBridge";
 import { homeDir } from "@tauri-apps/api/path";
-import { X, HelpCircle, Sparkles, Plus, Trash2, Terminal as TerminalIcon } from "lucide-react";
+import {
+  X,
+  HelpCircle,
+  Sparkles,
+  Plus,
+  Trash2,
+  Terminal as TerminalIcon,
+  Columns2,
+  Rows2,
+} from "lucide-react";
 import { useComposerStore } from "../../store/composerStore";
 
-export function TerminalPanel() {
-  const {
-    sessions,
-    activeSessionId,
-    lines,
-    cwd,
-    history,
-    remember,
-    clearLines,
-    createSession,
-    closeSession,
-    setActiveSession,
-  } = useTerminalStore();
-  /** Where Up/Down is in the history; history.length means the line being typed. */
-  const [histIdx, setHistIdx] = useState(0);
-  const draftRef = useRef("");
-  const [home, setHome] = useState<string | null>(null);
-  const [pastedImage, setPastedImage] = useState<{ name: string; size: number; preview: string } | null>(null);
-  const [showShortcuts, setShowShortcuts] = useState(false);
+interface SingleTerminalPaneProps {
+  session: TerminalSession;
+  isActive: boolean;
+  onFocus: () => void;
+  showPaneHeader?: boolean;
+  onClosePane?: () => void;
+  home: string | null;
+}
 
-  useEffect(() => {
-    homeDir().then(setHome).catch(() => setHome(null));
-  }, []);
+function SingleTerminalPane({
+  session,
+  isActive,
+  onFocus,
+  showPaneHeader = false,
+  onClosePane,
+  home,
+}: SingleTerminalPaneProps) {
+  const { remember, clearLines } = useTerminalStore();
   const { run } = useTerminal();
   const { tree } = useFileStore();
+
   const [input, setInput] = useState("");
+  const [histIdx, setHistIdx] = useState(session.history.length);
+  const draftRef = useRef("");
+  const [pastedImage, setPastedImage] = useState<{ name: string; size: number; preview: string } | null>(null);
+
   const terminalOutputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -42,52 +51,7 @@ export function TerminalPanel() {
     if (terminalOutputRef.current) {
       terminalOutputRef.current.scrollTop = terminalOutputRef.current.scrollHeight;
     }
-  }, [lines]);
-
-  // Alt+V image paste listener (Claude Code style)
-  useEffect(() => {
-    const handleGlobalAltV = async (e: KeyboardEvent) => {
-      if (e.altKey && e.key.toLowerCase() === "v") {
-        e.preventDefault();
-        try {
-          const clipItems = await navigator.clipboard.read();
-          for (const item of clipItems) {
-            const imgType = item.types.find((t) => t.startsWith("image/"));
-            if (imgType) {
-              const blob = await item.getType(imgType);
-              const reader = new FileReader();
-              reader.onload = () => {
-                const imgName = `pasted_${Date.now()}.png`;
-                setPastedImage({
-                  name: imgName,
-                  size: blob.size,
-                  preview: reader.result as string,
-                });
-                setInput((prev) => (prev ? `${prev} [Image: ${imgName}]` : `[Image: ${imgName}]`));
-                inputRef.current?.focus();
-              };
-              reader.readAsDataURL(blob);
-              break;
-            }
-          }
-        } catch {
-          // Plain clipboard text or permission denied
-        }
-      }
-    };
-    window.addEventListener("keydown", handleGlobalAltV);
-    const handleNewTermShortcut = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "`" || e.key === "~")) {
-        e.preventDefault();
-        createSession();
-      }
-    };
-    window.addEventListener("keydown", handleNewTermShortcut);
-    return () => {
-      window.removeEventListener("keydown", handleGlobalAltV);
-      window.removeEventListener("keydown", handleNewTermShortcut);
-    };
-  }, [createSession]);
+  }, [session.lines]);
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const items = e.clipboardData?.items;
@@ -120,30 +84,28 @@ export function TerminalPanel() {
     if (!cmd && !pastedImage) return;
     setInput("");
     setPastedImage(null);
-    remember(cmd);
-    setHistIdx(useTerminalStore.getState().history.length);
-    if (/^(clear|cls)$/i.test(cmd)) return clearLines();
+    remember(cmd, session.id);
+    setHistIdx(session.history.length + 1);
+    if (/^(clear|cls)$/i.test(cmd)) return clearLines(session.id);
     run(cmd);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") {
-      // Give the keyboard back to the editor.
       e.preventDefault();
       if (!focusEditor()) e.currentTarget.blur();
     } else if (e.key === "l" && e.ctrlKey) {
       e.preventDefault();
-      clearLines();
+      clearLines(session.id);
     } else if (e.key === "ArrowUp" || e.key === "ArrowDown") {
-      if (histIdx >= history.length) draftRef.current = input;
-      const step = stepHistory(history, histIdx, e.key === "ArrowUp" ? "up" : "down", draftRef.current);
+      if (histIdx >= session.history.length) draftRef.current = input;
+      const step = stepHistory(session.history, histIdx, e.key === "ArrowUp" ? "up" : "down", draftRef.current);
       if (step) {
         e.preventDefault();
         setHistIdx(step.idx);
         setInput(step.value);
       }
     } else if (e.key === "Tab" && !e.shiftKey) {
-      // Complete a file name when exactly one matches; otherwise Tab moves focus on as usual.
       const tokens = input.split(" ");
       const lastToken = tokens[tokens.length - 1];
       if (!tree?.children || !lastToken) return;
@@ -158,6 +120,167 @@ export function TerminalPanel() {
     }
   };
 
+  return (
+    <div
+      onClick={onFocus}
+      className={`flex flex-col h-full min-w-0 min-h-0 bg-fahh-bg transition-colors ${
+        isActive ? "ring-1 ring-inset ring-fahh-accent/40" : "opacity-90 hover:opacity-100"
+      }`}
+    >
+      {/* Mini Pane Header for Split Views */}
+      {showPaneHeader && (
+        <div className="flex items-center justify-between px-2.5 py-1 bg-fahh-sidebar/80 border-b border-fahh-surface text-[11px] select-none shrink-0">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <TerminalIcon size={11} className={isActive ? "text-fahh-accent" : "text-fahh-muted"} />
+            <span className={`truncate font-mono font-medium ${isActive ? "text-fahh-text" : "text-fahh-muted"}`}>
+              {session.title}
+            </span>
+          </div>
+          {onClosePane && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClosePane();
+              }}
+              className="text-fahh-muted hover:text-fahh-error p-0.5 rounded transition-colors"
+              title="Close this split pane"
+            >
+              <X size={11} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Terminal Output Stream */}
+      <div
+        ref={terminalOutputRef}
+        className="flex-1 overflow-y-auto px-3 py-2 text-fahh-text min-h-0 select-text"
+      >
+        {session.lines.map((line, i) => (
+          <div
+            key={i}
+            className={`group flex items-start justify-between gap-2 py-0.5 ${
+              line.type === "stderr"
+                ? "text-fahh-error"
+                : line.type === "info"
+                ? "text-fahh-info"
+                : "text-fahh-text"
+            }`}
+          >
+            <pre className="whitespace-pre-wrap break-words flex-1 font-mono text-xs">{line.text}</pre>
+            {line.type === "stderr" && (
+              <button
+                type="button"
+                onClick={() => {
+                  const composer = useComposerStore.getState();
+                  composer.openComposer();
+                  composer.attachContext({
+                    id: `term-err-${session.id}-${i}`,
+                    type: "terminal",
+                    label: `@terminal error (${session.title})`,
+                    content: line.text,
+                  });
+                  composer.setPrompt(`Fix terminal error:\n${line.text.slice(0, 150)}`);
+                }}
+                className="opacity-0 group-hover:opacity-100 transition-opacity px-2 py-0.5 rounded bg-fahh-accent/15 hover:bg-fahh-accent/25 text-fahh-accent text-[10px] font-sans flex items-center gap-1 shrink-0 mt-0.5 border border-fahh-accent/30"
+                title="Send error to Cursor Composer (Ctrl+I)"
+              >
+                <Sparkles size={10} /> Fix with AI
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Pasted Image Preview Chip */}
+      {pastedImage && (
+        <div className="mx-3 my-1 px-2.5 py-1 rounded bg-fahh-surface border border-fahh-accent/40 flex items-center justify-between gap-2 max-w-sm">
+          <div className="flex items-center gap-2 min-w-0">
+            <img src={pastedImage.preview} alt="" className="w-6 h-6 rounded object-cover border border-fahh-surface shrink-0" />
+            <div className="min-w-0">
+              <p className="text-xs text-fahh-text truncate font-sans">{pastedImage.name}</p>
+              <p className="text-[10px] text-fahh-muted">{(pastedImage.size / 1024).toFixed(1)} KB attached</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setPastedImage(null);
+              setInput((prev) => prev.replace(/\[Image:.*?\]/g, "").trim());
+            }}
+            className="p-1 rounded text-fahh-muted hover:text-fahh-error"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
+      {/* Prompt Form */}
+      <form
+        onSubmit={handleSubmit}
+        className="flex items-center px-3 py-2 border-t border-fahh-surface shrink-0"
+      >
+        <span className="fahh-prompt text-fahh-muted mr-1 max-w-[40%] truncate" title={session.cwd || "home"}>
+          {promptLabel(session.cwd, home)}
+        </span>
+        <span className="text-fahh-accent mr-2">$</span>
+        <input
+          ref={inputRef}
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          className="flex-1 bg-transparent outline-none text-fahh-text placeholder-fahh-muted text-sm font-mono min-w-0"
+          placeholder="Enter command... (Alt+V to paste image)"
+          autoComplete="off"
+          spellCheck={false}
+        />
+      </form>
+    </div>
+  );
+}
+
+export function TerminalPanel() {
+  const {
+    sessions,
+    activeSessionId,
+    splitSessionIds,
+    isSplitView,
+    splitLayout,
+    clearLines,
+    createSession,
+    closeSession,
+    setActiveSession,
+    splitTerminal,
+    setSplitLayout,
+    closeSplitPane,
+  } = useTerminalStore();
+
+  const [home, setHome] = useState<string | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
+  useEffect(() => {
+    homeDir().then(setHome).catch(() => setHome(null));
+  }, []);
+
+  // Global Keyboard Shortcuts (Ctrl+Shift+` for new, Ctrl+Shift+5 for split)
+  useEffect(() => {
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      const isCmdOrCtrl = e.ctrlKey || e.metaKey;
+      if (isCmdOrCtrl && e.shiftKey && (e.key === "`" || e.key === "~")) {
+        e.preventDefault();
+        createSession();
+      } else if (isCmdOrCtrl && e.shiftKey && (e.key === "5" || e.key === "%")) {
+        e.preventDefault();
+        splitTerminal();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalShortcuts);
+    return () => window.removeEventListener("keydown", handleGlobalShortcuts);
+  }, [createSession, splitTerminal]);
+
   const shortcuts = [
     { label: "agy (cli)", cmd: "agy" },
     { label: "python <file>", cmd: "python " },
@@ -167,14 +290,18 @@ export function TerminalPanel() {
     { label: "cls / clear", cmd: "clear" },
   ];
 
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? sessions[0];
+  const splitSessions = sessions.filter((s) => splitSessionIds.includes(s.id));
+
   return (
-    <div className="flex flex-col h-full bg-fahh-bg font-mono text-sm" data-testid="terminal-panel">
-      {/* ── Multi-Terminal VS Code Style Tabs Bar ── */}
+    <div className="flex flex-col h-full bg-fahh-bg font-mono text-sm overflow-hidden" data-testid="terminal-panel">
+      {/* ── Multi-Terminal VS Code Style Tabs & Controls Bar ── */}
       <div className="flex items-center justify-between px-2 bg-fahh-sidebar border-b border-fahh-surface shrink-0 h-8 select-none">
         {/* Left: Terminal Session Tabs */}
         <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 mr-2 h-full">
           {sessions.map((sess) => {
             const isActive = sess.id === activeSessionId;
+            const isInSplit = isSplitView && splitSessionIds.includes(sess.id);
             return (
               <div
                 key={sess.id}
@@ -182,6 +309,8 @@ export function TerminalPanel() {
                 className={`flex items-center gap-1.5 px-2.5 h-full text-xs cursor-pointer rounded-t border-t-2 transition-all ${
                   isActive
                     ? "bg-fahh-bg text-fahh-text border-fahh-accent font-medium shadow-sm"
+                    : isInSplit
+                    ? "bg-fahh-bg/60 text-fahh-text border-fahh-accent/40"
                     : "bg-fahh-sidebar/60 text-fahh-muted hover:text-fahh-text border-transparent hover:bg-fahh-surface"
                 }`}
                 title={sess.title}
@@ -234,12 +363,39 @@ export function TerminalPanel() {
           </select>
         </div>
 
-        {/* Right: Actions (Clear, Kill, Help) */}
-        <div className="flex items-center gap-2 shrink-0">
+        {/* Right: Split Terminal, Layout, Actions */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Split Terminal Button (VS Code style Ctrl+Shift+5) */}
+          <button
+            type="button"
+            onClick={() => splitTerminal()}
+            title="Split Terminal Side-by-Side (Ctrl+Shift+5)"
+            className={`p-1 rounded text-xs transition-colors flex items-center gap-1 ${
+              isSplitView
+                ? "bg-fahh-accent/20 text-fahh-accent hover:bg-fahh-accent/30"
+                : "text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface"
+            }`}
+          >
+            <Columns2 size={13} />
+            <span className="text-[10px] max-md:hidden">Split</span>
+          </button>
+
+          {/* Split Layout Switcher (when split is active) */}
+          {isSplitView && (
+            <button
+              type="button"
+              onClick={() => setSplitLayout(splitLayout === "horizontal" ? "vertical" : "horizontal")}
+              title={`Switch split layout (currently ${splitLayout})`}
+              className="p-1 rounded text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface transition-colors"
+            >
+              {splitLayout === "horizontal" ? <Rows2 size={13} /> : <Columns2 size={13} />}
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => setShowShortcuts((v) => !v)}
-            className="flex items-center gap-1 text-[11px] text-fahh-muted hover:text-fahh-accent transition-colors"
+            className="flex items-center gap-1 text-[11px] text-fahh-muted hover:text-fahh-accent transition-colors px-1"
             title="Toggle command shortcuts"
           >
             <HelpCircle size={11} />
@@ -248,8 +404,8 @@ export function TerminalPanel() {
 
           <button
             type="button"
-            onClick={() => clearLines()}
-            title="Clear the terminal (Ctrl+L)"
+            onClick={() => clearLines(activeSessionId)}
+            title="Clear the active terminal (Ctrl+L)"
             className="text-xs text-fahh-muted hover:text-fahh-text transition-colors px-1"
           >
             Clear
@@ -270,15 +426,14 @@ export function TerminalPanel() {
 
       {/* Quick Shortcuts Bar */}
       {showShortcuts && (
-        <div className="flex items-center gap-1.5 px-3 py-1 bg-fahh-surface/40 border-b border-fahh-surface overflow-x-auto no-scrollbar text-xs">
+        <div className="flex items-center gap-1.5 px-3 py-1 bg-fahh-surface/40 border-b border-fahh-surface overflow-x-auto no-scrollbar text-xs shrink-0">
           <span className="text-[10px] uppercase tracking-wider text-fahh-muted font-sans font-semibold">Quick:</span>
           {shortcuts.map((s) => (
             <button
               key={s.label}
               type="button"
               onClick={() => {
-                setInput(s.cmd);
-                inputRef.current?.focus();
+                useTerminalStore.getState().addLine(`$ ${s.cmd}`, "info");
               }}
               className="px-2 py-0.5 rounded bg-fahh-bg hover:bg-fahh-accent/20 hover:text-fahh-accent text-[11px] font-mono text-fahh-text border border-fahh-surface transition-colors shrink-0"
             >
@@ -288,93 +443,39 @@ export function TerminalPanel() {
         </div>
       )}
 
-      {/* Terminal Output */}
-      <div
-        id="terminal-output"
-        ref={terminalOutputRef}
-        className="flex-1 overflow-y-auto px-3 py-2 text-fahh-text"
-      >
-        {lines.map((line, i) => (
+      {/* Terminal Viewport: Single Pane OR Multi-Pane Split View */}
+      <div className="flex-1 min-h-0 w-full overflow-hidden">
+        {isSplitView && splitSessions.length > 1 ? (
           <div
-            key={i}
-            className={`group flex items-start justify-between gap-2 py-0.5 ${
-              line.type === "stderr"
-                ? "text-fahh-error"
-                : line.type === "info"
-                ? "text-fahh-info"
-                : "text-fahh-text"
-            }`}
+            className={`grid h-full w-full ${
+              splitLayout === "horizontal"
+                ? `grid-cols-${Math.min(splitSessions.length, 4)} divide-x`
+                : `grid-rows-${Math.min(splitSessions.length, 4)} divide-y`
+            } divide-fahh-surface overflow-hidden`}
           >
-            <pre className="whitespace-pre-wrap break-words flex-1 font-mono text-xs">{line.text}</pre>
-            {line.type === "stderr" && (
-              <button
-                type="button"
-                onClick={() => {
-                  const composer = useComposerStore.getState();
-                  composer.openComposer();
-                  composer.attachContext({
-                    id: `term-err-${i}`,
-                    type: "terminal",
-                    label: "@terminal error",
-                    content: line.text,
-                  });
-                  composer.setPrompt(`Fix terminal error:\n${line.text.slice(0, 150)}`);
-                }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity px-2 py-0.5 rounded bg-fahh-accent/15 hover:bg-fahh-accent/25 text-fahh-accent text-[10px] font-sans flex items-center gap-1 shrink-0 mt-0.5 border border-fahh-accent/30"
-                title="Send error to Cursor Composer (Ctrl+I)"
-              >
-                <Sparkles size={10} /> Fix with AI
-              </button>
-            )}
+            {splitSessions.map((sess) => (
+              <SingleTerminalPane
+                key={sess.id}
+                session={sess}
+                isActive={sess.id === activeSessionId}
+                onFocus={() => setActiveSession(sess.id)}
+                showPaneHeader={true}
+                onClosePane={() => closeSplitPane(sess.id)}
+                home={home}
+              />
+            ))}
           </div>
-        ))}
+        ) : (
+          <SingleTerminalPane
+            key={activeSession.id}
+            session={activeSession}
+            isActive={true}
+            onFocus={() => {}}
+            showPaneHeader={false}
+            home={home}
+          />
+        )}
       </div>
-
-      {/* Pasted Image Preview Chip */}
-      {pastedImage && (
-        <div className="mx-3 my-1 px-2.5 py-1 rounded bg-fahh-surface border border-fahh-accent/40 flex items-center justify-between gap-2 max-w-sm">
-          <div className="flex items-center gap-2 min-w-0">
-            <img src={pastedImage.preview} alt="" className="w-6 h-6 rounded object-cover border border-fahh-surface shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs text-fahh-text truncate font-sans">{pastedImage.name}</p>
-              <p className="text-[10px] text-fahh-muted">{(pastedImage.size / 1024).toFixed(1)} KB attached</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setPastedImage(null);
-              setInput((prev) => prev.replace(/\[Image:.*?\]/g, "").trim());
-            }}
-            className="p-1 rounded text-fahh-muted hover:text-fahh-error"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      )}
-
-      {/* Input Form */}
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-center px-3 py-2 border-t border-fahh-surface shrink-0"
-      >
-        <span className="fahh-prompt text-fahh-muted mr-1 max-w-[40%] truncate" title={cwd || "home"}>
-          {promptLabel(cwd, home)}
-        </span>
-        <span className="text-fahh-accent mr-2">$</span>
-        <input
-          ref={inputRef}
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
-          className="flex-1 bg-transparent outline-none text-fahh-text placeholder-fahh-muted text-sm font-mono"
-          placeholder="Enter command... (Alt+V to paste image)"
-          autoComplete="off"
-          spellCheck={false}
-        />
-      </form>
     </div>
   );
 }
