@@ -584,7 +584,7 @@ export function MenuBar({
         },
         {
           label: "About Fahh Editor",
-          action: () => alert("Fahh Editor v0.6.1\nThe Next-Generation Spatial AI Editor.\nBuilt with Tauri 2, Rust & Monaco."),
+          action: () => alert("Fahh Editor v0.6.2\nThe Next-Generation Spatial AI Editor.\nBuilt with Tauri 2, Rust & Monaco."),
         },
       ],
     },
@@ -605,7 +605,7 @@ export function MenuBar({
           className="flex items-center gap-1.5 mr-2 pr-2.5 border-r border-fahh-surface select-none cursor-default"
         >
           <span className="font-bold text-fahh-accent tracking-wider text-[11px] font-mono">FAHH</span>
-          <span className="text-[9.5px] text-fahh-muted/70 font-mono">v0.6.1</span>
+          <span className="text-[9.5px] text-fahh-muted/70 font-mono">v0.6.2</span>
         </div>
 
         {/* Menus */}
@@ -728,8 +728,16 @@ export function MenuBar({
           <span className="max-lg:hidden">{isSpatial ? "Spatial Canvas" : "Canvas"}</span>
         </button>
 
-        {/* Layout Buttons */}
+        {/* Layout & Window Actions */}
         <div className="flex items-center gap-0.5 mr-2">
+          <button
+            type="button"
+            onClick={() => void openNewWindow()}
+            title="New Window (Ctrl+Shift+N)"
+            className="p-1 rounded text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface transition-colors"
+          >
+            <PlusSquare size={13} />
+          </button>
           <button
             type="button"
             onClick={onToggleSidebar}

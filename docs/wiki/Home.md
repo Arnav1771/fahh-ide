@@ -12,6 +12,7 @@
 | **[VS Code Multi-Terminal](VS-Code-Multi-Terminal)** | Multi-session terminal tabs, side-by-side split panes (`Ctrl+\`), shell selector |
 | **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)** | Material Icon Theme, Seti UI, Catppuccin Pastel, dynamic folder icons & auto-activation |
 | **[Native Titlebar & Menus](Native-Titlebar-and-Menus)** | Seamless borderless titlebar, client-side window controls, VS Code menu bar |
+| **[Multi-Window Architecture](Multi-Window-Architecture)** | $N$-window concurrency, isolated state stores, smart instance de-duplication (`Ctrl+Shift+N`) |
 | **[PDF & Binary Viewer](PDF-and-Binary-Viewer)** | Native WebView2 PDF reader with zoom & text selection, media previews |
 | **[REA AI Agent](REA-AI-Agent)** | Autonomous sidecar agent, Cursor Composer integration, audio SFX feedback |
 

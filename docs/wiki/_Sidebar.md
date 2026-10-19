@@ -4,6 +4,7 @@
 - **[CATE Spatial Canvas](CATE-Spatial-Canvas)**
 - **[VS Code Multi-Terminal](VS-Code-Multi-Terminal)**
 - **[Native Titlebar & Menus](Native-Titlebar-and-Menus)**
+- **[Multi-Window Architecture](Multi-Window-Architecture)**
 - **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)**
 - **[PDF & Binary Viewer](PDF-and-Binary-Viewer)**
 - **[REA AI Agent](REA-AI-Agent)**
