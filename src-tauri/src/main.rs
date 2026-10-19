@@ -7,7 +7,20 @@ fn main() {
     // console-subsystem title; the GUI window title is set by Tauri via
     // tauri.conf.json → app.windows[].title.
     #[cfg(target_os = "windows")]
-    set_process_title();
+    {
+        set_process_title();
+
+        // Optimize WebView2 memory usage:
+        // - Limit V8 old space size to 256MB per process to trigger timely garbage collection.
+        // - Restrict renderer process limit and disable cross-origin site-per-process isolation for local canvas iframes.
+        // - Cap disk and media caches to prevent uncontrolled memory and disk growth.
+        if std::env::var_os("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS").is_none() {
+            std::env::set_var(
+                "WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS",
+                "--js-flags=\"--max-old-space-size=256\" --renderer-process-limit=3 --disk-cache-size=33554432 --media-cache-size=33554432 --disable-features=IsolateOrigins,site-per-process",
+            );
+        }
+    }
 
     fahh_editor_lib::run();
 }
