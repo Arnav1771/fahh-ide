@@ -8,8 +8,10 @@ import type {
   GitStatus,
   OpenRequest,
   Plugin,
+  ReplaceResult,
   RunConfig,
   RunResult,
+  SearchResult,
   ToolStatus,
 } from "./types";
 
@@ -32,6 +34,118 @@ export const deleteFile = (path: string) =>
 
 export const renameFile = (from: string, to: string) =>
   invoke<void>("rename_file", { from, to });
+
+export interface SearchWorkspaceOptions {
+  caseSensitive?: boolean;
+  wholeWord?: boolean;
+  isRegex?: boolean;
+  includeGlob?: string;
+  excludeGlob?: string;
+  maxResults?: number;
+}
+
+export const searchWorkspace = async (
+  root: string,
+  query: string,
+  options: SearchWorkspaceOptions = {}
+): Promise<SearchResult> => {
+  try {
+    return await invoke<SearchResult>("search_workspace", {
+      root,
+      query,
+      caseSensitive: options.caseSensitive ?? false,
+      wholeWord: options.wholeWord ?? false,
+      isRegex: options.isRegex ?? false,
+      includeGlob: options.includeGlob ?? null,
+      excludeGlob: options.excludeGlob ?? null,
+      maxResults: options.maxResults ?? 1000,
+    });
+  } catch {
+    // Browser preview fallback: search currently loaded fileContents in memory
+    const { useEditorStore } = await import("../store/editorStore");
+    const contents = useEditorStore.getState().fileContents;
+    const matches: SearchResult["matches"] = [];
+    const isCase = !!options.caseSensitive;
+    const isWord = !!options.wholeWord;
+    const isReg = !!options.isRegex;
+
+    let regex: RegExp;
+    try {
+      let pat = isReg ? query : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      if (isWord) pat = `\\b${pat}\\b`;
+      regex = new RegExp(pat, isCase ? "g" : "gi");
+    } catch {
+      return { query, total_matches: 0, files_searched: 0, matches: [] };
+    }
+
+    let filesSearched = 0;
+    for (const [file, text] of Object.entries(contents)) {
+      filesSearched++;
+      const lines = text.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        let m: RegExpExecArray | null;
+        regex.lastIndex = 0;
+        while ((m = regex.exec(line)) !== null) {
+          matches.push({
+            file,
+            line_number: i + 1,
+            line_text: line,
+            match_start: m.index,
+            match_end: m.index + m[0].length,
+          });
+          if (!regex.global) break;
+        }
+      }
+    }
+    return {
+      query,
+      total_matches: matches.length,
+      files_searched: filesSearched,
+      matches,
+    };
+  }
+};
+
+export const replaceInWorkspace = async (
+  root: string,
+  query: string,
+  replacement: string,
+  options: SearchWorkspaceOptions & { files?: string[] } = {}
+): Promise<ReplaceResult> => {
+  try {
+    return await invoke<ReplaceResult>("replace_in_workspace", {
+      root,
+      query,
+      replacement,
+      caseSensitive: options.caseSensitive ?? false,
+      wholeWord: options.wholeWord ?? false,
+      isRegex: options.isRegex ?? false,
+      includeGlob: options.includeGlob ?? null,
+      excludeGlob: options.excludeGlob ?? null,
+      files: options.files ?? null,
+    });
+  } catch {
+    // In-memory fallback
+    const { useEditorStore } = await import("../store/editorStore");
+    const { fileContents, setContent } = useEditorStore.getState();
+    let pat = options.isRegex ? query : query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    if (options.wholeWord) pat = `\\b${pat}\\b`;
+    const regex = new RegExp(pat, options.caseSensitive ? "g" : "gi");
+    let filesModified = 0;
+    let totalReplacements = 0;
+    for (const [path, content] of Object.entries(fileContents)) {
+      if (options.files && !options.files.includes(path)) continue;
+      const count = (content.match(regex) || []).length;
+      if (count > 0) {
+        setContent(path, content.replace(regex, replacement));
+        filesModified++;
+        totalReplacements += count;
+      }
+    }
+    return { files_modified: filesModified, total_replacements: totalReplacements };
+  }
+};
 
 // ─── Document / editor ────────────────────────────────────────────────────────
 

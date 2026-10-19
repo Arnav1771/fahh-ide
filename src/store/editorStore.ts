@@ -2,10 +2,18 @@ import { create } from "zustand";
 import type { Document } from "../lib/types";
 import { remapPath } from "../lib/tabs";
 
+export interface CursorPos {
+  line: number;
+  column: number;
+  totalLines?: number;
+}
+
 interface EditorStore {
   openTabs: Document[];
   activeTab: string | null;
   fileContents: Record<string, string>;
+  cursorPosition: CursorPos;
+  setCursorPosition: (line: number, column: number, totalLines?: number) => void;
   openFile: (doc: Document, content: string) => void;
   closeFile: (path: string) => void;
   closeTab: (path: string) => void;
@@ -20,6 +28,10 @@ export const useEditorStore = create<EditorStore>((set) => ({
   openTabs: [],
   activeTab: null,
   fileContents: {},
+  cursorPosition: { line: 1, column: 1, totalLines: 1 },
+
+  setCursorPosition: (line, column, totalLines) =>
+    set({ cursorPosition: { line, column, totalLines } }),
 
   openFile: (doc, content) =>
     set((state) => {

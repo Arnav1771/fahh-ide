@@ -266,3 +266,26 @@ export interface OpenRequest {
   line: number | null;
   kind: "dir" | "file" | "missing";
 }
+
+// ─── Workspace Search & Replace ──────────────────────────────────────────────
+
+export interface SearchMatch {
+  file: string;
+  line_number: number;
+  line_text: string;
+  match_start: number;
+  match_end: number;
+}
+
+export interface SearchResult {
+  query: string;
+  total_matches: number;
+  files_searched: number;
+  matches: SearchMatch[];
+}
+
+export interface ReplaceResult {
+  files_modified: number;
+  total_replacements: number;
+}
+

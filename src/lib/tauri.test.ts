@@ -164,3 +164,72 @@ describe("git wrappers", () => {
     await expect(tauri.gitStatus("/tmp")).rejects.toBe("not a git repository");
   });
 });
+
+describe("search_workspace and replace_in_workspace", () => {
+  it("forwards search options to search_workspace", async () => {
+    invoke.mockResolvedValue({
+      query: "hello",
+      total_matches: 1,
+      files_searched: 1,
+      matches: [
+        {
+          file: "/repo/src/a.ts",
+          line_number: 10,
+          line_text: "console.log('hello');",
+          match_start: 13,
+          match_end: 18,
+        },
+      ],
+    });
+
+    const res = await tauri.searchWorkspace("/repo", "hello", {
+      caseSensitive: true,
+      wholeWord: true,
+      isRegex: false,
+      includeGlob: "*.ts",
+      excludeGlob: "*.test.ts",
+      maxResults: 50,
+    });
+
+    expect(invoke).toHaveBeenCalledWith("search_workspace", {
+      root: "/repo",
+      query: "hello",
+      caseSensitive: true,
+      wholeWord: true,
+      isRegex: false,
+      includeGlob: "*.ts",
+      excludeGlob: "*.test.ts",
+      maxResults: 50,
+    });
+    expect(res.total_matches).toBe(1);
+    expect(res.matches[0].line_number).toBe(10);
+  });
+
+  it("forwards replace options to replace_in_workspace", async () => {
+    invoke.mockResolvedValue({
+      files_modified: 2,
+      total_replacements: 5,
+    });
+
+    const res = await tauri.replaceInWorkspace("/repo", "oldText", "newText", {
+      caseSensitive: false,
+      wholeWord: true,
+      files: ["/repo/src/a.ts", "/repo/src/b.ts"],
+    });
+
+    expect(invoke).toHaveBeenCalledWith("replace_in_workspace", {
+      root: "/repo",
+      query: "oldText",
+      replacement: "newText",
+      caseSensitive: false,
+      wholeWord: true,
+      isRegex: false,
+      includeGlob: null,
+      excludeGlob: null,
+      files: ["/repo/src/a.ts", "/repo/src/b.ts"],
+    });
+    expect(res.files_modified).toBe(2);
+    expect(res.total_replacements).toBe(5);
+  });
+});
+

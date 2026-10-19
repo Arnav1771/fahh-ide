@@ -13,6 +13,7 @@
 | **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)** | Material Icon Theme, Seti UI, Catppuccin Pastel, dynamic folder icons & auto-activation |
 | **[Native Titlebar & Menus](Native-Titlebar-and-Menus)** | Seamless borderless titlebar, client-side window controls, VS Code menu bar |
 | **[Multi-Window Architecture](Multi-Window-Architecture)** | $N$-window concurrency, isolated state stores, smart instance de-duplication (`Ctrl+Shift+N`) |
+| **[Workspace Search & Replace](Workspace-Search-and-Replace)** | Global text and regex search, multi-file replace, glob filters (`Ctrl+Shift+F`) |
 | **[PDF & Binary Viewer](PDF-and-Binary-Viewer)** | Native WebView2 PDF reader with zoom & text selection, media previews |
 | **[REA AI Agent](REA-AI-Agent)** | Autonomous sidecar agent, Cursor Composer integration, audio SFX feedback |
 
