@@ -2,15 +2,26 @@ import { useEffect, useRef, useState } from "react";
 import { useTerminalStore } from "../../store/terminalStore";
 import { useTerminal } from "../../hooks/useTerminal";
 import { useFileStore } from "../../store/fileStore";
-import { detectShell, promptLabel, shellName } from "../../lib/shellCwd";
+import { promptLabel } from "../../lib/shellCwd";
 import { stepHistory } from "../../lib/termHistory";
 import { focusEditor } from "../../lib/monacoBridge";
 import { homeDir } from "@tauri-apps/api/path";
-import { X, HelpCircle, Sparkles } from "lucide-react";
+import { X, HelpCircle, Sparkles, Plus, Trash2, Terminal as TerminalIcon } from "lucide-react";
 import { useComposerStore } from "../../store/composerStore";
 
 export function TerminalPanel() {
-  const { lines, cwd, history, remember, clearLines } = useTerminalStore();
+  const {
+    sessions,
+    activeSessionId,
+    lines,
+    cwd,
+    history,
+    remember,
+    clearLines,
+    createSession,
+    closeSession,
+    setActiveSession,
+  } = useTerminalStore();
   /** Where Up/Down is in the history; history.length means the line being typed. */
   const [histIdx, setHistIdx] = useState(0);
   const draftRef = useRef("");
@@ -65,8 +76,18 @@ export function TerminalPanel() {
       }
     };
     window.addEventListener("keydown", handleGlobalAltV);
-    return () => window.removeEventListener("keydown", handleGlobalAltV);
-  }, []);
+    const handleNewTermShortcut = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "`" || e.key === "~")) {
+        e.preventDefault();
+        createSession();
+      }
+    };
+    window.addEventListener("keydown", handleNewTermShortcut);
+    return () => {
+      window.removeEventListener("keydown", handleGlobalAltV);
+      window.removeEventListener("keydown", handleNewTermShortcut);
+    };
+  }, [createSession]);
 
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     const items = e.clipboardData?.items;
@@ -148,12 +169,73 @@ export function TerminalPanel() {
 
   return (
     <div className="flex flex-col h-full bg-fahh-bg font-mono text-sm" data-testid="terminal-panel">
-      {/* Terminal Header */}
-      <div className="flex items-center justify-between px-3 py-1 bg-fahh-sidebar border-b border-fahh-surface shrink-0">
-        <div className="flex items-center gap-2">
-          <span className="fahh-label text-xs text-fahh-muted uppercase tracking-wider" title="The shell commands run in">
-            {shellName(detectShell())}
-          </span>
+      {/* ── Multi-Terminal VS Code Style Tabs Bar ── */}
+      <div className="flex items-center justify-between px-2 bg-fahh-sidebar border-b border-fahh-surface shrink-0 h-8 select-none">
+        {/* Left: Terminal Session Tabs */}
+        <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 mr-2 h-full">
+          {sessions.map((sess) => {
+            const isActive = sess.id === activeSessionId;
+            return (
+              <div
+                key={sess.id}
+                onClick={() => setActiveSession(sess.id)}
+                className={`flex items-center gap-1.5 px-2.5 h-full text-xs cursor-pointer rounded-t border-t-2 transition-all ${
+                  isActive
+                    ? "bg-fahh-bg text-fahh-text border-fahh-accent font-medium shadow-sm"
+                    : "bg-fahh-sidebar/60 text-fahh-muted hover:text-fahh-text border-transparent hover:bg-fahh-surface"
+                }`}
+                title={sess.title}
+              >
+                <TerminalIcon size={12} className={isActive ? "text-fahh-accent" : "text-fahh-muted"} />
+                <span className="truncate max-w-[110px] font-mono text-[11px]">{sess.title}</span>
+                {sessions.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeSession(sess.id);
+                    }}
+                    className="opacity-40 hover:opacity-100 hover:text-fahh-error p-0.5 rounded transition-opacity ml-1"
+                    title="Kill Terminal"
+                  >
+                    <X size={10} />
+                  </button>
+                )}
+              </div>
+            );
+          })}
+
+          {/* New Terminal Plus Button */}
+          <button
+            type="button"
+            onClick={() => createSession()}
+            title="New Terminal (Ctrl+Shift+`)"
+            className="flex items-center gap-1 px-2 py-1 text-xs text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface rounded transition-colors ml-1"
+          >
+            <Plus size={13} />
+          </button>
+
+          {/* Dropdown for specific shells */}
+          <select
+            onChange={(e) => {
+              if (e.target.value) {
+                createSession(e.target.value, `${sessions.length + 1}: ${e.target.value}`);
+                e.target.value = "";
+              }
+            }}
+            value=""
+            className="bg-transparent text-fahh-muted hover:text-fahh-text border border-white/10 rounded px-1.5 py-0.5 text-[11px] outline-none cursor-pointer"
+            title="Launch specific shell"
+          >
+            <option value="" disabled className="bg-fahh-sidebar text-fahh-muted">+ Shell</option>
+            <option value="powershell" className="bg-fahh-sidebar text-fahh-text">PowerShell</option>
+            <option value="cmd" className="bg-fahh-sidebar text-fahh-text">Command Prompt</option>
+            <option value="bash" className="bg-fahh-sidebar text-fahh-text">Bash / WSL</option>
+          </select>
+        </div>
+
+        {/* Right: Actions (Clear, Kill, Help) */}
+        <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={() => setShowShortcuts((v) => !v)}
@@ -161,22 +243,28 @@ export function TerminalPanel() {
             title="Toggle command shortcuts"
           >
             <HelpCircle size={11} />
-            <span>? shortcuts</span>
+            <span className="max-sm:hidden">? shortcuts</span>
           </button>
-        </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[10px] text-fahh-muted/70 max-sm:hidden">
-            Alt+V to paste image
-          </span>
           <button
             type="button"
-            onClick={clearLines}
+            onClick={() => clearLines()}
             title="Clear the terminal (Ctrl+L)"
-            className="text-xs text-fahh-muted hover:text-fahh-text transition-colors"
+            className="text-xs text-fahh-muted hover:text-fahh-text transition-colors px-1"
           >
             Clear
           </button>
+
+          {sessions.length > 1 && (
+            <button
+              type="button"
+              onClick={() => closeSession(activeSessionId)}
+              title="Kill active terminal"
+              className="text-fahh-muted hover:text-fahh-error transition-colors p-1 rounded"
+            >
+              <Trash2 size={12} />
+            </button>
+          )}
         </div>
       </div>
 
