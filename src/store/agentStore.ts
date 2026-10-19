@@ -53,6 +53,14 @@ interface AgentStore extends AgentState {
   settings: AgentSettings;
   /** What the editor's error count was when the turn started. */
   baseline: number;
+  /** Queued prompts to execute consecutively once the current turn completes. */
+  queue: string[];
+  enqueue: (prompt: string) => void;
+  dequeue: () => string | undefined;
+  removeQueueItem: (index: number) => void;
+  clearQueue: () => void;
+  /** Steering: interrupt the current running turn and steer the agent in a new direction */
+  steer: (instruction: string) => Promise<void>;
   dispatch: (a: AgentAction) => void;
   updateSettings: (patch: Partial<AgentSettings>) => void;
   setMode: (m: AgentMode) => void;
@@ -93,7 +101,40 @@ function notify(text: string): void {
 export const useAgentStore = create<AgentStore>((set, get) => ({
   ...initialAgentState,
   settings: load(),
+  queue: [],
   baseline: 0,
+
+  enqueue: (prompt: string) => {
+    const text = prompt.trim();
+    if (!text) return;
+    set((s) => ({ queue: [...s.queue, text] }));
+  },
+
+  dequeue: () => {
+    const { queue } = get();
+    if (queue.length === 0) return undefined;
+    const [first, ...rest] = queue;
+    set({ queue: rest });
+    return first;
+  },
+
+  removeQueueItem: (index: number) => {
+    set((s) => ({ queue: s.queue.filter((_, i) => i !== index) }));
+  },
+
+  clearQueue: () => set({ queue: [] }),
+
+  steer: async (instruction: string) => {
+    const text = instruction.trim();
+    if (!text) return;
+    // Stop running turn
+    await get().stop();
+    // Dispatch steering instruction with steering format
+    const steerPrompt = `[STEERING REDIRECT]: ${text}\n(Stop prior direction and follow this guidance immediately.)`;
+    setTimeout(() => {
+      void get().send(steerPrompt);
+    }, 150);
+  },
 
   dispatch: (a) => set((s) => agentReducer(s, a)),
 
@@ -218,7 +259,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
   newChat: () => {
     void get().stop();
-    set({ ...initialAgentState });
+    set({ ...initialAgentState, queue: [] });
   },
 }));
 
@@ -252,6 +293,16 @@ function onEnvelope({ session, event }: AgentEnvelope): void {
     notify(`Needs your OK: ${event.summary}`);
   } else if (event.type === "done") {
     notify("Finished");
+    // Auto-dispatch next queued prompt if available
+    const nextPrompt = store.dequeue();
+    if (nextPrompt) {
+      setTimeout(() => {
+        const currentStore = useAgentStore.getState();
+        if (currentStore.status !== "running") {
+          void currentStore.send(nextPrompt);
+        }
+      }, 250);
+    }
   } else if (event.type === "error" && event.message !== "stopped") {
     notify(event.message);
   }

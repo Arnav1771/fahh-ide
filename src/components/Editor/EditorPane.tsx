@@ -17,6 +17,7 @@ import { isPreviewOnly, previewKindFor } from "../../lib/preview";
 import { usePreviewStore } from "../../store/previewStore";
 import { runCommand } from "../../lib/commands";
 import { ensureBaseline, isDirtyAt } from "../../lib/saveBaseline";
+import { saveActive } from "../../lib/tabActions";
 
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
@@ -67,6 +68,28 @@ export function EditorPane({
   const storedMode = usePreviewStore((s) => (activeTab ? s.modes[activeTab] : undefined));
   const setPreviewMode = usePreviewStore((s) => s.setMode);
   const mode = previewOnly ? "only" : kind ? storedMode ?? "off" : "off";
+  const autoSave = useEditorStore((s) => s.autoSave);
+
+  // Debounced auto-save when user types and autoSave is active
+  useEffect(() => {
+    if (!autoSave || !activeTab || !activeDoc?.dirty) return;
+    const timer = window.setTimeout(() => {
+      void saveActive(true);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [autoSave, activeTab, content, activeDoc?.dirty]);
+
+  // Auto-save on window blur
+  useEffect(() => {
+    if (!autoSave) return;
+    const handleBlur = () => {
+      if (useEditorStore.getState().openTabs.some((t) => t.dirty)) {
+        void saveActive(true);
+      }
+    };
+    window.addEventListener("blur", handleBlur);
+    return () => window.removeEventListener("blur", handleBlur);
+  }, [autoSave]);
 
   // Listen for theme changes dispatched by ThemePanel so Monaco's internal
   // theme is updated even in the native Tauri build (CSS variables alone do

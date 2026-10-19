@@ -13,6 +13,9 @@ interface EditorStore {
   activeTab: string | null;
   fileContents: Record<string, string>;
   cursorPosition: CursorPos;
+  autoSave: boolean;
+  toggleAutoSave: () => void;
+  setAutoSave: (enabled: boolean) => void;
   setCursorPosition: (line: number, column: number, totalLines?: number) => void;
   openFile: (doc: Document, content: string) => void;
   closeFile: (path: string) => void;
@@ -24,11 +27,41 @@ interface EditorStore {
   renamePath: (from: string, to: string) => void;
 }
 
+function loadAutoSave(): boolean {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem("fahh-autosave") === "true";
+  } catch {
+    return false;
+  }
+}
+
+function persistAutoSave(val: boolean): void {
+  try {
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem("fahh-autosave", String(val));
+    }
+  } catch {}
+}
+
 export const useEditorStore = create<EditorStore>((set) => ({
   openTabs: [],
   activeTab: null,
   fileContents: {},
   cursorPosition: { line: 1, column: 1, totalLines: 1 },
+  autoSave: loadAutoSave(),
+
+  toggleAutoSave: () =>
+    set((state) => {
+      const next = !state.autoSave;
+      persistAutoSave(next);
+      return { autoSave: next };
+    }),
+
+  setAutoSave: (enabled) =>
+    set(() => {
+      persistAutoSave(enabled);
+      return { autoSave: enabled };
+    }),
 
   setCursorPosition: (line, column, totalLines) =>
     set({ cursorPosition: { line, column, totalLines } }),
