@@ -27,6 +27,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.6.3] — 2026-10-20
+
+### Fixed
+
+- Python and Rust errors are no longer silent without a language server: syntax errors underline, show in Error Lens and play the fahh (Rust via `syn`, Python via your installed interpreter, compiled but never run). The check steps aside once pylsp or rust-analyzer is ready.
+- A run that exits with an error now plays the fahh; stopping a run does not.
+- Ctrl+L inside the editor selects the line again; Ctrl+Shift+A still toggles Fahh Local everywhere.
+- CI on main is green again (clippy).
+- Release notes come from `release-notes/<tag>.md` (or are generated from merged PRs) instead of repeating the v0.5.0 text.
+
+### Changed
+
+- The version shown in the app (status bar, menu bar, canvas, About) comes from `package.json`, so it can no longer drift.
+
+---
+
 ## [0.5.0] — 2026-10-08
 
 ### Also in this release (added 8 Oct)

@@ -597,7 +597,7 @@ export function MenuBar({
         },
         {
           label: "About Fahh Editor",
-          action: () => alert("Fahh Editor v0.6.2\nThe Next-Generation Spatial AI Editor.\nBuilt with Tauri 2, Rust & Monaco."),
+          action: () => alert(`Fahh Editor v${__APP_VERSION__}\nThe Next-Generation Spatial AI Editor.\nBuilt with Tauri 2, Rust & Monaco.`),
         },
       ],
     },
@@ -618,7 +618,7 @@ export function MenuBar({
           className="flex items-center gap-1.5 mr-2 pr-2.5 border-r border-fahh-surface select-none cursor-default"
         >
           <span className="font-bold text-fahh-accent tracking-wider text-[11px] font-mono">FAHH</span>
-          <span className="text-[9.5px] text-fahh-muted/70 font-mono">v0.6.2</span>
+          <span className="text-[9.5px] text-fahh-muted/70 font-mono">v{__APP_VERSION__}</span>
         </div>
 
         {/* Menus */}

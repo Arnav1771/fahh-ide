@@ -25,7 +25,7 @@ export function serializeWorkspace(): FahhWorkspaceConfig {
   const folderName = root ? root.split(/[\\/]/).filter(Boolean).pop() ?? "Workspace" : "Untitled Workspace";
 
   return {
-    fahh: "0.6.2",
+    fahh: __APP_VERSION__,
     name: folderName,
     root,
     folders: root ? [{ path: root, name: folderName }] : [],
