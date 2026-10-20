@@ -127,6 +127,8 @@ pub struct ReplaceResult {
     pub total_replacements: usize,
 }
 
+// Tauri commands take flat named arguments from the frontend, so the list cannot shrink without changing the IPC contract.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub fn search_workspace(
     root: String,
@@ -278,6 +280,8 @@ pub fn search_workspace(
     })
 }
 
+// Tauri commands take flat named arguments from the frontend, so the list cannot shrink without changing the IPC contract.
+#[allow(clippy::too_many_arguments)]
 #[tauri::command]
 pub fn replace_in_workspace(
     root: String,

@@ -373,8 +373,11 @@ export default function App() {
         e.stopPropagation();
         setPaletteOpen(false);
         setQuickOpen((v) => !v);
-      } else if ((mod && !e.shiftKey && e.key.toLowerCase() === "l") || (mod && e.shiftKey && e.key.toLowerCase() === "a")) {
-        // Ctrl+L or Ctrl+Shift+A: Toggle Fahh Local agent panel
+      } else if (
+        (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "l" && !(e.target as Element | null)?.closest?.(".monaco-editor")) ||
+        (mod && e.shiftKey && e.key.toLowerCase() === "a")
+      ) {
+        // Ctrl+L (outside the editor, where it keeps Monaco select-line) or Ctrl+Shift+A: Toggle Fahh Local agent panel
         e.preventDefault();
         e.stopPropagation();
         setSidebarTab((current) => (current === "ai" ? "files" : "ai"));

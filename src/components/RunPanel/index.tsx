@@ -4,6 +4,7 @@ import { createRunRouter, type RunRouter } from "../../lib/runEvents";
 import { Play, Square } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { useRunnerStore } from "../../store/runnerStore";
+import { useFahhStore } from "../../store/fahhStore";
 import { runFile, stopRun as stopRunCmd, writeFile } from "../../lib/tauri";
 import type { RunOutputEvent } from "../../lib/types";
 import { noteLocalUrls } from "../../lib/browser";
@@ -117,7 +118,11 @@ export function RunPanel() {
   if (!routerRef.current) {
     routerRef.current = createRunRouter({
       onOutput: (line, stream) => useRunnerStore.getState().addOutput(line, stream),
-      onExit: (code, ms) => useRunnerStore.getState().finishRun(code, ms),
+      onExit: (code, ms) => {
+        useRunnerStore.getState().finishRun(code, ms);
+        // A crashed run is an error too. A null code is a stopped run, which is not.
+        if (code !== null && code !== 0) useFahhStore.getState().external();
+      },
     });
   }
 
