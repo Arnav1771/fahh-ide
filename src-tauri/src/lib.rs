@@ -6,7 +6,7 @@ mod core;
 mod app;
 pub mod agent;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git, preview};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git, preview, syntax};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -46,6 +46,8 @@ pub fn run() {
             terminal::launch_agy_terminal,
             // Fahh SFX trigger (core feature)
             error_detector::trigger_error_sound,
+            // Syntax errors for Python and Rust without a language server
+            syntax::syntax_check,
             // Optional tool installer
             installer::get_tool_status,
             installer::install_tool,

@@ -6,6 +6,7 @@ import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { TitleScreen } from "../Fahh/TitleScreen";
 import { defineMonacoThemes } from "../ThemePanel";
 import { registerGhostTextProvider } from "../../lib/inlineCompletions";
+import { attachSyntaxCheck } from "../../lib/syntaxCheck";
 import {
   attachMonaco,
   detachMonaco,
@@ -310,6 +311,9 @@ export function EditorPane({
     // Register Copilot/Cursor Ghost Text inline completions
     const ghostDisposable = registerGhostTextProvider(monaco);
     disposablesRef.current.push(ghostDisposable);
+
+    // Python and Rust have no built-in Monaco linter: check their syntax so errors underline and fahh.
+    disposablesRef.current.push(attachSyntaxCheck(monaco, editor));
 
     // Track cursor position for the status bar
     const updateCursor = () => {
