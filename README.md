@@ -2,7 +2,7 @@
 
 > A spatial AI code editor with loud opinions. Built with Tauri 2, Rust, Monaco, and React.
 
-**[Download v0.6.2](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.2)** · **[Website](https://fahhide.duckdns.org)** · **[Wiki Docs](https://github.com/Arnav1771/fahh-ide/wiki)** · **[Playground](https://fahhide.duckdns.org/play.html)**
+**[Download v0.6.3](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.3)** · **[Website](https://fahhide.duckdns.org)** · **[Wiki Docs](https://github.com/Arnav1771/fahh-ide/wiki)** · **[Playground](https://fahhide.duckdns.org/play.html)**
 
 ---
 
@@ -14,23 +14,23 @@ Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, **VS C
 
 ---
 
-## Download v0.6.2
+## Download v0.6.3
 
 | Platform | Installer | Size |
 |----------|-----------|------|
-| Windows 10/11 (x64) | [Fahh.Editor_0.6.2_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_x64-setup.exe) | ~6.1MB |
-| Windows (MSI) | [Fahh.Editor_0.6.2_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_x64_en-US.msi) | ~7.8MB |
-| macOS (Apple Silicon) | [Fahh.Editor_0.6.2_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_aarch64.dmg) | ~7.5MB |
-| macOS (Intel) | [Fahh.Editor_0.6.2_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_x64.dmg) | ~7.6MB |
-| Linux (AppImage) | [Fahh.Editor_0.6.2_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_amd64.AppImage) | ~83MB |
-| Linux (Debian/Ubuntu) | [Fahh.Editor_0.6.2_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor_0.6.2_amd64.deb) | ~7.9MB |
-| Linux (Fedora/RHEL) | [Fahh.Editor-0.6.2-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.2/Fahh.Editor-0.6.2-1.x86_64.rpm) | ~7.9MB |
+| Windows 10/11 (x64) | [Fahh.Editor_0.6.3_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.3/Fahh.Editor_0.6.3_x64-setup.exe) | ~6.1MB |
+| Windows (MSI) | [Fahh.Editor_0.6.3_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.3/Fahh.Editor_0.6.3_x64_en-US.msi) | ~7.8MB |
+| macOS (Apple Silicon) | [Fahh.Editor_0.6.3_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.3/Fahh.Editor_0.6.3_aarch64.dmg) | ~7.5MB |
+| macOS (Intel) | [Fahh.Editor_0.6.3_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.3/Fahh.Editor_0.6.3_x64.dmg) | ~7.6MB |
+| Linux (AppImage) | [Fahh.Editor_0.6.3_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.3/Fahh.Editor_0.6.3_amd64.AppImage) | ~83MB |
+| Linux (Debian/Ubuntu) | [Fahh.Editor_0.6.3_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.3/Fahh.Editor_0.6.3_amd64.deb) | ~7.9MB |
+| Linux (Fedora/RHEL) | [Fahh.Editor-0.6.3-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.3/Fahh.Editor-0.6.3-1.x86_64.rpm) | ~7.9MB |
 
 > **Native Performance**: Built on Tauri 2 with native OS web engines (WebView2 on Windows, WebKitGTK on Linux, WebKit on macOS). Not Electron — 10× lighter memory footprint and instant startup.
 
 ---
 
-## What's in Fahh Editor v0.6.2
+## What's in Fahh Editor v0.6.3
 
 | Capability | Hotkey / Status | What It Does |
 |------------|-----------------|--------------|
@@ -51,7 +51,7 @@ Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, **VS C
 | **AI Conventional Commits** | Git Sidebar | One-click synthesis of structured Conventional Commits (`feat`, `fix`, `test`, `docs`) from staged diffs. |
 | **REA Code Analysis** | Activity Bar CPU | AST Symbol recovery, GNU `strings` binary string extractor with byte offsets, and 16-byte hex dump inspector. |
 | **Open VSX Marketplace** | Extensions tab | Browse, search, and install from 50,000+ community extensions with detail drawer, direct `.vsix` download links, and native feature callouts. |
-| **The Fahh SFX Engine** | Built-in | Audible feedback on compile/LSP errors with a strict 3000ms cooldown window. |
+| **The Fahh SFX Engine** | Built-in | Audible feedback on compile/LSP errors, Python and Rust syntax errors (no language server needed), and crashed runs, with a strict 3000ms cooldown window. |
 | **Desktop Shell** | Native | Native desktop MenuBar, file symbol breadcrumbs, unbuffered Python runner, multi-tab bottom dock. |
 
 ---

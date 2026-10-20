@@ -166,7 +166,7 @@ export function SpatialCanvas() {
             <span className="w-2 h-2 rounded-full bg-[#4a9eff] animate-pulse" />
             <span>CATE · Canvas Spatial Mode</span>
           </div>
-          <span className="text-[10px] text-white/40 font-mono">v0.6.2</span>
+          <span className="text-[10px] text-white/40 font-mono">v{__APP_VERSION__}</span>
         </div>
 
         <button
