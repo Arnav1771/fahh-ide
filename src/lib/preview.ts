@@ -9,7 +9,7 @@
  * No React, Monaco or Tauri imports, so everything here is unit-tested in Node.
  */
 
-export type PreviewKind = "markdown" | "html" | "image" | "svg" | "csv" | "browser" | "pdf";
+export type PreviewKind = "markdown" | "html" | "image" | "svg" | "csv" | "browser" | "pdf" | "notebook";
 
 /** A tab whose "path" is a web address opens in the built-in browser. */
 export function isUrl(path: string): boolean {
@@ -28,7 +28,7 @@ export function normalizeUrl(input: string): string {
   return `http://${s}`;
 }
 
-const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
+export const ANSI = /\x1b\[[0-9;?]*[A-Za-z]/g;
 const LOCAL_URL = /https?:\/\/(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\])(?::\d{2,5})?(?:\/[^\s"'<>)\]]*)?/gi;
 
 /**
@@ -62,6 +62,7 @@ const BY_EXT: Record<string, PreviewKind> = {
   csv: "csv",
   tsv: "csv",
   pdf: "pdf",
+  ipynb: "notebook",
 };
 
 export function extOf(path: string): string {

@@ -15,7 +15,7 @@ import {
 } from "../../lib/monacoBridge";
 import { PreviewPane } from "../Preview/PreviewPane";
 import { isPreviewOnly, previewKindFor } from "../../lib/preview";
-import { usePreviewStore } from "../../store/previewStore";
+import { modeOf, usePreviewStore } from "../../store/previewStore";
 import { runCommand } from "../../lib/commands";
 import { ensureBaseline, isDirtyAt } from "../../lib/saveBaseline";
 import { saveActive } from "../../lib/tabActions";
@@ -66,9 +66,9 @@ export function EditorPane({
   // Which preview this file can have, and how it is shown (VS Code's editor resolver, in small).
   const kind = activeTab ? previewKindFor(activeTab) : null;
   const previewOnly = activeTab ? isPreviewOnly(activeTab) : false;
-  const storedMode = usePreviewStore((s) => (activeTab ? s.modes[activeTab] : undefined));
+  const storedMode = usePreviewStore((s) => (activeTab ? modeOf(s.modes, activeTab) : "off"));
   const setPreviewMode = usePreviewStore((s) => s.setMode);
-  const mode = previewOnly ? "only" : kind ? storedMode ?? "off" : "off";
+  const mode = previewOnly ? "only" : kind ? storedMode : "off";
   const autoSave = useEditorStore((s) => s.autoSave);
 
   // Debounced auto-save when user types and autoSave is active
