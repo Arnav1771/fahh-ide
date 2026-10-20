@@ -275,7 +275,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> R
 }
 
 /// Resolves the real Python executable, avoiding dummy WindowsApps stubs on Windows.
-fn resolve_python() -> String {
+pub(crate) fn resolve_python() -> String {
     #[cfg(target_os = "windows")]
     {
         if let Ok(p) = which::which("python") {
@@ -303,7 +303,7 @@ fn resolve_python() -> String {
 }
 
 /// Returns true if a given program name exists on PATH.
-fn which_exists(name: &str) -> bool {
+pub(crate) fn which_exists(name: &str) -> bool {
     which::which(name).is_ok()
 }
 
