@@ -1,6 +1,6 @@
 import { Columns2, Eye, Globe } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
-import { usePreviewStore } from "../../store/previewStore";
+import { modeOf, usePreviewStore } from "../../store/previewStore";
 import { isPreviewOnly, previewKindFor } from "../../lib/preview";
 import { runCommand } from "../../lib/commands";
 import { requestClose } from "../../lib/tabActions";
@@ -8,7 +8,7 @@ import { openBrowser } from "../../lib/browser";
 
 export function TabBar() {
   const { openTabs, activeTab, setActiveTab } = useEditorStore();
-  const mode = usePreviewStore((s) => (activeTab ? s.modes[activeTab] : undefined));
+  const mode = usePreviewStore((s) => (activeTab ? modeOf(s.modes, activeTab) : undefined));
   const localUrl = usePreviewStore((s) => s.localUrl);
 
   if (openTabs.length === 0) return null;

@@ -1,13 +1,19 @@
 import { create } from "zustand";
+import { previewKindFor } from "../lib/preview";
 
 /**
  * How each file is shown, VS Code style:
  *   off   the text editor only (the default for Markdown, HTML, SVG, CSV)
  *   side  text editor with the preview to its right   (Ctrl+K V)
  *   only  the preview in place of the text editor      (Ctrl+Shift+V)
- * Raster images are always "only": they are not text.
+ * Raster images are always "only": they are not text. Notebooks start as "only"
+ * (the rendered view); the toggle shows their JSON source.
  */
 export type PreviewMode = "off" | "side" | "only";
+
+export function modeOf(modes: Record<string, PreviewMode>, path: string): PreviewMode {
+  return modes[path] ?? (previewKindFor(path) === "notebook" ? "only" : "off");
+}
 
 interface PreviewStore {
   modes: Record<string, PreviewMode>;
@@ -35,9 +41,9 @@ export const usePreviewStore = create<PreviewStore>((set) => ({
   setLocalUrl: (url) => set((s) => (s.localUrl === url ? s : { localUrl: url })),
   setMode: (path, mode) => set((s) => ({ modes: { ...s.modes, [path]: mode } })),
   toggleSide: (path) =>
-    set((s) => ({ modes: { ...s.modes, [path]: s.modes[path] === "side" ? "off" : "side" } })),
+    set((s) => ({ modes: { ...s.modes, [path]: modeOf(s.modes, path) === "side" ? "off" : "side" } })),
   toggleInPlace: (path) =>
-    set((s) => ({ modes: { ...s.modes, [path]: s.modes[path] === "only" ? "off" : "only" } })),
+    set((s) => ({ modes: { ...s.modes, [path]: modeOf(s.modes, path) === "only" ? "off" : "only" } })),
   allowScripts: (path, allowed) => set((s) => ({ scripts: { ...s.scripts, [path]: allowed } })),
   setTopLine: (line) => set((s) => (s.topLine === line ? s : { topLine: line })),
 }));
