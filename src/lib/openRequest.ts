@@ -14,7 +14,11 @@ export interface OpenDeps {
   /** Is this file the one the editor is showing yet? */
   isActive: (path: string) => boolean;
   delay?: (ms: number) => Promise<void>;
+  /** Load a .code-workspace / .fahh-workspace file instead of showing its JSON. */
+  openWorkspace?: (path: string) => Promise<unknown>;
 }
+
+export const isWorkspaceFile = (path: string): boolean => /\.(code|fahh)-workspace$/i.test(path);
 
 /** The folder a file lives in. */
 export const parentDir = (path: string): string => {
@@ -29,6 +33,7 @@ export async function handleOpenRequest(req: OpenRequest, d: OpenDeps): Promise<
   try {
     if (req.kind === "missing") return d.notify(`fahh: ${req.path} does not exist`, "error");
     if (req.kind === "dir") return await d.openFolder(req.path);
+    if (d.openWorkspace && isWorkspaceFile(req.path)) return void (await d.openWorkspace(req.path));
     // A file: make its folder the workspace if none is open, so the explorer is not empty.
     if (!d.hasFolder()) await d.openFolder(parentDir(req.path));
     await d.openFile(req.path);

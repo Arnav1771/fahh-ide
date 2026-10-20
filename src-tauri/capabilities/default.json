@@ -3,7 +3,7 @@
   "identifier": "default",
   "description": "Default capabilities for Fahh Editor",
   "platforms": ["linux", "macOS", "windows"],
-  "windows": ["main"],
+  "windows": ["main", "fahh-win-*"],
   "permissions": [
     "core:default",
     "core:event:default",

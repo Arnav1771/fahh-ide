@@ -2,12 +2,20 @@ import { useCallback, useEffect } from "react";
 import { executeCommand, launchAgyTerminal } from "../lib/tauri";
 import { useTerminalStore } from "../store/terminalStore";
 import { listen } from "@tauri-apps/api/event";
-import { detectShell, splitCwdLine, wrapForCwd } from "../lib/shellCwd";
+import { detectShell, effectiveShell, isUncPath, splitCwdLine, wrapForCwd } from "../lib/shellCwd";
+import { linuxToWindows } from "../lib/wslPath";
 import { resolvePath } from "../lib/preview";
 import { noteLocalUrls } from "../lib/browser";
 import { useWorkspace } from "./useWorkspace";
 
-const SHELL = detectShell();
+const PLATFORM = detectShell();
+
+/** The active tab's shell, as the backend should run it ("auto" picks per folder). */
+const activeShell = (cwd: string) => {
+  const { sessions, activeSessionId } = useTerminalStore.getState();
+  const s = sessions.find((x) => x.id === activeSessionId);
+  return effectiveShell(s?.shell ?? "auto", cwd, PLATFORM);
+};
 
 export function useTerminal() {
   const { addLine, cwd } = useTerminalStore();
@@ -24,7 +32,12 @@ export function useTerminal() {
         noteLocalUrls(`${stdout ?? ""}\n${stderr ?? ""}`); // offer "localhost:5173" in the status bar
         if (stdout) {
           // The folder the command ended in (so `cd` sticks), then the visible text.
-          const { text, cwd: nextCwd } = splitCwdLine(stdout);
+          const { text, cwd: reported } = splitCwdLine(stdout);
+          // A WSL shell on Windows reports a Linux folder: keep the Windows spelling.
+          const nextCwd =
+            reported && PLATFORM === "cmd" && reported.startsWith("/")
+              ? linuxToWindows(reported, useTerminalStore.getState().cwd)
+              : reported;
           if (nextCwd) useTerminalStore.getState().setCwd(nextCwd);
           if (text) addLine(text);
         }
@@ -76,8 +89,16 @@ export function useTerminal() {
         }
         return;
       }
+      const shell = activeShell(cwd);
+      // cmd in a UNC folder runs behind a temporary pushd drive, so it cannot report
+      // where a `cd` went: follow plain `cd <dir>` here instead.
+      const cd = /^\s*cd(?:\s+\/d)?\s+(.+?)\s*$/i.exec(command);
+      if (shell === "cmd" && cd && isUncPath(cwd)) {
+        useTerminalStore.getState().setCwd(resolvePath(cwd, cd[1].replace(/^["']|["']$/g, "")));
+        return;
+      }
       try {
-        const result = await executeCommand(wrapForCwd(command, SHELL), [], cwd);
+        const result = await executeCommand(wrapForCwd(command, shell, cwd), [], cwd, shell === "posix" ? undefined : shell);
         // We no longer print result.stdout/stderr here since it's streamed
         if (result.exit_code !== null && result.exit_code !== 0) {
           addLine(`[exit ${result.exit_code}]`, "stderr");
