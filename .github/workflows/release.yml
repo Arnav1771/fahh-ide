@@ -45,29 +45,13 @@ jobs:
               if (e.status !== 404) throw e;
             }
 
-            // No existing release — create one
-            const body = [
-              '## Fahh Editor ' + tag,
-              '',
-              'A Tauri 2 desktop IDE with Monaco editor, LSP support, step-through debugger, one-click code execution, 5 built-in themes — and the fahhhh.mp3.',
-              '',
-              '### Downloads',
-              '| Platform | File |',
-              '|----------|------|',
-              '| Windows 10/11 (x64) | `.msi` installer |',
-              '| macOS Apple Silicon | `.dmg` |',
-              '| macOS Intel | `.dmg` |',
-              '| Linux x64 | `.AppImage` · `.deb` |',
-              '',
-              '### What\'s new',
-              '- Full LSP (rust-analyzer, tsserver, pylsp, gopls, clangd auto-detected)',
-              '- DAP debugger: Python (debugpy), Node.js/TypeScript (--inspect), Go (Delve)',
-              '- Run panel: one-click execution for 18+ languages with streaming output',
-              '- 5 built-in themes, formatter integration, plugin registry',
-              '- Fahh SFX: plays on every error, 3-second cooldown, always',
-              '',
-              'See the [full docs](https://arnav1771.github.io/fahh-ide/docs.html).',
-            ].join('\n');
+            // No existing release — create one. Notes come from release-notes/<tag>.md
+            // when it exists; otherwise GitHub generates them from the merged PRs.
+            const fs = require('fs');
+            const notesFile = `release-notes/${tag}.md`;
+            const hasNotes = fs.existsSync(notesFile);
+            const body = hasNotes ? fs.readFileSync(notesFile, 'utf8') : '';
+            console.log(hasNotes ? `Using ${notesFile}` : `No ${notesFile}; generating notes from PRs`);
 
             const release = await github.rest.repos.createRelease({
               owner: context.repo.owner,
@@ -77,6 +61,7 @@ jobs:
               draft:      false,
               prerelease: false,
               body,
+              generate_release_notes: !hasNotes,
             });
             core.setOutput('release_id', release.data.id);
             console.log('Created release id', release.data.id);
