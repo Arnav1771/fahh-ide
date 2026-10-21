@@ -19,9 +19,7 @@ import {
   PanelBottom,
   PanelLeft,
   Bot,
-  Wand2,
   PlusSquare,
-  Cpu,
   Minus,
   Square,
   Check,
@@ -44,9 +42,9 @@ import { useFahhStore } from "../../store/fahhStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { useSpatialStore } from "../../store/spatialStore";
-import { useComposerStore } from "../../store/composerStore";
 import { saveWorkspaceAs, openWorkspaceFromFile } from "../../lib/workspaceManager";
 import { useWorkspace } from "../../hooks/useWorkspace";
+import { requestClose } from "../../lib/tabActions";
 import type { SidebarTab, BottomTab } from "../../App";
 
 export interface MenuItem {
@@ -87,7 +85,7 @@ export function MenuBar({
   const [openMenu, setOpenMenu] = useState<string | null>(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const menuBarRef = useRef<HTMLDivElement>(null);
-  const { activeTab, closeTab, openTabs, openFile, autoSave, toggleAutoSave } = useEditorStore();
+  const { activeTab, openTabs, openFile, autoSave, toggleAutoSave } = useEditorStore();
   const { openFolder, openFileInEditor } = useWorkspace();
   const root = useFileStore((s) => s.root);
   const isSpatial = useSpatialStore((s) => s.isSpatialMode);
@@ -209,14 +207,14 @@ export function MenuBar({
           keys: ["Ctrl", "W"],
           icon: <X size={13} />,
           action: () => {
-            if (activeTab) closeTab(activeTab);
+            if (activeTab) requestClose(activeTab);
           },
         },
         {
           label: "Close All Tabs",
           keys: ["Ctrl", "K", "Ctrl", "W"],
           action: () => {
-            [...openTabs].forEach((t) => closeTab(t.path));
+            [...openTabs].forEach((t) => requestClose(t.path));
           },
         },
         { separator: true, label: "", action: () => {} },
@@ -318,21 +316,6 @@ export function MenuBar({
           label: "Transform to Lowercase",
           action: () => runEditorAction("editor.action.transformToLowercase"),
         },
-        { separator: true, label: "", action: () => {} },
-        {
-          label: "Composer (Cursor Multi-File Agent)",
-          keys: ["Ctrl", "I"],
-          icon: <Sparkles size={13} className="text-[#4a9eff]" />,
-          action: () => useComposerStore.getState().toggleComposer(),
-        },
-        {
-          label: "Inline Edit (Cursor Ctrl+K)",
-          keys: ["Ctrl", "K"],
-          icon: <Wand2 size={13} className="text-[#4a9eff]" />,
-          action: () => {
-            window.dispatchEvent(new CustomEvent("fahh-command", { detail: "edit.inline" }));
-          },
-        },
       ],
     },
     {
@@ -418,12 +401,6 @@ export function MenuBar({
           action: () => useSpatialStore.getState().toggleSpatialMode(),
         },
         {
-          label: "REA Code Analysis (AST & Hex Dump)",
-          keys: ["Ctrl", "Shift", "R"],
-          icon: <Cpu size={13} className="text-[#a78bfa]" />,
-          action: () => onSetSidebarTab("rea"),
-        },
-        {
           label: "Extensions Store (Marketplace)",
           keys: ["Ctrl", "Shift", "X"],
           icon: <Blocks size={13} className="text-[#c084fc]" />,
@@ -438,7 +415,6 @@ export function MenuBar({
         { separator: true, label: "", action: () => {} },
         {
           label: "Toggle Primary Sidebar",
-          keys: ["Ctrl", "B"],
           icon: <PanelLeft size={13} />,
           action: onToggleSidebar,
         },
@@ -754,7 +730,7 @@ export function MenuBar({
           <button
             type="button"
             onClick={onToggleSidebar}
-            title="Toggle Primary Sidebar (Ctrl+B)"
+            title="Toggle Primary Sidebar"
             className="p-1 rounded text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface transition-colors"
           >
             <PanelLeft size={13} />

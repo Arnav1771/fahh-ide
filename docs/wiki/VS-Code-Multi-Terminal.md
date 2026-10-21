@@ -28,9 +28,7 @@ Fahh Editor delivers a terminal experience comparable to Visual Studio Code, com
   - **Bash / WSL** (Windows Subsystem for Linux or Unix shell)
 
 ### 4. Interactive Utilities
-- **Alt+V Image Pasting**: Paste images directly from the clipboard to attach them to terminal sessions (Claude Code style).
 - **Tab Completion**: Auto-completes files and directory paths in the current workspace.
-- **AI Error Diagnostic**: Terminal `stderr` lines show a `Fix with AI` button that routes directly into the REA / Cursor Composer panel.
 
 ---
 
@@ -42,4 +40,3 @@ Fahh Editor delivers a terminal experience comparable to Visual Studio Code, com
 | **Split Terminal** | `Ctrl+Shift+5` |
 | **Clear Terminal** | `Ctrl+L` or type `clear` / `cls` |
 | **Focus Editor** | `Escape` |
-| **Paste Image** | `Alt+V` |

@@ -5,7 +5,6 @@ import { useFahhStore } from "../../store/fahhStore";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
 import { TitleScreen } from "../Fahh/TitleScreen";
 import { defineMonacoThemes } from "../ThemePanel";
-import { registerGhostTextProvider } from "../../lib/inlineCompletions";
 import { attachSyntaxCheck } from "../../lib/syntaxCheck";
 import {
   attachMonaco,
@@ -308,10 +307,6 @@ export function EditorPane({
       })
     );
 
-    // Register Copilot/Cursor Ghost Text inline completions
-    const ghostDisposable = registerGhostTextProvider(monaco);
-    disposablesRef.current.push(ghostDisposable);
-
     // Python and Rust have no built-in Monaco linter: check their syntax so errors underline and fahh.
     disposablesRef.current.push(attachSyntaxCheck(monaco, editor));
 
@@ -371,10 +366,6 @@ export function EditorPane({
             renderLineHighlight: "all",
             padding: { top: 8 },
             readOnly: previewOnly,
-            inlineSuggest: {
-              enabled: true,
-              mode: "prefix",
-            },
             suggest: {
               preview: true,
             },

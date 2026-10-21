@@ -8,7 +8,7 @@
 - **[Workspace Search & Replace](Workspace-Search-and-Replace)**
 - **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)**
 - **[PDF & Binary Viewer](PDF-and-Binary-Viewer)**
-- **[REA AI Agent](REA-AI-Agent)**
+- **[Fahh Local Agent](Fahh-Local-Agent)**
 
 ---
 

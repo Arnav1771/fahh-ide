@@ -1,5 +1,5 @@
 /**
- * Fahh Local: the in-editor coding agent. Replaces the old AI Composer panel.
+ * Fahh Local: the in-editor coding agent.
  *
  * Chat stream, a card per tool call, approval prompts (commands are editable
  * before they run), per-file diff review with revert, Ask / Auto-edit / Plan
@@ -8,7 +8,7 @@
  * backend only for the request; nothing is written into the project.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Plus, Send, Settings2, Square, X, Layers, ListPlus, Compass, Trash2 } from "lucide-react";
+import { Bot, Plus, Send, Settings2, Square, X, ListPlus, Compass, Trash2 } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
 import { parseSlashCommand, pendingReview } from "../../lib/agentState";
@@ -18,7 +18,6 @@ import { useWorkspace } from "../../hooks/useWorkspace";
 import { useAgentStore } from "../../store/agentStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
-import { useComposerStore, type AttachedContext } from "../../store/composerStore";
 import { MentionMenu } from "../MentionMenu";
 import { ApprovalCard, PlanCard, ReviewCard, ToolCard } from "./cards";
 import { ChatMessageContent } from "./ChatMessageContent";
@@ -218,11 +217,11 @@ export function AgentPanel() {
     setShowMention(false);
   };
 
-  const handleSelectMention = (ctx: AttachedContext) => {
+  const handleSelectMention = (label: string) => {
     setShowMention(false);
     const lastAt = input.lastIndexOf("@");
     const prefix = lastAt !== -1 ? input.slice(0, lastAt) : input;
-    setInput(`${prefix}${ctx.label} `);
+    setInput(`${prefix}${label} `);
     inputRef.current?.focus();
   };
 
@@ -328,13 +327,6 @@ export function AgentPanel() {
           )}
         </select>
         <button onClick={store.newChat} title="New chat" className="text-fahh-muted hover:text-fahh-text"><Plus size={14} /></button>
-        <button
-          onClick={() => useComposerStore.getState().toggleComposer()}
-          title="Open Cursor Composer (Ctrl+I)"
-          className="text-fahh-muted hover:text-[#4a9eff] transition-colors"
-        >
-          <Layers size={13} />
-        </button>
         <button onClick={() => setShowSettings((s) => !s)} title="Provider and model" className={showSettings ? "text-fahh-accent" : "text-fahh-muted hover:text-fahh-text"}>
           <Settings2 size={13} />
         </button>

@@ -7,7 +7,7 @@ describe("agent settings", () => {
     expect(parseAgentSettings("{not json")).toEqual(DEFAULT_AGENT_SETTINGS);
   });
 
-  it("carries over the old AI Composer config as a custom provider", () => {
+  it("carries over the legacy AI settings as a custom provider", () => {
     const s = parseAgentSettings(null, JSON.stringify({ baseUrl: "http://localhost:11434/v1", model: "llama3.2", apiKey: "" }));
     expect(s).toMatchObject({ provider: "custom", baseUrl: "http://localhost:11434/v1", model: "llama3.2", mode: "ask" });
   });

@@ -31,7 +31,7 @@ import { useFahhStore } from "./fahhStore";
 import { useFileStore } from "./fileStore";
 
 const KEY = "fahh-agent-settings";
-const LEGACY_KEY = "fahh-ai-settings"; // the old AI Composer
+const LEGACY_KEY = "fahh-ai-settings"; // the pre-Fahh Local AI settings
 
 function load(): AgentSettings {
   try {

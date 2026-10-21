@@ -9,6 +9,23 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Removed (simulated features)
+
+These looked like features but had nothing behind them, so they are gone rather than kept as demos:
+
+- **Composer (Ctrl+I)**: a timer that wrote canned keyword templates into files. Removed with its store, menu item, palette command and the agent-panel button.
+- **Inline Edit (Ctrl+K)**: same canned output. Ctrl+K is no longer captured, so Monaco's Ctrl+K chords work again.
+- **Ghost text**: a fixed list of snippets offered as "predictions".
+- **REA Code Analysis**: the activity-bar panel, View menu entry, palette command and canvas node. Saved canvas layouts drop the old REA node on load.
+- **Ports and Output panels**: hard-coded sample ports and seeded log lines.
+- **Terminal "Fix with AI"**: it opened the fake Composer. The agent panel has no way to take a prefilled prompt, so the button is gone; paste the error into Fahh Local instead.
+- **Terminal image paste (Alt+V)**: it typed `[Image: name]` into the command line.
+
+### Fixed
+
+- Close Tab, Close All Tabs and the palette's Close Active Tab now ask before discarding unsaved changes, like the tab's own close button. The store's unguarded `closeTab` is removed, so every close goes through `requestClose`.
+- Ctrl+W closes the active tab (guarded) and Ctrl+N opens a new untitled file; both were shown in menus but did nothing. The Ctrl+B label is removed (there is no sidebar-hide state).
+
 ### Fixed (v0.5.1, "stop losing work")
 
 - No console window flashes on Windows: every child process is started through `core::proc::cmd`, and CI rejects a bare `Command::new(`.

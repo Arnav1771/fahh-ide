@@ -9,14 +9,12 @@ import { homeDir } from "@tauri-apps/api/path";
 import {
   X,
   HelpCircle,
-  Sparkles,
   Plus,
   Trash2,
   Terminal as TerminalIcon,
   Columns2,
   Rows2,
 } from "lucide-react";
-import { useComposerStore } from "../../store/composerStore";
 
 interface SingleTerminalPaneProps {
   session: TerminalSession;
@@ -42,7 +40,6 @@ function SingleTerminalPane({
   const [input, setInput] = useState("");
   const [histIdx, setHistIdx] = useState(session.history.length);
   const draftRef = useRef("");
-  const [pastedImage, setPastedImage] = useState<{ name: string; size: number; preview: string } | null>(null);
 
   const terminalOutputRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -53,37 +50,11 @@ function SingleTerminalPane({
     }
   }, [session.lines]);
 
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
-    const items = e.clipboardData?.items;
-    if (!items) return;
-    for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith("image/")) {
-        e.preventDefault();
-        const file = items[i].getAsFile();
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            const imgName = file.name || `image_${Date.now()}.png`;
-            setPastedImage({
-              name: imgName,
-              size: file.size,
-              preview: reader.result as string,
-            });
-            setInput((prev) => (prev ? `${prev} [Image: ${imgName}]` : `[Image: ${imgName}]`));
-          };
-          reader.readAsDataURL(file);
-        }
-        break;
-      }
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const cmd = input.trim();
-    if (!cmd && !pastedImage) return;
+    if (!cmd) return;
     setInput("");
-    setPastedImage(null);
     remember(cmd, session.id);
     setHistIdx(session.history.length + 1);
     if (/^(clear|cls)$/i.test(cmd)) return clearLines(session.id);
@@ -169,52 +140,9 @@ function SingleTerminalPane({
             }`}
           >
             <pre className="whitespace-pre-wrap break-words flex-1 font-mono text-xs">{line.text}</pre>
-            {line.type === "stderr" && (
-              <button
-                type="button"
-                onClick={() => {
-                  const composer = useComposerStore.getState();
-                  composer.openComposer();
-                  composer.attachContext({
-                    id: `term-err-${session.id}-${i}`,
-                    type: "terminal",
-                    label: `@terminal error (${session.title})`,
-                    content: line.text,
-                  });
-                  composer.setPrompt(`Fix terminal error:\n${line.text.slice(0, 150)}`);
-                }}
-                className="opacity-0 group-hover:opacity-100 transition-opacity px-2 py-0.5 rounded bg-fahh-accent/15 hover:bg-fahh-accent/25 text-fahh-accent text-[10px] font-sans flex items-center gap-1 shrink-0 mt-0.5 border border-fahh-accent/30"
-                title="Send error to Cursor Composer (Ctrl+I)"
-              >
-                <Sparkles size={10} /> Fix with AI
-              </button>
-            )}
           </div>
         ))}
       </div>
-
-      {/* Pasted Image Preview Chip */}
-      {pastedImage && (
-        <div className="mx-3 my-1 px-2.5 py-1 rounded bg-fahh-surface border border-fahh-accent/40 flex items-center justify-between gap-2 max-w-sm">
-          <div className="flex items-center gap-2 min-w-0">
-            <img src={pastedImage.preview} alt="" className="w-6 h-6 rounded object-cover border border-fahh-surface shrink-0" />
-            <div className="min-w-0">
-              <p className="text-xs text-fahh-text truncate font-sans">{pastedImage.name}</p>
-              <p className="text-[10px] text-fahh-muted">{(pastedImage.size / 1024).toFixed(1)} KB attached</p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              setPastedImage(null);
-              setInput((prev) => prev.replace(/\[Image:.*?\]/g, "").trim());
-            }}
-            className="p-1 rounded text-fahh-muted hover:text-fahh-error"
-          >
-            <X size={12} />
-          </button>
-        </div>
-      )}
 
       {/* Prompt Form */}
       <form
@@ -231,9 +159,8 @@ function SingleTerminalPane({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          onPaste={handlePaste}
           className="flex-1 bg-transparent outline-none text-fahh-text placeholder-fahh-muted text-sm font-mono min-w-0"
-          placeholder="Enter command... (Alt+V to paste image)"
+          placeholder="Enter command..."
           autoComplete="off"
           spellCheck={false}
         />

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type SpatialNodeType = "editor" | "terminal" | "agent" | "browser" | "diagnostics" | "note" | "rea" | "files" | "extensions";
+export type SpatialNodeType = "editor" | "terminal" | "agent" | "browser" | "diagnostics" | "note" | "files" | "extensions";
 
 export interface SpatialNodeData {
   id: string;
@@ -83,16 +83,6 @@ const DEFAULT_NODES: SpatialNodeData[] = [
     },
   },
   {
-    id: "spatial-rea",
-    type: "rea",
-    title: "REA Code Analysis · AST & Hex",
-    x: 2010,
-    y: 80,
-    w: 480,
-    h: 660,
-    zIndex: 13,
-  },
-  {
     id: "spatial-terminal",
     type: "terminal",
     title: "Interactive Terminal · PowerShell",
@@ -140,7 +130,8 @@ function loadSavedNodes(): SpatialNodeData[] {
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_NODES;
     // Sanitize any nodes referencing recursive localhost:1420 to prevent memory explosion,
     // and upgrade editor dimensions if too narrow for readable code
-    return parsed.map((n: SpatialNodeData) => {
+    // REA nodes were removed (the panel was simulated); drop them from saved layouts.
+    return parsed.filter((n: { type: string }) => n.type !== "rea").map((n: SpatialNodeData) => {
       if (n.type === "browser" && n.meta?.url === "http://localhost:1420") {
         return { ...n, title: "Live Browser Viewport", meta: { ...n.meta, url: "about:blank" } };
       }
@@ -321,7 +312,6 @@ export const useSpatialStore = create<SpatialStore>((set, get) => ({
       browser: { w: 480, h: 540, title: "Browser Viewport" },
       diagnostics: { w: 420, h: 360, title: "Diagnostics Panel" },
       note: { w: 320, h: 220, title: "Sticky Note" },
-      rea: { w: 460, h: 560, title: "REA Code Analysis" },
       files: { w: 320, h: 480, title: "Project Explorer" },
       extensions: { w: 420, h: 560, title: "Extensions Store" },
     };

@@ -119,17 +119,14 @@ For systems programming, security research, and binary analysis:
 
 ## 7. Concrete Implementation in Fahh Editor v0.6.0
 
+> **Status (after v0.6.3):** Composer (Ctrl+I), Inline Edit (Ctrl+K), ghost-text completions, REA Code Analysis, the Ports and Output panels, the terminal "Fix with AI" button and terminal image paste (Alt+V) were removed. They were simulated, with no model or real data behind them. References to them below are historical. The real agent is Fahh Local (`src/components/AgentPanel`).
+
 | Feature | Fahh Editor File | Verification |
 |---------|------------------|--------------|
 | **CATE Spatial Canvas** | `src/components/SpatialCanvas/index.tsx`, `CanvasNode.tsx`, `src/store/spatialStore.ts` | Pan/zoom, traffic-light nodes, radar minimap, `Ctrl+Shift+C` |
-| **Cursor Composer** | `src/components/Composer/index.tsx`, `src/store/composerStore.ts` | Multi-file diffs, `@` chips, `Ctrl+Enter` accept, `Ctrl+I` |
-| **Inline Edit** | `src/components/InlineEdit/index.tsx` | In-place Monaco floating prompt, `Ctrl+K` |
-| **Ghost Text** | `src/lib/inlineCompletions.ts` | `provideInlineCompletions`, `Tab` to accept |
 | **Monaco Error Lens** | `src/components/Editor/EditorPane.tsx` | Inline line-tail diagnostic badges |
-| **Terminal AI** | `src/components/Terminal/TerminalPanel.tsx` | Stderr "Fix with AI" button launches Composer |
 | **Git Commit Generator** | `src/components/GitSidebar/index.tsx`, `src/lib/git.ts` | One-click AI Conventional Commit synthesis |
 | **Devin Timeline** | `src/components/AgentPanel/index.tsx` | Step checklist with live execution state |
-| **REA Code Analysis** | `src/components/ReaAnalysis/index.tsx` | AST symbols, binary strings, 16-byte hex dump |
 | **Open VSX Marketplace**| `src/components/ExtensionsPanel/index.tsx` | Extension search & one-click install |
 | **Fahh Sound Engine** | `src/lib/fahh.ts`, `src/lib/cooldown.ts`, `src-tauri/src/core/error_detector.rs` | 3000ms cooldown rule, single sound on error cascade |
 
