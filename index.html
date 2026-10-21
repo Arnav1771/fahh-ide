@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Fahh Editor — Next-Gen 2D Spatial AI Code Editor</title>
-  <meta name="description" content="A next-generation desktop code editor with CATE 2D infinite spatial canvas, Cursor-grade AI Composer, Monaco Error Lens, and the iconic audio engine that plays when your code breaks. Tauri 2, Monaco, 18 language servers.">
+  <meta name="description" content="A next-generation desktop code editor with CATE 2D infinite spatial canvas, the Fahh Local coding agent (bring your own key), Monaco Error Lens, and the iconic audio engine that plays when your code breaks. Tauri 2, Monaco, 18 language servers.">
   <meta name="theme-color" content="#0a0907">
   <link rel="icon" href="assets/mark.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,8 +25,8 @@
       </a>
       <nav class="nav-links" aria-label="Sections">
         <a href="#superpowers">Superpowers</a>
-        <a href="#canvas">Spatial Canvas</a>
-        <a href="#composer">Composer AI</a>
+        <a href="docs.html#spatial-canvas">Spatial Canvas</a>
+        <a href="docs.html#fahh-local">Agent</a>
         <a href="#simulator">Simulator</a>
         <a href="#bento">Architecture</a>
         <a href="#matrix">Comparison</a>
@@ -49,7 +49,7 @@
       <div class="wrap hero-inner">
         <div class="hero-badge-pill reveal">
           <span class="badge-dot"></span>
-          <span>v0.6.3 · CATE 2D Spatial Canvas &amp; Cursor AI</span>
+          <span>v0.6.3 · CATE 2D Spatial Canvas &amp; Fahh Local AI</span>
           <span class="badge-tag">Tauri 2</span>
         </div>
 
@@ -58,7 +58,7 @@
           <span class="hl-muted">You'll </span><span class="gradient-text cycle">hear it.</span>
         </h1>
 
-        <p class="lede reveal">Fahh Editor is the high-performance desktop code editor built on Tauri 2 and Monaco. Featuring the CATE 2D infinite spatial canvas, Cursor-grade Composer with multi-file diffs, Monaco Error Lens diagnostics, and the legendary audio engine that plays one unforgettable sound when your code breaks.</p>
+        <p class="lede reveal">Fahh Editor is the high-performance desktop code editor built on Tauri 2 and Monaco. Featuring the CATE 2D infinite spatial canvas, the Fahh Local coding agent with per-file diff review, Monaco Error Lens diagnostics, and the legendary audio engine that plays one unforgettable sound when your code breaks.</p>
 
         <div class="hero-ctas reveal">
           <a class="btn btn-primary" href="#download">
@@ -69,7 +69,7 @@
             <svg class="icon" viewBox="0 0 24 24"><path d="m6 4 13 8-13 8V4z"/></svg>
             Break some code
           </a>
-          <a class="btn btn-secondary" href="#canvas">Spatial Canvas</a>
+          <a class="btn btn-secondary" href="#superpowers">Spatial Canvas</a>
         </div>
 
         <div class="terminal-install-box reveal">
@@ -132,21 +132,21 @@
                   </div>
                 </div>
 
-                <!-- Floating Node 3: Composer AI -->
-                <div class="node-card" data-node="composer">
+                <!-- Floating Node 3: Fahh Local agent -->
+                <div class="node-card" data-node="agent">
                   <div class="node-top">
                     <div class="node-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
-                    <span>Fahh Composer (Ctrl+I)</span>
-                    <span class="sub">Multi-File AI</span>
+                    <span>Fahh Local (Ctrl+Shift+A)</span>
+                    <span class="sub">Your key · Ask mode</span>
                   </div>
                   <div class="node-content">
-                    <p style="color: var(--accent); font-weight: 600;">● Step 2/3 · Executing Plan</p>
+                    <p style="color: var(--accent); font-weight: 600;">● edit · src/SpatialCanvas.tsx</p>
                     <div style="display: flex; gap: 4px; margin: 8px 0; flex-wrap: wrap;">
-                      <span class="composer-chip">@SpatialCanvas.tsx</span>
-                      <span class="composer-chip">@cooldown.ts</span>
+                      <span class="sp-chip">@problems</span>
+                      <span class="sp-chip">@SpatialCanvas.tsx</span>
                     </div>
-                    <p class="sub" style="color: #4ade80;">+18 -2 lines modified across 2 files</p>
-                    <button type="button" class="btn btn-primary btn-sm" style="margin-top: 8px; font-size: 11px; padding: 4px 10px;">Accept All (Ctrl+Enter)</button>
+                    <p class="sub" style="color: #4ade80;">+2 -1 lines · review the diff first</p>
+                    <button type="button" class="btn btn-primary btn-sm" style="margin-top: 8px; font-size: 11px; padding: 4px 10px;">Approve edit</button>
                   </div>
                 </div>
               </div>
@@ -166,7 +166,7 @@
                 <div class="radar-teleport-row">
                   <span class="teleport-chip" data-target="editor">[1] Edit</span>
                   <span class="teleport-chip" data-target="term">[2] Term</span>
-                  <span class="teleport-chip" data-target="composer">[3] AI</span>
+                  <span class="teleport-chip" data-target="agent">[3] AI</span>
                 </div>
               </div>
             </div>
@@ -213,7 +213,7 @@
                   </div>
                   <p><span class="hl-muted">43</span> </p>
                   <p><span class="hl-muted">44</span> <span class="k" style="color: var(--accent);">export const</span> renderSpatialNode = () =&gt; {</p>
-                  <p><span class="hl-muted">45</span>   <span class="ghost-text">const node = useNode(id); // Tab to accept autocomplete</span></p>
+                  <p><span class="hl-muted">45</span>   <span class="k" style="color: var(--accent);">const</span> node = useNode(id);</p>
                   <p><span class="hl-muted">46</span> };</p>
                 </div>
               </div>
@@ -221,14 +221,14 @@
               <!-- AI Sidebar -->
               <div class="classic-ai-sidebar">
                 <div style="font: 600 12px var(--font-mono); color: var(--text-primary); display: flex; justify-content: space-between;">
-                  <span>Cursor Composer</span>
-                  <span class="sub">Ctrl+I</span>
+                  <span>Fahh Local</span>
+                  <span class="sub">Ctrl+Shift+A</span>
                 </div>
                 <div style="background: rgba(0, 0, 0, 0.4); padding: 10px; border-radius: 6px; font: 12px/18px var(--font-mono); color: var(--fg-body);">
-                  Fixed typo on line 42. Verified zero regressions against 18 language servers.
+                  Line 42 uses <code>sund</code>; it should be <code>sound</code>. Proposed edit to SpatialCanvas.tsx.
                 </div>
                 <div style="margin-top: auto;">
-                  <button type="button" class="btn btn-primary btn-sm" style="width: 100%;">Apply Diff</button>
+                  <button type="button" class="btn btn-primary btn-sm" style="width: 100%;">Review &amp; approve</button>
                 </div>
               </div>
             </div>
@@ -255,18 +255,17 @@
       <div class="wrap">
         <div class="section-head reveal">
           <span class="section-label">[Superpowers]</span>
-          <h2 id="super-h"><span class="hl-muted">Engineered for velocity.</span> <span class="hl-bright">Six breakthroughs.</span></h2>
-          <p>Fahh Editor unites spatial thinking, multi-file agent intelligence, Monaco inline diagnostics, Open VSX extension ecosystem, instant audio feedback, and reverse engineering into one unified Tauri 2 powerhouse.</p>
+          <h2 id="super-h"><span class="hl-muted">Engineered for velocity.</span> <span class="hl-bright">Five breakthroughs.</span></h2>
+          <p>Fahh Editor unites spatial thinking, a bring-your-own-key coding agent, Monaco inline diagnostics, the Open VSX extension ecosystem, and instant audio feedback into one unified Tauri 2 powerhouse.</p>
         </div>
 
         <!-- Superpower Navigation Pills -->
         <div class="superpower-tabs-nav reveal" role="tablist">
           <button type="button" class="superpower-tab-btn active" data-tab="canvas">🌌 CATE 2D Canvas</button>
-          <button type="button" class="superpower-tab-btn" data-tab="composer">🤖 Cursor Composer</button>
-          <button type="button" class="superpower-tab-btn" data-tab="lens">🔍 Error Lens &amp; Ghost Text</button>
+          <button type="button" class="superpower-tab-btn" data-tab="agent">🤖 Fahh Local Agent</button>
+          <button type="button" class="superpower-tab-btn" data-tab="lens">🔍 Error Lens</button>
           <button type="button" class="superpower-tab-btn" data-tab="extensions">🧩 Open VSX Store</button>
           <button type="button" class="superpower-tab-btn" data-tab="simulator">🔊 Audio Simulator</button>
-          <button type="button" class="superpower-tab-btn" data-tab="rea">🔬 REA Hex &amp; Binary</button>
         </div>
 
         <!-- Tab 1: CATE 2D Canvas -->
@@ -309,14 +308,14 @@
               <div class="canvas-node">
                 <div class="node-header">
                   <div class="node-dots"><span class="dot-red"></span><span class="dot-yellow"></span><span class="dot-green"></span></div>
-                  <span>Fahh Composer</span>
-                  <span class="sub">AI Agent</span>
+                  <span>Fahh Local</span>
+                  <span class="sub">AI Agent · Plan</span>
                 </div>
                 <div class="node-body">
-                  <p style="color: var(--accent); font-weight: 600;">● Step 2/3 · Executing Plan</p>
-                  <p class="hl-muted">✓ Synthesized multi-file diff</p>
-                  <p class="hl-muted">✓ Verified zero syntax regressions</p>
-                  <p><span class="sub" style="color: #4ade80;">Ready to apply to 3 files...</span></p>
+                  <p style="color: var(--accent); font-weight: 600;">● Plan mode · read-only</p>
+                  <p class="hl-muted">✓ read SpatialCanvas.tsx</p>
+                  <p class="hl-muted">✓ wrote .fahh/plans/zoom.md</p>
+                  <p><span class="sub" style="color: #4ade80;">Implement →</span></p>
                 </div>
               </div>
             </div>
@@ -341,19 +340,19 @@
           </div>
         </div>
 
-        <!-- Tab 2: Cursor Composer -->
-        <div class="superpower-panel" id="tab-panel-composer">
+        <!-- Tab 2: Fahh Local agent -->
+        <div class="superpower-panel" id="tab-panel-agent">
           <div class="feature-grid">
-            <div class="composer-card reveal" style="grid-column: span 3;">
-              <div class="composer-header">
-                <span>Cursor Composer (<kbd>Ctrl+I</kbd>) &amp; Inline Edit (<kbd>Ctrl+K</kbd>)</span>
-                <span class="sub">Multi-File Shadow Workspace</span>
+            <div class="sp-card reveal" style="grid-column: span 3;">
+              <div class="sp-header">
+                <span>Fahh Local (<kbd>Ctrl+Shift+A</kbd>)</span>
+                <span class="sub">Your key · Ask / Auto-edit / Plan</span>
               </div>
-              <div class="composer-body">
-                <div class="composer-chips">
-                  <span class="composer-chip">@src/lib/fahh.ts</span>
-                  <span class="composer-chip">@src/core/runner.rs</span>
-                  <span class="composer-chip">@workspace</span>
+              <div class="sp-body">
+                <div class="sp-chips">
+                  <span class="sp-chip">@src/lib/fahh.ts</span>
+                  <span class="sp-chip">@problems</span>
+                  <span class="sp-chip">@terminal</span>
                 </div>
                 <div class="diff-box">
                   <div class="diff-file-head">
@@ -368,36 +367,35 @@
                   <div class="diff-line diff-same"> };</div>
                 </div>
                 <div class="controls">
-                  <button type="button" class="btn btn-primary btn-sm">Accept All (Ctrl+Enter)</button>
-                  <button type="button" class="btn btn-secondary btn-sm">Reject</button>
-                  <span class="sub" style="margin-left: 12px;">Fast-apply with local AST verification</span>
+                  <button type="button" class="btn btn-primary btn-sm">Approve</button>
+                  <button type="button" class="btn btn-secondary btn-sm">Revert turn</button>
+                  <span class="sub" style="margin-left: 12px;">Groq, NVIDIA NIM, OpenRouter, Gemini, Ollama or Anthropic. No key is bundled.</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tab 3: Error Lens & Ghost Text -->
+        <!-- Tab 3: Error Lens -->
         <div class="superpower-panel" id="tab-panel-lens">
           <div class="feature-grid">
-            <div class="composer-card reveal" style="grid-column: span 3;">
-              <div class="composer-header">
-                <span>Monaco Error Lens &amp; Predictive Ghost Text</span>
+            <div class="sp-card reveal" style="grid-column: span 3;">
+              <div class="sp-header">
+                <span>Monaco Error Lens</span>
                 <span class="sub">Zero-Latency Visual Diagnostics</span>
               </div>
-              <div class="composer-body">
+              <div class="sp-body">
                 <div class="diff-box" style="padding: 16px;">
                   <p><span class="hl-muted">42</span> <span class="k" style="color: var(--accent);">const</span> sound = <span class="k" style="color: var(--accent);">await</span> decodeAudioData(bytes);</p>
                   <p><span class="hl-muted">43</span> playSound(sund); <span class="error-lens-tag">⊗ Cannot find name 'sund'. Did you mean 'sound'? [tsc]</span></p>
                   <p><span class="hl-muted">44</span> </p>
                   <p><span class="hl-muted">45</span> <span class="k" style="color: var(--accent);">export const</span> handleCommit = <span class="k" style="color: var(--accent);">async</span> () =&gt; {</p>
-                  <p><span class="hl-muted">46</span>   <span class="ghost-text">const message = await generateCommitMessage(); // Tab to accept autocomplete</span></p>
+                  <p><span class="hl-muted">46</span>   <span class="k" style="color: var(--accent);">const</span> message = <span class="k" style="color: var(--accent);">await</span> generateCommitMessage();</p>
                   <p><span class="hl-muted">47</span> };</p>
                 </div>
                 <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                  <span class="composer-chip" style="color: var(--error); border-color: rgba(208, 82, 77, 0.4); background: rgba(208, 82, 77, 0.1);">Terminal "Fix with AI"</span>
-                  <span class="composer-chip">Inline Edit (Ctrl+K)</span>
-                  <span class="composer-chip">AI Conventional Commit Generator</span>
+                  <span class="sp-chip">Python &amp; Rust syntax errors without a language server</span>
+                  <span class="sp-chip">AI Conventional Commit Generator</span>
                 </div>
               </div>
             </div>
@@ -407,12 +405,12 @@
         <!-- Tab 4: Open VSX Extension Store -->
         <div class="superpower-panel" id="tab-panel-extensions">
           <div class="feature-grid">
-            <div class="composer-card reveal" style="grid-column: span 3;">
-              <div class="composer-header">
+            <div class="sp-card reveal" style="grid-column: span 3;">
+              <div class="sp-header">
                 <span>Open VSX Extension Marketplace &amp; VSIX Hub</span>
                 <span class="sub">50,000+ Community Extensions · Zero Telemetry</span>
               </div>
-              <div class="composer-body">
+              <div class="sp-body">
                 <p style="color: var(--fg-body); font-size: 14.5px;">Search, browse, and install community extensions directly from the decentralized Open VSX registry, or download offline <code>.vsix</code> packages with one click.</p>
                 <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; margin-top: 8px;">
                   <!-- Curated Card: Python -->
@@ -495,25 +493,6 @@
           <a class="btn btn-primary btn-sm" href="#simulator">Jump to Full Simulator Pipeline ↓</a>
         </div>
 
-        <!-- Tab 6: REA Reverse Engineering -->
-        <div class="superpower-panel" id="tab-panel-rea">
-          <div class="feature-grid">
-            <div class="composer-card reveal" style="grid-column: span 3;">
-              <div class="composer-header">
-                <span>REA Reverse Engineering &amp; Hex Analysis</span>
-                <span class="sub">Binary Inspection Suite</span>
-              </div>
-              <div class="composer-body">
-                <div class="hex-view">
-                  <div><span class="hex-offset">00000000</span><span class="hex-bytes">7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00</span><span class="hex-ascii">.ELF............</span></div>
-                  <div><span class="hex-offset">00000010</span><span class="hex-bytes">03 00 3e 00 01 00 00 00 e0 61 00 00 00 00 00 00</span><span class="hex-ascii">..&gt;......a......</span></div>
-                  <div><span class="hex-offset">00000020</span><span class="hex-bytes">40 00 00 00 00 00 00 00 28 35 01 00 00 00 00 00</span><span class="hex-ascii">@.......(5......</span></div>
-                </div>
-                <p style="font-size: 14px; color: var(--fg-body);">Full AST symbol hierarchy, printable binary string extraction, and 16-byte hex inspection with synchronized ASCII decoding.</p>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -645,8 +624,8 @@
               <div class="bento-icon">
                 <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/></svg>
               </div>
-              <h3 class="bento-title">100% Local-First AI</h3>
-              <p class="bento-desc">Plug directly into Ollama, LM Studio, or vLLM running on your own GPU. Zero code ever leaves your machine. Optional BYOK support for Groq, OpenRouter, and OpenAI with encrypted local key storage.</p>
+              <h3 class="bento-title">Bring Your Own Model</h3>
+              <p class="bento-desc">Fahh Local talks to Ollama on your own machine, or to Groq, NVIDIA NIM, OpenRouter, Gemini or Anthropic with your own key. No provider or key is bundled; the key stays in the app and goes only to the provider.</p>
             </div>
           </div>
 
@@ -729,8 +708,8 @@
                 <td><span class="check-no">✕ Tab-based only</span></td>
               </tr>
               <tr>
-                <td><strong>Cursor Composer Multi-File Diff</strong></td>
-                <td class="col-highlight"><span class="check-yes">✓ Included (Ctrl+I)</span></td>
+                <td><strong>Built-in Coding Agent</strong></td>
+                <td class="col-highlight"><span class="check-yes">✓ Fahh Local (your key)</span></td>
                 <td><span class="check-yes">✓ Included</span></td>
                 <td><span class="check-no">✕ Extension only</span></td>
                 <td><span class="check-no">✕ Prompt buffer only</span></td>
@@ -762,13 +741,6 @@
                 <td>~160 MB</td>
                 <td>~120 MB</td>
                 <td>~45 MB</td>
-              </tr>
-              <tr>
-                <td><strong>Built-in Reverse Engineering (REA)</strong></td>
-                <td class="col-highlight"><span class="check-yes">✓ Hex &amp; AST Symbols</span></td>
-                <td><span class="check-no">✕ None</span></td>
-                <td><span class="check-no">✕ Plugin only</span></td>
-                <td><span class="check-no">✕ None</span></td>
               </tr>
             </tbody>
           </table>
@@ -851,11 +823,11 @@
         </div>
         <div class="faq">
           <details class="card reveal"><summary>What is CATE Spatial Canvas Mode?</summary><p>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>C</kbd> to unlock an infinite 2D canvas workspace inspired by CATE. Code editors, terminals, AI agents, and browser previews float as draggable, resizable nodes with an interactive radar minimap, freeing you from traditional single-file tab overload.</p></details>
-          <details class="card reveal"><summary>How does the AI Composer work?</summary><p>Press <kbd>Ctrl</kbd> + <kbd>I</kbd> to open Cursor Composer. It plans and executes multi-file modifications across your workspace with <code>@file</code>, <code>@folder</code>, and <code>@codebase</code> context tags. Review clean unified diffs before accepting with <kbd>Ctrl</kbd> + <kbd>Enter</kbd>.</p></details>
+          <details class="card reveal"><summary>How does the Fahh Local agent work?</summary><p>Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>A</kbd> (or click the robot icon) to open Fahh Local. It reads, searches, edits and runs commands with your own key, showing a card per tool call. In <strong>Ask</strong> mode you approve every edit and command, <strong>Auto-edit</strong> applies edits but still asks before commands, and <strong>Plan</strong> is read-only. Review each file's diff, or revert the whole turn.</p></details>
           <details class="card reveal"><summary>Does it really play on every error?</summary><p>On every error-severity diagnostic, at most once per cooldown window. The window is 3 seconds by default and set by <code>sfx_cooldown_secs</code> in <code>~/.fahh/config.json</code>. Warnings, information and hints never play.</p></details>
           <details class="card reveal"><summary>Can I turn the cooldown off?</summary><p>Set <code>sfx_cooldown_secs</code> to <code>0</code> and every error message plays. Choose 0 in the simulator above to hear what that is like.</p></details>
           <details class="card reveal"><summary>Is it Electron?</summary><p>No. The shell is Tauri 2: a lightweight Rust core and the operating system's native web view, paired with Monaco Editor for high performance.</p></details>
-          <details class="card reveal"><summary>Which AI models can I use?</summary><p>Any model you want. Connect locally to Ollama or LM Studio with zero telemetry, or enter an API key for OpenRouter, Groq, or OpenAI. No keys are bundled and your code never leaves your computer unless you explicitly ask.</p></details>
+          <details class="card reveal"><summary>Which AI models can I use?</summary><p>Fahh Local works with Ollama running locally, or with your own key for Groq, NVIDIA NIM, OpenRouter, Gemini or Anthropic. No keys are bundled, and the key is sent only to the provider you pick.</p></details>
           <details class="card reveal"><summary>Why does my system warn about the installer?</summary><p>The builds are not code-signed yet. Signing requires a paid developer certificate; until then Windows SmartScreen and macOS Gatekeeper will prompt before first launch. The source code and GitHub Actions build pipelines are 100% public and verifiable.</p></details>
         </div>
       </div>
@@ -927,9 +899,8 @@
           <h4>Editor &amp; AI</h4>
           <ul>
             <li><a href="#superpowers"><span class="nav-icon">⚡</span> Superpowers</a></li>
-            <li><a href="#canvas"><span class="nav-icon">🪐</span> Spatial Canvas (CATE)</a></li>
-            <li><a href="#composer"><span class="nav-icon">🤖</span> Composer AI (Ctrl+I)</a></li>
-            <li><a href="docs.html#rea-analysis"><span class="nav-icon">🔬</span> REA Code Intelligence</a></li>
+            <li><a href="docs.html#spatial-canvas"><span class="nav-icon">🪐</span> Spatial Canvas (CATE)</a></li>
+            <li><a href="docs.html#fahh-local"><span class="nav-icon">🤖</span> Fahh Local AI (Ctrl+Shift+A)</a></li>
             <li><a href="#superpowers"><span class="nav-icon">🧩</span> Open VSX Store</a></li>
             <li><a href="#simulator"><span class="nav-icon">🔊</span> Audio Simulator</a></li>
             <li><a href="play.html"><span class="nav-icon">💻</span> Web Playground</a></li>
@@ -982,7 +953,7 @@
           </div>
         </div>
         <div class="footer-telemetry-right">
-          <span class="build-hash">Fahh Editor v0.6.3 · Multi-Window & REA</span>
+          <span class="build-hash">Fahh Editor v0.6.3 · Multi-Window &amp; Fahh Local</span>
           <span class="copyright">© 2026 Fahh Team · Zero-telemetry default · Local-First</span>
         </div>
       </div>
