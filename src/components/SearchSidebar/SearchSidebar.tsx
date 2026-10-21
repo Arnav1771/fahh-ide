@@ -11,11 +11,10 @@ import {
 } from "lucide-react";
 import { useFileStore } from "../../store/fileStore";
 import { useWorkspace } from "../../hooks/useWorkspace";
-import { useIconThemeStore } from "../../store/iconThemeStore";
 import { revealLine } from "../../lib/monacoBridge";
 import { searchWorkspace, replaceInWorkspace } from "../../lib/tauri";
 import type { SearchMatch, SearchResult } from "../../lib/types";
-import { renderFileIcon } from "../../lib/iconTheme";
+import { FileIcon } from "../../lib/iconTheme";
 
 interface FileGroup {
   filePath: string;
@@ -32,7 +31,6 @@ export function SearchSidebar({
 }) {
   const root = useFileStore((s) => s.root);
   const { openFileInEditor } = useWorkspace();
-  const activeIconTheme = useIconThemeStore((s) => s.activeIconTheme);
 
   const [query, setQuery] = useState("");
   const [replacement, setReplacement] = useState("");
@@ -399,7 +397,7 @@ export function SearchSidebar({
                         {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
                       </span>
                       <span className="shrink-0 flex items-center">
-                        {renderFileIcon(group.fileName, activeIconTheme)}
+                        <FileIcon name={group.fileName} />
                       </span>
                       <span className="font-medium text-fahh-text truncate text-[11.5px]">
                         {group.fileName}

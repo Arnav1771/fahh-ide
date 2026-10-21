@@ -5,6 +5,7 @@ import { isPreviewOnly, previewKindFor } from "../../lib/preview";
 import { runCommand } from "../../lib/commands";
 import { requestClose } from "../../lib/tabActions";
 import { openBrowser } from "../../lib/browser";
+import { FileIcon } from "../../lib/iconTheme";
 
 export function TabBar() {
   const { openTabs, activeTab, setActiveTab } = useEditorStore();
@@ -33,6 +34,7 @@ export function TabBar() {
                   : "text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface"
               }`}
             >
+              <FileIcon name={fileName} language={tab.language} />
               <span className={tab.dirty ? "text-fahh-warn" : ""}>
                 {tab.dirty ? "● " : ""}
                 {fileName}

@@ -32,7 +32,7 @@ Click **Files to include/exclude** to filter searches to specific areas of the c
 ---
 
 ### 4. Interactive Match Tree & Instant Navigation
-- Results are grouped by file with the active **File Icon Theme** (Material, Seti, Catppuccin, Minimal).
+- Results are grouped by file with the active **File Icon Theme** (Material, Fahh Colour, Minimal).
 - Each file header displays a badge with the exact match count in that file.
 - Match rows display the line number and the code snippet with the search term highlighted.
 - **1-Click Navigation**: Clicking any match immediately opens the file in Monaco editor and smoothly reveals and centers that exact line.
