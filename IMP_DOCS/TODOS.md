@@ -9,12 +9,12 @@
 ## Shipped in v0.6.0 (Milestone Resolution)
 
 1. **CATE Spatial Canvas Mode (`Ctrl+Shift+C`)**: Infinite 2D zoom/pan workspace with traffic-light floating Monaco, Terminal, AI companion, and Browser nodes, plus radar Minimap and viewport teleportation.
-2. **Cursor Composer (`Ctrl+I`) & Inline Edit (`Ctrl+K`)**: Multi-file autonomous editing agent with dynamic file chips, side-by-side unified diff reviews, and batch Accept/Reject controls.
+2. ~~Cursor Composer (`Ctrl+I`) & Inline Edit (`Ctrl+K`)~~: **removed after v0.6.3**, it was simulated (canned templates behind a timer).
 3. **`@` Mention Context Engine**: Popover resolving `@problems`, `@terminal`, `@git`, `@codebase`, and workspace files.
 4. **Monaco Error Lens**: Inline diagnostics rendered at line tails without mouse hover.
-5. **Predictive Ghost Text**: Monaco inline completions provider predicting multi-line snippets ahead of the cursor.
-6. **Terminal AI & Git Commits**: Stderr "Fix with AI" action and AI Conventional Commit generator.
-7. **REA Code Analysis**: AST symbol recovery, GNU `strings` binary string extractor, and 16-byte hex dump inspector.
+5. ~~Predictive Ghost Text~~: **removed after v0.6.3**, it offered a fixed snippet list, not predictions.
+6. **Git Commits**: AI Conventional Commit generator. (The terminal "Fix with AI" button was removed after v0.6.3; it opened the simulated Composer.)
+7. ~~REA Code Analysis~~: **removed after v0.6.3**, it showed sample data. The Ports and Output panels went with it (hard-coded ports, seeded logs).
 8. **Automated Testing & Build**: 238 unit tests passing across 25 test suites (`pnpm test`); Vite production bundle compiling cleanly.
 9. **Release Distribution**: Full set of native binaries published to GitHub Releases `v0.6.0` (`.exe`, `.msi`, `.dmg`, `.AppImage`, `.deb`, `.rpm`).
 

@@ -405,7 +405,6 @@ async function runCanarySuite() {
     const paletteText = await page.locator(".fixed").first().innerText().catch(() => "");
     const hasNewUntitled = (await page.locator("text=New Untitled File").count()) > 0 || paletteText.includes("New Untitled");
     const hasSpatialCmd = (await page.locator("text=Spatial Canvas Mode").count()) > 0 || paletteText.includes("Spatial Canvas");
-    const hasReaCmd = (await page.locator("text=REA Code Analysis").count()) > 0 || paletteText.includes("REA");
 
     // Check that trivial basic operations (Undo, Redo, Select All) are pruned
     const hasUndo = (await page.locator("text=Undo").count()) > 0;
@@ -417,7 +416,7 @@ async function runCanarySuite() {
       step: 9,
       name: "Curated Command Palette (Developer Workflows)",
       status: hasPalette && isCurated ? "PASS" : "FAIL",
-      details: { hasPalette, isCurated, hasNewUntitled, hasSpatialCmd, hasReaCmd, screenshot: "09_command_palette_curated.png" },
+      details: { hasPalette, isCurated, hasNewUntitled, hasSpatialCmd, screenshot: "09_command_palette_curated.png" },
     });
 
     results.completedAt = new Date().toISOString();

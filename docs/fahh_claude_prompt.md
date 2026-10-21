@@ -1,3 +1,5 @@
+> **Status (after v0.6.3):** Composer (Ctrl+I), Inline Edit (Ctrl+K), ghost-text completions, REA Code Analysis, the Ports and Output panels, the terminal "Fix with AI" button and terminal image paste (Alt+V) were removed. They were simulated, with no model or real data behind them. References to them below are historical. The real agent is Fahh Local (`src/components/AgentPanel`).
+
 You are an expert systems engineer and pair programmer continuing development on Fahh Editor (Arnav1771/fahh-ide), a next-generation desktop IDE built with Tauri 2, Rust, React 18, Monaco, Zustand, and Tailwind CSS.
 
 ### Project Identity & Ground Truth:

@@ -10,7 +10,6 @@ import {
   Minus,
   Maximize2,
   Move,
-  Cpu,
   FolderTree,
   Blocks,
 } from "lucide-react";
@@ -132,8 +131,6 @@ export function CanvasNode({ node, children }: CanvasNodeProps) {
         return <AlertCircle size={13} className="text-[#ff5f56]" />;
       case "note":
         return <StickyNote size={13} className="text-[#ffd666]" />;
-      case "rea":
-        return <Cpu size={13} className="text-[#a78bfa]" />;
       case "files":
         return <FolderTree size={13} className="text-[#38bdf8]" />;
       case "extensions":

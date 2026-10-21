@@ -228,7 +228,7 @@ describe("suggestCommitMessage", () => {
 
   it("suggests test commit message when only test files changed", () => {
     const status = repo({
-      staged: [change("src/store/composerStore.test.ts", "added", true)],
+      staged: [change("src/store/toolbarStore.test.ts", "added", true)],
     });
     expect(suggestCommitMessage(status)).toBe("test(store): update unit test suites");
   });
@@ -249,9 +249,9 @@ describe("suggestCommitMessage", () => {
 
   it("suggests feat commit message for feature additions", () => {
     const status = repo({
-      staged: [change("src/components/Composer.tsx", "added", true)],
+      staged: [change("src/components/Toolbar.tsx", "added", true)],
     });
-    expect(suggestCommitMessage(status)).toContain("feat(components): enhance Composer");
+    expect(suggestCommitMessage(status)).toContain("feat(components): enhance Toolbar");
   });
 });
 

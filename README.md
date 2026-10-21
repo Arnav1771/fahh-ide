@@ -10,7 +10,7 @@
 
 Every time your code has an LSP error or build failure, Fahh Editor plays `fahh.mp3`. It has a strict 3-second cooldown window so 40 cascading errors trigger exactly one sound.
 
-Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, **VS Code Multi-Terminal Split View**, **File Icon Themes**, and **Monaco Error Lens**, Fahh Editor is designed for hyper-focused, joyful developer flow.
+Coupled with a **2D infinite spatial canvas**, the **Fahh Local coding agent**, **VS Code Multi-Terminal Split View**, **File Icon Themes**, and **Monaco Error Lens**, Fahh Editor is designed for hyper-focused, joyful developer flow.
 
 ---
 
@@ -42,17 +42,14 @@ Coupled with a **2D infinite spatial canvas**, **Cursor-grade Composer**, **VS C
 | **File Icon Themes** | Themes tab | Colourful Material Icon Theme icons (MIT, vendored subset) in the explorer, tabs, breadcrumbs, Quick Open and search; Fahh Colour and Minimal line-glyph alternatives. |
 | **Native PDF & Media Preview** | Built-in | Native WebView2-accelerated PDF viewer with zoom controls, text selection, page navigation, and system reader handoff without third-party extensions. |
 | **Multi-Window Support** | `fahh <folder>` / <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>N</kbd> | Open and manage multiple distinct projects in independent Fahh Editor windows simultaneously without replacing active workspaces. |
-| **Cursor Composer** | <kbd>Ctrl</kbd>+<kbd>I</kbd> | Multi-file autonomous editing agent with dynamic file chips, side-by-side unified diff review, and batch Accept/Reject controls. |
-| **Inline Edit** | <kbd>Ctrl</kbd>+<kbd>K</kbd> | Floating Monaco prompt pill for in-place code transformations with live diff previews. |
-| **`@` Mentions Engine** | Type `@` in prompt | Context resolution popover dynamically attaching `@problems`, `@terminal`, `@git`, `@codebase`, and workspace files. |
+| **`@` Mentions** | Type `@` in the Fahh Local prompt | Popover that inserts a reference (`@problems`, `@terminal`, `@git`, `@codebase`, or a workspace file) into the prompt. |
 | **Monaco Error Lens** | Built-in | Inline colored diagnostics drawn directly at the tail of offending code lines — no mouse hovering required. |
-| **Predictive Ghost Text** | <kbd>Tab</kbd> to accept | Monaco inline completions provider predicting multi-line snippets ahead of the caret across 12+ languages. |
-| **Terminal "Fix with AI"** | Hover stderr | One-click button on terminal errors automatically launching Composer with pre-attached terminal diagnostic context. |
 | **AI Conventional Commits** | Git Sidebar | One-click synthesis of structured Conventional Commits (`feat`, `fix`, `test`, `docs`) from staged diffs. |
-| **REA Code Analysis** | Activity Bar CPU | AST Symbol recovery, GNU `strings` binary string extractor with byte offsets, and 16-byte hex dump inspector. |
 | **Open VSX Marketplace** | Extensions tab | Browse, search, and install from 50,000+ community extensions with detail drawer, direct `.vsix` download links, and native feature callouts. |
 | **The Fahh SFX Engine** | Built-in | Audible feedback on compile/LSP errors, Python and Rust syntax errors (no language server needed), and crashed runs, with a strict 3000ms cooldown window. |
-| **Desktop Shell** | Native | Native desktop MenuBar, file symbol breadcrumbs, unbuffered Python runner, multi-tab bottom dock. |
+| **Desktop Shell** | Native | Native desktop MenuBar, file symbol breadcrumbs, unbuffered Python runner, bottom dock (Problems, Debug Console, Terminal, Run). |
+
+**Removed after v0.6.3:** Composer (Ctrl+I), Inline Edit (Ctrl+K), ghost-text completions, REA Code Analysis, the Ports and Output panels, the terminal "Fix with AI" button and terminal image paste (Alt+V). They were simulated: canned templates behind a timer, hard-coded sample data, or text placeholders, with no real model or data behind them. The real AI feature is Fahh Local (below). Ctrl+K and Ctrl+I go back to Monaco, and Ctrl+W / Ctrl+N now close the tab (asking first if unsaved) and open a new file.
 
 ---
 
@@ -108,13 +105,13 @@ pnpm tauri build
 
 ```bash
 pnpm exec tsc --noEmit    # type check
-pnpm test                 # 243 unit tests across 26 suites
+pnpm test                 # 261 unit tests across 30 suites
 cd src-tauri && cargo clippy -- -D warnings && cargo test
 ```
 
-The vitest suite covers the complete logic: Composer multi-file diffs and `@` mentions,
-CATE Spatial Canvas zoom/pan store, Monaco Error Lens diagnostics, Ghost Text inline completions,
-the SFX cooldown rule, LSP marker bridges, and native Tauri IPC wrappers.
+The vitest suite covers the CATE Spatial Canvas zoom/pan store, Monaco Error Lens diagnostics,
+the unsaved-tab guard, the Fahh Local agent state, the SFX cooldown rule, LSP marker bridges,
+and native Tauri IPC wrappers.
 
 ---
 

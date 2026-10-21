@@ -1,3 +1,5 @@
+> **Status (after v0.6.3):** Composer (Ctrl+I), Inline Edit (Ctrl+K), ghost-text completions, REA Code Analysis, the Ports and Output panels, the terminal "Fix with AI" button and terminal image paste (Alt+V) were removed. They were simulated, with no model or real data behind them. References to them below are historical. The real agent is Fahh Local (`src/components/AgentPanel`).
+
 # How Next-Gen AI IDEs Are Built: Cursor, Windsurf & Fahh Editor
 
 **Document version:** v1.0.0  

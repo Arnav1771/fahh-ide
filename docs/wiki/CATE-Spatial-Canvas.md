@@ -9,7 +9,7 @@ The **CATE (Code Architecture Topology Explorer) Spatial Canvas** transforms Fah
 ### 1. Spatial Nodes
 On the canvas, different facets of your workspace become interactive, floating nodes:
 - **Editor Nodes**: Full-fledged Monaco code editor instances showing files in your repository.
-- **REA AI Chat Nodes**: Embedded autonomous agent conversations with prompt inputs and context chips.
+- **Agent Nodes**: The Fahh Local agent panel, embedded on the canvas.
 - **Terminal Nodes**: Interactive shell terminals running commands.
 - **Browser Nodes**: Web viewports for testing dev servers (e.g. `localhost:5173`) live on the canvas.
 

@@ -44,7 +44,7 @@ Each window runs in its own isolated Webview instance with independent memory sp
 - **`useEditorStore`**: Independent open tabs, dirty file states, and Monaco editor instances.
 - **`useTerminalStore`**: Dedicated PTY processes, shell sessions, and history.
 - **`useSpatialStore`**: Separate CATE infinite canvas coordinates, cards, and zoom levels.
-- **`useComposerStore`**: Independent multi-file agent conversation context.
+- **`useAgentStore`**: Independent Fahh Local agent conversation.
 
 ### 2. Smart Refocusing (De-duplication)
 When you run `fahh <folder>` from a shell while Fahh Editor is already running:

@@ -15,7 +15,7 @@
 | **[Multi-Window Architecture](Multi-Window-Architecture)** | $N$-window concurrency, isolated state stores, smart instance de-duplication (`Ctrl+Shift+N`) |
 | **[Workspace Search & Replace](Workspace-Search-and-Replace)** | Global text and regex search, multi-file replace, glob filters (`Ctrl+Shift+F`) |
 | **[PDF & Binary Viewer](PDF-and-Binary-Viewer)** | Native WebView2 PDF reader with zoom & text selection, media previews |
-| **[REA AI Agent](REA-AI-Agent)** | Autonomous sidecar agent, Cursor Composer integration, audio SFX feedback |
+| **[Fahh Local Agent](Fahh-Local-Agent)** | The in-editor coding agent: Ask / Auto-edit / Plan modes, approvals, `@` mentions |
 
 ---
 

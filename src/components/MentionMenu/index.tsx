@@ -2,11 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 import { FileCode, AlertTriangle, Terminal, GitBranch, FolderGit2 } from "lucide-react";
 import { useFileStore } from "../../store/fileStore";
 import { flattenTree } from "../../lib/quickOpen";
-import { type AttachedContext, buildContextSnippet } from "../../store/composerStore";
 
 interface MentionMenuProps {
   query: string;
-  onSelect: (context: AttachedContext) => void;
+  /** The mention text to insert into the prompt, e.g. "@file App.tsx". */
+  onSelect: (label: string) => void;
   onClose: () => void;
   position?: { top: number; left: number };
 }
@@ -90,7 +90,7 @@ export function MentionMenu({ query, onSelect, onClose }: MentionMenuProps) {
         e.preventDefault();
         if (filteredOptions[selectedIndex]) {
           const item = filteredOptions[selectedIndex];
-          onSelect(buildContextSnippet(item.type, item.id));
+          onSelect(item.label);
         }
       } else if (e.key === "Escape") {
         e.preventDefault();
@@ -117,7 +117,7 @@ export function MentionMenu({ query, onSelect, onClose }: MentionMenuProps) {
             <button
               type="button"
               key={opt.id}
-              onClick={() => onSelect(buildContextSnippet(opt.type, opt.id))}
+              onClick={() => onSelect(opt.label)}
               onMouseEnter={() => setSelectedIndex(idx)}
               className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${
                 isSelected ? "bg-[#4a9eff]/20 text-[#e8e6e3]" : "text-[#8a8780] hover:text-[#e8e6e3]"

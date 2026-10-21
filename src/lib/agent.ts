@@ -172,7 +172,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
 const MODES: AgentMode[] = ["ask", "auto-edit", "plan"];
 
 /**
- * Parse persisted settings defensively. An older AI Composer config
+ * Parse persisted settings defensively. An older (pre-Fahh Local) AI config
  * (`fahh-ai-settings`: baseUrl, model, apiKey) is carried over as "custom".
  */
 export function parseAgentSettings(raw: string | null, legacy: string | null = null): AgentSettings {

@@ -11,7 +11,6 @@ import {
   StickyNote,
   AlertCircle,
   LayoutGrid,
-  Cpu,
   FolderTree,
   Blocks,
   Crosshair,
@@ -170,14 +169,6 @@ export function SpatialHud() {
               >
                 <StickyNote size={13} className="text-[#ffd666]" />
                 <span>Sticky Note</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleAdd("rea", "REA Code Analysis")}
-                className="flex items-center gap-2 px-3 py-1.5 text-left text-xs text-[#e8e6e3] hover:bg-white/[0.08] transition-colors"
-              >
-                <Cpu size={13} className="text-[#a78bfa]" />
-                <span>REA Code Analysis</span>
               </button>
               <button
                 type="button"
