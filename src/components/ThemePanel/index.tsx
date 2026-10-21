@@ -371,12 +371,9 @@ export function ThemePanel() {
 
       {/* ─── File Icon Theme Selector ─── */}
       <div className="border-t border-fahh-surface/80 my-3 pt-3">
-        <div className="flex items-center justify-between mb-2">
-          <p className="fahh-label text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
-            File Icon Theme
-          </p>
-          <span className="text-[10px] text-fahh-accent font-medium">VSIX Compatible</span>
-        </div>
+        <p className="fahh-label mb-2 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold">
+          File Icon Theme
+        </p>
 
         {ICON_THEMES.map((iconDef) => {
           const isActive = iconDef.id === activeIconTheme;

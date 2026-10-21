@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Command, X } from "lucide-react";
 import { rankCommands, highlightMatch, type PaletteCommand } from "../../lib/palette";
+import { FileIcon } from "../../lib/iconTheme";
 
 const RECENT_KEY = "fahh-palette-recent";
 
@@ -179,7 +180,8 @@ function PaletteBody({
               }`}
             >
               {variant === "file" ? (
-                <span className="flex min-w-0 flex-1 items-baseline gap-2">
+                <span className="flex min-w-0 flex-1 items-center gap-2">
+                  <FileIcon name={cmd.label} />
                   <span className="truncate">
                     {highlightMatch(cmd.label, query).map((part, pIdx) => (
                       <span

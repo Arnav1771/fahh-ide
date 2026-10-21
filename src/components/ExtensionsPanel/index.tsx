@@ -18,7 +18,6 @@ import {
 } from "lucide-react";
 import { getPlugins } from "../../lib/tauri";
 import type { Plugin } from "../../lib/types";
-import { useIconThemeStore, type IconThemeId } from "../../store/iconThemeStore";
 
 // ─── Open VSX / Marketplace Types ────────────────────────────────────────────
 
@@ -285,24 +284,11 @@ export function ExtensionsPanel() {
     };
   }, []);
 
-  const { activeIconTheme, setIconTheme, registerFromExtension } = useIconThemeStore();
   const [themeToast, setThemeToast] = useState<string | null>(null);
-
-  const isIconTheme = (ext: MarketplaceExtension) => {
-    const s = `${ext.id} ${ext.name} ${ext.displayName} ${ext.description}`.toLowerCase();
-    return s.includes("icon");
-  };
 
   const isPdfExtension = (ext: MarketplaceExtension) => {
     const s = `${ext.id} ${ext.name} ${ext.displayName} ${ext.description}`.toLowerCase();
     return s.includes("pdf");
-  };
-
-  const getTargetThemeId = (ext: MarketplaceExtension): IconThemeId => {
-    const s = `${ext.id} ${ext.name}`.toLowerCase();
-    if (s.includes("seti")) return "seti";
-    if (s.includes("catppuccin") || s.includes("pastel")) return "catppuccin";
-    return "material";
   };
 
   // Save installed map to localStorage
@@ -319,27 +305,12 @@ export function ExtensionsPanel() {
     const next = { ...installedMap, [ext.id]: ext };
     saveInstalled(next);
 
-    // Auto-activate icon theme if this is an icon pack
-    const applied = registerFromExtension(ext.id, ext.name);
-    if (applied) {
-      setThemeToast(`Applied "${ext.displayName}" as your active File Icon Theme!`);
-      setTimeout(() => setThemeToast(null), 4000);
-      return;
-    }
-
     // Inform user if this is a PDF extension that Fahh has built-in PDF viewer
     if (isPdfExtension(ext)) {
       setThemeToast(`Fahh Editor includes native PDF viewing! Open any .pdf in your workspace directly.`);
       setTimeout(() => setThemeToast(null), 5000);
       return;
     }
-  };
-
-  const handleApplyTheme = (ext: MarketplaceExtension) => {
-    const target = getTargetThemeId(ext);
-    setIconTheme(target);
-    setThemeToast(`Applied "${ext.displayName}" as your active File Icon Theme!`);
-    setTimeout(() => setThemeToast(null), 4000);
   };
 
   const handleUninstall = (id: string) => {
@@ -631,28 +602,6 @@ export function ExtensionsPanel() {
               </a>
             </div>
 
-            {/* Icon Theme Quick-Apply Option */}
-            {isIconTheme(selectedExt) && (
-              <div className="pt-2 border-t border-fahh-surface/60">
-                <button
-                  type="button"
-                  onClick={() => handleApplyTheme(selectedExt)}
-                  className={`w-full flex items-center justify-center gap-1.5 py-1.5 rounded text-xs font-medium transition-colors ${
-                    activeIconTheme === getTargetThemeId(selectedExt)
-                      ? "bg-fahh-accent/20 text-fahh-accent border border-fahh-accent/40 shadow-sm"
-                      : "bg-fahh-surface text-fahh-text border border-fahh-muted/30 hover:border-fahh-accent hover:text-white"
-                  }`}
-                >
-                  <Palette size={12} />
-                  <span>
-                    {activeIconTheme === getTargetThemeId(selectedExt)
-                      ? "Active File Icon Theme ✓"
-                      : "Set as Active File Icon Theme"}
-                  </span>
-                </button>
-              </div>
-            )}
-
             <p className="text-xs text-fahh-text/90 leading-relaxed pt-2 border-t border-fahh-surface/60">
               {selectedExt.description}
             </p>
@@ -758,23 +707,6 @@ export function ExtensionsPanel() {
 
                           {isInstalled ? (
                             <>
-                              {isIconTheme(ext) && (
-                                <button
-                                  type="button"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleApplyTheme(ext);
-                                  }}
-                                  className={`px-1.5 py-0.5 rounded text-[10px] transition-colors ${
-                                    activeIconTheme === getTargetThemeId(ext)
-                                      ? "bg-fahh-accent/20 text-fahh-accent border border-fahh-accent/40 font-medium"
-                                      : "bg-fahh-surface text-fahh-muted hover:text-fahh-text border border-fahh-surface hover:border-fahh-muted"
-                                  }`}
-                                  title="Set as active file icon theme"
-                                >
-                                  {activeIconTheme === getTargetThemeId(ext) ? "Icons Active ✓" : "Apply Icons"}
-                                </button>
-                              )}
                               <button
                                 type="button"
                                 onClick={() => handleUninstall(ext.id)}

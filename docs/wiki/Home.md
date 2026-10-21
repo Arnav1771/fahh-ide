@@ -10,7 +10,7 @@
 |---|---|
 | **[CATE Spatial Canvas](CATE-Spatial-Canvas)** | Infinite 2D zooming canvas, Monaco editor nodes, dynamic font scaling, 1:1 crisp focus (`Alt+1`) |
 | **[VS Code Multi-Terminal](VS-Code-Multi-Terminal)** | Multi-session terminal tabs, side-by-side split panes (`Ctrl+\`), shell selector |
-| **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)** | Material Icon Theme, Seti UI, Catppuccin Pastel, dynamic folder icons & auto-activation |
+| **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)** | Material, Fahh Colour and Minimal icon themes; how file and folder icons are chosen |
 | **[Native Titlebar & Menus](Native-Titlebar-and-Menus)** | Seamless borderless titlebar, client-side window controls, VS Code menu bar |
 | **[Multi-Window Architecture](Multi-Window-Architecture)** | $N$-window concurrency, isolated state stores, smart instance de-duplication (`Ctrl+Shift+N`) |
 | **[Workspace Search & Replace](Workspace-Search-and-Replace)** | Global text and regex search, multi-file replace, glob filters (`Ctrl+Shift+F`) |

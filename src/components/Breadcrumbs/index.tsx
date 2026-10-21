@@ -1,28 +1,9 @@
 import { useMemo } from "react";
-import { Folder, FileCode, FileText, ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { useDiagnosticsStore, type DiagnosticItem } from "../../store/diagnosticsStore";
-
-function getFileIcon(filename: string) {
-  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
-  if (["ts", "tsx", "js", "jsx", "mjs", "cjs"].includes(ext)) {
-    return <FileCode size={12} className="text-yellow-400" />;
-  }
-  if (["py"].includes(ext)) {
-    return <FileCode size={12} className="text-yellow-300" />;
-  }
-  if (["rs"].includes(ext)) {
-    return <FileCode size={12} className="text-orange-400" />;
-  }
-  if (["json", "yaml", "yml", "toml"].includes(ext)) {
-    return <FileText size={12} className="text-cyan-400" />;
-  }
-  if (["html", "css", "scss"].includes(ext)) {
-    return <FileCode size={12} className="text-blue-400" />;
-  }
-  return <FileText size={12} className="text-fahh-muted" />;
-}
+import { FileIcon, FolderIcon } from "../../lib/iconTheme";
 
 export function Breadcrumbs() {
   const { activeTab, openTabs } = useEditorStore();
@@ -65,7 +46,6 @@ export function Breadcrumbs() {
       <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
         {crumbs.map((part, i) => {
           const isLast = i === crumbs.length - 1;
-          const isFirst = i === 0;
 
           return (
             <div key={i} className="flex items-center gap-1 shrink-0">
@@ -77,12 +57,10 @@ export function Breadcrumbs() {
                     : "text-fahh-muted hover:text-fahh-text cursor-pointer"
                 }`}
               >
-                {isFirst ? (
-                  <Folder size={11} className="text-fahh-accent shrink-0" />
-                ) : isLast ? (
-                  getFileIcon(fileName)
+                {isLast ? (
+                  <FileIcon name={fileName} language={activeDoc?.language} size={12} />
                 ) : (
-                  <Folder size={11} className="text-fahh-muted/70 shrink-0" />
+                  <FolderIcon name={part} open size={12} />
                 )}
                 <span className="truncate">{part}</span>
               </span>

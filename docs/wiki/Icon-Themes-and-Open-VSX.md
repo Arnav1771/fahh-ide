@@ -1,39 +1,38 @@
 # File Icon Themes & Open VSX Marketplace
 
-Fahh Editor incorporates a native SVG file and folder icon theme engine alongside deep integration with the **Open VSX Registry**, the open-source extension and theme registry for modern editors.
+Fahh Editor shows file and folder icons in the explorer, editor tabs, breadcrumbs, Quick Open (Ctrl+P) and search results. All of them use one resolver, so a file gets the same icon everywhere.
 
 ---
 
 ## Built-in Icon Themes
 
-Fahh Editor ships with 4 polished file icon themes out-of-the-box:
+Pick one in the Themes panel under **File Icon Theme**:
 
-| Icon Theme | Style | Description |
-|---|---|---|
-| **Material Icon Theme** *(Default)* | Vibrant & Colorful | Modern Google Material design glyphs with tailored folder and language icons. |
-| **Seti UI Icons** | Dark Technical | Classic dark developer aesthetic with high contrast language marks. |
-| **Catppuccin Pastel** | Low Contrast Pastel | Calming, muted color palette designed to reduce visual strain during long coding sessions. |
-| **Modern Minimal** | Monochrome Outlines | Sleek, clean stroke-based icon set for distraction-free code navigation. |
+| Icon Theme | Description |
+|---|---|
+| **Material** *(Default)* | Full-colour icons from [Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme) (MIT). Fahh ships a curated subset of about 160 icons. Light-background variants are used with the Fahh Light theme. |
+| **Fahh Colour** | Lucide line glyphs tinted by file type. |
+| **Minimal** | Monochrome Lucide line glyphs. |
 
-### Dynamic Folder & File Recognition
-The icon engine automatically recognizes and styles special folders and config files:
-- **Special Folders**: `src`, `components`, `node_modules`, `tests`, `docs`, `public`, `assets`, `dist`, `.git`, `.github`.
-- **Special Config Files**: `package.json`, `Cargo.toml`, `tsconfig.json`, `Dockerfile`, `docker-compose.yml`, `.gitignore`, `.env`, `README.md`.
+### How a file's icon is chosen
+1. Exact filename, case-insensitive (`package.json`, `Cargo.lock`, `Makefile`, `.prettierrc`).
+2. Longest extension suffix (`x.d.ts`, `x.test.ts` and `x.spec.tsx` each beat plain `.ts` / `.tsx`).
+3. A known filename with a suffix (`Dockerfile.dev`, `.env.local`).
+4. The editor's language id, for open tabs.
+5. The default file icon.
+
+Folders match by name (`src`, `node_modules`, `.git`, `.vscode`, `public`, `assets`, `tests`, `docs`, `target`, `venv`, ...) and have open and closed variants; anything else gets the default folder.
+
+The vendored icons live in `src/assets/file-icons/` (with upstream's LICENSE). To change the subset, edit the seed lists in `scripts/gen-file-icons.mjs` and rerun it against an extracted `material-icon-theme` npm package.
 
 ---
 
-## Open VSX Extension Auto-Activation
+## Open VSX Extensions
 
-When browsing the **Extensions panel** (Open VSX Store):
-1. **Automatic Detection**: When you install any icon theme (such as *Material Icon Theme*, *vscode-icons*, or *Catppuccin Icons*), Fahh Editor immediately detects the pack.
-2. **Instant Activation**: Fahh Editor applies the theme to your File Tree in real-time and displays a confirmation toast notification.
-3. **Manual Theme Switching**: You can switch active icon themes at any time from the Themes panel (`File Icon Theme` dropdown).
+Installing an icon theme from the Extensions panel does **not** change Fahh's icons: Fahh cannot run VS Code icon-theme packages. Switch icon themes from the Themes panel.
 
 ---
 
 ## Extension Architecture Note
 
-Open VSX packages (`.vsix`) are designed for Microsoft VS Code's proprietary Node.js extension host daemon. Fahh Editor is a lean Tauri 2 + Rust + Monaco desktop application (~15MB memory footprint vs. VS Code's 200MB+ Electron runtime). 
-
-- **Fully Supported**: File icon themes, editor color themes (Monaco themes), and native previews.
-- **Built-in Equivalents**: Capabilities like PDF viewing, Markdown preview, HTML preview, and CSV viewing are built directly into the core editor without requiring third-party extension runtimes.
+Open VSX packages (`.vsix`) are designed for VS Code's Node.js extension host. Fahh Editor is a Tauri 2 + Rust + Monaco desktop application and does not run that host. PDF viewing, Markdown preview, HTML preview and CSV viewing are built into the editor instead.

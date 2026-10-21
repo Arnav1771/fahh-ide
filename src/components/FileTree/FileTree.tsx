@@ -8,8 +8,7 @@ import { open } from "@tauri-apps/plugin-dialog";
 import { OPEN_FOLDER_EVENT } from "../../lib/commands";
 import { closeTabsUnder, dirtyPaths, renameTabs } from "../../lib/tabActions";
 import { FolderOpen, Edit2, Trash2, Copy, FilePlus, File } from "lucide-react";
-import { useIconThemeStore } from "../../store/iconThemeStore";
-import { renderFileIcon, renderFolderIcon } from "../../lib/iconTheme";
+import { FileIcon, FolderIcon } from "../../lib/iconTheme";
 
 // ─── Context menu ─────────────────────────────────────────────────────────────
 
@@ -158,10 +157,7 @@ function FileNode({
     onContextMenu(e, entry);
   };
 
-  const { activeIconTheme } = useIconThemeStore();
-  const icon = entry.is_dir
-    ? renderFolderIcon(entry.name, expanded, activeIconTheme)
-    : renderFileIcon(entry.name, activeIconTheme);
+  const icon = entry.is_dir ? <FolderIcon name={entry.name} open={expanded} /> : <FileIcon name={entry.name} />;
 
   return (
     <div>
@@ -580,8 +576,4 @@ export function FileTree() {
       )}
     </div>
   );
-}
-
-export function fileIcon(name: string): React.ReactNode {
-  return renderFileIcon(name, "material");
 }
