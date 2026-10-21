@@ -7,9 +7,11 @@
  * terminal moves there and hides the line. The command's own exit code is kept.
  */
 
+import { parseWslPath } from "./wslPath";
+
 export const CWD_MARKER = "__FAHH_CWD__:";
 
-export type ShellKind = "posix" | "cmd";
+export type ShellKind = "posix" | "cmd" | "powershell" | "wsl";
 
 /** The backend runs commands with `cmd /C` on Windows and `sh -c` elsewhere. */
 export function detectShell(userAgent?: string): ShellKind {
@@ -18,11 +20,33 @@ export function detectShell(userAgent?: string): ShellKind {
 }
 
 /** The name shown in the terminal header. */
-export const shellName = (kind: ShellKind): string => (kind === "cmd" ? "cmd" : "sh");
+export const shellName = (kind: ShellKind): string => (kind === "posix" ? "sh" : kind);
+
+/**
+ * The shell a tab really runs. A tab opened from the "+ Shell" menu keeps its choice;
+ * a plain tab ("auto") uses WSL for a folder inside WSL and cmd for any other Windows folder.
+ */
+export function effectiveShell(sessionShell: string, cwd: string, platform: ShellKind = detectShell()): ShellKind {
+  if (platform === "posix") return "posix";
+  const s = sessionShell.toLowerCase();
+  if (s === "powershell" || s === "pwsh") return "powershell";
+  if (s === "bash" || s === "wsl") return "wsl";
+  if (s === "cmd") return "cmd";
+  return parseWslPath(cwd) ? "wsl" : "cmd";
+}
+
+/** UNC folders (\\server\share, \\wsl.localhost\...), which cmd cannot start in. */
+export const isUncPath = (p: string): boolean => p.startsWith("\\\\") || p.startsWith("//");
 
 /** The command to hand the backend (which runs it with `sh -c` / `cmd /C`). */
-export function wrapForCwd(command: string, shell: ShellKind): string {
+export function wrapForCwd(command: string, shell: ShellKind, cwd = ""): string {
+  if (shell === "powershell") {
+    return `${command}; $__fahh = if ($LASTEXITCODE) { $LASTEXITCODE } elseif ($?) { 0 } else { 1 }; Write-Output ("${CWD_MARKER}" + (Get-Location).ProviderPath); exit $__fahh`;
+  }
   if (shell === "cmd") {
+    // In a UNC folder the backend pushd-es to a temporary drive letter, so %CD% would
+    // report that drive: the terminal resolves `cd` itself there (see useTerminal).
+    if (isUncPath(cwd)) return command;
     // cmd has no clean way to keep the exit code across `&`; track only a
     // plain `cd <dir>` (or `cd /d <dir>`), which is what people type.
     const m = /^\s*cd(?:\s+\/d)?\s+(.+?)\s*$/i.exec(command);

@@ -16,3 +16,4 @@ pub mod git;
 pub mod preview;
 pub mod proc;
 pub mod syntax;
+pub mod wsl;

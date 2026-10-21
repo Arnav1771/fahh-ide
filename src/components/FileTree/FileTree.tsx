@@ -5,7 +5,6 @@ import { useEditorStore } from "../../store/editorStore";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { deleteFile, renameFile, createFile } from "../../lib/tauri";
 import { open } from "@tauri-apps/plugin-dialog";
-import { OPEN_FOLDER_EVENT } from "../../lib/commands";
 import { closeTabsUnder, dirtyPaths, renameTabs } from "../../lib/tabActions";
 import { FolderOpen, Edit2, Trash2, Copy, FilePlus, File } from "lucide-react";
 import { useIconThemeStore } from "../../store/iconThemeStore";
@@ -305,12 +304,8 @@ export function FileTree() {
     }
   };
 
-  // The welcome screen and the palette ask for the folder dialog by event.
-  useEffect(() => {
-    const onOpen = () => void handleOpenFolder();
-    window.addEventListener(OPEN_FOLDER_EVENT, onOpen);
-    return () => window.removeEventListener(OPEN_FOLDER_EVENT, onOpen);
-  });
+  // The welcome screen, menu and palette ask for the folder dialog by event; App
+  // answers it (one listener, so one dialog).
 
   // ── Context menu handlers ──────────────────────────────────────────────────
 

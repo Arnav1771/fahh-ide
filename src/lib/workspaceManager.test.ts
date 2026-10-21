@@ -48,7 +48,7 @@ describe("workspaceManager", () => {
       },
     };
 
-    const success = await applyWorkspaceConfig(JSON.stringify(config), openFolderFn, openFileFn);
+    const success = await applyWorkspaceConfig(JSON.stringify(config), openFolderFn, openFileFn, undefined, async () => true);
     expect(success).toBe(true);
     expect(openFolderFn).toHaveBeenCalledWith("C:/projects/demo");
     expect(openFileFn).toHaveBeenCalledWith("C:/projects/demo/app.tsx");

@@ -13,7 +13,7 @@ import { Toasts } from "./components/Toasts";
 import { clampSize, loadSize, saveSize } from "./lib/panelSize";
 import { saveActive, unsavedMessage } from "./lib/tabActions";
 import { handleOpenRequest } from "./lib/openRequest";
-import { installCli, openNewWindow, takePendingOpen } from "./lib/tauri";
+import { installCli, openNewWindow, readFile, takePendingOpen } from "./lib/tauri";
 import { useToastStore } from "./store/toastStore";
 import type { OpenRequest } from "./lib/types";
 import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
@@ -39,7 +39,7 @@ import { openBrowser } from "./lib/browser";
 import { launchAgyTerminal } from "./lib/tauri";
 import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
-import { saveWorkspaceAs, openWorkspaceFromFile } from "./lib/workspaceManager";
+import { saveWorkspaceAs, openWorkspaceFromFile, applyWorkspaceConfig } from "./lib/workspaceManager";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
 import { FolderTree, Search, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe, Cpu } from "lucide-react";
 import { MenuBar } from "./components/MenuBar";
@@ -161,6 +161,7 @@ export default function App() {
         isActive: (p) => getActiveDocument() === p,
         goToLine: revealLine,
         notify: (t, k) => useToastStore.getState().show(t, k),
+        openWorkspace: (p) => readFile(p).then((text) => applyWorkspaceConfig(text, openFolder, openFileInEditor, p)),
       });
     let off: (() => void) | undefined;
     let gone = false;
@@ -188,7 +189,7 @@ export default function App() {
           await openFolder(selected);
         }
       } catch (err) {
-        console.error("Failed to open folder:", err);
+        useToastStore.getState().show(`Could not open the folder: ${String(err)}`, "error");
       }
     };
     const handleOpenFile = async () => {
@@ -199,7 +200,7 @@ export default function App() {
           await openFileInEditor(selected);
         }
       } catch (err) {
-        console.error("Failed to open file:", err);
+        useToastStore.getState().show(`Could not open the file: ${String(err)}`, "error");
       }
     };
     window.addEventListener(OPEN_FOLDER_EVENT, handleOpenFolder);

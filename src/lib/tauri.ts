@@ -163,8 +163,10 @@ export const getOpenDocuments = () =>
 export const executeCommand = (
   command: string,
   args: string[] = [],
-  cwd?: string
-) => invoke<CommandOutput>("execute_command", { command, args, cwd });
+  cwd?: string,
+  /** "cmd" | "powershell" | "wsl"; omitted = the backend picks for the folder. */
+  shell?: string
+) => invoke<CommandOutput>("execute_command", { command, args, cwd, shell });
 
 export const launchAgyTerminal = (cwd?: string, args?: string[]) =>
   invoke<string>("launch_agy_terminal", { cwd, args });

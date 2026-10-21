@@ -97,13 +97,16 @@ struct RunCommand {
 }
 
 /// Determine the run command for a given language and file.
-fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> Result<RunCommand, String> {
+/// `wsl` builds the command for a Linux shell inside WSL (file_path is then a Linux path),
+/// whatever the host OS is.
+fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl: bool) -> Result<RunCommand, String> {
     let path = std::path::Path::new(file_path);
+    let windows = cfg!(target_os = "windows") && !wsl;
     let file_str = file_path.to_string();
 
     let mut cmd = match language {
         "python" => {
-            let python = resolve_python();
+            let python = if wsl { "python3".to_string() } else { resolve_python() };
             let mut args = vec!["-u".to_string(), file_str];
             args.extend_from_slice(user_args);
             RunCommand { program: python, args }
@@ -115,7 +118,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> R
         }
         "typescript" => {
             // Prefer ts-node if available; otherwise use npx tsx.
-            if which_exists("ts-node") {
+            if !wsl && which_exists("ts-node") {
                 let mut args = vec![file_str];
                 args.extend_from_slice(user_args);
                 RunCommand { program: "ts-node".to_string(), args }
@@ -155,7 +158,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> R
             let shell_cmd = format!(
                 "javac \"{file_path}\" && java -cp \"{parent}\" {stem} {joined_user}"
             );
-            if cfg!(target_os = "windows") {
+            if windows {
                 RunCommand {
                     program: "cmd".to_string(),
                     args: vec!["/C".to_string(), shell_cmd],
@@ -170,7 +173,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> R
         "cpp" | "c" => {
             // Compile with g++ (c uses gcc) then execute the output binary.
             let compiler = if language == "c" { "gcc" } else { "g++" };
-            let out_bin = if cfg!(target_os = "windows") {
+            let out_bin = if windows {
                 format!("{}.exe", file_path)
             } else {
                 format!("{}.out", file_path)
@@ -179,7 +182,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> R
             let shell_cmd = format!(
                 "{compiler} -o \"{out_bin}\" \"{file_path}\" && \"{out_bin}\" {joined_user}"
             );
-            if cfg!(target_os = "windows") {
+            if windows {
                 RunCommand {
                     program: "cmd".to_string(),
                     args: vec!["/C".to_string(), shell_cmd],
@@ -240,7 +243,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String]) -> R
             let shell_cmd = format!(
                 "kotlinc \"{file_path}\" -include-runtime -d \"{jar_path}\" && java -jar \"{jar_path}\" {joined_user}"
             );
-            if cfg!(target_os = "windows") {
+            if windows {
                 RunCommand {
                     program: "cmd".to_string(),
                     args: vec!["/C".to_string(), shell_cmd],
@@ -308,6 +311,19 @@ pub(crate) fn which_exists(name: &str) -> bool {
 }
 
 /// Joins args with spaces, adding double-quotes around each.
+/// The bash script for a command built with `wsl: true`: `sh -c <script>` passes its
+/// script through, anything else is quoted word by word.
+fn wsl_script(run_cmd: &RunCommand) -> String {
+    if run_cmd.program == "sh" && run_cmd.args.first().map(String::as_str) == Some("-c") {
+        return run_cmd.args.get(1).cloned().unwrap_or_default();
+    }
+    std::iter::once(&run_cmd.program)
+        .chain(run_cmd.args.iter())
+        .map(|a| crate::core::wsl::sh_quote(a))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 fn shell_quote_args(args: &[String]) -> String {
     args.iter()
         .map(|a| format!("\"{}\"", a.replace('"', "\\\"")))
@@ -352,17 +368,34 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
 
     info!("run_file: language={language}, file={}, cwd={cwd}", config.path);
 
-    let run_cmd = build_run_command(&language, &config.path, &config.args)?;
+    // A file inside WSL (\\wsl.localhost\<distro>\...) cannot run with a UNC working
+    // directory on Windows (os error 267): run it inside the distro instead.
+    let wsl_target = if cfg!(target_os = "windows") { crate::core::wsl::parse(&config.path) } else { None };
+    let (mut command, program) = match &wsl_target {
+        Some(wp) => {
+            let linux_cwd = crate::core::wsl::parse(&cwd)
+                .filter(|c| c.distro == wp.distro)
+                .map(|c| c.linux)
+                .unwrap_or_else(|| wp.linux.rsplit_once('/').map(|(d, _)| if d.is_empty() { "/".to_string() } else { d.to_string() }).unwrap_or_else(|| "/".to_string()));
+            let run_cmd = build_run_command(&language, &wp.linux, &config.args, true)?;
+            let script = wsl_script(&run_cmd);
+            debug!("Executing in WSL {}: {script}", wp.distro);
+            (crate::core::wsl::command(Some(&wp.distro), &linux_cwd, &script), format!("{} (WSL {})", run_cmd.program, wp.distro))
+        }
+        None => {
+            let run_cmd = build_run_command(&language, &config.path, &config.args, false)?;
+            debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
+            let mut c = crate::core::proc::cmd(&run_cmd.program);
+            c.args(&run_cmd.args).current_dir(&cwd);
+            (c, run_cmd.program)
+        }
+    };
 
-    debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
-
-    let mut child = crate::core::proc::cmd(&run_cmd.program)
-        .args(&run_cmd.args)
-        .current_dir(&cwd)
+    let mut child = command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .map_err(|e| format!("Failed to spawn process `{}`: {e}", run_cmd.program))?;
+        .map_err(|e| format!("Failed to spawn process `{program}`: {e}"))?;
 
     let pid = child.id();
     info!("Spawned child PID={pid}");

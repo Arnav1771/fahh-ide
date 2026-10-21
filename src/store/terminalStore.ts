@@ -16,8 +16,10 @@ export interface TerminalSession {
   history: string[];
 }
 
-const defaultShell = detectShell();
-const initialTitle = `1: ${shellName(defaultShell).toLowerCase()}`;
+// On Windows a plain tab is "auto": WSL for a folder inside WSL, cmd otherwise.
+const defaultShell = detectShell() === "cmd" ? "auto" : "posix";
+const defaultName = detectShell() === "cmd" ? "terminal" : shellName("posix");
+const initialTitle = `1: ${defaultName}`;
 
 const createInitialSession = (): TerminalSession => ({
   id: "term-1",
@@ -80,9 +82,8 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   createSession: (customShell, title) => {
     const state = get();
     const count = state.sessions.length + 1;
-    const shell = customShell ?? detectShell();
-    const sessionTitle =
-      title ?? (customShell ? `${count}: ${customShell}` : `${count}: ${shellName(detectShell())}`);
+    const shell = customShell ?? defaultShell;
+    const sessionTitle = title ?? `${count}: ${customShell ?? defaultName}`;
     const newSession: TerminalSession = {
       id: `term-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       title: sessionTitle,

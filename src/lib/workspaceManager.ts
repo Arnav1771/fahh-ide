@@ -2,7 +2,8 @@ import { useEditorStore } from "../store/editorStore";
 import { useFileStore } from "../store/fileStore";
 import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
-import { readFile, writeFile } from "./tauri";
+import { getFileTree, readFile, writeFile } from "./tauri";
+import { parseJsonc, workspaceFolders } from "./codeWorkspace";
 
 export interface FahhWorkspaceConfig {
   fahh: string;
@@ -102,7 +103,7 @@ export async function openWorkspaceFromFile(
     if (!selected || typeof selected !== "string") return false;
 
     const content = await readFile(selected);
-    return await applyWorkspaceConfig(content, openFolderFn, openFileFn);
+    return await applyWorkspaceConfig(content, openFolderFn, openFileFn, selected);
   } catch {
     // Web fallback: file input
     return new Promise((resolve) => {
@@ -129,28 +130,54 @@ export async function openWorkspaceFromFile(
   }
 }
 
-/** Parse and apply workspace settings, open folder, and restore open tabs */
+/** Is this folder there? (Opening a missing one used to show an empty explorer and "success".) */
+const folderExists = async (path: string): Promise<boolean> => {
+  try {
+    await getFileTree(path);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+/**
+ * Parse and apply a workspace file: Fahh's own `.fahh-workspace` or VS Code's
+ * `.code-workspace` (JSONC, folders relative to `workspaceFile`, WSL/file URIs).
+ */
 export async function applyWorkspaceConfig(
   rawJson: string,
   openFolderFn: (folder: string) => Promise<void>,
-  openFileFn: (file: string) => Promise<void>
+  openFileFn: (file: string) => Promise<void>,
+  workspaceFile?: string,
+  exists: (folder: string) => Promise<boolean> = folderExists
 ): Promise<boolean> {
+  const toast = useToastStore.getState().show;
+  let parsed: any;
   try {
-    const parsed = JSON.parse(rawJson);
-    const root = parsed.root || parsed.folders?.[0]?.path;
+    parsed = parseJsonc(rawJson);
+  } catch (err) {
+    toast(`This workspace file is not valid JSON: ${String(err)}`, "error");
+    return false;
+  }
+  try {
+    const folders = workspaceFolders(parsed, workspaceFile);
+    if (folders.length === 0) {
+      toast("This workspace has no folder Fahh can open (remote SSH/containers are not supported).", "error");
+      return false;
+    }
+    const root = folders[0];
+    if (!(await exists(root))) {
+      toast(`Workspace folder not found: ${root}`, "error");
+      return false;
+    }
 
-    // Apply settings
-    if (parsed.settings?.autoSave !== undefined) {
-      useEditorStore.getState().setAutoSave(!!parsed.settings.autoSave);
-    }
-    if (parsed.settings?.theme) {
-      useThemeStore.getState().setTheme(parsed.settings.theme);
-    }
+    // Fahh's own settings, plus VS Code's files.autoSave.
+    const s = parsed.settings ?? {};
+    if (s.autoSave !== undefined) useEditorStore.getState().setAutoSave(!!s.autoSave);
+    else if (typeof s["files.autoSave"] === "string") useEditorStore.getState().setAutoSave(s["files.autoSave"] !== "off");
+    if (typeof s.theme === "string" && s.theme) useThemeStore.getState().setTheme(s.theme);
 
-    // Open root folder if present
-    if (root) {
-      await openFolderFn(root);
-    }
+    await openFolderFn(root);
 
     // Restore tabs
     if (Array.isArray(parsed.openTabs)) {
@@ -169,10 +196,12 @@ export async function applyWorkspaceConfig(
       }
     }
 
-    useToastStore.getState().show("Workspace loaded successfully");
+    const name = root.split(/[\\/]/).filter(Boolean).pop() ?? root;
+    const more = folders.length - 1;
+    toast(more > 0 ? `Opened ${name}. ${more} more folder${more > 1 ? "s" : ""} in this workspace: Fahh opens one folder per window.` : `Opened workspace ${name}`);
     return true;
   } catch (err) {
-    useToastStore.getState().show(`Failed to parse workspace config: ${String(err)}`, "error");
+    toast(`Could not open the workspace: ${String(err)}`, "error");
     return false;
   }
 }
