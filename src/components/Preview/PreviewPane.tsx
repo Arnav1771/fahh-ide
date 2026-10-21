@@ -9,6 +9,8 @@ import { allowPreview } from "../../lib/tauri";
 import { revealLine } from "../../lib/monacoBridge";
 import { usePreviewStore } from "../../store/previewStore";
 import { useWorkspace } from "../../hooks/useWorkspace";
+import { parseNotebook, type NotebookCell, type NotebookOutput } from "../../lib/notebook";
+import * as monaco from "monaco-editor";
 
 /** Turn a local path into a URL the webview may load (asset protocol). */
 function assetUrl(path: string): string {
@@ -73,6 +75,7 @@ export function PreviewPane({ path, content, kind, onClose, onShowSource }: Prop
         {kind === "svg" && <ImagePreview src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`} path={path} bytes={new Blob([content]).size} />}
         {kind === "csv" && <CsvPreview content={content} delimiter={extOf(path) === "tsv" ? "\t" : ","} />}
         {kind === "pdf" && <PdfPreview path={path} />}
+        {kind === "notebook" && <NotebookPreview path={path} content={content} />}
       </div>
     </div>
   );
@@ -414,6 +417,152 @@ function PdfPreview({ path }: { path: string }) {
             </button>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Jupyter notebook (read-only; edits go through the source editor) ─────────
+
+const NB_CSS = `${MD_CSS}
+.md { padding: 2px 0; max-width: none; }
+.md > :last-child { margin-bottom: 0; }
+.md table { font-size: 12px; }
+`;
+
+/** Sanitised HTML in a shadow root, so notebook styles and the app's never mix. Links never navigate the app. */
+function ShadowHtml({ html }: { html: string }) {
+  const hostRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const root = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+    root.innerHTML = `<style>${NB_CSS}</style><div class="md">${html}</div>`;
+    const onClick = (e: Event) => {
+      const a = (e.target as HTMLElement).closest?.("a");
+      if (!a) return;
+      e.preventDefault();
+      const href = a.getAttribute("href") ?? "";
+      if (/^(https?:|mailto:)/i.test(href)) void openExternal(href);
+    };
+    root.addEventListener("click", onClick);
+    return () => root.removeEventListener("click", onClick);
+  }, [html]);
+  return <div ref={hostRef} className="min-w-0" />;
+}
+
+const NB_FORBID = { FORBID_TAGS: ["style", "form", "iframe", "object", "embed", "script", "link", "meta", "base"], FORBID_ATTR: ["style"] };
+
+function NotebookMarkdown({ source, path }: { source: string; path: string }) {
+  const html = useMemo(
+    () => DOMPurify.sanitize(renderMarkdown(source, { docPath: path, toUrl: assetUrl }), { ...NB_FORBID, ALLOWED_URI_REGEXP: SAFE_URL }),
+    [source, path],
+  );
+  return <ShadowHtml html={html} />;
+}
+
+const MAX_LINES = 200;
+
+/** Long text output, capped until asked for. */
+function LongText({ text, className }: { text: string; className: string }) {
+  const [all, setAll] = useState(false);
+  const lines = text.split("\n");
+  const capped = !all && lines.length > MAX_LINES;
+  return (
+    <div>
+      <pre className={`whitespace-pre-wrap break-words font-mono text-[12px] leading-snug ${className}`}>{capped ? lines.slice(0, MAX_LINES).join("\n") : text}</pre>
+      {capped && (
+        <button type="button" className="mt-1 text-[11px] text-fahh-accent hover:underline" onClick={() => setAll(true)}>
+          Show {lines.length - MAX_LINES} more lines
+        </button>
+      )}
+    </div>
+  );
+}
+
+function NotebookOutputView({ out, path }: { out: NotebookOutput; path: string }) {
+  switch (out.type) {
+    case "stream":
+      return <LongText text={out.text} className={out.name === "stderr" ? "fahh-nb-stderr rounded bg-fahh-error/10 px-2 py-1 text-fahh-error" : "fahh-nb-stream text-fahh-text"} />;
+    case "text":
+      return <LongText text={out.text} className="fahh-nb-text text-fahh-text" />;
+    case "image":
+      return <img src={out.src} alt="Cell output" className="fahh-nb-image max-w-full rounded bg-white" />;
+    case "html":
+      return <ShadowHtml html={DOMPurify.sanitize(out.html, NB_FORBID)} />;
+    case "markdown":
+      return <NotebookMarkdown source={out.text} path={path} />;
+    case "error":
+      return (
+        <div className="fahh-nb-error rounded border border-fahh-error/40 bg-fahh-error/10 px-2 py-1">
+          <p className="font-mono text-[12px] font-semibold text-fahh-error">{out.ename}: {out.evalue}</p>
+          {out.traceback && <LongText text={out.traceback} className="text-fahh-error" />}
+        </div>
+      );
+  }
+}
+
+function CodeSource({ source, language }: { source: string; language: string }) {
+  const [html, setHtml] = useState<string | null>(null);
+  useEffect(() => {
+    let live = true;
+    setHtml(null);
+    monaco.editor.colorize(source, language, {}).then((h) => live && setHtml(h), () => {});
+    return () => {
+      live = false;
+    };
+  }, [source, language]);
+  const cls = "fahh-nb-code min-w-0 flex-1 overflow-x-auto rounded border border-fahh-surface bg-fahh-sidebar px-3 py-2 font-mono text-[12.5px] leading-snug";
+  // colorize() escapes the source itself; its output is only Monaco's token spans.
+  return html === null ? <pre className={`${cls} text-fahh-text`}>{source}</pre> : <pre className={cls} dangerouslySetInnerHTML={{ __html: html }} />;
+}
+
+function NotebookCellView({ cell, language, path }: { cell: NotebookCell; language: string; path: string }) {
+  const prompt = "w-16 shrink-0 select-none pt-2 text-right font-mono text-[11px] text-fahh-muted";
+  if (cell.type === "markdown") {
+    return (
+      <div className="fahh-nb-cell flex gap-3" data-cell="markdown">
+        <div className={prompt} />
+        <div className="min-w-0 flex-1"><NotebookMarkdown source={cell.source} path={path} /></div>
+      </div>
+    );
+  }
+  if (cell.type === "raw") {
+    return (
+      <div className="fahh-nb-cell flex gap-3" data-cell="raw">
+        <div className={prompt} />
+        <pre className="min-w-0 flex-1 whitespace-pre-wrap font-mono text-[12px] text-fahh-muted">{cell.source}</pre>
+      </div>
+    );
+  }
+  return (
+    <div className="fahh-nb-cell flex flex-col gap-1" data-cell="code">
+      <div className="flex gap-3">
+        <div className={`${prompt} text-fahh-accent`}>In [{cell.executionCount ?? " "}]:</div>
+        <CodeSource source={cell.source} language={language} />
+      </div>
+      {cell.outputs.map((out, i) => (
+        <div key={i} className="fahh-nb-output flex gap-3">
+          <div className={prompt}>{out.type !== "stream" && out.type !== "error" && cell.executionCount !== null ? `Out[${cell.executionCount}]:` : ""}</div>
+          <div className="min-w-0 flex-1 overflow-x-auto"><NotebookOutputView out={out} path={path} /></div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function NotebookPreview({ path, content }: { path: string; content: string }) {
+  const source = useDebounced(content, 300);
+  const nb = useMemo(() => parseNotebook(source), [source]);
+  if ("error" in nb) return <p className="fahh-nb-invalid p-4 text-xs text-fahh-error">{nb.error}</p>;
+  if (nb.cells.length === 0) return <p className="p-4 text-xs text-fahh-muted">Empty notebook.</p>;
+  return (
+    <div className="fahh-notebook absolute inset-0 overflow-auto">
+      <div className="flex flex-col gap-4 p-4 pr-6">
+        {nb.cells.map((cell, i) => (
+          <NotebookCellView key={i} cell={cell} language={nb.language} path={path} />
+        ))}
+        <p className="pl-[76px] text-[11px] text-fahh-muted">Read-only view · {nb.cells.length} cells · {nb.language}. Use Source to edit.</p>
       </div>
     </div>
   );

@@ -47,7 +47,7 @@ export function useWorkspace() {
     const langMap: Record<string, string> = {
       rs: "rust", ts: "typescript", tsx: "typescript",
       js: "javascript", jsx: "javascript", py: "python",
-      json: "json", toml: "toml", md: "markdown",
+      json: "json", ipynb: "json", toml: "toml", md: "markdown",
       html: "html", htm: "html", css: "css", svg: "xml", csv: "plaintext", tsv: "plaintext",
       yml: "yaml", yaml: "yaml", c: "c", cpp: "cpp", h: "c", hpp: "cpp",
       sh: "shell", bat: "bat", ps1: "powershell", sql: "sql",
