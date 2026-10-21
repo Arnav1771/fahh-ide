@@ -1678,15 +1678,15 @@
   margin-top: auto;
 }
 
-/* ─── Composer & Diff Cards ─── */
-.composer-card {
+/* ─── Showcase & Diff Cards ─── */
+.sp-card {
   background: var(--bg-card);
   border: 1px solid var(--border-medium);
   border-radius: var(--r-lg);
   box-shadow: inset 0 1px 0 rgba(255, 248, 230, 0.05), 0 12px 36px rgba(0, 0, 0, 0.5);
   overflow: hidden;
 }
-.composer-header {
+.sp-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1695,18 +1695,18 @@
   border-bottom: 1px solid var(--border-subtle);
   font: 600 13px var(--font-mono);
 }
-.composer-body {
+.sp-body {
   padding: 20px;
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-.composer-chips {
+.sp-chips {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
 }
-.composer-chip {
+.sp-chip {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -1749,7 +1749,7 @@
   color: var(--fg-body);
 }
 
-/* ─── Error Lens & Ghost Text ─── */
+/* ─── Error Lens ─── */
 .error-lens-tag {
   display: inline-flex;
   align-items: center;
@@ -1762,24 +1762,6 @@
   border-radius: 3px;
   font-size: 11.5px;
 }
-.ghost-text {
-  color: rgba(240, 235, 224, 0.35);
-  font-style: italic;
-}
-
-/* ─── REA Hex Dump ─── */
-.hex-view {
-  font: 11.5px/18px var(--font-mono);
-  color: var(--text-tertiary);
-  background: #090807;
-  padding: 12px;
-  border-radius: var(--r-md);
-  border: 1px solid var(--border-subtle);
-  overflow-x: auto;
-}
-.hex-offset { color: var(--accent); margin-right: 12px; }
-.hex-bytes { color: var(--text-primary); margin-right: 12px; }
-.hex-ascii { color: var(--success); }
 
 /* ─── Utility ─── */
 .fine { margin-top: 20px; font-size: 13px; color: var(--text-tertiary); max-width: 860px; }

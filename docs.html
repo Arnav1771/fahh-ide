@@ -446,9 +446,9 @@ td code { font-size: .78em; }
       <kbd>Ctrl K</kbd>
     </button>
     <a href="index.html#simulator" class="nav-link">Simulator</a>
-    <a href="index.html#canvas" class="nav-link">Spatial Canvas</a>
-    <a href="index.html#composer" class="nav-link">Composer AI</a>
-    <a href="index.html#features" class="nav-link">Features</a>
+    <a href="#spatial-canvas" class="nav-link">Spatial Canvas</a>
+    <a href="#fahh-local" class="nav-link">Fahh Local</a>
+    <a href="index.html#superpowers" class="nav-link">Features</a>
     <a href="play.html" class="nav-link">Playground</a>
     <a href="https://github.com/Arnav1771/fahh-ide" target="_blank" class="nav-link">GitHub</a>
     <a href="index.html#download" class="nav-btn" style="background:var(--v);border-color:var(--v);color:#0a0907;font-weight:700;">Download v0.6.3</a>
@@ -467,12 +467,9 @@ td code { font-size: .78em; }
   <div class="sb-group">
     <span class="sb-label">Spatial & AI</span>
     <a class="sb-link" href="#spatial-canvas">CATE Spatial Canvas</a>
-    <a class="sb-link" href="#inline-edit">Cursor Inline Edit (Ctrl+K)</a>
-    <a class="sb-link" href="#composer">Cursor Composer (Ctrl+I)</a>
-    <a class="sb-link" href="#ghost-text">Copilot Ghost Text</a>
+    <a class="sb-link" href="#fahh-local">Fahh Local agent</a>
     <a class="sb-link" href="#error-lens">Monaco Error Lens</a>
-    <a class="sb-link" href="#terminal-git-ai">Terminal & Git AI</a>
-    <a class="sb-link" href="#rea-analysis">REA Code Analysis</a>
+    <a class="sb-link" href="#terminal-git-ai">Git AI commits</a>
     <a class="sb-link" href="#extensions-store">Open VSX Extension Store</a>
   </div>
   <div class="sb-group">
@@ -524,8 +521,16 @@ td code { font-size: .78em; }
       <p><strong>The fahh.mp3 filename must never change.</strong> The file lives at <code>src-tauri/assets/fahh.mp3</code> (four h's). Renaming it breaks the core feature. This is a hard rule.</p>
     </div>
     <p class="doc-p">
-      Fahh Editor is currently at <strong>v0.6.3</strong>. Features include the full editor shell: CATE Spatial Canvas 2D infinite workspace, Cursor-style Inline Edit (Ctrl+K), REA reverse-engineering code analysis, native top menu bar, breadcrumbs navigation, multi-tab bottom panel, Monaco editor with tabs and previews, integrated terminal, Git sidebar, AI panel with slash commands, multi-theme switcher, and cross-platform native release builds.
+      Fahh Editor is currently at <strong>v0.6.3</strong>. Features include the full editor shell: CATE Spatial Canvas 2D infinite workspace, the Fahh Local coding agent (bring your own key), native top menu bar, breadcrumbs navigation, bottom dock (Problems, Debug Console, Terminal, Run), Monaco editor with tabs and previews, integrated terminal, Git sidebar, multi-theme switcher, and cross-platform native release builds.
     </p>
+    <div class="callout note">
+      <span class="callout-icon">🧹</span>
+      <p><strong>Removed after v0.6.3:</strong> Composer, Inline Edit, ghost-text completions, REA Code Analysis, the Ports and Output panels, the terminal "Fix with AI" button and terminal image paste. They were simulated, with no real model or data behind them. Fahh Local is the real AI feature.</p>
+    </div>
+    <div class="callout note">
+      <span class="callout-icon">🆕</span>
+      <p><strong>Coming in v0.6.4</strong> (merged, not yet released): WSL folders open and run inside WSL, the terminal's <strong>+</strong> really switches shell, <code>.code-workspace</code> files open, a read-only Jupyter notebook viewer, and real Material file icons. Downloads are still v0.6.3.</p>
+    </div>
     <div class="platform-row">
       <span class="plat">Windows 10/11</span>
       <span class="plat">macOS 11+</span>
@@ -611,7 +616,7 @@ pnpm build      # Production bundle to dist/</pre></div>
       <div class="mod-row"><span class="mod-name">Infinite 2D Navigation</span><span class="mod-desc">Smooth panning with middle-click/drag or trackpad, zoom levels from 35% to 200% with mouse wheel or HUD controls.</span></div>
       <div class="mod-row"><span class="mod-name">Window Chrome</span><span class="mod-desc">macOS-inspired traffic lights (Close, Minimize to tray, Expand/Maximize), titlebar drag with zoom compensation, and corner resize.</span></div>
       <div class="mod-row"><span class="mod-name">Monaco Code Nodes</span><span class="mod-desc">Full-featured floating Monaco editors with multi-tab switcher and breadcrumbs navigation.</span></div>
-      <div class="mod-row"><span class="mod-name">Interactive Terminals</span><span class="mod-desc">Multiple floating shells executing PowerShell, bash, or cmd with unbuffered output and Alt+V screenshot paste.</span></div>
+      <div class="mod-row"><span class="mod-name">Interactive Terminals</span><span class="mod-desc">Multiple floating shells executing PowerShell, bash, or cmd with unbuffered output.</span></div>
       <div class="mod-row"><span class="mod-name">Fahh Local AI Agent</span><span class="mod-desc">Floating AI assistant node with Ask, Auto-edit, and Plan modes, model switcher, and live code generation.</span></div>
       <div class="mod-row"><span class="mod-name">Dev Browser Node</span><span class="mod-desc">Embedded live preview browser with address bar, reload, responsive viewport switches (Desktop, Tablet, Mobile), and external launcher.</span></div>
       <div class="mod-row"><span class="mod-name">Architectural Sticky Notes</span><span class="mod-desc">Floating brainstorming and architecture scratchpads styled with the <code>Architects Daughter</code> cursive font and 4 pastel color swatches.</span></div>
@@ -622,68 +627,6 @@ pnpm build      # Production bundle to dist/</pre></div>
     <div class="cb-wrap"><div class="cb-head"><span class="cb-lang">shortcuts</span><button class="cb-copy" onclick="copy(this)">copy</button></div><pre>Ctrl+Shift+C   <span class="cm"># Toggle between Docked IDE and CATE Spatial Canvas</span>
 Scroll / Wheel <span class="cm"># Zoom canvas in and out (35% - 200%)</span>
 Middle Drag    <span class="cm"># Pan canvas across 2D plane</span></pre></div>
-  </section>
-
-  <!-- INLINE EDIT -->
-  <section class="doc-section" id="inline-edit">
-    <span class="section-tag">// ai code editing</span>
-    <h1 class="doc-h1">Cursor Inline Edit (Ctrl+K)</h1>
-    <p class="doc-lead">
-      Edit code directly in place with Cursor-style floating inline prompts. No context switching to a side chat panel — highlight code, press <kbd>Ctrl+K</kbd>, and watch AI rewrite or generate code live.
-    </p>
-
-    <h2 class="doc-h2">Workflow</h2>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">1</div>
-        <div class="step-body">
-          <h4>Select code & press Ctrl+K</h4>
-          <p>Highlight the target lines or leave the cursor at any line in Monaco, then press <kbd>Ctrl+K</kbd>. A floating glassmorphic input appears right above the line.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">2</div>
-        <div class="step-body">
-          <h4>Describe transformation</h4>
-          <p>Type your request or click quick prompts such as <em>"Add error handling"</em>, <em>"Refactor and simplify"</em>, or <em>"Generate docstrings"</em>.</p>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">3</div>
-        <div class="step-body">
-          <h4>Review diff & accept</h4>
-          <p>Preview side-by-side or unified green/red diffs right in the editor. Press <kbd>Ctrl+Enter</kbd> to accept and merge changes, or <kbd>Esc</kbd> to discard.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- REA CODE ANALYSIS -->
-  <section class="doc-section" id="rea-analysis">
-    <span class="section-tag">// reverse engineering</span>
-    <h1 class="doc-h1">REA Code Analysis</h1>
-    <p class="doc-lead">
-      Deep reverse-engineering, AST symbol recovery, and binary inspection inspired by <a href="https://github.com/morluto/rea" target="_blank" style="color:var(--vl)">morluto/rea</a>. Inspect binary structures, extract strings with memory offsets, and navigate symbol graphs instantly.
-    </p>
-
-    <div class="tbl-wrap">
-      <table>
-        <thead><tr><th>Tool Mode</th><th>Engine</th><th>Capabilities</th></tr></thead>
-        <tbody>
-          <tr><td><strong>AST & Symbol Recovery</strong></td><td>Tree parser</td><td>Recovers function signatures, classes, interfaces, types, imports, and exports with exact line positions and symbol jumping.</td></tr>
-          <tr><td><strong>String Extractor</strong></td><td>GNU <code>strings</code> emulator</td><td>Extracts ASCII & UTF-8 printable strings, detects semantic categories (URLs, filesystem paths, identifiers, human text), and shows <code>0x000...</code> byte offsets.</td></tr>
-          <tr><td><strong>Hex Dump Inspector</strong></td><td>Binary visualizer</td><td>16-byte row hexadecimal representation, byte offsets, and side-by-side ASCII decode column for examining compiled artifacts or raw buffers.</td></tr>
-        </tbody>
-      </table>
-    </div>
-
-    <h2 class="doc-h2">How to launch</h2>
-    <p class="doc-p">Access REA Code Analysis via:</p>
-    <ul style="color:var(--text-2);font-size:0.88rem;line-height:1.8;padding-left:20px;margin-bottom:20px;">
-      <li>Activity Bar: Click the <strong>CPU icon</strong> (REA Analysis tab).</li>
-      <li>Menu Bar: Navigate to <strong>View</strong> → <strong>REA Code Analysis</strong>.</li>
-      <li>Command Palette (<kbd>Ctrl+Shift+P</kbd>): Search for <code>view.rea</code> or <code>REA Analysis</code>.</li>
-    </ul>
   </section>
 
   <!-- OPEN VSX EXTENSION STORE -->
@@ -715,58 +658,36 @@ Middle Drag    <span class="cm"># Pan canvas across 2D plane</span></pre></div>
     </ul>
   </section>
 
-  <!-- CURSOR COMPOSER -->
-  <section class="doc-section" id="composer">
-    <span class="section-tag">// multi-file autonomous agent</span>
-    <h1 class="doc-h1">Cursor Composer (Ctrl+I)</h1>
+  <!-- FAHH LOCAL -->
+  <section class="doc-section" id="fahh-local">
+    <span class="section-tag">// ai coding agent</span>
+    <h1 class="doc-h1">Fahh Local agent</h1>
     <p class="doc-lead">
-      Multi-file autonomous editing agent modal inspired by Cursor Composer. Edit multiple files in parallel, attach live context (@file, @problems, @terminal, @git, @codebase), watch an autonomous plan execute, and review synchronized multi-file diffs before merging.
+      Fahh Editor ships with no AI provider and no API key. The robot icon (or <kbd>Ctrl+Shift+A</kbd>) opens Fahh Local, a coding agent that runs on your machine with your own key: chat, a card per tool call (read, search, edit, run), approvals you can edit before a command runs, per-file diff review and "revert turn".
     </p>
 
-    <h2 class="doc-h2">Key Capabilities</h2>
+    <h2 class="doc-h2">Modes</h2>
     <div class="tbl-wrap">
       <table>
-        <thead><tr><th>Feature</th><th>Description</th><th>Shortcut / Trigger</th></tr></thead>
+        <thead><tr><th>Mode</th><th>Edits</th><th>Commands</th></tr></thead>
         <tbody>
-          <tr><td><strong>Multi-File Scoping</strong></td><td>Select multiple target files or add open workspace files to edit synchronously in one pass.</td><td><code>+ Add File</code> chip</td></tr>
-          <tr><td><strong>@ Mention Engine</strong></td><td>Type <code>@</code> to trigger an autocomplete popover referencing <code>@problems</code> (diagnostics), <code>@terminal</code> (logs), <code>@git</code> (diffs), <code>@codebase</code> (project root), or workspace files.</td><td>Type <code>@</code> in prompt</td></tr>
-          <tr><td><strong>Autonomous Execution Plan</strong></td><td>Devin-style real-time task timeline displaying intent analysis, plan formulation, edit generation, and diagnostic validation.</td><td>Automatic upon execution</td></tr>
-          <tr><td><strong>Unified Diff Review</strong></td><td>Inspect side-by-side or unified green/red diffs for each modified file with per-file Accept / Reject or batch Accept All / Reject All controls.</td><td><kbd>Ctrl+Enter</kbd> to accept</td></tr>
+          <tr><td><strong>Ask</strong></td><td>You approve every edit</td><td>You approve every command</td></tr>
+          <tr><td><strong>Auto-edit</strong></td><td>Applied, reviewable per file</td><td>Still ask first</td></tr>
+          <tr><td><strong>Plan</strong></td><td>Read-only; writes <code>.fahh/plans/&lt;id&gt;.md</code>, then an Implement button</td><td>None</td></tr>
         </tbody>
       </table>
     </div>
 
-    <h2 class="doc-h2">Keyboard Shortcuts</h2>
-    <p class="doc-p">Composer is designed for rapid keyboard-first workflows:</p>
+    <h2 class="doc-h2">Providers</h2>
+    <p class="doc-p">Any of: Groq, NVIDIA NIM, OpenRouter, Gemini, Ollama (<code>http://localhost:11434/v1</code>) or Anthropic. The key is kept in the app's <code>localStorage</code> and sent only to the provider; it is never written into your project.</p>
+
+    <h2 class="doc-h2">Context and rules</h2>
     <ul style="color:var(--text-2);font-size:0.88rem;line-height:1.8;padding-left:20px;margin-bottom:20px;">
-      <li><kbd>Ctrl+I</kbd>: Open or close Cursor Composer window.</li>
-      <li><kbd>@</kbd>: Open context attachment menu.</li>
-      <li><kbd>Ctrl+Enter</kbd>: Execute prompt or Accept All generated changes during review.</li>
-      <li><kbd>Esc</kbd>: Dismiss Composer and restore editor focus.</li>
+      <li>Type <code>@</code> in the prompt to insert <code>@problems</code>, <code>@terminal</code>, <code>@git</code>, <code>@codebase</code> or a workspace file.</li>
+      <li><kbd>Ctrl+Enter</kbd> steers the agent mid-turn; further prompts queue.</li>
+      <li>Per-project permissions live in <code>.fahh/permissions.json</code> (deny always wins); project instructions in <code>AGENTS.md</code> or <code>.fahh/rules.md</code>.</li>
+      <li>From a terminal: <code>fahh-agent --provider groq --mode auto-edit "add a test for foo"</code>.</li>
     </ul>
-  </section>
-
-  <!-- COPILOT GHOST TEXT -->
-  <section class="doc-section" id="ghost-text">
-    <span class="section-tag">// inline completions</span>
-    <h1 class="doc-h1">Copilot / Cursor Ghost Text (Tab)</h1>
-    <p class="doc-lead">
-      Monaco-integrated ghost text inline completions provider. Displays predictive inline completions rendered ahead of the cursor in muted gray text that can be accepted with a single <kbd>Tab</kbd> keystroke.
-    </p>
-
-    <h2 class="doc-h2">Supported Languages & Heuristics</h2>
-    <p class="doc-p">Powered by <code>monaco.languages.registerInlineCompletionsProvider</code> with smart pattern awareness across:</p>
-    <ul style="color:var(--text-2);font-size:0.88rem;line-height:1.8;padding-left:20px;margin-bottom:20px;">
-      <li><strong>TypeScript / JavaScript</strong>: Error handling (<code>try/catch</code>), interfaces, React hooks (<code>useState</code>, <code>useEffect</code>), arrow functions, and logging.</li>
-      <li><strong>Python</strong>: Function definitions with docstring stubs, class constructors (<code>__init__</code>), <code>__main__</code> guards, and exception blocks.</li>
-      <li><strong>Rust</strong>: Function signatures with <code>Result</code> returns, struct declarations, and pattern matching arms.</li>
-      <li><strong>Additional Languages</strong>: HTML, CSS, JSON, Markdown, C, and C++.</li>
-    </ul>
-
-    <div class="callout note">
-      <div class="callout-icon">💡</div>
-      <p>Ghost text completions accept immediately upon pressing <kbd>Tab</kbd> or can be dismissed simply by continuing to type. Toggle ghost text at any time from the status bar or editor settings.</p>
-    </div>
   </section>
 
   <!-- ERROR LENS -->
@@ -791,14 +712,9 @@ Middle Drag    <span class="cm"># Pan canvas across 2D plane</span></pre></div>
   <!-- TERMINAL & GIT AI -->
   <section class="doc-section" id="terminal-git-ai">
     <span class="section-tag">// developer productivity</span>
-    <h1 class="doc-h1">Terminal & Git AI Workflows</h1>
+    <h1 class="doc-h1">Git AI commits</h1>
     <p class="doc-lead">
-      Deep integration between terminal errors, version control, and Fahh AI agents:
-    </p>
-
-    <h2 class="doc-h2">Terminal Fix with AI</h2>
-    <p class="doc-p">
-      Whenever a CLI command or runtime produces error output (<code>stderr</code>), a <strong>Fix with AI</strong> button dynamically appears on hover. Clicking it instantly launches Cursor Composer with the terminal output attached as context and generates the appropriate fix plan.
+      To fix a terminal error with AI, paste it into <a href="#fahh-local" style="color:var(--vl)">Fahh Local</a> (or type <code>@terminal</code>).
     </p>
 
     <h2 class="doc-h2">AI Commit Message Generator</h2>
