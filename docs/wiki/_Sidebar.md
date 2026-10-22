@@ -16,3 +16,4 @@
 - [GitHub Repository](https://github.com/Arnav1771/fahh-ide)
 - [Releases & Downloads](https://github.com/Arnav1771/fahh-ide/releases)
 - [Issue Tracker](https://github.com/Arnav1771/fahh-ide/issues)
+- [Auto-Save and Workspaces](Auto-Save-and-Workspaces)
