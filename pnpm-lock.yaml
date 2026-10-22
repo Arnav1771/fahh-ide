@@ -4,6 +4,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  dockview: 8.5.1
+
 importers:
 
   .:
@@ -33,8 +36,8 @@ importers:
         specifier: ^5.5.0
         version: 5.5.0
       dockview-react:
-        specifier: 8.6.0
-        version: 8.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
+        specifier: 8.5.1
+        version: 8.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       dompurify:
         specifier: ^3.4.16
         version: 3.4.16
@@ -764,14 +767,14 @@ packages:
   dockview-core@8.6.0:
     resolution: {integrity: sha512-BTj0mCIdP5rtshAhVA9bqy14NOKYns+fBJJvFbU2xy2vkK9aiDMf8rQCvfeG+qF1D+TIDc+OLT8h9mlgQ6PHFA==}
 
-  dockview-react@8.6.0:
-    resolution: {integrity: sha512-oiLUvGzdm/QNA04K/dWllQxG8tpX6qGw5WwOWX5ABiFbEA+gzAetfWL0lpoIKGh4f5jv8wfjnCxV2oiyf9PzgA==}
+  dockview-react@8.5.1:
+    resolution: {integrity: sha512-xWDfQ+yOvkBwDhpJCsSVs+PBQh5+CZRN4lWD6VL9xV1Syi2LPM8cy/u2qnmvhEEvDmg0kx1NLpi/bq3lKV5lKQ==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  dockview@8.6.0:
-    resolution: {integrity: sha512-8vB79viOgyYSes8VzPeHKcnZWFt81hX3ibOYnf2yBbegNm9SgoR8nU3n3xDH3Cnkq5t2xl5X4hlBVRZeI5s8HA==}
+  dockview@8.5.1:
+    resolution: {integrity: sha512-ThlNLXBHP1TBMlsAXTWvoJl17nPYVO8WTtUMyoGf15K6DBCRnoKPzIcISlWben9XBx99txUfSjkVBZ9szGA9iQ==}
 
   dompurify@3.4.16:
     resolution: {integrity: sha512-sqo+pNp3qRhCIpbgRi1y8Tgk27Bo2Ry7w0dC1NBeNTdZChWjz9Xb/KOoZbRP/R6pQZ80Qw8YhXw13hWWBbMRnQ==}
@@ -1843,13 +1846,13 @@ snapshots:
 
   dockview-core@8.6.0: {}
 
-  dockview-react@8.6.0(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
+  dockview-react@8.5.1(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:
-      dockview: 8.6.0
+      dockview: 8.5.1
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  dockview@8.6.0:
+  dockview@8.5.1:
     dependencies:
       dockview-core: 8.6.0
 

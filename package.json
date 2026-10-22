@@ -20,7 +20,7 @@
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",
-    "dockview-react": "8.6.0",
+    "dockview-react": "8.5.1",
     "dompurify": "^3.4.16",
     "lucide-react": "^1.21.0",
     "markdown-it": "^14.3.2",
@@ -44,5 +44,10 @@
     "vite": "^5.4.2",
     "vitest": "^2.0.5"
   },
-  "packageManager": "pnpm@9.15.3+sha512.1f79bc245a66eb0b07c5d4d83131240774642caaa86ef7d0434ab47c0d16f66b04e21e0c086eb61e62c77efc4d7f7ec071afad3796af64892fae66509173893a"
+  "packageManager": "pnpm@9.15.3+sha512.1f79bc245a66eb0b07c5d4d83131240774642caaa86ef7d0434ab47c0d16f66b04e21e0c086eb61e62c77efc4d7f7ec071afad3796af64892fae66509173893a",
+  "pnpm": {
+    "overrides": {
+      "dockview": "8.5.1"
+    }
+  }
 }
