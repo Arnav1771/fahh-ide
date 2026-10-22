@@ -12,7 +12,7 @@ Write-Host @"
   |  _| (_| | | | | | | | | |__| (_| | | || (_) | |   
   |_|  \__,_|_| |_|_| |_| |_____\__,_|_|\__\___/|_|   
                                                       
-  Sovereign Spatial AI Code Editor · Tauri 2 + Rust
+  Sovereign Spatial AI Code Editor - Tauri 2 + Rust
 ========================================================================
 "@ -ForegroundColor Cyan
 
@@ -46,7 +46,7 @@ try {
 
 if (-not $assetUrl) {
     # Fallback to direct latest release binary URL
-    $assetUrl = "https://github.com/$repo/releases/latest/download/Fahh.Editor_0.6.3_x64-setup.exe"
+    $assetUrl = "https://github.com/$repo/releases/latest/download/Fahh.Editor_0.6.4_x64-setup.exe"
 }
 
 Write-Host "Downloading Fahh Editor $version..." -ForegroundColor Green
