@@ -9,6 +9,26 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+---
+
+## [0.6.4] — 2026-10-22
+
+### Added
+
+- **Jupyter notebooks (.ipynb)** open in a read-only viewer: markdown, highlighted code, outputs, images, errors (#78).
+- **Real file icons** (Material Icon Theme subset, MIT) in the explorer, tabs, breadcrumbs, Quick Open and search, with light-theme variants. Installing an extension no longer switches the icon theme (#79).
+- **VS Code workspaces:** `.code-workspace` loads with JSONC, relative folders, `vscode-remote://wsl+` / `file://` URIs and `files.autoSave`; `fahh x.code-workspace` works (#77).
+- `test-build.yml`: push `testbuild/*` to get installers for every platform without a release (#77).
+
+### Fixed (Windows / WSL, #77)
+
+- Terminal in a `\\wsl.localhost\...` folder runs in WSL in that folder (it used to run in `C:\Windows`); `cd` keeps working in every shell.
+- Run on files in WSL runs inside the distro instead of failing with `os error 267`.
+- **+ Shell** (PowerShell / Command Prompt / Bash-WSL) really switches shell.
+- New windows (`fahh-win-*`) get the same permissions as the main window.
+- Open Folder opens one dialog and reports failures.
+
+
 ### Removed (simulated features)
 
 These looked like features but had nothing behind them, so they are gone rather than kept as demos:
@@ -26,7 +46,7 @@ These looked like features but had nothing behind them, so they are gone rather 
 - Close Tab, Close All Tabs and the palette's Close Active Tab now ask before discarding unsaved changes, like the tab's own close button. The store's unguarded `closeTab` is removed, so every close goes through `requestClose`.
 - Ctrl+W closes the active tab (guarded) and Ctrl+N opens a new untitled file; both were shown in menus but did nothing. The Ctrl+B label is removed (there is no sidebar-hide state).
 
-### Fixed (v0.5.1, "stop losing work")
+### Fixed earlier (v0.5.1 "stop losing work", shipped in v0.6.x, recorded late)
 
 - No console window flashes on Windows: every child process is started through `core::proc::cmd`, and CI rejects a bare `Command::new(`.
 - Themes paint their own editor background (Fahh Light is readable again).
