@@ -258,6 +258,14 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         send: (p, o) => get().send(p, o),
         provider: () => toProviderConfig(get().settings, get().usingFast && get().settings.fastModel ? get().settings.fastModel : undefined),
         newChat: () => get().newChat(),
+        undo: async () => {
+          const turns = get().turns;
+          const nums = Object.keys(turns).map(Number).sort((a, b) => b - a);
+          const t = nums.find((n) => turns[n].files.length > 0);
+          if (t === undefined) return get().dispatch({ type: "notice", level: "info", text: "Nothing to undo: no turn has changed files." });
+          await get().revertTurn(t);
+          get().dispatch({ type: "notice", level: "info", text: `Reverted the files turn ${t} changed.` });
+        },
         reloadTabs,
         copy: async (t) => {
           await navigator.clipboard.writeText(t);

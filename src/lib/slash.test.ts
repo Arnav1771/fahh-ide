@@ -8,6 +8,8 @@ describe("parseSlash", () => {
     expect(parseSlash("  /YOLO go ")).toEqual({ name: "bypass", arg: "go" });
     expect(parseSlash("/dangerous")).toEqual({ name: "bypass", arg: "" });
     expect(parseSlash("/new")).toEqual({ name: "clear", arg: "" });
+    expect(parseSlash("/auto fix it")).toEqual({ name: "accept-edits", arg: "fix it" });
+    expect(parseSlash("/undo")).toEqual({ name: "undo", arg: "" });
     expect(parseSlash("/list-sessions")).toEqual({ name: "ls", arg: "" });
     expect(parseSlash("/rename-session My title")).toEqual({ name: "title", arg: "My title" });
     expect(parseSlash("/ask\nwhat is x")).toEqual({ name: "ask", arg: "what is x" });

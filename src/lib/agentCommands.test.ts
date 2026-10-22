@@ -44,6 +44,7 @@ function setup(over: Partial<AgentSettings> = {}, session: string | null = "s1",
     send: async (prompt, opts) => void sent.push({ prompt, opts }),
     provider: () => ({ kind: "openai", base_url: "http://x", model: settings.model }),
     newChat: vi.fn(),
+    undo: vi.fn(async () => {}),
     reloadTabs: vi.fn(async () => {}),
     copy: vi.fn(async () => {}),
     exit: vi.fn(),
@@ -91,6 +92,17 @@ describe("modes", () => {
     expect(t.sent.at(-1)?.opts).toEqual({ mode: "bypass" });
     await t.run("/plan"); // no argument: only switches
     expect(t.sent).toHaveLength(4);
+  });
+
+  it("/auto (alias of accept-edits) switches, or runs the prompt in that mode; /undo reverts the latest turn", async () => {
+    const t = setup();
+    await t.run("/auto");
+    expect(t.settings().mode).toBe("auto-edit");
+    expect(t.sent).toEqual([]);
+    await t.run("/auto rename the helper");
+    expect(t.sent.at(-1)).toEqual({ prompt: "rename the helper", opts: { mode: "auto-edit" } });
+    await t.run("/undo");
+    expect(t.api.undo).toHaveBeenCalledTimes(1);
   });
 
   it("/ask is one-shot read-only and does not change the mode", async () => {

@@ -15,10 +15,12 @@ import { Bot, Plus, Send, Settings2, ShieldAlert, Square } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
 import { pendingReview } from "../../lib/agentState";
+import { calculateContextTokens } from "../../lib/tokenEstimator";
 import { filterSlash, groupSlash, insertion, menuQuery, MODE_LABEL, type SlashDef } from "../../lib/slash";
 import type { AgentMode } from "../../lib/types";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useAgentStore } from "../../store/agentStore";
+import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { ApprovalCard, PlanCard, ReviewCard, SessionsCard, SubCard, ToolCard } from "./cards";
 import { SlashMenu } from "./SlashMenu";
@@ -29,6 +31,14 @@ const MODES: { id: AgentMode; label: string; hint: string }[] = [
   { id: "smart", label: "Smart", hint: "Edits auto-approved; a judge model screens each command, unsafe ones ask" },
   { id: "plan", label: "Plan", hint: "Read-only: researches and writes a plan first" },
   { id: "bypass", label: "Bypass", hint: "Auto-approves every prompt. Deny rules still apply" },
+];
+
+/** One-click prompts above the input. A prompt starting with "/" runs as that slash command. */
+const QUICK_ACTIONS = [
+  { label: "Find Bugs", prompt: "Analyze the open file and current diagnostics for any bugs, type errors, or syntax issues." },
+  { label: "Generate Plan", prompt: "/plan Research the open file and write a step-by-step implementation plan." },
+  { label: "Add Tests", prompt: "Write unit tests for the active file." },
+  { label: "Explain Selection", prompt: "Explain the selected code and its purpose in the architecture." },
 ];
 
 const field = "mt-0.5 w-full bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent";
@@ -107,6 +117,22 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const busy = status === "running" || status === "needs_input";
 
+  // what the next prompt would carry, estimated (the same heuristic the backend uses)
+  const activeContent = useEditorStore((s) => (s.activeTab ? s.fileContents[s.activeTab] : null));
+  const tokenBreakdown = useMemo(() => calculateContextTokens({ prompt: input, activeFileContent: activeContent }), [input, activeContent]);
+
+  // Escape stops a running turn (when it is not closing the "/" menu: that one stops propagation)
+  useEffect(() => {
+    const onEsc = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && busy) {
+        e.preventDefault();
+        void store.stop();
+      }
+    };
+    window.addEventListener("keydown", onEsc);
+    return () => window.removeEventListener("keydown", onEsc);
+  }, [busy, store]);
+
   useEffect(() => {
     useAgentStore.setState({ onExit: onClose ?? null });
     return () => useAgentStore.setState({ onExit: null });
@@ -167,9 +193,10 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
     }
     if (e.key === "Escape" && menuOpen) {
       e.preventDefault();
+      e.stopPropagation(); // closing the menu must not also stop the running turn
       return setMenuClosed(true);
     }
-    if (e.key === "Enter" && !e.shiftKey) {
+    if (e.key === "Enter" && (!e.shiftKey || e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       submit(input);
     }
@@ -286,13 +313,32 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
       </div>
 
       <div className="p-2 border-t border-fahh-surface shrink-0">
-        {menuOpen && <SlashMenu items={menuItems} index={menuIndex} onPick={pick} onHover={setMenuIndex} />}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1" role="group" aria-label="Quick actions">
+          {QUICK_ACTIONS.map((a) => (
+            <button
+              key={a.label}
+              type="button"
+              disabled={busy}
+              onClick={() => void store.handleInput(a.prompt)}
+              title={a.prompt}
+              data-testid={`quick-action-${a.label.toLowerCase().replace(/\s+/g, "-")}`}
+              className="px-2 py-0.5 rounded-full text-[10px] bg-fahh-surface/80 hover:bg-fahh-accent/20 hover:text-fahh-text text-fahh-muted border border-fahh-surface transition-colors shrink-0 whitespace-nowrap disabled:opacity-40"
+            >
+              {a.label}
+            </button>
+          ))}
+        </div>
+        {menuOpen && (
+          <div data-testid="slash-suggestions">
+            <SlashMenu items={menuItems} index={menuIndex} onPick={pick} onHover={setMenuIndex} />
+          </div>
+        )}
         <textarea
           ref={inputRef}
           value={input}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={onKeyDown}
-          placeholder="Ask Fahh Local… (/ for commands, Enter to send)"
+          placeholder="Ask Fahh Local, or type / for commands… (Enter or Ctrl+Enter to send)"
           rows={3}
           aria-label="Message or slash command"
           aria-expanded={menuOpen}
@@ -307,12 +353,21 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
             <Send size={12} /> Send
           </button>
           {busy && (
-            <button onClick={() => void store.stop()} title="Stop" className="px-2 py-1 rounded text-xs text-fahh-muted hover:text-fahh-error">
+            <button onClick={() => void store.stop()} title="Stop (Escape)" className="px-2 py-1 rounded text-xs text-fahh-muted hover:text-fahh-error">
               <Square size={12} />
             </button>
           )}
         </div>
-        <div className="mt-1 text-[10px] text-fahh-muted truncate">{settings.model || "no model"} · {turnsLabel(Object.keys(turns).length)}</div>
+        <div className="mt-1 flex items-center justify-between text-[10px] text-fahh-muted">
+          <span className="truncate">{settings.model || "no model"} · {turnsLabel(Object.keys(turns).length)}</span>
+          <span
+            className="shrink-0 px-1.5 py-0.5 rounded bg-fahh-surface/60 font-mono text-[9px] text-fahh-muted hover:text-fahh-text transition-colors cursor-help"
+            title={`Context estimate:\n- Prompt: ~${tokenBreakdown.promptTokens} tok\n- Active file: ~${tokenBreakdown.activeFileTokens} tok\n- Selection: ~${tokenBreakdown.selectionTokens} tok\nTotal: ~${tokenBreakdown.totalTokens} tokens (/context shows the whole session)`}
+            data-testid="context-tokens-badge"
+          >
+            ~{tokenBreakdown.formatted} tok
+          </span>
+        </div>
       </div>
     </div>
   );

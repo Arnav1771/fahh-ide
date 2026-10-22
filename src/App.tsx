@@ -5,6 +5,7 @@ import { EditorPane } from "./components/Editor/EditorPane";
 import { TerminalPanel } from "./components/Terminal/TerminalPanel";
 import { AgentPanel } from "./components/AgentPanel";
 import { initAgentEvents, useAgentStore } from "./store/agentStore";
+import { isAgentToggle } from "./lib/hotkeys";
 import { GitSidebar } from "./components/GitSidebar";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
@@ -187,7 +188,7 @@ export default function App() {
       { id: "view.explorer", group: "View", label: "Explorer", keywords: "files tree", run: view("files") },
       { id: "view.git", group: "View", label: "Source Control", keywords: "git branch commit", run: view("git") },
       { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
-      { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keywords: "agent chat llm ollama groq composer", run: view("ai") },
+      { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keys: ["Ctrl", "Shift", "A"], keywords: "agent chat llm ollama groq composer devin cursor ctrl l", run: view("ai") },
       { id: "view.extensions", group: "View", label: "Extensions", keywords: "plugins language packs", run: view("extensions") },
       { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
       { id: "panel.toggle", group: "View", label: "Toggle Panel", keys: ["Ctrl", "`"], keywords: "terminal bottom", run: () => setShowBottomPanel((v) => !v) },
@@ -257,6 +258,12 @@ export default function App() {
         e.stopPropagation();
         setPaletteOpen(false);
         setQuickOpen((v) => !v);
+      } else if (isAgentToggle(e, e.target as Element | null)) {
+        // Ctrl+L (not inside the editor or terminal, where it means select-line / clear)
+        // or Ctrl+Shift+A (everywhere): toggle Fahh Local
+        e.preventDefault();
+        e.stopPropagation();
+        setSidebarTab((current) => (current === "ai" ? "files" : "ai"));
       }
     };
     window.addEventListener("keydown", onKey, true);

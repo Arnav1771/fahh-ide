@@ -297,9 +297,11 @@ fn drive(ctx: Arc<RunCtx>, ac: Arc<AgentCtx>, system: String, specs: Vec<ToolSpe
 }
 
 async fn exec_and_report(ctx: &Arc<RunCtx>, ac: &Arc<AgentCtx>, call: &ToolCall, sink: &Sink) -> (bool, String) {
+    let start = std::time::Instant::now();
     let (ok, output) = run_call(ctx, ac, call, sink).await;
     ctx.s.meta.lock().unwrap().usage.tool_calls += 1;
-    sink(AgentEvent::ToolResult { turn: ctx.turn, id: call.id.clone(), ok, output: tools::truncate(&output, 4_000) });
+    let elapsed_ms = Some(start.elapsed().as_millis() as u64);
+    sink(AgentEvent::ToolResult { turn: ctx.turn, id: call.id.clone(), ok, output: tools::truncate(&output, 4_000), elapsed_ms });
     (ok, output)
 }
 

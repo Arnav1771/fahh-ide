@@ -116,7 +116,7 @@ cannot drift; a test checks this page lists every command.
 | `/plan [prompt]` |  | Plan mode: research read-only, write a plan |
 | `/code [prompt]` |  | Normal mode: all tools, normal prompts |
 | `/normal` |  | Switch to normal mode |
-| `/accept-edits` | /edits | Edits apply right away; commands still ask |
+| `/accept-edits [prompt]` | /edits, /auto | Edits apply right away; commands still ask |
 | `/smart [prompt]` |  | Edits auto-approved; a judge model screens commands |
 | `/bypass [prompt]` | /yolo, /dangerous | Auto-approve everything (deny rules still apply) |
 | `/fast [prompt]` |  | Use the fast model for this prompt |
@@ -133,6 +133,7 @@ cannot drift; a test checks this page lists every command.
 | `/rm-session <id>` |  | Delete a saved session |
 | `/steps` |  | List the steps (user requests) so far |
 | `/fork [step]` |  | Branch the conversation into a new session |
+| `/undo` |  | Revert the files the latest turn changed |
 | `/revert <step>` |  | Undo file changes from a step and rewind to it |
 | `/export [path]` |  | Write the session as Markdown |
 | `/copy` |  | Copy the last reply |
@@ -158,6 +159,18 @@ on stdout), `--prompt-file <file>`, `--config <file>` (JSON: provider, model, mo
 judge_model; flags win), `--export <path|->`, `--fast-model`, `--judge-model`. Subcommands:
 `models list` (asks the provider which models your key can use), `sessions ls`.
 
+## Panel shortcuts
+
+- **Ctrl+Shift+A** toggles the panel from anywhere. **Ctrl+L** does too, except while the
+  cursor is in the code editor (it keeps "select line", the VS Code convention) or the
+  terminal (clear screen).
+- **Esc** stops a running turn; with the "/" menu open it only closes the menu.
+- **Enter** or **Ctrl+Enter** sends, **Shift+Enter** adds a line.
+- The quick-action pills above the input (Find Bugs, Generate Plan, Add Tests, Explain
+  Selection) send a canned prompt; one that starts with `/` runs as that command.
+- The badge by the model name is a live estimate of what the next prompt carries (input plus
+  the open file); `/context` reports the whole session.
+
 ## Sessions
 
 Every session is saved after each step under the app data dir (`FAHH_DATA_DIR` overrides),
@@ -171,7 +184,7 @@ one folder per workspace: the conversation, the step list, usage and the **check
 - `/fork [step]` makes a new session from the conversation up to that step; the original's
   checkpoints stay with the original.
 - `/compact` summarises older turns with the model (it also happens automatically at 80% of
-  the window). `/context` and `/usage` show **estimated** tokens (characters / 4); the window
+  the window). `/context` and `/usage` show **estimated** tokens (about 3.8 characters per token); the window
   size is a guess from the model name.
 - `/btw <prompt>` answers a side question that is not added to the conversation.
 
@@ -222,7 +235,7 @@ fresh context and only its final message returns to the parent. Safety:
 - **API keys are stored in the app's `localStorage` (panel) or read from environment variables
   (terminal).** There is no OS keychain integration yet. They are sent only to the provider,
   never written into a project and never logged.
-- Token counts are estimates; the context window is guessed from the model name.
+- Token counts are estimates (about 3.8 characters per token, the same heuristic in the panel badge and the backend); the context window is guessed from the model name.
 - Smart mode trusts a model's judgement of a command: it is a convenience, not a sandbox.
 - Permission grants made with "Always" are saved per project; there are no per-session grants.
 - Not built: MCP, worktree sessions, autonomous mode (needs a sandbox), rebindable shortcuts.

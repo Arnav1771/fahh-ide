@@ -17,6 +17,8 @@ export type Item =
       args: Record<string, unknown>;
       status: "running" | "ok" | "error";
       output?: string;
+      /** How long the tool took (from the backend). */
+      elapsedMs?: number;
     }
   | {
       kind: "approval";
@@ -166,7 +168,7 @@ function applyInner(items: Item[], ev: AgentEvent): Item[] {
     case "tool_call":
       return [...items, { kind: "tool", id: ev.id, name: ev.name, toolKind: ev.kind, args: ev.args, status: "running" }];
     case "tool_result":
-      return mapDeep(items, (i) => i.kind === "tool" && i.id === ev.id, (i) => ({ ...(i as ToolItem), status: ev.ok ? "ok" : "error", output: ev.output }));
+      return mapDeep(items, (i) => i.kind === "tool" && i.id === ev.id, (i) => ({ ...(i as ToolItem), status: ev.ok ? "ok" : "error", output: ev.output, elapsedMs: ev.elapsed_ms }));
     case "approval_request":
       return [
         ...items,

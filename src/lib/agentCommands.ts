@@ -51,6 +51,8 @@ export interface CommandApi {
   send(prompt: string, opts?: SendOpts): Promise<void>;
   provider(): AgentProviderConfig;
   newChat(): void;
+  /** Revert the files the latest turn that changed any. */
+  undo(): Promise<void>;
   reloadTabs(paths: string[]): Promise<void>;
   copy(text: string): Promise<void>;
   exit(): void;
@@ -133,7 +135,11 @@ export async function runSlash(api: CommandApi, cmd: ParsedSlash): Promise<void>
     case "normal":
       return switchMode("ask");
     case "accept-edits":
-      return switchMode("auto-edit");
+      switchMode("auto-edit");
+      if (arg) await api.send(arg, { mode: "auto-edit" });
+      return;
+    case "undo":
+      return guard(() => api.undo());
     case "code":
     case "smart":
     case "plan":

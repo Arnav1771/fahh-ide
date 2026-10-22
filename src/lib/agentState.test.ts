@@ -53,6 +53,16 @@ describe("agentReducer", () => {
     expect(s.items.map((i) => i.kind)).toEqual(["assistant", "tool", "assistant"]);
   });
 
+  it("keeps how long a tool took", () => {
+    const s = run([
+      ev({ type: "tool_call", turn: 1, id: "c1", name: "run_command", args: {}, kind: "run" }),
+      ev({ type: "tool_result", turn: 1, id: "c1", ok: true, output: "exit code: 0", elapsed_ms: 1234 }),
+    ]);
+    expect(s.items[0]).toMatchObject({ status: "ok", elapsedMs: 1234 });
+    const n = run([ev({ type: "tool_call", turn: 1, id: "c2", name: "search", args: {}, kind: "read" }), ev({ type: "tool_result", turn: 1, id: "c2", ok: true, output: "x" })]);
+    expect((n.items[0] as { elapsedMs?: number }).elapsedMs).toBeUndefined();
+  });
+
   it("completes a tool card with its result", () => {
     const s = run([
       ev({ type: "tool_call", turn: 1, id: "c1", name: "search", args: {}, kind: "read" }),

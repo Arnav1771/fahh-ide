@@ -156,9 +156,28 @@ pub fn apply_edit(content: &str, old: &str, new: &str, replace_all: bool) -> Res
         return Err("old_str is empty".into());
     }
     let n = content.matches(old).count();
-    match (n, replace_all) {
+    if n > 0 {
+        return match (n, replace_all) {
+            (1, _) | (_, true) => Ok(content.replace(old, new)),
+            (n, false) => Err(format!("old_str matches {n} places; add more context or set replace_all")),
+        };
+    }
+
+    // Direct match failed: normalize \r\n to \n to tolerate CRLF/LF line-ending differences
+    let content_norm = content.replace("\r\n", "\n");
+    let old_norm = old.replace("\r\n", "\n");
+    let n_norm = content_norm.matches(&old_norm).count();
+    match (n_norm, replace_all) {
         (0, _) => Err("old_str not found: it must match the file exactly, including whitespace".into()),
-        (1, _) | (_, true) => Ok(content.replace(old, new)),
+        (1, _) | (_, true) => {
+            let replaced = content_norm.replace(&old_norm, &new.replace("\r\n", "\n"));
+            if content.contains("\r\n") {
+                // Preserve CRLF line endings if original content used CRLF
+                Ok(replaced.replace('\n', "\r\n"))
+            } else {
+                Ok(replaced)
+            }
+        }
         (n, false) => Err(format!("old_str matches {n} places; add more context or set replace_all")),
     }
 }
@@ -396,6 +415,19 @@ mod tests {
         assert!(apply_edit("a", "", "X", false).is_err());
         // whitespace must match exactly
         assert!(apply_edit("fn  main()", "fn main()", "x", false).is_err());
+    }
+
+    #[test]
+    fn edit_crlf_lf_tolerance() {
+        // CRLF in content, LF in old_str
+        let crlf = "fn main() {\r\n    println!(\"hi\");\r\n}\r\n";
+        let edited = apply_edit(crlf, "println!(\"hi\");\n", "println!(\"bye\");\n", false).unwrap();
+        assert_eq!(edited, "fn main() {\r\n    println!(\"bye\");\r\n}\r\n");
+
+        // LF in content, CRLF in old_str
+        let lf = "fn main() {\n    println!(\"hi\");\n}\n";
+        let edited_lf = apply_edit(lf, "println!(\"hi\");\r\n", "println!(\"bye\");\r\n", false).unwrap();
+        assert_eq!(edited_lf, "fn main() {\n    println!(\"bye\");\n}\n");
     }
 
     #[test]

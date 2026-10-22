@@ -56,7 +56,7 @@ pub struct TurnRec {
 pub struct Usage {
     pub model_calls: u32,
     pub tool_calls: u32,
-    /// Estimated (characters / 4): providers differ in what they report.
+    /// Estimated (about 3.8 characters per token): providers differ in what they report.
     pub tokens_in: u64,
     pub tokens_out: u64,
 }

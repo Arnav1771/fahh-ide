@@ -7,8 +7,10 @@ use super::store::{SessionFile, TurnRec};
 use serde::Serialize;
 use std::sync::atomic::AtomicBool;
 
+/// About 3.8 characters per token for code and English: the same heuristic as the panel's
+/// token badge (`src/lib/tokenEstimator.ts`), so the two never disagree.
 pub fn est_tokens(s: &str) -> u64 {
-    (s.len() as u64).div_ceil(4)
+    (s.len() as u64 * 10).div_ceil(38)
 }
 
 pub fn msg_tokens(m: &Msg) -> u64 {
@@ -139,8 +141,9 @@ mod tests {
 
     #[test]
     fn estimates_and_windows() {
-        assert_eq!(est_tokens("abcd"), 1);
-        assert_eq!(est_tokens("abcde"), 2);
+        assert_eq!(est_tokens(&"a".repeat(38)), 10); // the same case the TS estimator tests
+        assert_eq!(est_tokens("a"), 1);
+        assert_eq!(est_tokens(""), 0);
         assert!(history_tokens(&convo()) > 1000);
         assert_eq!(window_for("gemini-2.5-flash"), 1_000_000);
         assert_eq!(window_for("openai/gpt-oss-120b"), 128_000);

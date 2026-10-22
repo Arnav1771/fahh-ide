@@ -51,7 +51,14 @@ pub enum AgentEvent {
         old_text: Option<String>,
         new_text: Option<String>,
     },
-    ToolResult { turn: u32, id: String, ok: bool, output: String },
+    ToolResult {
+        turn: u32,
+        id: String,
+        ok: bool,
+        output: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        elapsed_ms: Option<u64>,
+    },
     FileChanged { turn: u32, path: String },
     PlanWritten { turn: u32, id: String, path: String, markdown: String },
     /// Smart mode: what the judge model said about a command.

@@ -230,7 +230,10 @@ fn show(ev: &AgentEvent, indent: &str, tag: &str, quiet: bool, out: &mut Outcome
             }
         }
         AgentEvent::ToolCall { name, args, .. } => line!("\n{indent}  > {tag}{name} {}", one_line(&args.to_string(), 100)),
-        AgentEvent::ToolResult { ok, output, .. } => line!("{indent}    {} {}", if *ok { "ok" } else { "failed:" }, if *ok { String::new() } else { one_line(output, 120) }),
+        AgentEvent::ToolResult { ok, output, elapsed_ms, .. } => {
+            let dur = elapsed_ms.map(|ms| format!(" ({ms}ms)")).unwrap_or_default();
+            line!("{indent}    {} {}{dur}", if *ok { "ok" } else { "failed:" }, if *ok { String::new() } else { one_line(output, 120) })
+        }
         AgentEvent::FileChanged { path, .. } => line!("{indent}    changed {path}"),
         AgentEvent::PlanWritten { path, .. } => {
             line!("\n  plan written to {path}");
