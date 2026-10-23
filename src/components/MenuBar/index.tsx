@@ -46,6 +46,7 @@ import { saveWorkspaceAs, openWorkspaceFromFile } from "../../lib/workspaceManag
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { requestClose } from "../../lib/tabActions";
 import type { SidebarTab, BottomTab } from "../../App";
+import { resetLayout, splitActiveEditor, toggleZone } from "../../lib/workbench";
 
 export interface MenuItem {
   label: string;
@@ -419,10 +420,28 @@ export function MenuBar({
           action: onToggleSidebar,
         },
         {
+          label: "Toggle Secondary Sidebar",
+          keys: ["Ctrl", "Alt", "B"],
+          action: () => toggleZone("secondary"),
+        },
+        {
           label: "Toggle Bottom Panel",
           keys: ["Ctrl", "`"],
           icon: <PanelBottom size={13} />,
           action: onToggleBottomPanel,
+        },
+        {
+          label: "Split Editor Right",
+          keys: ["Ctrl", "\\"],
+          action: () => splitActiveEditor("right"),
+        },
+        {
+          label: "Split Editor Down",
+          action: () => splitActiveEditor("below"),
+        },
+        {
+          label: "Reset Layout",
+          action: resetLayout,
         },
         {
           label: "Project Explorer",
@@ -499,10 +518,7 @@ export function MenuBar({
           label: "Run Active File",
           keys: ["F5"],
           icon: <Play size={13} className="text-emerald-400" />,
-          action: () => {
-            onSetBottomTab("run");
-            onToggleBottomPanel();
-          },
+          action: () => onSetBottomTab("run"),
         },
         {
           label: "Open Run Panel",

@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import Editor, { type Monaco } from "@monaco-editor/react";
+import type { DockviewPanelApi } from "dockview-react";
 import { useEditorStore } from "../../store/editorStore";
 import { useFahhStore } from "../../store/fahhStore";
 import { useReducedMotion } from "../../hooks/useReducedMotion";
@@ -32,6 +33,10 @@ interface EditorPaneProps {
   lineHeight?: number;
   /** Toggle minimap visibility */
   minimapEnabled?: boolean;
+  /** Docked: this editor always shows this file (one per dock tab; splits share the model). */
+  path?: string;
+  /** Docked: the dock tab, so only the current one talks to the diagnostics bridge. */
+  dock?: DockviewPanelApi;
 }
 
 // Shape of the detail emitted by ThemePanel's fahh-theme-change event.
@@ -46,10 +51,14 @@ export function EditorPane({
   fontWeight = "500",
   lineHeight,
   minimapEnabled = true,
+  path,
+  dock,
 }: EditorPaneProps) {
-  const { activeTab, fileContents, openTabs, setContent, markDirty } =
+  const { activeTab: storeActive, fileContents, openTabs, setContent, markDirty } =
     useEditorStore();
-    
+  const activeTab = path ?? storeActive;
+  /** Undocked there is one editor, always current; docked, the active tab of the active group is. */
+  const isCurrent = () => !dock || (dock.isActive && dock.isGroupActive);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const editorRef = useRef<any>(null);
@@ -72,16 +81,16 @@ export function EditorPane({
 
   // Debounced auto-save when user types and autoSave is active
   useEffect(() => {
-    if (!autoSave || !activeTab || !activeDoc?.dirty) return;
+    if (!autoSave || !activeTab || !activeDoc?.dirty || activeTab !== storeActive) return;
     const timer = window.setTimeout(() => {
       void saveActive(true);
     }, 1000);
     return () => window.clearTimeout(timer);
-  }, [autoSave, activeTab, content, activeDoc?.dirty]);
+  }, [autoSave, activeTab, storeActive, content, activeDoc?.dirty]);
 
   // Auto-save on window blur
   useEffect(() => {
-    if (!autoSave) return;
+    if (!autoSave || (dock && activeTab !== storeActive)) return;
     const handleBlur = () => {
       if (useEditorStore.getState().openTabs.some((t) => t.dirty)) {
         void saveActive(true);
@@ -89,7 +98,7 @@ export function EditorPane({
     };
     window.addEventListener("blur", handleBlur);
     return () => window.removeEventListener("blur", handleBlur);
-  }, [autoSave]);
+  }, [autoSave, dock, activeTab, storeActive]);
 
   // Listen for theme changes dispatched by ThemePanel so Monaco's internal
   // theme is updated even in the native Tauri build (CSS variables alone do
@@ -108,8 +117,25 @@ export function EditorPane({
   // Tell the diagnostics bridge which file the shared Monaco model is showing,
   // so LSP markers for the wrong file never end up on screen.
   useEffect(() => {
-    setActiveDocument(activeTab);
+    if (isCurrent()) setActiveDocument(activeTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // Docked: the tab that becomes current takes the bridge, the status bar and Ctrl+S.
+  const takeFocus = () => {
+    if (editorRef.current && monacoRef.current) attachMonaco(monacoRef.current, editorRef.current);
+    setActiveDocument(activeTab);
+    if (path && useEditorStore.getState().activeTab !== path) useEditorStore.getState().setActiveTab(path);
+  };
+  const takeFocusRef = useRef(takeFocus);
+  takeFocusRef.current = takeFocus;
+  useEffect(() => {
+    if (!dock) return;
+    const on = () => isCurrent() && takeFocusRef.current();
+    const ds = [dock.onDidActiveChange(on), dock.onDidActiveGroupChange(on)];
+    return () => ds.forEach((d) => d.dispose());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dock]);
 
   // Synchronize Monaco model content with store content when switching tabs or when content loads asynchronously
   useEffect(() => {
@@ -148,7 +174,7 @@ export function EditorPane({
     return () => {
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("fahh-layout", handleResize);
-      detachMonaco();
+      detachMonaco(editorRef.current);
       for (const d of disposablesRef.current) d.dispose();
       disposablesRef.current = [];
       window.clearTimeout(settleRef.current);
@@ -166,7 +192,7 @@ export function EditorPane({
     const editor = editorRef.current;
     const monaco = monacoRef.current;
     if (!impact || impact.kind !== "fahh" || !impact.line || !editor || !monaco) return;
-    if (intensity !== "epic" || reduced) return;
+    if (intensity !== "epic" || reduced || !isCurrent()) return;
     const ids: string[] = editor.deltaDecorations([], [
       {
         range: new monaco.Range(impact.line, 1, impact.line, 1),
@@ -212,8 +238,10 @@ export function EditorPane({
 
     // Hand the live editor to the diagnostics bridge. Anything LSP published
     // before Monaco mounted is flushed onto the model immediately.
-    attachMonaco(monaco, editor);
-    setActiveDocument(activeTab);
+    if (isCurrent()) {
+      attachMonaco(monaco, editor);
+      setActiveDocument(activeTab);
+    }
 
     // Ensure model content is populated if loaded before onMount
     const model = editor.getModel();
@@ -286,6 +314,9 @@ export function EditorPane({
         const current = editor.getModel()?.uri.toString();
         if (current && uris.some((u) => u.toString() === current)) settle();
       }),
+      editor.onDidFocusEditorWidget(() => {
+        if (dock) takeFocusRef.current();
+      }),
       editor.onDidChangeModel(() => {
         baseline();
         editedRef.current = false;
@@ -340,6 +371,8 @@ export function EditorPane({
           /* One model per file: TypeScript sees the real extension (so .tsx
              parses JSX) and each tab keeps its own undo history. */
           path={modelPathFor(activeTab)}
+          /* Docked splits share one model; tabActions.forceClose disposes it when the file closes. */
+          keepCurrentModel={!!dock}
           language={activeDoc?.language ?? "plaintext"}
           value={content}
           onChange={handleChange}

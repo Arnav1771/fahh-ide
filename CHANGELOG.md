@@ -9,6 +9,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Dockable layout** (dockview 8.5.1): drag Explorer, Search, Source Control, Extensions, Colour Theme, Fahh Local, Problems, Debug Console, Terminal and Run to the left or right side bar, the bottom panel, or the editor area as tabs.
+- **Editor splits:** Split Editor Right (Ctrl+\) and Split Editor Down; drag tabs between groups. A file open twice shares one model.
+- The layout is **saved per workspace** and restored on launch; **View > Reset Layout** brings back the default (Explorer left, Fahh Local right, panel below).
+- Keyboard path for every drag: palette commands "Move <view> to Left Side Bar / Right Side Bar / Panel / Editor Area", plus Toggle Primary / Secondary Side Bar (Ctrl+B / Ctrl+Alt+B) and Toggle Maximized Panel.
+
 ---
 
 ## [0.6.4] — 2026-10-22

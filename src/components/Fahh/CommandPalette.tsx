@@ -17,8 +17,8 @@ function readRecent(key: string): string[] {
 export function Keycaps({ keys }: { keys: string[] }) {
   return (
     <span className="flex items-center gap-1">
-      {keys.map((k) => (
-        <kbd key={k} className="fahh-kbd">
+      {keys.map((k, i) => (
+        <kbd key={`${i}-${k}`} className="fahh-kbd">
           {k}
         </kbd>
       ))}

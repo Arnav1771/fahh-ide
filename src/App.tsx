@@ -1,31 +1,18 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { FileTree } from "./components/FileTree/FileTree";
-import { TabBar } from "./components/Editor/TabBar";
-import { EditorPane } from "./components/Editor/EditorPane";
-import { TerminalPanel } from "./components/Terminal/TerminalPanel";
-import { AgentPanel } from "./components/AgentPanel";
+import { useEffect, useMemo, useState } from "react";
 import { initAgentEvents, useAgentStore } from "./store/agentStore";
-import { GitSidebar } from "./components/GitSidebar";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
-import { ResizeHandle } from "./components/ResizeHandle";
 import { Toasts } from "./components/Toasts";
-import { clampSize, loadSize, saveSize } from "./lib/panelSize";
-import { requestClose, saveActive, unsavedMessage } from "./lib/tabActions";
+import { saveActive, unsavedMessage } from "./lib/tabActions";
 import { handleOpenRequest } from "./lib/openRequest";
 import { installCli, openNewWindow, readFile, takePendingOpen } from "./lib/tauri";
 import { useToastStore } from "./store/toastStore";
 import type { OpenRequest } from "./lib/types";
 import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
-import { RunPanel } from "./components/RunPanel";
-import { DebugPanel } from "./components/DebugPanel";
-import { ThemePanel } from "./components/ThemePanel";
-import { ExtensionsPanel } from "./components/ExtensionsPanel";
 import { LspBridge } from "./components/LspBridge";
 import { initFahhSfx, teardownFahhSfx } from "./lib/fahh";
 import { useThemeStore } from "./store/themeStore";
 import { useFahhStore, type Intensity } from "./store/fahhStore";
-import { ImpactLayer } from "./components/Fahh/ImpactLayer";
 import { StatusHud, HudControls, CleanSweep, LspStatusItem } from "./components/Fahh/StatusHud";
 import { CommandPalette } from "./components/Fahh/CommandPalette";
 import { FAHH_COMMAND, OPEN_FOLDER_EVENT, OPEN_FILE_EVENT } from "./lib/commands";
@@ -41,25 +28,37 @@ import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { saveWorkspaceAs, openWorkspaceFromFile, applyWorkspaceConfig } from "./lib/workspaceManager";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
-import { FolderTree, Search, GitBranch, Bug, Bot, Blocks, Palette, Settings, X, Play, Globe } from "lucide-react";
+import { Settings, Play, Globe } from "lucide-react";
 import { MenuBar } from "./components/MenuBar";
-import { Breadcrumbs } from "./components/Breadcrumbs";
-import { ProblemsPanel } from "./components/ProblemsPanel";
-import { useDiagnosticsStore, type DiagnosticItem } from "./store/diagnosticsStore";
 import { SpatialCanvas } from "./components/SpatialCanvas";
 import { useSpatialStore } from "./store/spatialStore";
-import { SearchSidebar } from "./components/SearchSidebar/SearchSidebar";
+import { Workbench } from "./components/Workbench";
+import { getView, listViews } from "./lib/viewRegistry";
+import type { Zone } from "./lib/dockLayout";
+import {
+  closeActiveEditor,
+  moveView,
+  resetLayout,
+  revealView,
+  splitActiveEditor,
+  toggleMaximizePanel,
+  toggleView,
+  toggleZone,
+  visibleViewIds,
+} from "./lib/workbench";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-const store = () => (typeof localStorage === "undefined" ? undefined : localStorage);
-const SIDEBAR = { key: "fahh-sidebar-w", def: 240, min: 160, max: 560 };
-const BOTTOM = { key: "fahh-bottom-h", def: 208, min: 80 };
-/** Leave room for the editor: the bottom panel may take at most the window minus 220px. */
-const bottomMax = () => (typeof window === "undefined" ? 600 : Math.max(BOTTOM.min, window.innerHeight - 220));
-
+/** The old sidebar / bottom tab names (the menu bar still speaks them); each is a dock view now. */
 export type SidebarTab = "files" | "search" | "git" | "ai" | "extensions" | "debug" | "theme";
 export type BottomTab = "terminal" | "run" | "debug" | "problems";
+const viewFor = (tab: SidebarTab | BottomTab): string => (tab === "files" ? "explorer" : tab === "ai" ? "agent" : tab);
+const MOVE_TARGETS: Array<[Zone, string]> = [
+  ["primary", "Left Side Bar"],
+  ["secondary", "Right Side Bar"],
+  ["panel", "Panel"],
+  ["editor", "Editor Area"],
+];
 
 // ─── Activity bar button ──────────────────────────────────────────────────────
 
@@ -89,50 +88,25 @@ function ActivityBtn({
   );
 }
 
-// ─── Bottom tab bar button ────────────────────────────────────────────────────
-
-function BottomTabBtn({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-3 py-1 text-xs font-medium border-t-2 transition-colors ${
-        active
-          ? "border-fahh-accent text-fahh-accent bg-fahh-bg"
-          : "border-transparent text-fahh-muted hover:text-fahh-text"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [sidebarTab, setSidebarTab] = useState<SidebarTab>("files");
   const [showInstaller, setShowInstaller] = useState(false);
   const [showWelcome, setShowWelcome] = useState(() => shouldShowWelcome(typeof localStorage === "undefined" ? undefined : localStorage));
   const closeWelcome = () => {
     markWelcomeSeen(typeof localStorage === "undefined" ? undefined : localStorage);
     setShowWelcome(false);
   };
-  const [showBottomPanel, setShowBottomPanel] = useState(true);
-  const [sidebarW, setSidebarW] = useState(() => loadSize(SIDEBAR.key, SIDEBAR.def, SIDEBAR.min, SIDEBAR.max, store()));
-  const [bottomH, setBottomH] = useState(() => loadSize(BOTTOM.key, BOTTOM.def, BOTTOM.min, bottomMax(), store()));
-  useEffect(() => saveSize(SIDEBAR.key, sidebarW, store()), [sidebarW]);
-  useEffect(() => saveSize(BOTTOM.key, bottomH, store()), [bottomH]);
-  const [bottomTab, setBottomTab] = useState<BottomTab>("terminal");
-  const diagnostics = useDiagnosticsStore((s) => s.diagnostics);
-  const problemErrors = useMemo(() => diagnostics.filter((d: DiagnosticItem) => d.severity === "error").length, [diagnostics]);
   const isSpatialMode = useSpatialStore((s) => s.isSpatialMode);
+  // Which views are on screen, for the activity bar highlight (the dock announces changes).
+  const [shownViews, setShownViews] = useState<string[]>([]);
+  useEffect(() => {
+    const on = () => setShownViews(visibleViewIds());
+    window.addEventListener("fahh-dock-active", on);
+    return () => window.removeEventListener("fahh-dock-active", on);
+  }, []);
+  /** Open one of the old sidebar / bottom tabs (a no-op in canvas mode, which has no dock, as before). */
+  const show = (tab: SidebarTab | BottomTab) => revealView(viewFor(tab));
 
   const { activeTheme, setTheme } = useThemeStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
@@ -141,7 +115,6 @@ export default function App() {
   const activeTab = useEditorStore((s) => s.activeTab);
   const tree = useFileStore((s) => s.tree);
   const { openFileInEditor, openFolder } = useWorkspace();
-  const editorRegionRef = useRef<HTMLDivElement>(null);
 
   // `fahh <folder|file>` from a shell: the first launch's path, then any later ones the
   // running window is handed (src-tauri/src/app/mod.rs, single-instance).
@@ -222,11 +195,8 @@ export default function App() {
 
   // Everything the palette (and the welcome screen) can do.
   const commands = useMemo<PaletteCommand[]>(() => {
-    const view = (tab: SidebarTab) => () => setSidebarTab(tab);
-    const bottom = (tab: BottomTab) => () => {
-      setBottomTab(tab);
-      setShowBottomPanel(true);
-    };
+    const view = (tab: SidebarTab | BottomTab) => () => revealView(viewFor(tab));
+    const bottom = view;
     const intensity = (i: Intensity) => () => useFahhStore.getState().setIntensity(i);
     return [
       {
@@ -248,7 +218,7 @@ export default function App() {
         window.dispatchEvent(new Event(OPEN_FILE_EVENT));
       } },
       { id: "folder.open", group: "File", label: "Open Folder…", keys: ["Ctrl", "K", "Ctrl", "O"], keywords: "workspace project directory", run: () => {
-        setSidebarTab("files");
+        revealView("explorer");
         window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
       } },
       { id: "workspace.open", group: "File", label: "Open Workspace from File…", keywords: "workspace config file open fahh-workspace json", run: () => void openWorkspaceFromFile(openFolder, openFileInEditor) },
@@ -269,10 +239,7 @@ export default function App() {
           navigator.clipboard.writeText(tab);
         }
       } },
-      { id: "file.closeTab", group: "File", label: "Close Active Tab", keys: ["Ctrl", "W"], keywords: "close tab window", run: () => {
-        const tab = useEditorStore.getState().activeTab;
-        if (tab) requestClose(tab);
-      } },
+      { id: "file.closeTab", group: "File", label: "Close Active Tab", keys: ["Ctrl", "W"], keywords: "close tab window", run: closeActiveEditor },
       { id: "edit.replace", group: "Edit", label: "Replace in File", keys: ["Ctrl", "H"], keywords: "substitute regex", run: () => runEditorAction("editor.action.startFindReplaceAction") },
       { id: "edit.commentLine", group: "Edit", label: "Toggle Line Comment", keys: ["Ctrl", "/"], keywords: "comment line", run: () => runEditorAction("editor.action.commentLine") },
       { id: "edit.commentBlock", group: "Edit", label: "Toggle Block Comment", keys: ["Shift", "Alt", "A"], keywords: "comment block", run: () => runEditorAction("editor.action.blockComment") },
@@ -283,20 +250,33 @@ export default function App() {
       { id: "edit.findInFiles", group: "Edit", label: "Find in Files", keys: ["Ctrl", "Shift", "F"], keywords: "search find grep files workspace", run: view("search") },
       { id: "edit.replaceInFiles", group: "Edit", label: "Replace in Files", keys: ["Ctrl", "Shift", "H"], keywords: "replace substitute global workspace", run: view("search") },
       { id: "view.git", group: "View", label: "Source Control", keys: ["Ctrl", "Shift", "G"], keywords: "git branch commit diff", run: view("git") },
-      { id: "view.debug", group: "View", label: "Debug", run: () => { setSidebarTab("debug"); bottom("debug")(); } },
+      { id: "view.debug", group: "View", label: "Debug", run: bottom("debug") },
       { id: "view.ai", group: "View", label: "Fahh Local (AI agent)", keys: ["Ctrl", "L"], keywords: "agent chat llm ollama groq devin cursor", run: view("ai") },
+      // Layout: the keyboard path for everything drag and drop does.
+      { id: "layout.reset", group: "View", label: "Reset Layout", keywords: "default workbench panels sidebar restore dock", run: resetLayout },
+      { id: "view.sidebar", group: "View", label: "Toggle Primary Side Bar", keys: ["Ctrl", "B"], keywords: "explorer left hide show", run: () => toggleZone("primary") },
+      { id: "view.secondary", group: "View", label: "Toggle Secondary Side Bar", keys: ["Ctrl", "Alt", "B"], keywords: "agent right hide show", run: () => toggleZone("secondary") },
+      { id: "panel.maximize", group: "View", label: "Toggle Maximized Panel", keywords: "terminal bottom fullscreen", run: toggleMaximizePanel },
+      { id: "editor.split", group: "View", label: "Split Editor Right", keys: ["Ctrl", "\\"], keywords: "group side by side", run: () => splitActiveEditor("right") },
+      { id: "editor.splitDown", group: "View", label: "Split Editor Down", keywords: "group below", run: () => splitActiveEditor("below") },
+      ...listViews().flatMap((v) =>
+        MOVE_TARGETS.map(([zone, where]) => ({
+          id: `layout.move.${v.id}.${zone}`,
+          group: "View",
+          label: `Move ${v.title} to ${where}`,
+          keywords: `dock drag ${v.id} ${v.keywords ?? ""}`,
+          run: () => moveView(v.id, zone),
+        }))
+      ),
       { id: "view.extensions", group: "View", label: "Extensions (Marketplace)", keys: ["Ctrl", "Shift", "X"], keywords: "plugins language packs marketplace open vsx", run: view("extensions") },
       { id: "view.theme", group: "View", label: "Colour Theme", keywords: "color appearance", run: view("theme") },
       { id: "view.wordwrap", group: "View", label: "Toggle Word Wrap", keys: ["Alt", "Z"], keywords: "wrap lines soft", run: () => runEditorAction("editor.action.toggleWordWrap") },
-      { id: "panel.toggle", group: "View", label: "Toggle Panel", keys: ["Ctrl", "`"], keywords: "terminal bottom", run: () => setShowBottomPanel((v) => !v) },
+      { id: "panel.toggle", group: "View", label: "Toggle Panel", keys: ["Ctrl", "`"], keywords: "terminal bottom", run: () => toggleZone("panel") },
       { id: "panel.problems", group: "View", label: "Problems", keywords: "errors diagnostics warnings lsp", run: bottom("problems") },
       { id: "panel.debug", group: "View", label: "Debug Console", keywords: "eval debugger console", run: bottom("debug") },
       { id: "panel.terminal", group: "View", label: "Terminal", keywords: "shell console powershell bash", run: bottom("terminal") },
       { id: "panel.run", group: "Run", label: "Run Panel", keywords: "execute active file runner", run: bottom("run") },
-      { id: "run.active", group: "Run", label: "Run Active File", keys: ["F5"], keywords: "execute script python node rust", run: () => {
-        setBottomTab("run");
-        setShowBottomPanel(true);
-      } },
+      { id: "run.active", group: "Run", label: "Run Active File", keys: ["F5"], keywords: "execute script python node rust", run: bottom("run") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
       ...THEME_DEFINITIONS.map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
@@ -369,13 +349,12 @@ export default function App() {
         // Ctrl+L (outside the editor, where it keeps Monaco select-line) or Ctrl+Shift+A: Toggle Fahh Local agent panel
         e.preventDefault();
         e.stopPropagation();
-        setSidebarTab((current) => (current === "ai" ? "files" : "ai"));
+        toggleView("agent");
       } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "w") {
         // Ctrl+W: close the active tab, asking first when it is unsaved.
         e.preventDefault();
         e.stopPropagation();
-        const tab = useEditorStore.getState().activeTab;
-        if (tab) requestClose(tab);
+        closeActiveEditor();
       } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "n") {
         // Ctrl+N: new untitled file.
         e.preventDefault();
@@ -397,11 +376,6 @@ export default function App() {
     window.addEventListener(FAHH_COMMAND, onCommand);
     return () => window.removeEventListener(FAHH_COMMAND, onCommand);
   }, [commands]);
-
-  // Derive Monaco theme from the active Fahh theme
-  const monacoTheme =
-    THEME_DEFINITIONS.find((d) => d.id === activeTheme)?.monacoTheme ??
-    "vs-dark";
 
   // Disable WebView2 browser context menu (prevents Reload/Share/More Tools)
   useEffect(() => {
@@ -463,7 +437,7 @@ export default function App() {
     const handler = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "`") {
         e.preventDefault();
-        setShowBottomPanel((prev) => !prev);
+        toggleZone("panel");
       }
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "c" || e.key === "C")) {
         e.preventDefault();
@@ -473,13 +447,9 @@ export default function App() {
         e.preventDefault();
         void openNewWindow();
       }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "f" || e.key === "F")) {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "f" || e.key === "F" || e.key === "h" || e.key === "H")) {
         e.preventDefault();
-        setSidebarTab("search");
-      }
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "h" || e.key === "H")) {
-        e.preventDefault();
-        setSidebarTab("search");
+        revealView("search");
       }
     };
     window.addEventListener("keydown", handler);
@@ -492,13 +462,10 @@ export default function App() {
       <MenuBar
         onOpenPalette={() => setPaletteOpen(true)}
         onOpenQuickOpen={() => setQuickOpen(true)}
-        onToggleSidebar={() => setSidebarTab((s) => (s === "files" ? "ai" : "files"))}
-        onToggleBottomPanel={() => setShowBottomPanel((p) => !p)}
-        onSetSidebarTab={(tab) => setSidebarTab(tab)}
-        onSetBottomTab={(tab) => {
-          setBottomTab(tab);
-          setShowBottomPanel(true);
-        }}
+        onToggleSidebar={() => toggleZone("primary")}
+        onToggleBottomPanel={() => toggleZone("panel")}
+        onSetSidebarTab={show}
+        onSetBottomTab={show}
         onSaveActive={() => void saveActive()}
         onShowWelcome={() => setShowWelcome(true)}
         onShowInstaller={() => setShowInstaller(true)}
@@ -511,199 +478,30 @@ export default function App() {
           <SpatialCanvas />
         </div>
       ) : (
-        /* ── Workspace Area (Activity bar + Sidebar + Main area) ── */
+        /* ── Workspace Area (Activity bar + the dock) ── */
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Non-rendering LSP bridge */}
           <LspBridge />
 
-          {/* ── Activity bar ── */}
+          {/* ── Activity bar: shows a view, or hides its bar when it is already on screen ── */}
           <div className="w-10 shrink-0 flex flex-col items-center gap-1 pt-2 bg-fahh-sidebar border-r border-fahh-surface">
-        <ActivityBtn
-          active={sidebarTab === "files"}
-          title="Explorer (Ctrl+Shift+E)"
-          onClick={() => setSidebarTab("files")}
-        >
-          <FolderTree size={18} />
-        </ActivityBtn>
+            {ACTIVITY.map((id) => <ViewBtn key={id} id={id} active={shownViews.includes(id)} />)}
+            <div className="flex-1" />
+            <ViewBtn id="theme" active={shownViews.includes("theme")} />
 
-        <ActivityBtn
-          active={sidebarTab === "search"}
-          title="Search (Ctrl+Shift+F)"
-          onClick={() => setSidebarTab("search")}
-        >
-          <Search size={18} />
-        </ActivityBtn>
-
-        <ActivityBtn
-          active={sidebarTab === "git"}
-          title="Source Control (Ctrl+Shift+G)"
-          onClick={() => setSidebarTab("git")}
-        >
-          <GitBranch size={18} />
-        </ActivityBtn>
-
-        <ActivityBtn
-          active={sidebarTab === "debug"}
-          title="Debug"
-          onClick={() => {
-            setSidebarTab("debug");
-            setBottomTab("debug");
-            setShowBottomPanel(true);
-          }}
-        >
-          <Bug size={18} />
-        </ActivityBtn>
-
-        <ActivityBtn
-          active={sidebarTab === "ai"}
-          title="Fahh Local (AI agent)"
-          onClick={() => setSidebarTab("ai")}
-        >
-          <span className="relative">
-            <Bot size={18} />
-            <AgentStatusDot />
-          </span>
-        </ActivityBtn>
-
-        <ActivityBtn
-          active={sidebarTab === "extensions"}
-          title="Extensions"
-          onClick={() => setSidebarTab("extensions")}
-        >
-          <Blocks size={18} />
-        </ActivityBtn>
-
-        <div className="flex-1" />
-
-        {/* Theme picker */}
-        <ActivityBtn
-          active={sidebarTab === "theme"}
-          title="Colour Theme"
-          onClick={() => setSidebarTab("theme")}
-        >
-          <Palette size={18} />
-        </ActivityBtn>
-
-        {/* Optional tools wizard */}
-        <button
-          onClick={() => setShowInstaller(true)}
-          title="Optional Tools"
-          className="w-8 h-8 mb-2 flex items-center justify-center rounded text-sm text-fahh-muted hover:text-fahh-text transition-colors"
-        >
-          <Settings size={18} />
-        </button>
-      </div>
-
-      {/* ── Sidebar panel ── */}
-      <div style={{ width: sidebarW }} className="fahh-sidebar shrink-0 flex flex-col overflow-hidden">
-        {sidebarTab === "files" && <FileTree />}
-
-        {sidebarTab === "search" && <SearchSidebar />}
-
-        {sidebarTab === "git" && <GitSidebar />}
-
-        {sidebarTab === "debug" && (
-          <div className="flex flex-col h-full overflow-hidden">
-            <div className="fahh-label px-3 py-2 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold border-b border-fahh-surface bg-fahh-sidebar shrink-0">
-              Debug
-            </div>
-            <DebugPanel />
+            {/* Optional tools wizard */}
+            <button
+              onClick={() => setShowInstaller(true)}
+              title="Optional Tools"
+              className="w-8 h-8 mb-2 flex items-center justify-center rounded text-sm text-fahh-muted hover:text-fahh-text transition-colors"
+            >
+              <Settings size={18} />
+            </button>
           </div>
-        )}
 
-        {sidebarTab === "ai" && <AgentPanel />}
-
-        {sidebarTab === "theme" && (
-          <div className="flex flex-col h-full overflow-y-auto bg-fahh-sidebar">
-            <ThemePanel />
-          </div>
-        )}
-
-        {sidebarTab === "extensions" && (
-          <div className="flex flex-col h-full overflow-hidden">
-            <div className="fahh-label px-3 py-2 text-[10px] uppercase tracking-widest text-fahh-muted font-semibold border-b border-fahh-surface bg-fahh-sidebar shrink-0">
-              Extensions
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              {/* Theme switcher at top of extensions */}
-              <ThemePanel />
-              <div className="border-t border-fahh-surface mt-1" />
-              <ExtensionsPanel />
-            </div>
-          </div>
-        )}
-      </div>
-
-      <ResizeHandle dir="col" size={sidebarW} onResize={(n) => setSidebarW(clampSize(n, SIDEBAR.min, SIDEBAR.max))} label="Resize sidebar" />
-
-      {/* ── Main area ── */}
+      {/* ── Main area: the dock (editors, side bars, panel), then the status bar ── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Editor region (the fahh effects play over this, and only this) */}
-        <div ref={editorRegionRef} className="relative flex flex-col flex-1 min-h-0">
-          <TabBar />
-          <Breadcrumbs />
-          <EditorPane monacoTheme={monacoTheme} />
-          <ImpactLayer targetRef={editorRegionRef} />
-        </div>
-
-        {/* Bottom panel (Problems / Debug Console / Terminal / Run) */}
-        {showBottomPanel && (
-          <ResizeHandle dir="row" growsBackward size={bottomH} onResize={(n) => setBottomH(clampSize(n, BOTTOM.min, bottomMax()))} label="Resize panel" />
-        )}
-        {showBottomPanel && (
-          <div style={{ height: Math.min(bottomH, bottomMax()) }} className="shrink-0 flex flex-col">
-            {/* Panel tab bar */}
-            <div className="flex items-center shrink-0 border-b border-fahh-surface bg-fahh-sidebar overflow-x-auto">
-              <BottomTabBtn
-                active={bottomTab === "problems"}
-                onClick={() => setBottomTab("problems")}
-              >
-                Problems
-                {diagnostics.length > 0 && (
-                  <span className={`ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] ${
-                    problemErrors > 0 ? "bg-red-500/20 text-red-400 font-bold" : "bg-yellow-500/20 text-yellow-400"
-                  }`}>
-                    {diagnostics.length}
-                  </span>
-                )}
-              </BottomTabBtn>
-              <BottomTabBtn
-                active={bottomTab === "debug"}
-                onClick={() => setBottomTab("debug")}
-              >
-                Debug Console
-              </BottomTabBtn>
-              <BottomTabBtn
-                active={bottomTab === "terminal"}
-                onClick={() => setBottomTab("terminal")}
-              >
-                Terminal
-              </BottomTabBtn>
-              <BottomTabBtn
-                active={bottomTab === "run"}
-                onClick={() => setBottomTab("run")}
-              >
-                Run
-              </BottomTabBtn>
-              <div className="flex-1" />
-              <button
-                onClick={() => setShowBottomPanel(false)}
-                title="Close panel (Ctrl+`)"
-                className="px-2 text-fahh-muted hover:text-fahh-text text-xs mr-1 transition-colors"
-              >
-                <X size={14} />
-              </button>
-            </div>
-
-            {/* Panel content */}
-            <div className="flex-1 min-h-0 overflow-hidden">
-              {bottomTab === "problems" && <ProblemsPanel />}
-              {bottomTab === "debug" && <DebugPanel />}
-              {bottomTab === "terminal" && <TerminalPanel />}
-              {bottomTab === "run" && <RunPanel />}
-            </div>
-          </div>
-        )}
+        <Workbench />
 
         {/* Status bar */}
         <div className="fahh-statusbar relative overflow-hidden h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 max-[900px]:gap-3 text-xs text-fahh-muted [&>*]:shrink-0 [&>*]:whitespace-nowrap">
@@ -712,18 +510,15 @@ export default function App() {
           <LocalServerItem />
 
           <button
-            onClick={() => setShowBottomPanel((p) => !p)}
+            onClick={() => toggleZone("panel")}
             className="hover:text-fahh-text transition-colors max-[760px]:hidden"
           >
-            {showBottomPanel ? "Hide Panel" : "Show Panel"}
+            Toggle Panel
           </button>
 
           {/* Quick run shortcut */}
           <button
-            onClick={() => {
-              setBottomTab("run");
-              setShowBottomPanel(true);
-            }}
+            onClick={() => revealView("run")}
             className="flex items-center gap-1 hover:text-fahh-text transition-colors"
           >
             <Play size={12} /> Run
@@ -769,9 +564,9 @@ export default function App() {
       {showWelcome && (
         <Welcome
           onClose={closeWelcome}
-          onOpenAI={() => setSidebarTab("ai")}
+          onOpenAI={() => revealView("agent")}
           onOpenFolder={() => {
-            setSidebarTab("files");
+            revealView("explorer");
             window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
           }}
         />
@@ -790,6 +585,22 @@ export default function App() {
         emptyText="Open a folder first: Ctrl+Shift+P, then “Open Folder…”."
       />
     </div>
+  );
+}
+
+/** The activity bar, top to bottom (Colour Theme sits at the foot). */
+const ACTIVITY = ["explorer", "search", "git", "debug", "agent", "extensions"];
+
+function ViewBtn({ id, active }: { id: string; active: boolean }) {
+  const v = getView(id);
+  if (!v) return null;
+  return (
+    <ActivityBtn active={active} title={v.keys ? `${v.title} (${v.keys})` : v.title} onClick={() => toggleView(id)}>
+      <span className="relative">
+        <v.icon size={18} />
+        {id === "agent" && <AgentStatusDot />}
+      </span>
+    </ActivityBtn>
   );
 }
 
