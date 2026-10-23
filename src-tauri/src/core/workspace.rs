@@ -154,11 +154,11 @@ pub fn reveal_path(path: String) -> Result<(), String> {
         crate::core::proc::cmd("explorer").raw_arg(format!("/select,\"{path}\"")).spawn()
     };
     #[cfg(target_os = "macos")]
-    let spawned = std::process::Command::new("open").arg("-R").arg(p).spawn();
+    let spawned = crate::core::proc::cmd("open").arg("-R").arg(p).spawn();
     #[cfg(all(unix, not(target_os = "macos")))]
     let spawned = {
         let target = if p.is_dir() { p } else { p.parent().unwrap_or(p) };
-        std::process::Command::new("xdg-open").arg(target).spawn()
+        crate::core::proc::cmd("xdg-open").arg(target).spawn()
     };
     spawned.map(|_| ()).map_err(|e| format!("could not open the file manager: {e}"))
 }
