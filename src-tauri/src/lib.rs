@@ -34,6 +34,9 @@ pub fn run() {
             workspace::create_file,
             workspace::delete_file,
             workspace::rename_file,
+            workspace::create_dir,
+            workspace::move_path,
+            workspace::reveal_path,
             workspace::search_workspace,
             workspace::replace_in_workspace,
             // Editor / document management
