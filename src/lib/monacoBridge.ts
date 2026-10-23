@@ -88,7 +88,9 @@ export function attachMonaco(
 }
 
 /** Called when the editor unmounts, so we never touch a dead model. */
-export function detachMonaco(): void {
+export function detachMonaco(editor?: unknown): void {
+  // With several docked editors, only the one the bridge is holding may let go of it.
+  if (editor && editor !== editorInstance) return;
   monacoApi = null;
   editorInstance = null;
 }

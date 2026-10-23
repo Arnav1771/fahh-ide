@@ -347,3 +347,62 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
   pointer-events: none;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
+
+/* ─── Workbench (dockview) ──────────────────────────────────────────────────
+   One theme for every Fahh theme: everything reads the same CSS variables the
+   rest of the app uses, so Fahh Gold, Fahh Light and the dark themes all look
+   native with no per-theme rules (and no white dockview default chrome). */
+.dockview-theme-fahh {
+  --dv-paneview-active-outline-color: var(--fahh-accent);
+  --dv-tabs-and-actions-container-font-size: 13px;
+  --dv-tabs-and-actions-container-height: 35px;
+  --dv-drag-over-background-color: color-mix(in srgb, var(--fahh-accent) 22%, transparent);
+  --dv-drag-over-border-color: var(--fahh-accent);
+  --dv-edge-dock-indicator-color: var(--fahh-accent);
+  --dv-tabs-container-scrollbar-color: var(--fahh-surface);
+  --dv-icon-hover-background-color: var(--fahh-surface);
+  --dv-overlay-z-index: 999;
+  --dv-tab-font-size: inherit;
+  --dv-border-radius: 0px;
+  --dv-tab-margin: 0;
+  --dv-sash-color: transparent;
+  --dv-active-sash-color: var(--fahh-accent);
+  --dv-active-sash-transition-duration: 0.1s;
+  --dv-active-sash-transition-delay: 0.2s;
+  --dv-spacing-padding: 0px;
+  --dv-tab-border-radius: 0px;
+  --dv-sash-border-radius: 0px;
+  --dv-dropdown-border-radius: 0px;
+  --dv-tab-close-icon-size: inherit;
+  --dv-floating-group-border: none;
+  --dv-drag-over-border: none;
+  --dv-background-color: var(--fahh-bg);
+  --dv-group-view-background-color: var(--fahh-bg);
+  --dv-tabs-and-actions-container-background-color: var(--fahh-sidebar);
+  --dv-activegroup-visiblepanel-tab-background-color: var(--fahh-bg);
+  --dv-activegroup-hiddenpanel-tab-background-color: var(--fahh-sidebar);
+  --dv-inactivegroup-visiblepanel-tab-background-color: var(--fahh-bg);
+  --dv-inactivegroup-hiddenpanel-tab-background-color: var(--fahh-sidebar);
+  --dv-tab-divider-color: var(--fahh-surface);
+  --dv-activegroup-visiblepanel-tab-color: var(--fahh-text);
+  --dv-activegroup-hiddenpanel-tab-color: var(--fahh-muted);
+  --dv-inactivegroup-visiblepanel-tab-color: var(--fahh-muted);
+  --dv-inactivegroup-hiddenpanel-tab-color: var(--fahh-muted);
+  --dv-separator-border: var(--fahh-surface);
+  --dv-paneview-header-border-color: var(--fahh-surface);
+  color: var(--fahh-text);
+  background-color: var(--fahh-bg);
+}
+.dockview-theme-fahh .dv-groupview { border: none; }
+/* The sash is a 1px rule that widens to a grab area, like the old resize handle. */
+.dockview-theme-fahh .dv-split-view-container > .dv-sash-container > .dv-sash { background: var(--fahh-surface); }
+.dockview-theme-fahh .dv-split-view-container > .dv-sash-container > .dv-sash:hover,
+.dockview-theme-fahh .dv-split-view-container > .dv-sash-container > .dv-sash.dv-sash-active { background: var(--fahh-accent); }
+.dockview-theme-fahh .dv-default-tab { display: flex; align-items: center; gap: 0.4rem; padding: 0 0.7rem; height: 100%; }
+.dockview-theme-fahh .dv-default-tab .dv-default-tab-action { opacity: 0.5; display: inline-flex; align-items: center; }
+.dockview-theme-fahh .dv-default-tab .dv-default-tab-action:hover { opacity: 1; }
+.dockview-theme-fahh .dv-tab.dv-active-tab { box-shadow: inset 0 -2px 0 var(--fahh-accent); }
+.dockview-theme-fahh .dv-tabs-and-actions-container { border-bottom: 1px solid var(--fahh-surface); }
+.dockview-theme-fahh .dv-tab:focus-visible { outline: 1px solid var(--fahh-accent); outline-offset: -1px; }
+/* The dock never scrolls: a stray scrollIntoView (from the terminal) must not shift the whole workbench. */
+.fahh-dock, .fahh-dock .dv-dockview { overflow: clip; }

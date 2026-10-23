@@ -5,8 +5,9 @@ import { useFileStore } from "../../store/fileStore";
 import { useDiagnosticsStore, type DiagnosticItem } from "../../store/diagnosticsStore";
 import { FileIcon, FolderIcon } from "../../lib/iconTheme";
 
-export function Breadcrumbs() {
-  const { activeTab, openTabs } = useEditorStore();
+export function Breadcrumbs({ path }: { path?: string } = {}) {
+  const { activeTab: storeActive, openTabs } = useEditorStore();
+  const activeTab = path ?? storeActive;
   const root = useFileStore((s) => s.root);
   const diagnostics = useDiagnosticsStore((s) => s.diagnostics);
 
