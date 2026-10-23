@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useSettingsStore } from "../../store/settingsStore";
 import { useTerminalStore, TerminalSession } from "../../store/terminalStore";
 import { useTerminal } from "../../hooks/useTerminal";
 import { useFileStore } from "../../store/fileStore";
@@ -34,6 +35,7 @@ function SingleTerminalPane({
   home,
 }: SingleTerminalPaneProps) {
   const { remember, clearLines } = useTerminalStore();
+  const fontSize = useSettingsStore((s) => s.terminalFontSize); // Settings > Terminal > Font size
   const { run } = useTerminal();
   const { tree } = useFileStore();
 
@@ -139,7 +141,7 @@ function SingleTerminalPane({
                 : "text-fahh-text"
             }`}
           >
-            <pre className="whitespace-pre-wrap break-words flex-1 font-mono text-xs">{line.text}</pre>
+            <pre className="whitespace-pre-wrap break-words flex-1 font-mono" style={{ fontSize }}>{line.text}</pre>
           </div>
         ))}
       </div>
@@ -159,7 +161,8 @@ function SingleTerminalPane({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          className="flex-1 bg-transparent outline-none text-fahh-text placeholder-fahh-muted text-sm font-mono min-w-0"
+          style={{ fontSize: fontSize + 2 }}
+          className="flex-1 bg-transparent outline-none text-fahh-text placeholder-fahh-muted font-mono min-w-0"
           placeholder="Enter command..."
           autoComplete="off"
           spellCheck={false}

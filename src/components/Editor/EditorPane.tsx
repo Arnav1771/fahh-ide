@@ -19,6 +19,8 @@ import { modeOf, usePreviewStore } from "../../store/previewStore";
 import { runCommand } from "../../lib/commands";
 import { ensureBaseline, isDirtyAt } from "../../lib/saveBaseline";
 import { saveActive } from "../../lib/tabActions";
+import { recordCursor } from "../../lib/navigation";
+import { useSettingsStore } from "../../store/settingsStore";
 
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
@@ -46,16 +48,22 @@ interface ThemeChangeDetail {
 
 export function EditorPane({
   monacoTheme = "vs-dark",
-  fontSize = 14,
-  wordWrap = "off",
+  fontSize: fontSizeProp,
+  wordWrap: wordWrapProp,
   fontWeight = "500",
   lineHeight,
-  minimapEnabled = true,
+  minimapEnabled: minimapProp,
   path,
   dock,
 }: EditorPaneProps) {
   const { activeTab: storeActive, fileContents, openTabs, setContent, markDirty } =
     useEditorStore();
+  // View > Settings, applied live; the canvas passes its own size, wrap and minimap.
+  const settings = useSettingsStore();
+  const fontSize = fontSizeProp ?? settings.fontSize;
+  const wordWrap = wordWrapProp ?? (settings.wordWrap ? "on" : "off");
+  const minimapEnabled = minimapProp ?? settings.minimap;
+  const { fontFamily, tabSize, insertSpaces, lineNumbers } = settings;
   const activeTab = path ?? storeActive;
   /** Undocked there is one editor, always current; docked, the active tab of the active group is. */
   const isCurrent = () => !dock || (dock.isActive && dock.isGroupActive);
@@ -70,7 +78,17 @@ export function EditorPane({
   const editedRef = useRef(false);
 
   const activeDoc = openTabs.find((t) => t.path === activeTab);
-  const content = activeTab ? fileContents[activeTab] ?? "" : "";
+  /**
+   * Docked, and the file was just closed: the store already dropped its text, but this editor
+   * lives until the dock removes the tab. Writing "" into the model now would shrink it to one
+   * line under its markers and decorations ("Illegal value for lineNumber"), so leave it alone.
+   */
+  const closed = !!path && !activeDoc;
+  const lastContent = useRef("");
+  if (!closed) lastContent.current = activeTab ? fileContents[activeTab] ?? "" : "";
+  const content = lastContent.current;
+  const modelOpts = useRef({ tabSize, insertSpaces });
+  modelOpts.current = { tabSize, insertSpaces };
   // Which preview this file can have, and how it is shown (VS Code's editor resolver, in small).
   const kind = activeTab ? previewKindFor(activeTab) : null;
   const previewOnly = activeTab ? isPreviewOnly(activeTab) : false;
@@ -139,29 +157,33 @@ export function EditorPane({
 
   // Synchronize Monaco model content with store content when switching tabs or when content loads asynchronously
   useEffect(() => {
-    if (!editorRef.current || !activeTab) return;
+    if (!editorRef.current || !activeTab || closed) return;
     const model = editorRef.current.getModel();
-    if (model) {
+    if (model && !model.isDisposed?.()) {
       const currentVal = model.getValue();
       if (currentVal !== content) {
         model.setValue(content);
       }
     }
     editorRef.current.layout?.();
-  }, [activeTab, content]);
+  }, [activeTab, content, closed]);
 
-  // Dynamically update Monaco editor options on prop changes without remounting
+  // Settings changes reach every open editor without remounting it.
   useEffect(() => {
     if (!editorRef.current) return;
     editorRef.current.updateOptions({
       fontSize,
+      fontFamily,
       wordWrap,
       fontWeight,
       lineHeight: lineHeight ?? Math.round(fontSize * 1.55),
       minimap: { enabled: minimapEnabled },
+      lineNumbers: lineNumbers ? "on" : "off",
     });
+    const model = editorRef.current.getModel();
+    if (model && !model.isDisposed?.()) model.updateOptions({ tabSize, insertSpaces });
     editorRef.current.layout?.();
-  }, [fontSize, wordWrap, fontWeight, lineHeight, minimapEnabled]);
+  }, [fontSize, fontFamily, wordWrap, fontWeight, lineHeight, minimapEnabled, lineNumbers, tabSize, insertSpaces]);
 
   // Never let the bridge hold a reference to a disposed editor.
   useEffect(() => {
@@ -212,7 +234,7 @@ export function EditorPane({
   }
 
   const handleChange = (value: string | undefined) => {
-    if (!activeTab || value === undefined) return;
+    if (!activeTab || value === undefined || closed) return;
     setContent(activeTab, value);
     // Dirty means "differs from the last save": undoing back to it clears the dot.
     const v = editorRef.current?.getModel()?.getAlternativeVersionId();
@@ -318,6 +340,7 @@ export function EditorPane({
         if (dock) takeFocusRef.current();
       }),
       editor.onDidChangeModel(() => {
+        editor.getModel()?.updateOptions(modelOpts.current);
         baseline();
         editedRef.current = false;
         errorLensRef.current = editor.deltaDecorations(errorLensRef.current, []);
@@ -331,6 +354,12 @@ export function EditorPane({
     // Registered with Monaco so its own Ctrl+K chords keep working.
     editor.addCommand(monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, monaco.KeyCode.KeyV), () => runCommand("preview.side"));
     editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.KeyV, () => runCommand("preview.toggle"));
+    // Ctrl+K Ctrl+W: close all tabs (App lets the second key through to Monaco when the chord started here).
+    editor.addCommand(
+      monaco.KeyMod.chord(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK, monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyW),
+      () => runCommand("file.closeAll")
+    );
+    editor.getModel()?.updateOptions(modelOpts.current);
     // Scroll sync: the preview follows the editor's top visible line.
     disposablesRef.current.push(
       editor.onDidScrollChange(() => {
@@ -350,7 +379,14 @@ export function EditorPane({
       }
     };
     updateCursor();
-    disposablesRef.current.push(editor.onDidChangeCursorPosition(updateCursor));
+    disposablesRef.current.push(
+      editor.onDidChangeCursorPosition((e) => {
+        updateCursor();
+        // Back / forward history; a content flush or marker recovery is not the user moving.
+        const file = path ?? useEditorStore.getState().activeTab;
+        if (file && e.reason !== 1 && e.reason !== 2 && isCurrent()) recordCursor(file, e.position.lineNumber, e.position.column);
+      })
+    );
 
     editedRef.current = false;
     settle();
@@ -385,14 +421,16 @@ export function EditorPane({
           onMount={handleEditorDidMount}
           options={{
             fontSize,
-            fontFamily: "JetBrains Mono, Fira Code, Menlo, Monaco, Consolas, monospace",
+            fontFamily,
             fontWeight,
             lineHeight: lineHeight ?? Math.round(fontSize * 1.55),
             letterSpacing: 0.3,
             minimap: { enabled: minimapEnabled },
             scrollBeyondLastLine: false,
             wordWrap,
-            tabSize: 2,
+            lineNumbers: lineNumbers ? "on" : "off",
+            tabSize,
+            insertSpaces,
             automaticLayout: true,
             smoothScrolling: true,
             cursorBlinking: "phase",

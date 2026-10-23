@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { clearViews, getView, listViews, registerView } from "./viewRegistry";
-import { decodeLayout, editorsToHome, encodeLayout, layoutKey, legacySizes, zoneFor } from "./dockLayout";
+import { decodeLayout, editorsToHome, encodeLayout, isDiskPath, layoutKey, legacySizes, savedEditorPaths, zoneFor } from "./dockLayout";
 
 const dock = () => ({
   grid: {
@@ -44,8 +44,35 @@ describe("view registry", () => {
 });
 
 describe("layout serialization", () => {
-  it("round-trips, turning editors into one Welcome placeholder per group", () => {
+  it("round-trips with the editor tabs (files on disk) in their groups", () => {
     const back = decodeLayout(encodeLayout(dock(), { hidden: { primary: ["g1"] } }))!;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const leaves = back.dock.grid.root.data.map((n: any) => n.data.views);
+    expect(leaves).toEqual([["v:explorer", "v:git"], ["ed:/a.ts", "ed:/b.ts", "ed:/c.ts"], ["ed:/d.ts", "v:terminal"]]);
+    expect(back.dock.grid.root.data[1].data.activeView).toBe("ed:/b.ts");
+    expect(back.dock.floatingGroups).toBeUndefined();
+    expect(savedEditorPaths(back.dock)).toEqual(["/a.ts", "/b.ts", "/c.ts", "/d.ts"]);
+  });
+  it("never saves an untitled buffer (it has no file to come back from)", () => {
+    const d = dock();
+    d.grid.root.data[1].data.views.push("ed:untitled-1.ts");
+    Object.assign(d.panels, { "ed:untitled-1.ts": { id: "ed:untitled-1.ts", contentComponent: "editor", params: { path: "untitled-1.ts" } } });
+    const back = decodeLayout(encodeLayout(d, { hidden: {} }))!;
+    expect(back.dock.panels["ed:untitled-1.ts"]).toBeUndefined();
+    expect(back.dock.grid.root.data[1].data.views).toEqual(["ed:/a.ts", "ed:/b.ts", "ed:/c.ts"]); // no placeholder beside real tabs
+    expect(isDiskPath("untitled-1.ts")).toBe(false);
+    expect(isDiskPath("C:\\w\\a.ts")).toBe(true);
+  });
+  it("restoring: tabs whose files are gone become placeholders, the rest stay put", () => {
+    const back = editorsToHome(dock(), (p) => p === "/b.ts");
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const leaves = back.grid.root.data.map((n: any) => n.data.views);
+    expect(leaves[1]).toEqual(["ed:/b.ts"]);
+    expect(leaves[2][0]).toMatch(/^home:/);
+    expect(leaves[2][1]).toBe("v:terminal");
+  });
+  it("turns every editor into one Welcome placeholder per group when nothing is kept", () => {
+    const back = decodeLayout(JSON.stringify({ v: 2, dock: editorsToHome(dock()), extras: { hidden: { primary: ["g1"] } } }))!;
     expect(back.extras.hidden).toEqual({ primary: ["g1"] });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const leaves = back.dock.grid.root.data.map((n: any) => n.data.views);
@@ -68,6 +95,8 @@ describe("layout serialization", () => {
     const once = encodeLayout(d, { hidden: {} });
     expect(d.panels["ed:/a.ts"].contentComponent).toBe("editor");
     expect(encodeLayout(decodeLayout(once)!.dock, { hidden: {} })).toBe(once);
+    expect(editorsToHome(d).panels["ed:/a.ts"]).toBeUndefined();
+    expect(d.panels["ed:/a.ts"]).toBeDefined();
     expect(editorsToHome(editorsToHome(d))).toEqual(editorsToHome(d));
   });
   it("falls back to the default for damaged, empty or other-version data", () => {

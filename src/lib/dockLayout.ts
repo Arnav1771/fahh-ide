@@ -5,7 +5,7 @@
 import { loadSize } from "./panelSize";
 
 export const LAYOUT_VERSION = 2;
-/** Editor tabs are not restored at launch (the files are not reopened), so saved editors become Welcome placeholders. */
+/** Editor tabs are saved with the layout and come back when their files still exist; the rest become Welcome placeholders. */
 export const EDITOR_PREFIX = "ed:";
 export const HOME_PREFIX = "home:";
 export const VIEW_PREFIX = "v:";
@@ -26,14 +26,30 @@ export const layoutKey = (root: string | null): string => `fahh-layout:v${LAYOUT
 
 const uniq = <T,>(a: T[]) => [...new Set(a)];
 
-/** Replace every editor panel with a Welcome placeholder (one per group), keeping the split structure. */
-export function editorsToHome(input: Json): Json {
+/** A file on disk (New File buffers have no folder in their path and cannot come back). */
+export const isDiskPath = (p: unknown): p is string => typeof p === "string" && /[\\/]/.test(p);
+
+/** The files the saved editor tabs show, each once. */
+export function savedEditorPaths(dock: Json): string[] {
+  const out: string[] = [];
+  for (const p of Object.values<Json>(dock?.panels ?? {})) {
+    const path = p?.contentComponent === "editor" ? p.params?.path : undefined;
+    if (isDiskPath(path) && !out.includes(path)) out.push(path);
+  }
+  return out;
+}
+
+/**
+ * Replace editor panels with a Welcome placeholder (one per group, and none in a group that
+ * still has an editor), keeping the split structure. `keep` says which files stay as tabs.
+ */
+export function editorsToHome(input: Json, keep: (path: string) => boolean = () => false): Json {
   const dock = JSON.parse(JSON.stringify(input));
   const map = new Map<string, string>();
   const panels: Record<string, Json> = {};
   let n = 0;
   for (const [id, p] of Object.entries<Json>(dock.panels ?? {})) {
-    if (p?.contentComponent === "editor") {
+    if (p?.contentComponent === "editor" && !keep(p.params?.path)) {
       const h = `${HOME_PREFIX}${++n}`;
       map.set(id, h);
       panels[h] = { id: h, contentComponent: "home", tabComponent: "home", title: "Welcome", params: {} };
@@ -45,7 +61,8 @@ export function editorsToHome(input: Json): Json {
     const d = node.data;
     if (!d || !Array.isArray(d.views)) return;
     const mapped: string[] = uniq(d.views.map((v: string) => map.get(v) ?? v));
-    const firstHome = mapped.find((v) => v.startsWith(HOME_PREFIX));
+    const hasEditor = mapped.some((v) => panels[v]?.contentComponent === "editor");
+    const firstHome = hasEditor ? undefined : mapped.find((v) => v.startsWith(HOME_PREFIX));
     const views = mapped.filter((v) => !v.startsWith(HOME_PREFIX) || v === firstHome);
     for (const v of mapped) if (!views.includes(v)) delete panels[v];
     d.views = views;
@@ -60,7 +77,7 @@ export function editorsToHome(input: Json): Json {
 }
 
 export function encodeLayout(dock: Json, extras: Extras): string {
-  return JSON.stringify({ v: LAYOUT_VERSION, dock: editorsToHome(dock), extras });
+  return JSON.stringify({ v: LAYOUT_VERSION, dock: editorsToHome(dock, isDiskPath), extras });
 }
 
 /** Read a saved layout; null (use the default) for anything missing, older, newer or damaged. */

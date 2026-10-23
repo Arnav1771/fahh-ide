@@ -7,6 +7,7 @@ import { linuxToWindows } from "../lib/wslPath";
 import { resolvePath } from "../lib/preview";
 import { noteLocalUrls } from "../lib/browser";
 import { useWorkspace } from "./useWorkspace";
+import { useFahhStore } from "../store/fahhStore";
 
 const PLATFORM = detectShell();
 
@@ -102,6 +103,8 @@ export function useTerminal() {
         // We no longer print result.stdout/stderr here since it's streamed
         if (result.exit_code !== null && result.exit_code !== 0) {
           addLine(`[exit ${result.exit_code}]`, "stderr");
+          // A failed command is an error, like a crashed run (the HUD applies mute, volume and cooldown).
+          useFahhStore.getState().external();
         }
       } catch (err) {
         const msg = String(err);

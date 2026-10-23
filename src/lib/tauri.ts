@@ -35,6 +35,15 @@ export const deleteFile = (path: string) =>
 export const renameFile = (from: string, to: string) =>
   invoke<void>("rename_file", { from, to });
 
+/** New Folder; fails when the name is taken. */
+export const createDir = (path: string) => invoke<void>("create_dir", { path });
+
+/** Move a file or folder into `dir` (explorer drag and drop). Resolves to its new path. */
+export const movePath = (from: string, dir: string) => invoke<string>("move_path", { from, dir });
+
+/** Show a file in Explorer / Finder / the Linux file manager. */
+export const revealPath = (path: string) => invoke<void>("reveal_path", { path });
+
 export interface SearchWorkspaceOptions {
   caseSensitive?: boolean;
   wholeWord?: boolean;

@@ -4,6 +4,10 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 // The same file, bundled by Vite: used when the Tauri resource is unavailable
 // (the browser preview, or a resource lookup that fails), so the bell still rings.
 import bundledFahhUrl from "../../src-tauri/assets/fahh.mp3?url";
+import { useSettingsStore } from "../store/settingsStore";
+
+/** Settings > Fahh > Volume, 0 to 1. */
+const volume = () => useSettingsStore.getState().fahhVolume / 100;
 
 let audioCtx: AudioContext | null = null;
 let audioBuffer: AudioBuffer | null = null;
@@ -42,19 +46,21 @@ function ready(): AudioContext | null {
  * repeat offences sound heavier.
  */
 export function playFahh(voice: { gain: number; rate: number } = { gain: 1, rate: 1 }): void {
+  if (volume() === 0) return;
   const ctx = ready();
   if (!ctx || !audioBuffer) return;
   const source = ctx.createBufferSource();
   source.buffer = audioBuffer;
   source.playbackRate.value = voice.rate;
   const gain = ctx.createGain();
-  gain.gain.value = voice.gain;
+  gain.gain.value = voice.gain * volume();
   source.connect(gain).connect(ctx.destination);
   source.start(0);
 }
 
 /** The redemption cue: a soft two-note bell, synthesized so it needs no asset. */
 export function playChime(): void {
+  if (volume() === 0) return;
   const ctx = ready();
   if (!ctx) return;
   const t = ctx.currentTime;
@@ -67,7 +73,7 @@ export function playChime(): void {
     osc.type = "sine";
     osc.frequency.value = freq;
     gain.gain.setValueAtTime(0, t + delay);
-    gain.gain.linearRampToValueAtTime(0.12, t + delay + 0.012);
+    gain.gain.linearRampToValueAtTime(Math.max(0.0002, 0.12 * volume()), t + delay + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, t + delay + 0.7);
     osc.connect(gain).connect(ctx.destination);
     osc.start(t + delay);

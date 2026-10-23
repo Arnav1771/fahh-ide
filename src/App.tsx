@@ -27,7 +27,13 @@ import { openBrowser } from "./lib/browser";
 import { launchAgyTerminal } from "./lib/tauri";
 import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
-import { saveWorkspaceAs, openWorkspaceFromFile, applyWorkspaceConfig } from "./lib/workspaceManager";
+import { saveWorkspaceAs, openWorkspaceFromFile, applyWorkspaceConfig, openRecentEntry } from "./lib/workspaceManager";
+import { DialogHost } from "./components/Dialog";
+import { AboutDialog } from "./components/Dialog/AboutDialog";
+import { alertDialog, confirmDialog, promptDialog } from "./store/dialogStore";
+import { cycleTabs, endCycle, goBack, goForward, initNavigation, reopenClosedTab } from "./lib/navigation";
+import { loadRecent } from "./lib/recent";
+import { useSettingsStore } from "./store/settingsStore";
 import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
 import { Settings, Play, Globe } from "lucide-react";
 import { MenuBar } from "./components/MenuBar";
@@ -38,6 +44,7 @@ import { getView, listViews } from "./lib/viewRegistry";
 import type { Zone } from "./lib/dockLayout";
 import {
   closeActiveEditor,
+  closeAllEditors,
   moveView,
   resetLayout,
   revealView,
@@ -93,6 +100,7 @@ function ActivityBtn({
 
 export default function App() {
   const [showInstaller, setShowInstaller] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [showWelcome, setShowWelcome] = useState(() => shouldShowWelcome(typeof localStorage === "undefined" ? undefined : localStorage));
   const closeWelcome = () => {
     markWelcomeSeen(typeof localStorage === "undefined" ? undefined : localStorage);
@@ -132,7 +140,15 @@ export default function App() {
       });
     let off: (() => void) | undefined;
     let gone = false;
-    takePendingOpen().then((req) => req && run(req)).catch(() => {});
+    // Session restore: nothing asked for on the command line, so reopen the last folder (or workspace).
+    const restoreLast = () => {
+      if (!useSettingsStore.getState().restoreSession || useFileStore.getState().root) return;
+      const last = loadRecent()[0];
+      if (last) void openRecentEntry(last, openFolder, openFileInEditor);
+    };
+    takePendingOpen()
+      .then((req) => (req ? run(req) : restoreLast()))
+      .catch(restoreLast);
     import("@tauri-apps/api/webviewWindow")
       .then(({ getCurrentWebviewWindow }) =>
         getCurrentWebviewWindow().listen<OpenRequest>("fahh://open", (e) => void run(e.payload))
@@ -194,6 +210,17 @@ export default function App() {
   // Fahh Local: keep hearing the agent while its panel is hidden.
   useEffect(() => initAgentEvents(), []);
 
+  // Ctrl+Tab order and back / forward history follow the active tab.
+  useEffect(() => initNavigation(), []);
+
+  // The palette lists recent folders too: rebuild the commands when that list changes.
+  const [recentTick, setRecentTick] = useState(0);
+  useEffect(() => {
+    const on = () => setRecentTick((n) => n + 1);
+    window.addEventListener("fahh-recent-change", on);
+    return () => window.removeEventListener("fahh-recent-change", on);
+  }, []);
+
   // Everything the palette (and the welcome screen) can do.
   const commands = useMemo<PaletteCommand[]>(() => {
     const view = (tab: SidebarTab | BottomTab) => () => revealView(viewFor(tab));
@@ -240,7 +267,20 @@ export default function App() {
           navigator.clipboard.writeText(tab);
         }
       } },
-      { id: "file.closeTab", group: "File", label: "Close Active Tab", keys: ["Ctrl", "W"], keywords: "close tab window", run: closeActiveEditor },
+      { id: "file.closeTab", group: "File", label: "Close Active Tab", keys: ["Ctrl", "W"], keywords: "close tab window", run: () => void closeActiveEditor() },
+      { id: "file.closeAll", group: "File", label: "Close All Tabs", keys: ["Ctrl", "K", "Ctrl", "W"], keywords: "close every tab editors", run: () => void closeAllEditors() },
+      { id: "file.reopenClosed", group: "File", label: "Reopen Closed Tab", keys: ["Ctrl", "Shift", "T"], keywords: "undo close restore tab", run: () => void reopenClosedTab() },
+      ...loadRecent().map((r, i) => ({
+        id: `file.recent.${i}`,
+        group: "File",
+        label: `Open Recent: ${r.path.split(/[\\/]/).filter(Boolean).pop() ?? r.path}`,
+        keywords: `recent ${r.kind} ${r.path}`,
+        run: () => void openRecentEntry(r, openFolder, openFileInEditor),
+      })),
+      { id: "view.settings", group: "View", label: "Settings", keys: ["Ctrl", ","], keywords: "preferences options font size minimap wrap volume tab spaces line numbers terminal restore session", run: () => revealView("settings") },
+      { id: "go.back", group: "Go", label: "Go Back", keys: ["Alt", "←"], keywords: "navigate history previous location", run: () => void goBack() },
+      { id: "go.forward", group: "Go", label: "Go Forward", keys: ["Alt", "→"], keywords: "navigate history next location", run: () => void goForward() },
+      { id: "help.about", group: "Help", label: "About Fahh Editor", keywords: "version update check release", run: () => setShowAbout(true) },
       { id: "edit.replace", group: "Edit", label: "Replace in File", keys: ["Ctrl", "H"], keywords: "substitute regex", run: () => runEditorAction("editor.action.startFindReplaceAction") },
       { id: "edit.commentLine", group: "Edit", label: "Toggle Line Comment", keys: ["Ctrl", "/"], keywords: "comment line", run: () => runEditorAction("editor.action.commentLine") },
       { id: "edit.commentBlock", group: "Edit", label: "Toggle Block Comment", keys: ["Shift", "Alt", "A"], keywords: "comment block", run: () => runEditorAction("editor.action.blockComment") },
@@ -289,12 +329,12 @@ export default function App() {
         const path = useEditorStore.getState().activeTab;
         if (path && previewKindFor(path)) usePreviewStore.getState().toggleSide(path);
       } },
-      { id: "browser.open", group: "Browser", label: "Open Dev Browser…", keywords: "localhost web page dev server url preview site", run: () => {
+      { id: "browser.open", group: "Browser", label: "Open Dev Browser…", keywords: "localhost web page dev server url preview site", run: async () => {
         const suggested = usePreviewStore.getState().localUrl ?? "http://localhost:5173";
-        const typed = window.prompt("Open in the built-in browser (a port like 5173, or a URL):", suggested);
-        if (typed && typed.trim()) openBrowser(typed);
+        const typed = await promptDialog({ title: "Open Dev Browser", message: "A port like 5173, or a URL:", value: suggested, ok: "Open" });
+        if (typed) openBrowser(typed);
       } },
-      { id: "terminal.agy", group: "Terminal", label: "Launch Antigravity CLI (agy)", keywords: "agy antigravity terminal agent console interactive gemini cli", run: () => launchAgyTerminal().catch((e) => alert(String(e))) },
+      { id: "terminal.agy", group: "Terminal", label: "Launch Antigravity CLI (agy)", keywords: "agy antigravity terminal agent console interactive gemini cli", run: () => launchAgyTerminal().catch((e) => alertDialog({ title: "Could not launch agy", message: String(e) })) },
       { id: "fahh.ring", group: "Fahh", label: "Ring the Bell", keywords: "test sound play", run: () => useFahhStore.getState().ringBell() },
       { id: "fahh.epic", group: "Fahh", label: "Effects: Epic", keywords: "shake intensity power mode", run: intensity("epic") },
       { id: "fahh.subtle", group: "Fahh", label: "Effects: Subtle", keywords: "intensity quiet", run: intensity("subtle") },
@@ -307,7 +347,8 @@ export default function App() {
       { id: "tools.optional", group: "Tools", label: "Optional Tools…", keywords: "installer n8n flowise setup", run: () => setShowInstaller(true) },
       { id: "file.quickOpen", group: "Go", label: "Go to File…", keys: ["Ctrl", "P"], keywords: "quick open find file", run: () => setQuickOpen(true) },
     ];
-  }, [setTheme]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setTheme, recentTick]);
 
   // Quick Open lists every file in the opened folder (VS Code's Ctrl+P).
   const quickOpenFiles = useMemo<PaletteCommand[]>(
@@ -329,10 +370,44 @@ export default function App() {
   // Ctrl+Shift+P and F1 open the palette; Ctrl+P, Ctrl+L, Ctrl+W, Ctrl+N. Captured before
   // Monaco sees them, so its own bindings (F1 palette) do not fire underneath ours.
   useEffect(() => {
+    // Ctrl+K starts a chord (Ctrl+K Ctrl+W: close all tabs). Any other key ends it.
+    let chordAt = 0;
+    const MODIFIERS = ["Control", "Meta", "Shift", "Alt"];
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
-      const combo = mod && e.shiftKey && e.key.toLowerCase() === "p";
-      if (combo || e.key === "F1") {
+      const k = e.key.toLowerCase();
+      const inEditor = !!(e.target as Element | null)?.closest?.(".monaco-editor");
+      const chord = chordAt > 0 && Date.now() - chordAt < 2000;
+      if (!MODIFIERS.includes(e.key)) chordAt = 0;
+      if (mod && !e.shiftKey && !e.altKey && k === "k") {
+        chordAt = Date.now(); // not swallowed: Monaco has Ctrl+K chords of its own
+        return;
+      }
+      const combo = mod && e.shiftKey && k === "p";
+      if (chord && mod && !e.shiftKey && !e.altKey && k === "w") {
+        // In the editor Monaco finishes the chord (its own binding runs file.closeAll); elsewhere we do.
+        if (inEditor) return;
+        e.preventDefault();
+        e.stopPropagation();
+        void closeAllEditors();
+      } else if (e.ctrlKey && !e.altKey && e.key === "Tab") {
+        // Ctrl+Tab / Ctrl+Shift+Tab: most recently used tabs, while Ctrl is held.
+        e.preventDefault();
+        e.stopPropagation();
+        cycleTabs(e.shiftKey);
+      } else if (mod && e.shiftKey && !e.altKey && k === "t") {
+        e.preventDefault();
+        e.stopPropagation();
+        void reopenClosedTab();
+      } else if (e.altKey && !mod && !e.shiftKey && (e.key === "ArrowLeft" || e.key === "ArrowRight")) {
+        e.preventDefault();
+        e.stopPropagation();
+        void (e.key === "ArrowLeft" ? goBack() : goForward());
+      } else if (mod && !e.shiftKey && !e.altKey && e.key === ",") {
+        e.preventDefault();
+        e.stopPropagation();
+        revealView("settings");
+      } else if (combo || e.key === "F1") {
         e.preventDefault();
         e.stopPropagation();
         setQuickOpen(false);
@@ -353,7 +428,7 @@ export default function App() {
         // Ctrl+W: close the active tab, asking first when it is unsaved.
         e.preventDefault();
         e.stopPropagation();
-        closeActiveEditor();
+        void closeActiveEditor();
       } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "n") {
         // Ctrl+N: new untitled file.
         e.preventDefault();
@@ -361,8 +436,18 @@ export default function App() {
         window.dispatchEvent(new CustomEvent(FAHH_COMMAND, { detail: "file.new" }));
       }
     };
+    // Letting go of Ctrl ends a Ctrl+Tab walk (the tab you landed on becomes the most recent).
+    const onUp = (e: KeyboardEvent) => {
+      if (e.key === "Control" || e.key === "Meta") endCycle();
+    };
     window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
+    window.addEventListener("keyup", onUp, true);
+    window.addEventListener("blur", endCycle);
+    return () => {
+      window.removeEventListener("keydown", onKey, true);
+      window.removeEventListener("keyup", onUp, true);
+      window.removeEventListener("blur", endCycle);
+    };
   }, []);
 
   // Commands asked for by id (the welcome screen uses this).
@@ -416,9 +501,10 @@ export default function App() {
     let gone = false;
     import("@tauri-apps/api/window")
       .then(({ getCurrentWindow }) =>
-        getCurrentWindow().onCloseRequested((e) => {
+        // Tauri waits for this handler before it closes the window, so the dialog can be awaited.
+        getCurrentWindow().onCloseRequested(async (e) => {
           const msg = unsavedMessage();
-          if (msg && !window.confirm(msg)) e.preventDefault();
+          if (msg && !(await confirmDialog({ title: "Close Fahh Editor?", message: msg, ok: "Close and discard", danger: true }))) e.preventDefault();
         })
       )
       .then((fn) => (gone ? fn() : (off = fn)))
@@ -468,6 +554,7 @@ export default function App() {
         onSaveActive={() => void saveActive()}
         onShowWelcome={() => setShowWelcome(true)}
         onShowInstaller={() => setShowInstaller(true)}
+        onShowAbout={() => setShowAbout(true)}
       />
 
       {/* ── Spatial Canvas Mode (CATE) vs Docked Workspace Area ── */}
@@ -488,10 +575,11 @@ export default function App() {
             <div className="flex-1" />
             <ViewBtn id="theme" active={shownViews.includes("theme")} />
 
-            {/* Optional tools wizard */}
+            {/* Settings (Optional Tools stay in Help and the palette) */}
             <button
-              onClick={() => setShowInstaller(true)}
-              title="Optional Tools"
+              onClick={() => toggleView("settings")}
+              title="Settings (Ctrl+,)"
+              aria-label="Settings"
               className="w-8 h-8 mb-2 flex items-center justify-center rounded text-sm text-fahh-muted hover:text-fahh-text transition-colors"
             >
               <Settings size={18} />
@@ -571,6 +659,8 @@ export default function App() {
         />
       )}
 
+      {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
+      <DialogHost />
       <Toasts />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
       <CommandPalette

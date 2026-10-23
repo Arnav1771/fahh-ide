@@ -16,6 +16,16 @@ export const INTENSITIES: readonly Intensity[] = ["off", "subtle", "epic"];
 
 const INTENSITY_KEY = "fahh-intensity";
 const MUTED_KEY = "fahh-muted";
+const LIFETIME_KEY = "fahh-lifetime";
+
+function readLifetime(): number {
+  try {
+    const n = Number(localStorage.getItem(LIFETIME_KEY));
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
+  } catch {
+    return 0;
+  }
+}
 
 function readIntensity(): Intensity {
   try {
@@ -57,6 +67,8 @@ interface FahhStore {
   warnings: number;
   /** fahhs this session */
   fahhCount: number;
+  /** fahhs ever (kept in localStorage); the status bar tooltip and Settings show it */
+  lifetime: number;
   combo: number;
   /** When the last fahh landed, so the HUD can let the combo lapse. */
   lastFahhAt: number | null;
@@ -76,6 +88,11 @@ interface FahhStore {
   toggleMute: () => void;
 }
 
+function bumpLifetime(n: number): number {
+  persist(LIFETIME_KEY, String(n + 1));
+  return n + 1;
+}
+
 const engine = createFahhEngine();
 let seq = 0;
 
@@ -87,6 +104,7 @@ export const useFahhStore = create<FahhStore>((set, get) => {
       if (intensity !== "off" && !muted) playFahh(comboVoice(event.combo));
       set((s) => ({
         fahhCount: s.fahhCount + 1,
+        lifetime: bumpLifetime(s.lifetime),
         combo: event.combo,
         lastFahhAt: Date.now(),
         cleanSince: null,
@@ -106,6 +124,7 @@ export const useFahhStore = create<FahhStore>((set, get) => {
     errors: 0,
     warnings: 0,
     fahhCount: 0,
+    lifetime: readLifetime(),
     combo: 0,
     lastFahhAt: null,
     cleanSince: engine.cleanSince(),
@@ -126,7 +145,7 @@ export const useFahhStore = create<FahhStore>((set, get) => {
     ringBell: () => {
       const combo = Math.max(1, engine.combo());
       if (get().intensity !== "off" && !get().muted) playFahh(comboVoice(combo));
-      set((s) => ({ fahhCount: s.fahhCount + 1, lastFahhAt: Date.now(), impact: { seq: ++seq, kind: "fahh", combo, line: null } }));
+      set((s) => ({ fahhCount: s.fahhCount + 1, lifetime: bumpLifetime(s.lifetime), lastFahhAt: Date.now(), impact: { seq: ++seq, kind: "fahh", combo, line: null } }));
     },
     setIntensity: (intensity) => {
       persist(INTENSITY_KEY, intensity);

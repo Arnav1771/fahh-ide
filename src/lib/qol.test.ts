@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isUnder, remapPath } from "./tabs";
+import { canDrop, isUnder, languageFor, remapPath } from "./tabs";
 import { ALWAYS_DIRTY, clearBaseline, ensureBaseline, isDirtyAt, setBaseline } from "./saveBaseline";
 import { clampSize, loadSize, saveSize } from "./panelSize";
 import { pushHistory, stepHistory } from "./termHistory";
@@ -106,5 +106,22 @@ describe("focus trap order", () => {
     expect(nextTabIndex(1, 3, false)).toBe(2);
     expect(nextTabIndex(-1, 3, true)).toBe(2);
     expect(nextTabIndex(0, 0, false)).toBe(-1);
+  });
+});
+
+describe("tabs: explorer drag and drop", () => {
+  it("drops into another folder, never onto itself, into itself, or where it already is", () => {
+    expect(canDrop("/p/src/a.ts", "/p/lib")).toBe(true);
+    expect(canDrop("/p/src", "/p/lib")).toBe(true);
+    expect(canDrop("/p/src", "/p/src")).toBe(false);
+    expect(canDrop("/p/src", "/p/src/inner")).toBe(false);
+    expect(canDrop("/p/src/a.ts", "/p/src")).toBe(false);
+    expect(canDrop("C:\\w\\a.ts", "C:\\w\\sub")).toBe(true);
+    expect(canDrop("C:\\w\\a.ts", "C:\\w")).toBe(false);
+  });
+  it("languageFor maps extensions", () => {
+    expect(languageFor("/a/b.tsx")).toBe("typescript");
+    expect(languageFor("/a/B.PY")).toBe("python");
+    expect(languageFor("/a/Makefile")).toBe("plaintext");
   });
 });

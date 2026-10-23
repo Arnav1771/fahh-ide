@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { AlertCircle, AlertTriangle, Info, Search, FileCode, CheckCircle2 } from "lucide-react";
 import { useDiagnosticsStore, type DiagnosticItem } from "../../store/diagnosticsStore";
 import { useWorkspace } from "../../hooks/useWorkspace";
+import { openAt } from "../../lib/navigation";
 
 export function ProblemsPanel() {
   const diagnostics = useDiagnosticsStore((s) => s.diagnostics);
@@ -92,7 +93,7 @@ export function ProblemsPanel() {
                   {items.map((item: DiagnosticItem, idx: number) => (
                     <div
                       key={idx}
-                      onClick={() => openFileInEditor(item.path)}
+                      onClick={() => void openAt(item.path, item.line ?? 1, item.column ?? 1)}
                       className="flex items-start gap-2 px-3 py-1.5 hover:bg-fahh-surface/50 cursor-pointer transition-colors"
                     >
                       {item.severity === "error" ? (
