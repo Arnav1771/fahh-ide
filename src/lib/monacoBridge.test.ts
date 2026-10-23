@@ -203,3 +203,24 @@ describe("modelPathFor and runEditorAction", () => {
     expect([ran, focused]).toEqual([1, 1]);
   });
 });
+
+import { describe as d2, it as i2, expect as e2 } from "vitest";
+import { modelPathFor as mp } from "./monacoBridge";
+d2("modelPathFor UNC (WSL) paths", () => {
+  i2("keeps the host as the authority", () => {
+    e2(mp("\\\\wsl.localhost\\Ubuntu\\home\\dell\\a.py")).toBe("file://wsl.localhost/Ubuntu/home/dell/a.py");
+    e2(mp("//server/share/x.ts")).toBe("file://server/share/x.ts");
+  });
+  i2("drive and posix paths unchanged", () => {
+    e2(mp("C:\\work\\a.ts")).toBe("file:///C:/work/a.ts");
+    e2(mp("/home/dell/a.ts")).toBe("file:///home/dell/a.ts");
+  });
+  i2("parses as a valid monaco URI", async () => {
+    const spec = "monaco-editor/esm/vs/base/common/uri.js";
+    const { URI } = (await import(/* @vite-ignore */ spec).catch(() => ({ URI: null }))) as { URI: any };
+    if (!URI) return;
+    const u = URI.parse(mp("\\\\wsl.localhost\\Ubuntu\\home\\dell\\a.py"));
+    e2(u.authority).toBe("wsl.localhost");
+    e2(u.path).toBe("/Ubuntu/home/dell/a.py");
+  });
+});

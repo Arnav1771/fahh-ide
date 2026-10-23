@@ -143,6 +143,10 @@ export default function App() {
     // Session restore: nothing asked for on the command line, so reopen the last folder (or workspace).
     const restoreLast = () => {
       if (!useSettingsStore.getState().restoreSession || useFileStore.getState().root) return;
+      // "Reset session and reload" (ErrorBoundary): skip one restore so a crash can't loop.
+      try {
+        if (localStorage.getItem("fahh-skip-restore")) return void localStorage.removeItem("fahh-skip-restore");
+      } catch {}
       const last = loadRecent()[0];
       if (last) void openRecentEntry(last, openFolder, openFileInEditor);
     };
