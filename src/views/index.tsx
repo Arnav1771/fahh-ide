@@ -8,7 +8,8 @@
  * Ids are saved in layouts: never rename a shipped one.
  */
 import { useMemo } from "react";
-import { AlertCircle, Blocks, Bot, Bug, FolderTree, GitBranch, Palette, Play, Search, SquareTerminal } from "lucide-react";
+import { AlertCircle, Blocks, Bot, Bug, FolderTree, GitBranch, Palette, Play, Search, Settings as SettingsIcon, SquareTerminal } from "lucide-react";
+import { SettingsPanel } from "../components/SettingsPanel";
 import { FileTree } from "../components/FileTree/FileTree";
 import { SearchSidebar } from "../components/SearchSidebar/SearchSidebar";
 import { GitSidebar } from "../components/GitSidebar";
@@ -71,3 +72,4 @@ registerView({ id: "problems", title: "Problems", icon: AlertCircle, component: 
 registerView({ id: "debug", title: "Debug Console", icon: Bug, component: DebugPanel, defaultLocation: "panel", keywords: "debugger eval breakpoints" });
 registerView({ id: "terminal", title: "Terminal", icon: SquareTerminal, component: TerminalPanel, defaultLocation: "panel", keywords: "shell console powershell bash" });
 registerView({ id: "run", title: "Run", icon: Play, component: RunPanel, defaultLocation: "panel", keywords: "execute active file runner" });
+registerView({ id: "settings", title: "Settings", icon: SettingsIcon, component: SettingsPanel, defaultLocation: "editor", keys: "Ctrl+,", keywords: "preferences options font size minimap wrap volume tab" });

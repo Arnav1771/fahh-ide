@@ -4,6 +4,7 @@ import { useThemeStore } from "../store/themeStore";
 import { useToastStore } from "../store/toastStore";
 import { getFileTree, readFile, writeFile } from "./tauri";
 import { parseJsonc, workspaceFolders } from "./codeWorkspace";
+import { addRecent, type RecentEntry } from "./recent";
 
 export interface FahhWorkspaceConfig {
   fahh: string;
@@ -140,6 +141,31 @@ const folderExists = async (path: string): Promise<boolean> => {
   }
 };
 
+/** File > Open Recent, and the session restore at launch: open a folder or a workspace file again. */
+export async function openRecentEntry(
+  entry: RecentEntry,
+  openFolderFn: (folder: string) => Promise<void>,
+  openFileFn: (file: string) => Promise<void>,
+  exists: (folder: string) => Promise<boolean> = folderExists
+): Promise<boolean> {
+  if (entry.kind === "workspace") {
+    let text: string;
+    try {
+      text = await readFile(entry.path);
+    } catch {
+      useToastStore.getState().show(`Workspace file not found: ${entry.path}`, "error");
+      return false;
+    }
+    return applyWorkspaceConfig(text, openFolderFn, openFileFn, entry.path, exists);
+  }
+  if (!(await exists(entry.path))) {
+    useToastStore.getState().show(`Folder not found: ${entry.path}`, "error");
+    return false;
+  }
+  await openFolderFn(entry.path);
+  return true;
+}
+
 /**
  * Parse and apply a workspace file: Fahh's own `.fahh-workspace` or VS Code's
  * `.code-workspace` (JSONC, folders relative to `workspaceFile`, WSL/file URIs).
@@ -196,6 +222,7 @@ export async function applyWorkspaceConfig(
       }
     }
 
+    if (workspaceFile) addRecent({ path: workspaceFile, kind: "workspace" });
     const name = root.split(/[\\/]/).filter(Boolean).pop() ?? root;
     const more = folders.length - 1;
     toast(more > 0 ? `Opened ${name}. ${more} more folder${more > 1 ? "s" : ""} in this workspace: Fahh opens one folder per window.` : `Opened workspace ${name}`);

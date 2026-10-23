@@ -1,14 +1,16 @@
 import { useCallback } from "react";
 import { allowPreview, getFileTree, readFile } from "../lib/tauri";
 import { isPreviewOnly } from "../lib/preview";
+import { languageFor } from "../lib/tabs";
+import { addRecent } from "../lib/recent";
 import { useFileStore } from "../store/fileStore";
 import { useEditorStore } from "../store/editorStore";
 import { useTerminalStore } from "../store/terminalStore";
 
 export function useWorkspace() {
-  const { setRoot, setTree } = useFileStore();
-  const { openFile } = useEditorStore();
-  const { setCwd } = useTerminalStore();
+  const setRoot = useFileStore((s) => s.setRoot);
+  const setTree = useFileStore((s) => s.setTree);
+  const setCwd = useTerminalStore((s) => s.setCwd);
 
   const openFolder = useCallback(async (path: string) => {
     setRoot(path);
@@ -23,6 +25,7 @@ export function useWorkspace() {
     try {
       const tree = await getFileTree(path);
       setTree(tree);
+      addRecent({ path, kind: "folder" }); // File > Open Recent, and what the next launch reopens
       // Previews (Markdown images, pictures, HTML assets) may load from this folder.
       allowPreview(path).catch(() => {});
     } catch (err) {
@@ -37,37 +40,23 @@ export function useWorkspace() {
     }
   }, [setRoot, setTree, setCwd]);
 
-  const openFileInEditor = useCallback(async (path: string) => {
-    // A picture is not text: it opens straight into its preview.
-    if (isPreviewOnly(path)) {
-      openFile({ path, language: "image", dirty: false }, "");
-      return;
-    }
-    const ext = path.split(".").pop()?.toLowerCase() ?? "";
-    const langMap: Record<string, string> = {
-      rs: "rust", ts: "typescript", tsx: "typescript",
-      js: "javascript", jsx: "javascript", py: "python",
-      json: "json", ipynb: "json", toml: "toml", md: "markdown",
-      html: "html", htm: "html", css: "css", svg: "xml", csv: "plaintext", tsv: "plaintext",
-      yml: "yaml", yaml: "yaml", c: "c", cpp: "cpp", h: "c", hpp: "cpp",
-      sh: "shell", bat: "bat", ps1: "powershell", sql: "sql",
-    };
-    const language = langMap[ext] ?? "plaintext";
+  return { openFolder, openFileInEditor: openFilePath };
+}
 
-    try {
-      const content = await readFile(path);
-      openFile(
-        { path, language, dirty: false },
-        content ?? ""
-      );
-    } catch (err) {
-      console.warn("Failed reading file content:", path, err);
-      openFile(
-        { path, language, dirty: false },
-        ""
-      );
-    }
-  }, [openFile]);
-
-  return { openFolder, openFileInEditor };
+/**
+ * Open a file in the editor, or switch to its tab when it is already open (re-reading it
+ * would replace unsaved changes with what is on disk).
+ */
+export async function openFilePath(path: string): Promise<void> {
+  const { openTabs, openFile, setActiveTab } = useEditorStore.getState();
+  if (openTabs.some((t) => t.path === path)) return setActiveTab(path);
+  // A picture is not text: it opens straight into its preview.
+  if (isPreviewOnly(path)) return openFile({ path, language: "image", dirty: false }, "");
+  const language = languageFor(path);
+  try {
+    openFile({ path, language, dirty: false }, (await readFile(path)) ?? "");
+  } catch (err) {
+    console.warn("Failed reading file content:", path, err);
+    openFile({ path, language, dirty: false }, "");
+  }
 }

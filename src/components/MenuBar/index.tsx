@@ -27,6 +27,12 @@ import {
   FolderTree,
   Bug,
   Flame,
+  ArrowLeft,
+  ArrowRight,
+  ChevronRight,
+  History,
+  Settings as SettingsIcon,
+  Info,
 } from "lucide-react";
 import {
   openNewWindow,
@@ -42,11 +48,12 @@ import { useFahhStore } from "../../store/fahhStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { useSpatialStore } from "../../store/spatialStore";
-import { saveWorkspaceAs, openWorkspaceFromFile } from "../../lib/workspaceManager";
+import { saveWorkspaceAs, openWorkspaceFromFile, openRecentEntry } from "../../lib/workspaceManager";
 import { useWorkspace } from "../../hooks/useWorkspace";
-import { requestClose } from "../../lib/tabActions";
 import type { SidebarTab, BottomTab } from "../../App";
-import { resetLayout, splitActiveEditor, toggleZone } from "../../lib/workbench";
+import { closeActiveEditor, closeAllEditors, resetLayout, revealView, splitActiveEditor, toggleZone } from "../../lib/workbench";
+import { canGoBack, canGoForward, goBack, goForward, reopenClosedTab } from "../../lib/navigation";
+import { clearRecent, loadRecent } from "../../lib/recent";
 
 export interface MenuItem {
   label: string;
@@ -55,6 +62,11 @@ export interface MenuItem {
   action: () => void;
   separator?: boolean;
   checked?: boolean;
+  /** Opens to the side on hover (File > Open Recent). */
+  submenu?: MenuItem[];
+  disabled?: boolean;
+  /** A second, muted line (the full path of a recent folder). */
+  detail?: string;
 }
 
 export interface MenuDef {
@@ -72,6 +84,7 @@ export function MenuBar({
   onSaveActive,
   onShowWelcome,
   onShowInstaller,
+  onShowAbout,
 }: {
   onOpenPalette: () => void;
   onOpenQuickOpen: () => void;
@@ -82,11 +95,26 @@ export function MenuBar({
   onSaveActive: () => void;
   onShowWelcome: () => void;
   onShowInstaller: () => void;
+  onShowAbout: () => void;
 }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [openSub, setOpenSub] = useState<string | null>(null);
+  // File > Open Recent and the back / forward buttons follow their stores' events.
+  const [recent, setRecent] = useState(loadRecent);
+  const [, navTick] = useState(0);
+  useEffect(() => {
+    const onRecent = () => setRecent(loadRecent());
+    const onNav = () => navTick((n) => n + 1);
+    window.addEventListener("fahh-recent-change", onRecent);
+    window.addEventListener("fahh-nav-change", onNav);
+    return () => {
+      window.removeEventListener("fahh-recent-change", onRecent);
+      window.removeEventListener("fahh-nav-change", onNav);
+    };
+  }, []);
   const [isMaximized, setIsMaximized] = useState(false);
   const menuBarRef = useRef<HTMLDivElement>(null);
-  const { activeTab, openTabs, openFile, autoSave, toggleAutoSave } = useEditorStore();
+  const { activeTab, openFile, autoSave, toggleAutoSave } = useEditorStore();
   const { openFolder, openFileInEditor } = useWorkspace();
   const root = useFileStore((s) => s.root);
   const isSpatial = useSpatialStore((s) => s.isSpatialMode);
@@ -179,6 +207,26 @@ export function MenuBar({
           action: () => void openWorkspaceFromFile(openFolder, openFileInEditor),
         },
         {
+          label: "Open Recent",
+          icon: <History size={13} />,
+          action: () => {},
+          submenu: [
+            ...recent.map((r) => ({
+              label: r.path.split(/[\\/]/).filter(Boolean).pop() ?? r.path,
+              detail: r.path,
+              icon: r.kind === "workspace" ? <FolderTree size={13} /> : <FolderOpen size={13} />,
+              action: () => void openRecentEntry(r, openFolder, openFileInEditor),
+            })),
+            ...(recent.length ? [{ separator: true, label: "", action: () => {} }] : []),
+            { label: recent.length ? "Clear Recently Opened" : "No recent folders", disabled: !recent.length, action: () => clearRecent() },
+          ],
+        },
+        {
+          label: "Reopen Closed Tab",
+          keys: ["Ctrl", "Shift", "T"],
+          action: () => void reopenClosedTab(),
+        },
+        {
           label: "Save Workspace As…",
           icon: <Save size={13} className="text-[#a0c4ff]" />,
           action: () => void saveWorkspaceAs(),
@@ -207,16 +255,19 @@ export function MenuBar({
           label: "Close Tab",
           keys: ["Ctrl", "W"],
           icon: <X size={13} />,
-          action: () => {
-            if (activeTab) requestClose(activeTab);
-          },
+          action: () => void closeActiveEditor(),
         },
         {
           label: "Close All Tabs",
           keys: ["Ctrl", "K", "Ctrl", "W"],
-          action: () => {
-            [...openTabs].forEach((t) => requestClose(t.path));
-          },
+          action: () => void closeAllEditors(),
+        },
+        { separator: true, label: "", action: () => {} },
+        {
+          label: "Settings",
+          keys: ["Ctrl", ","],
+          icon: <SettingsIcon size={13} />,
+          action: () => revealView("settings"),
         },
         { separator: true, label: "", action: () => {} },
         {
@@ -394,6 +445,12 @@ export function MenuBar({
           icon: <Search size={13} />,
           action: onOpenPalette,
         },
+        {
+          label: "Settings",
+          keys: ["Ctrl", ","],
+          icon: <SettingsIcon size={13} />,
+          action: () => revealView("settings"),
+        },
         { separator: true, label: "", action: () => {} },
         {
           label: isSpatial ? "Exit Spatial Canvas Mode" : "Spatial Canvas Mode (CATE)",
@@ -476,6 +533,21 @@ export function MenuBar({
     {
       label: "Go",
       items: [
+        {
+          label: "Back",
+          keys: ["Alt", "←"],
+          icon: <ArrowLeft size={13} />,
+          disabled: !canGoBack(),
+          action: () => void goBack(),
+        },
+        {
+          label: "Forward",
+          keys: ["Alt", "→"],
+          icon: <ArrowRight size={13} />,
+          disabled: !canGoForward(),
+          action: () => void goForward(),
+        },
+        { separator: true, label: "", action: () => {} },
         {
           label: "Go to File…",
           keys: ["Ctrl", "P"],
@@ -589,7 +661,8 @@ export function MenuBar({
         },
         {
           label: "About Fahh Editor",
-          action: () => alert(`Fahh Editor v${__APP_VERSION__}\nThe Next-Generation Spatial AI Editor.\nBuilt with Tauri 2, Rust & Monaco.`),
+          icon: <Info size={13} />,
+          action: onShowAbout,
         },
       ],
     },
@@ -599,7 +672,7 @@ export function MenuBar({
     <div
       ref={menuBarRef}
       data-tauri-drag-region
-      className="h-8 w-full bg-[#12110f] border-b border-fahh-surface flex items-center px-2 select-none text-xs text-fahh-muted shrink-0 z-30 justify-between"
+      className="fahh-titlebar h-8 w-full border-b border-fahh-surface flex items-center px-2 select-none text-xs text-fahh-muted shrink-0 z-30 justify-between"
       role="menubar"
     >
       {/* ── Left Side: App Icon + Menu Dropdowns ── */}
@@ -626,29 +699,40 @@ export function MenuBar({
                       ? "bg-fahh-surface text-fahh-text"
                       : "hover:bg-fahh-surface/60 hover:text-fahh-text"
                   }`}
-                  onClick={() => setOpenMenu(isOpen ? null : m.label)}
+                  onClick={() => {
+                    setOpenSub(null);
+                    setOpenMenu(isOpen ? null : m.label);
+                  }}
                   onMouseEnter={() => {
-                    if (openMenu !== null) setOpenMenu(m.label);
+                    if (openMenu !== null && openMenu !== m.label) {
+                      setOpenSub(null);
+                      setOpenMenu(m.label);
+                    }
                   }}
                 >
                   {m.label}
                 </button>
 
                 {isOpen && (
-                  <div className="absolute top-full left-0 mt-1 min-w-[230px] bg-[#161513] border border-fahh-surface rounded-md shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-75">
+                  <div className="fahh-menu absolute top-full left-0 mt-1 min-w-[270px] border border-fahh-surface rounded-md shadow-2xl py-1 z-50 animate-in fade-in zoom-in-95 duration-75">
                     {m.items.map((item, idx) => {
                       if (item.separator) {
                         return <div key={idx} className="my-1 border-t border-fahh-surface/70" />;
                       }
+                      const sub = item.submenu;
                       return (
+                        <div key={idx} className="relative" onMouseEnter={() => setOpenSub(sub ? item.label : null)}>
                         <button
-                          key={idx}
                           type="button"
+                          disabled={item.disabled}
+                          aria-haspopup={sub ? "menu" : undefined}
+                          aria-expanded={sub ? openSub === item.label : undefined}
                           onClick={() => {
+                            if (sub) return setOpenSub(openSub === item.label ? null : item.label);
                             setOpenMenu(null);
                             item.action();
                           }}
-                          className="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs text-fahh-text hover:bg-fahh-surface/80 hover:text-white transition-colors"
+                          className="w-full flex items-center justify-between px-3 py-1.5 text-left text-xs text-fahh-text hover:bg-fahh-surface transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
                         >
                           <div className="flex items-center gap-2 min-w-0">
                             <span className="w-4 flex items-center justify-center text-fahh-muted shrink-0">
@@ -658,9 +742,9 @@ export function MenuBar({
                           </div>
                           {item.keys && (
                             <div className="flex items-center gap-0.5 ml-4 shrink-0">
-                              {item.keys.map((k) => (
+                              {item.keys.map((k, ki) => (
                                 <kbd
-                                  key={k}
+                                  key={ki}
                                   className="px-1 py-0.2 bg-fahh-surface border border-fahh-surface text-[10px] font-mono text-fahh-muted rounded"
                                 >
                                   {k}
@@ -668,7 +752,36 @@ export function MenuBar({
                               ))}
                             </div>
                           )}
+                          {sub && <ChevronRight size={12} className="ml-4 shrink-0 text-fahh-muted" aria-hidden="true" />}
                         </button>
+                        {sub && openSub === item.label && (
+                          <div role="menu" className="fahh-menu absolute left-full top-0 -mt-1 ml-0.5 min-w-[260px] max-w-[460px] border border-fahh-surface rounded-md shadow-2xl py-1 z-50">
+                            {sub.map((si, j) =>
+                              si.separator ? (
+                                <div key={j} className="my-1 border-t border-fahh-surface/70" />
+                              ) : (
+                                <button
+                                  key={j}
+                                  type="button"
+                                  role="menuitem"
+                                  disabled={si.disabled}
+                                  title={si.detail ?? si.label}
+                                  onClick={() => {
+                                    setOpenMenu(null);
+                                    setOpenSub(null);
+                                    si.action();
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs text-fahh-text hover:bg-fahh-surface transition-colors disabled:opacity-50 disabled:hover:bg-transparent"
+                                >
+                                  <span className="w-4 flex items-center justify-center text-fahh-muted shrink-0">{si.icon}</span>
+                                  <span className="shrink-0">{si.label}</span>
+                                  {si.detail && <span className="truncate text-[10.5px] text-fahh-muted">{si.detail}</span>}
+                                </button>
+                              )
+                            )}
+                          </div>
+                        )}
+                        </div>
                       );
                     })}
                   </div>
@@ -704,6 +817,30 @@ export function MenuBar({
 
       {/* ── Right Side: Quick Search, Canvas Toggle, Layout & Native Window Controls ── */}
       <div className="flex items-center gap-1 shrink-0 h-full">
+        {/* Back / forward through where you have been (Alt+Left / Alt+Right) */}
+        <div className="flex items-center mr-1">
+          <button
+            type="button"
+            onClick={() => void goBack()}
+            disabled={!canGoBack()}
+            title="Go Back (Alt+Left)"
+            aria-label="Go back"
+            className="p-1 rounded text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface transition-colors disabled:opacity-35 disabled:hover:bg-transparent"
+          >
+            <ArrowLeft size={13} />
+          </button>
+          <button
+            type="button"
+            onClick={() => void goForward()}
+            disabled={!canGoForward()}
+            title="Go Forward (Alt+Right)"
+            aria-label="Go forward"
+            className="p-1 rounded text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface transition-colors disabled:opacity-35 disabled:hover:bg-transparent"
+          >
+            <ArrowRight size={13} />
+          </button>
+        </div>
+
         {/* Quick Search */}
         <button
           type="button"

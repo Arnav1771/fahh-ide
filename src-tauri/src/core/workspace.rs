@@ -100,6 +100,69 @@ pub fn rename_file(from: String, to: String) -> Result<(), String> {
     std::fs::rename(&from, &to).map_err(|e| e.to_string())
 }
 
+/// Explorer > New Folder. Fails when something already has that name.
+#[tauri::command]
+pub fn create_dir(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if p.exists() {
+        return Err(format!("{} already exists", p.display()));
+    }
+    std::fs::create_dir_all(p).map_err(|e| e.to_string())
+}
+
+/// Explorer drag and drop: move a file or folder into `dir`, keeping its name.
+/// Returns the new path. Refuses to overwrite, and to move a folder into itself.
+#[tauri::command]
+pub fn move_path(from: String, dir: String) -> Result<String, String> {
+    let src = Path::new(&from);
+    let name = src.file_name().ok_or_else(|| format!("cannot move {from}"))?;
+    if !src.exists() {
+        return Err(format!("{from} does not exist"));
+    }
+    let dir_path = Path::new(&dir);
+    if !dir_path.is_dir() {
+        return Err(format!("{dir} is not a folder"));
+    }
+    // Compare real paths, so "a/./b" or a symlinked spelling cannot sneak a folder into itself.
+    let real_src = src.canonicalize().map_err(|e| e.to_string())?;
+    let real_dir = dir_path.canonicalize().map_err(|e| e.to_string())?;
+    if real_dir.starts_with(&real_src) {
+        return Err("cannot move a folder into itself".into());
+    }
+    let dest = dir_path.join(name);
+    if real_src.parent() == Some(real_dir.as_path()) {
+        return Ok(src.to_string_lossy().to_string()); // already there
+    }
+    if dest.exists() {
+        return Err(format!("{} already exists in {dir}", name.to_string_lossy()));
+    }
+    std::fs::rename(src, &dest).map_err(|e| e.to_string())?;
+    Ok(dest.to_string_lossy().to_string())
+}
+
+/// Show a file or folder in the system file manager (Explorer selects it; Finder reveals it;
+/// Linux opens the folder that holds it).
+#[tauri::command]
+pub fn reveal_path(path: String) -> Result<(), String> {
+    let p = Path::new(&path);
+    if !p.exists() {
+        return Err(format!("{path} does not exist"));
+    }
+    #[cfg(windows)]
+    let spawned = {
+        use std::os::windows::process::CommandExt;
+        crate::core::proc::cmd("explorer").raw_arg(format!("/select,\"{path}\"")).spawn()
+    };
+    #[cfg(target_os = "macos")]
+    let spawned = crate::core::proc::cmd("open").arg("-R").arg(p).spawn();
+    #[cfg(all(unix, not(target_os = "macos")))]
+    let spawned = {
+        let target = if p.is_dir() { p } else { p.parent().unwrap_or(p) };
+        crate::core::proc::cmd("xdg-open").arg(target).spawn()
+    };
+    spawned.map(|_| ()).map_err(|e| format!("could not open the file manager: {e}"))
+}
+
 const SEARCH_SKIP_DIRS: &[&str] = &[
     ".git", "node_modules", "target", "dist", ".fahh", ".next", "build", ".cache", "coverage", ".turbo",
 ];
@@ -410,4 +473,66 @@ pub fn replace_in_workspace(
         files_modified,
         total_replacements,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn s(p: &Path) -> String {
+        p.to_string_lossy().to_string()
+    }
+
+    #[test]
+    fn create_dir_makes_nested_folders_and_refuses_existing() {
+        let t = tempfile::tempdir().unwrap();
+        let d = t.path().join("a").join("b");
+        create_dir(s(&d)).unwrap();
+        assert!(d.is_dir());
+        assert!(create_dir(s(&d)).unwrap_err().contains("already exists"));
+    }
+
+    #[test]
+    fn move_path_moves_files_and_folders_into_a_folder() {
+        let t = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(t.path().join("src/lib")).unwrap();
+        std::fs::create_dir_all(t.path().join("dst")).unwrap();
+        std::fs::write(t.path().join("src/a.txt"), "a").unwrap();
+        std::fs::write(t.path().join("src/lib/b.txt"), "b").unwrap();
+
+        let to = move_path(s(&t.path().join("src/a.txt")), s(&t.path().join("dst"))).unwrap();
+        assert_eq!(Path::new(&to), t.path().join("dst/a.txt"));
+        assert_eq!(std::fs::read_to_string(&to).unwrap(), "a");
+        assert!(!t.path().join("src/a.txt").exists());
+
+        move_path(s(&t.path().join("src/lib")), s(&t.path().join("dst"))).unwrap();
+        assert_eq!(std::fs::read_to_string(t.path().join("dst/lib/b.txt")).unwrap(), "b");
+    }
+
+    #[test]
+    fn move_path_guards() {
+        let t = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(t.path().join("a/inner")).unwrap();
+        std::fs::create_dir_all(t.path().join("b")).unwrap();
+        std::fs::write(t.path().join("x.txt"), "1").unwrap();
+        std::fs::write(t.path().join("b/x.txt"), "2").unwrap();
+        // into itself, or into its own child
+        assert!(move_path(s(&t.path().join("a")), s(&t.path().join("a"))).unwrap_err().contains("into itself"));
+        assert!(move_path(s(&t.path().join("a")), s(&t.path().join("a/inner"))).unwrap_err().contains("into itself"));
+        // never overwrites
+        assert!(move_path(s(&t.path().join("x.txt")), s(&t.path().join("b"))).unwrap_err().contains("already exists"));
+        assert_eq!(std::fs::read_to_string(t.path().join("b/x.txt")).unwrap(), "2");
+        // onto a file, or from nowhere
+        assert!(move_path(s(&t.path().join("a")), s(&t.path().join("x.txt"))).is_err());
+        assert!(move_path(s(&t.path().join("nope")), s(&t.path().join("b"))).is_err());
+        // dropping where it already is changes nothing
+        let same = move_path(s(&t.path().join("x.txt")), s(t.path())).unwrap();
+        assert_eq!(Path::new(&same), t.path().join("x.txt"));
+        assert!(t.path().join("x.txt").exists());
+    }
+
+    #[test]
+    fn reveal_path_rejects_missing_paths() {
+        assert!(reveal_path("/definitely/not/here/fahh".into()).unwrap_err().contains("does not exist"));
+    }
 }

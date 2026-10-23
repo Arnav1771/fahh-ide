@@ -6,6 +6,7 @@ import { agentTurnDiff } from "../../lib/agent";
 import type { Item, TurnInfo } from "../../lib/agentState";
 import type { AgentFileDiff, AgentToolKind } from "../../lib/types";
 import { useAgentStore } from "../../store/agentStore";
+import { confirmDialog } from "../../store/dialogStore";
 
 const LANGS: Record<string, string> = {
   rs: "rust", ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript", py: "python",
@@ -256,8 +257,8 @@ export function SessionsCard({ item }: { item: SessionsItem }) {
           )}
           {s.id !== item.current && (
             <button
-              onClick={() => {
-                if (!window.confirm(`Delete the saved session "${s.title}"?`)) return;
+              onClick={async () => {
+                if (!(await confirmDialog({ title: `Delete the saved session "${s.title}"?`, ok: "Delete", danger: true }))) return;
                 setRemoved((r) => [...r, s.id]);
                 void handleInput(`/rm-session ${s.id}`);
               }}

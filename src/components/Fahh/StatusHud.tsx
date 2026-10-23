@@ -88,12 +88,12 @@ export function LspStatusItem() {
 
 /** Right of the status bar: how loud the editor is allowed to be. */
 export function HudControls() {
-  const { intensity, muted, fahhCount, setIntensity, toggleMute } = useFahhStore();
+  const { intensity, muted, fahhCount, lifetime, setIntensity, toggleMute } = useFahhStore();
   const next = INTENSITIES[(INTENSITIES.indexOf(intensity) + 1) % INTENSITIES.length];
   return (
     <>
       {fahhCount > 0 && (
-        <span className="tabular-nums" title="Fahhs this session">
+        <span className="tabular-nums" title={`Fahhs this session. ${lifetime} in all.`}>
           {fahhCount} fahh{fahhCount === 1 ? "" : "s"}
         </span>
       )}

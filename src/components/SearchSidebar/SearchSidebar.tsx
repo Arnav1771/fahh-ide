@@ -10,8 +10,7 @@ import {
   Filter,
 } from "lucide-react";
 import { useFileStore } from "../../store/fileStore";
-import { useWorkspace } from "../../hooks/useWorkspace";
-import { revealLine } from "../../lib/monacoBridge";
+import { openAt } from "../../lib/navigation";
 import { searchWorkspace, replaceInWorkspace } from "../../lib/tauri";
 import type { SearchMatch, SearchResult } from "../../lib/types";
 import { FileIcon } from "../../lib/iconTheme";
@@ -30,7 +29,6 @@ export function SearchSidebar({
   initialFocusReplace?: boolean;
 }) {
   const root = useFileStore((s) => s.root);
-  const { openFileInEditor } = useWorkspace();
 
   const [query, setQuery] = useState("");
   const [replacement, setReplacement] = useState("");
@@ -186,12 +184,7 @@ export function SearchSidebar({
   };
 
   // Click match to open in editor and reveal line
-  const handleMatchClick = async (filePath: string, line: number) => {
-    await openFileInEditor(filePath);
-    setTimeout(() => {
-      revealLine(line);
-    }, 120);
-  };
+  const handleMatchClick = (filePath: string, line: number) => openAt(filePath, line);
 
   return (
     <div className="flex flex-col h-full w-full bg-fahh-sidebar text-xs select-none overflow-hidden">

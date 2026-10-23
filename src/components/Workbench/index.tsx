@@ -22,9 +22,14 @@ import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { useThemeStore } from "../../store/themeStore";
 import { modeOf, usePreviewStore } from "../../store/previewStore";
+import { ContextMenu, type MenuEntry } from "../ContextMenu";
+import { revealPath } from "../../lib/tauri";
+import { useToastStore } from "../../store/toastStore";
 import {
   closeEditorGroup,
   closeEditorPanel,
+  closeEditorsToRight,
+  closeOtherEditors,
   getDockApi,
   loadLayout,
   saveLayoutNow,
@@ -73,11 +78,19 @@ function HomeTab() {
   return <div className="dv-default-tab"><span className="dv-default-tab-content">Welcome</span></div>;
 }
 
+/** A view's tab: its icon, then its name (narrow side groups show only the active tab's name; the tooltip has it always). */
 function ViewTab({ api, params }: IDockviewPanelHeaderProps<{ viewId: string }>) {
-  const Badge = getView(params.viewId)?.badge;
+  const def = getView(params.viewId);
+  const Badge = def?.badge;
+  const Icon = def?.icon;
   return (
-    <div className="dv-default-tab">
-      <span className="dv-default-tab-content">{api.title}</span>
+    <div className="dv-default-tab fahh-view-tab" title={api.title}>
+      {Icon && (
+        <span className="flex shrink-0" aria-hidden="true">
+          <Icon size={14} />
+        </span>
+      )}
+      <span className="dv-default-tab-content fahh-view-tab-label">{api.title}</span>
       {Badge && <Badge />}
     </div>
   );
@@ -86,22 +99,53 @@ function ViewTab({ api, params }: IDockviewPanelHeaderProps<{ viewId: string }>)
 function EditorTab({ api, containerApi, params }: IDockviewPanelHeaderProps<{ path: string }>) {
   const path = params.path;
   const tab = useEditorStore((s) => s.openTabs.find((t) => t.path === path));
+  const root = useFileStore((s) => s.root);
   const name = path.split(/[\\/]/).pop() ?? path;
-  const close = () => {
-    const p = containerApi.getPanel(api.id);
-    if (p) closeEditorPanel(p);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const panel = () => containerApi.getPanel(api.id);
+  const run = (fn: (p: NonNullable<ReturnType<typeof panel>>) => unknown) => () => {
+    const p = panel();
+    if (p) void fn(p);
   };
+  const close = run(closeEditorPanel);
+  const items: MenuEntry[] = [
+    { label: "Close", keys: "Ctrl+W", action: close },
+    { label: "Close Others", action: run(closeOtherEditors) },
+    { label: "Close to the Right", action: run(closeEditorsToRight) },
+    { label: "Close All", action: run((p) => closeEditorGroup(p.group)) },
+    "separator",
+    { label: "Copy Path", action: () => void navigator.clipboard.writeText(path).catch(() => {}) },
+    {
+      label: "Copy Relative Path",
+      disabled: !root || !path.startsWith(root),
+      action: () => void navigator.clipboard.writeText(path.slice((root ?? "").length).replace(/^[\\/]/, "")).catch(() => {}),
+    },
+    {
+      label: "Reveal in File Explorer",
+      disabled: !/[\\/]/.test(path),
+      action: () => revealPath(path).catch((e) => useToastStore.getState().show(String(e), "error")),
+    },
+  ];
   return (
     <div
       className="dv-default-tab"
       title={path}
+      onMouseDown={(e) => {
+        if (e.button === 1) e.preventDefault(); // no autoscroll cursor
+      }}
       onAuxClick={(e) => {
         if (e.button === 1) {
           e.preventDefault();
           close();
         }
       }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setMenu({ x: e.clientX, y: e.clientY });
+      }}
     >
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={() => setMenu(null)} />}
       <FileIcon name={name} language={tab?.language} />
       <span className={`dv-default-tab-content ${tab?.dirty ? "text-fahh-warn" : ""}`}>
         {tab?.dirty ? "● " : ""}

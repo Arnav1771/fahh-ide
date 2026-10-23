@@ -15,6 +15,27 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **Editor splits:** Split Editor Right (Ctrl+\) and Split Editor Down; drag tabs between groups. A file open twice shares one model.
 - The layout is **saved per workspace** and restored on launch; **View > Reset Layout** brings back the default (Explorer left, Fahh Local right, panel below).
 - Keyboard path for every drag: palette commands "Move <view> to Left Side Bar / Right Side Bar / Panel / Editor Area", plus Toggle Primary / Secondary Side Bar (Ctrl+B / Ctrl+Alt+B) and Toggle Maximized Panel.
+- **Tabs:** drag to reorder inside a group, middle-click to close, and a right-click menu: Close, Close Others, Close to the Right, Close All, Copy Path, Copy Relative Path, Reveal in File Explorer. Every close of unsaved work asks **Save / Don't Save / Cancel**, once for a whole batch.
+- **Ctrl+Tab / Ctrl+Shift+Tab** walk the open tabs in most-recently-used order while Ctrl is held. **Ctrl+Shift+T** reopens the last closed tab.
+- **Ctrl+K Ctrl+W** closes all tabs (the File menu already listed it; now it works, in and out of the editor, without breaking Monaco's own Ctrl+K chords).
+- **Back / Forward** (Alt+Left / Alt+Right, and arrows in the title bar) through file switches and long jumps: search results, Problems, go to definition.
+- **File > Open Recent:** the last 10 folders and workspace files, newest first, with Clear Recently Opened (also in the palette).
+- **Session restore:** the last folder (or workspace) reopens at launch with its tabs back in their dock groups; tabs whose files are gone become Welcome placeholders. Off switch in Settings.
+- **Explorer:** Refresh, New Folder, Collapse Folders, and drag and drop to move files and folders (open tabs follow, like a rename; a folder cannot go into itself). New Rust commands `create_dir`, `move_path` (never overwrites) and `reveal_path`, with tests.
+- **Settings** (View > Settings, Ctrl+, or the gear): editor font family and size, word wrap, minimap, line numbers, tab size, insert spaces, auto save, fahh volume, lifetime fahh count, terminal font size, restore session. Changes apply to every open editor at once and are saved.
+- A **failed terminal command** (non-zero exit) fahhs, like a crashed run; the fahh respects mute and the new volume. The **lifetime fahh count** is kept and shown in the status bar tooltip and Settings.
+- **Help > About** is a real dialog: version, release notes link, and **Check for updates** against the latest GitHub release, with a download link for your platform.
+
+### Changed
+
+- `window.prompt` / `confirm` / `alert` are gone: every question is an app dialog (focus stays inside, Esc cancels).
+- Narrow side bars show view tabs as icons, with the active one named and the full name as a tooltip (no more "Sear…").
+- Clicking a file that is already open switches to its tab instead of re-reading it from disk (which replaced unsaved changes).
+
+### Fixed
+
+- **Fahh Light:** the title bar was fixed near-black, hiding the folder name and the Canvas label; Fahh Local's Ask / Done buttons were white on white. Tailwind dropped every `bg-fahh-*/NN` opacity class (a plain `var()` cannot take an alpha), so those buttons had no background in any theme; theme colours now support opacity. Muted text in Fahh Light is darker (5.6:1).
+- Ctrl+W no longer logs "Illegal value for lineNumber" (a closing editor emptied its model under its markers) or "Canceled" (Monaco cancelling a pending word highlight).
 
 ### Added (Fahh Local)
 

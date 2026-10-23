@@ -83,3 +83,14 @@ for (const defaults of [ts.typescriptDefaults, ts.javascriptDefaults]) {
     diagnosticCodesToIgnore: PROJECT_BLIND_CODES,
   });
 }
+
+// Closing a tab disposes its editor. Monaco cancels work still pending in it (the word
+// highlighter waits 250 ms after every cursor move) by rejecting a promise nothing awaits,
+// which surfaced as an "Uncaught (in promise) Canceled" page error on Ctrl+W. A cancellation
+// is not a failure: VS Code ignores these too, so drop exactly that error and nothing else.
+if (typeof window !== "undefined") {
+  window.addEventListener("unhandledrejection", (e) => {
+    const r = e.reason as { name?: string; message?: string } | undefined;
+    if (r?.name === "Canceled" && r.message === "Canceled") e.preventDefault();
+  });
+}

@@ -5,8 +5,25 @@
  */
 import type { DockviewApi, DockviewGroupPanel, IDockviewPanel } from "dockview-react";
 import { useEditorStore } from "../store/editorStore";
-import { requestClose } from "./tabActions";
-import { EDITOR_PREFIX, HOME_PREFIX, VIEW_PREFIX, decodeLayout, encodeLayout, layoutKey, legacySizes, zoneFor, type Zone } from "./dockLayout";
+import { useSettingsStore } from "../store/settingsStore";
+import { confirmClose, forceClose, rememberClosed } from "./tabActions";
+import { readFile } from "./tauri";
+import { isPreviewOnly } from "./preview";
+import { languageFor } from "./tabs";
+import {
+  EDITOR_PREFIX,
+  HOME_PREFIX,
+  VIEW_PREFIX,
+  decodeLayout,
+  editorsToHome,
+  encodeLayout,
+  layoutKey,
+  legacySizes,
+  savedEditorPaths,
+  zoneFor,
+  type SavedLayout,
+  type Zone,
+} from "./dockLayout";
 import { getView, listViews, type ViewDef } from "./viewRegistry";
 
 let api: DockviewApi | null = null;
@@ -56,7 +73,8 @@ export const getDockApi = () => api;
 
 export function saveLayoutNow(): void {
   window.clearTimeout(saveTimer);
-  if (!api) return;
+  // While tabs are being restored the dock still shows the previous workspace: saving now would overwrite this one.
+  if (!api || restoring) return;
   try {
     const json = encodeLayout(api.toJSON(), { hidden });
     store()?.setItem(layoutKey(root), json);
@@ -71,10 +89,19 @@ export function scheduleSave(): void {
   saveTimer = window.setTimeout(saveLayoutNow, 250);
 }
 
-/** Open the layout saved for this workspace, or the default when there is none (or it is unreadable). */
+let loadSeq = 0;
+let restoring = false;
+
+/**
+ * Open the layout saved for this workspace, or the default when there is none (or it is unreadable).
+ * With a folder open and "Restore session" on, its editor tabs come back into their groups,
+ * each one only when its file can still be read; the others become Welcome placeholders.
+ */
 export function loadLayout(forRoot: string | null, keepIfNone = false): void {
   if (!api) return;
   root = forRoot;
+  const seq = ++loadSeq;
+  restoring = false;
   const raw = store()?.getItem(layoutKey(forRoot));
   const saved = decodeLayout(raw);
   if (raw && !saved) console.warn("saved layout unreadable, using the default");
@@ -82,8 +109,50 @@ export function loadLayout(forRoot: string | null, keepIfNone = false): void {
     if (keepIfNone && api.panels.length) return saveLayoutNow();
     return buildDefault();
   }
+  const paths = forRoot !== null && useSettingsStore.getState().restoreSession ? savedEditorPaths(saved.dock) : [];
+  if (!paths.length) return applySaved(saved, new Set());
+  restoring = true;
+  void Promise.all(
+    paths.map((p) => readFile(p).then((c) => [p, isPreviewOnly(p) ? "" : c] as const, () => null))
+  ).then((read) => {
+    if (seq !== loadSeq || !api) return; // another folder was opened meanwhile (it owns `restoring` now)
+    restoring = false;
+    const found = read.filter((r): r is readonly [string, string] => r !== null);
+    const st = useEditorStore.getState();
+    const fresh = found.filter(([p]) => !st.openTabs.some((t) => t.path === p));
+    const activeId = activeEditorOf(saved.dock);
+    const active = found.find(([p]) => EDITOR_PREFIX + p === activeId)?.[0] ?? found[0]?.[0] ?? st.activeTab;
+    // One store update, held back from the dock until the saved layout is in.
+    mutating++;
+    useEditorStore.setState({
+      openTabs: [...st.openTabs, ...fresh.map(([p]) => ({ path: p, language: isPreviewOnly(p) ? "image" : languageFor(p), dirty: false }))],
+      fileContents: { ...st.fileContents, ...Object.fromEntries(fresh) },
+      activeTab: active,
+    });
+    mutating--;
+    pending = false;
+    applySaved(saved, new Set(found.map(([p]) => p)));
+  });
+}
+
+/** The editor panel on screen in the saved active group. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function activeEditorOf(dock: any): string | undefined {
+  let found: string | undefined;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const walk = (n: any) => {
+    if (!n) return;
+    if (Array.isArray(n.data)) return n.data.forEach(walk);
+    if (n.data?.id === dock.activeGroup) found = n.data.activeView;
+  };
+  walk(dock.grid?.root);
+  return found;
+}
+
+function applySaved(saved: SavedLayout, files: Set<string>): void {
+  if (!api) return;
   try {
-    api.fromJSON(saved.dock);
+    api.fromJSON(editorsToHome(saved.dock, (p) => files.has(p)));
     hidden = saved.extras.hidden;
     for (const p of [...api.panels]) if (p.id.startsWith(VIEW_PREFIX) && !getView(p.id.slice(VIEW_PREFIX.length))) api.removePanel(p);
     for (const ids of Object.values(hidden)) for (const id of ids) api.getGroup(id)?.api.setVisible(false);
@@ -108,7 +177,8 @@ function buildDefault(): void {
   api.clear();
   const sizes = legacySizes(store()); // the pre-dock bar sizes carry over into the first layout
   api.addPanel({ id: `${HOME_PREFIX}1`, component: "home", tabComponent: "home", title: "Welcome" });
-  for (const loc of ["sidebar", "secondary", "panel", "editor"] as const) {
+  // Views that live in the editor area (Settings) open on demand, not in the default layout.
+  for (const loc of ["sidebar", "secondary", "panel"] as const) {
     for (const v of listViews().filter((d) => d.defaultLocation === loc)) addView(v, sizes);
   }
   for (const id of ["explorer", "terminal", "agent"]) api.getPanel(VIEW_PREFIX + id)?.api.setActive();
@@ -371,33 +441,60 @@ export function syncEditors(): void {
   }
 }
 
-/** Close an editor tab: the last tab of a file asks first when it has unsaved changes. */
-export function closeEditorPanel(panel: IDockviewPanel): boolean {
-  const path = pathOf(panel);
-  if (!path) return false;
-  if (panelsFor(path).length > 1) {
-    panel.api.close();
-    return true;
+/**
+ * Close editor tabs together. A file whose last tab is among them closes for good, after one
+ * question about the unsaved ones (Save / Don't Save / Cancel); a split copy just goes.
+ * False when the user cancelled.
+ */
+export async function closeEditorPanels(panels: IDockviewPanel[]): Promise<boolean> {
+  if (!api) return false;
+  const closing = new Set(panels.filter(isEditorPanel));
+  const paths = [...new Set([...closing].map(pathOf).filter((p): p is string => !!p))];
+  const last = paths.filter((p) => panelsFor(p).every((x) => closing.has(x)));
+  if (!(await confirmClose(last))) return false;
+  for (const p of closing) {
+    const path = pathOf(p);
+    if (path && !last.includes(path) && api.getPanel(p.id)) p.api.close();
   }
-  const done = requestClose(path); // the store drops the tab and syncEditors removes the panel
-  if (done) syncEditors();
-  return done;
+  rememberClosed(last);
+  for (const p of last) forceClose(p); // the store drops the tabs and syncEditors removes the panels
+  syncEditors();
+  return true;
 }
 
-/** Ctrl+W: the active editor tab (only that split when the file is open twice). */
-export function closeActiveEditor(): void {
+/** Close one editor tab (only that split when the file is open twice). */
+export const closeEditorPanel = (panel: IDockviewPanel) => closeEditorPanels([panel]);
+
+/** Ctrl+W: the active editor tab. */
+export function closeActiveEditor(): Promise<boolean> {
   const p = api?.activePanel;
-  if (p && isEditorPanel(p)) {
-    closeEditorPanel(p);
-    return;
-  }
+  if (p && isEditorPanel(p)) return closeEditorPanel(p);
   const tab = useEditorStore.getState().activeTab;
-  if (tab) requestClose(tab);
+  const mine = tab ? panelsFor(tab) : [];
+  return mine.length ? closeEditorPanel(mine[0]) : Promise.resolve(false);
 }
 
-/** Close every editor in a group, stopping at the first "no" to an unsaved-changes question. */
-export function closeEditorGroup(group: DockviewGroupPanel): void {
-  for (const p of [...group.panels]) if (isEditorPanel(p) && !closeEditorPanel(p)) return;
+/** Every editor in a group (the group's close button, and Close All on a tab). */
+export const closeEditorGroup = (group: DockviewGroupPanel) => closeEditorPanels(group.panels);
+
+/** Tab menu: Close Others (in the same group). */
+export const closeOtherEditors = (panel: IDockviewPanel) => closeEditorPanels(panel.group.panels.filter((p) => p !== panel));
+
+/** Tab menu: Close to the Right (in the same group, by tab order). */
+export function closeEditorsToRight(panel: IDockviewPanel): Promise<boolean> {
+  const ps = panel.group.panels;
+  return closeEditorPanels(ps.slice(ps.indexOf(panel) + 1));
+}
+
+/** File > Close All Tabs and Ctrl+K Ctrl+W: every editor in every group. */
+export const closeAllEditors = () => closeEditorPanels(api?.panels ?? []);
+
+/** Make this file's tab the active one (its tab in the current group when it has one there). */
+export function activateFile(path: string): boolean {
+  const mine = panelsFor(path);
+  if (!mine.length) return false;
+  (mine.find((p) => p.group === api?.activeGroup) ?? mine[0]).api.setActive();
+  return true;
 }
 
 /** Ctrl+\ : the active editor again in a new group beside it (same file, same model). */
