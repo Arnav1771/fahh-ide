@@ -1,0 +1,40 @@
+# Settings
+
+Open Settings with **View > Settings**, **File > Settings**, **Ctrl+,** or the gear at the foot of the activity bar. It opens as a tab in the editor area, so you can drag it anywhere like any other view.
+
+Every change applies at once (all open editors update without reopening) and is saved in the app's local storage, so it is there after a restart.
+
+| Section | Setting | What it does |
+|---|---|---|
+| Editor | Font family | A CSS font list; the first font installed is used. |
+| Editor | Font size | 8 to 40 px. |
+| Editor | Word wrap | Wrap long lines. Alt+Z still toggles it for the editor on screen. |
+| Editor | Minimap | The code overview at the right edge. |
+| Editor | Line numbers | The gutter numbers. |
+| Editor | Tab size | 1 to 8. |
+| Editor | Insert spaces | Off: Tab inserts a tab character. |
+| Editor | Auto save | Saves a second after you stop typing, and when the window loses focus (the same switch as File > Auto Save). |
+| Fahh | Volume | 0 to 100. 0 is silent; the mute button in the status bar still works on top of it. The bell button plays a test fahh. |
+| Fahh | Lifetime fahhs | How many fahhs this editor has ever let out (also in the status bar tooltip). |
+| Terminal | Font size | 8 to 32 px. |
+| Session | Restore session on launch | Reopen the last folder or workspace with its tabs back in their dock groups. A tab whose file is gone comes back as a Welcome placeholder. |
+
+**Reset to defaults** puts everything back.
+
+## Open Recent and session restore
+
+**File > Open Recent** lists the last 10 folders and workspace files, newest first; **Clear Recently Opened** empties it. The palette has an "Open Recent: …" entry for each one.
+
+At launch, a path passed on the command line (`fahh <folder>`) wins; otherwise, with Restore session on, the most recent entry reopens.
+
+## Keyboard shortcuts added with Settings
+
+| Shortcut | Does |
+|---|---|
+| `Ctrl+,` | Settings |
+| `Ctrl+Tab` / `Ctrl+Shift+Tab` | Next / previous tab in most-recently-used order (hold Ctrl and press Tab again to go further) |
+| `Ctrl+Shift+T` | Reopen the last closed tab |
+| `Ctrl+K Ctrl+W` | Close all tabs |
+| `Alt+Left` / `Alt+Right` | Go back / forward (file switches, search and Problems jumps, go to definition) |
+| Middle-click a tab | Close it (asks first when unsaved) |
+| Right-click a tab | Close, Close Others, Close to the Right, Close All, Copy Path, Copy Relative Path, Reveal in File Explorer |

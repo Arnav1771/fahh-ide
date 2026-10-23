@@ -9,6 +9,7 @@
 - **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)**
 - **[PDF & Binary Viewer](PDF-and-Binary-Viewer)**
 - **[Fahh Local Agent](Fahh-Local-Agent)**
+- **[Settings](Settings)**
 
 ---
 
