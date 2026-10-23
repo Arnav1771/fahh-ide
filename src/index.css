@@ -406,3 +406,33 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
 .dockview-theme-fahh .dv-tab:focus-visible { outline: 1px solid var(--fahh-accent); outline-offset: -1px; }
 /* The dock never scrolls: a stray scrollIntoView (from the terminal) must not shift the whole workbench. */
 .fahh-dock, .fahh-dock .dv-dockview { overflow: clip; }
+
+/* Narrow side groups: the tab strip shows icons, and only the active tab keeps its name
+   (every tab has the full name as a tooltip). Wide groups show every name. */
+.dockview-theme-fahh .dv-tabs-and-actions-container { container-type: inline-size; }
+.dockview-theme-fahh .fahh-view-tab { padding: 0 0.6rem; }
+.dockview-theme-fahh .fahh-view-tab-label { white-space: nowrap; }
+@container (max-width: 380px) {
+  .dockview-theme-fahh .dv-tab:not(.dv-active-tab) .fahh-view-tab-label { display: none; }
+  .dockview-theme-fahh .fahh-view-tab { padding: 0 0.5rem; }
+}
+
+/* ─── Title bar and menus ───────────────────────────────────────────────────
+   Their own tokens, so a light theme can lighten them (they were fixed near-black,
+   which hid the folder name and the Canvas label under Fahh Light). */
+:root {
+  --fahh-titlebar: #12110f;
+  --fahh-menu-bg: #161513;
+}
+.fahh-titlebar { background: var(--fahh-titlebar); }
+.fahh-menu { background: var(--fahh-menu-bg); }
+
+/* ─── Fahh Light ────────────────────────────────────────────────────────────
+   Light chrome for the title bar and menus, and dark scrollbars on a light page. */
+html[data-fahh-theme="fahh-light"] {
+  color-scheme: light; /* native checkboxes, number spinners and scrollbars drawn light */
+  --fahh-titlebar: #e8edf3;
+  --fahh-menu-bg: #ffffff;
+}
+html[data-fahh-theme="fahh-light"] ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+html[data-fahh-theme="fahh-light"] ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }

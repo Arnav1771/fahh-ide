@@ -68,7 +68,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
       "--fahh-surface": "#e2e8f0",
       "--fahh-accent": "#7c3aed",
       "--fahh-text": "#0f172a",
-      "--fahh-muted": "#94a3b8",
+      "--fahh-muted": "#5b6779", // 5.6:1 on the page (was #94a3b8, 2.6:1)
       "--fahh-error": "#dc2626",
       "--fahh-warn": "#d97706",
       "--fahh-success": "#059669",
