@@ -30,6 +30,8 @@ import { useWorkspace } from "./hooks/useWorkspace";
 import { saveWorkspaceAs, openWorkspaceFromFile, applyWorkspaceConfig, openRecentEntry } from "./lib/workspaceManager";
 import { DialogHost } from "./components/Dialog";
 import { AboutDialog } from "./components/Dialog/AboutDialog";
+import { CheckSetupDialog } from "./components/Dialog/CheckSetupDialog";
+import { launchUpdateCheck } from "./lib/updates";
 import { alertDialog, confirmDialog, promptDialog } from "./store/dialogStore";
 import { cycleTabs, endCycle, goBack, goForward, initNavigation, reopenClosedTab } from "./lib/navigation";
 import { loadRecent } from "./lib/recent";
@@ -101,6 +103,7 @@ function ActivityBtn({
 export default function App() {
   const [showInstaller, setShowInstaller] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showSetup, setShowSetup] = useState(false);
   const [showWelcome, setShowWelcome] = useState(() => shouldShowWelcome(typeof localStorage === "undefined" ? undefined : localStorage));
   const closeWelcome = () => {
     markWelcomeSeen(typeof localStorage === "undefined" ? undefined : localStorage);
@@ -205,6 +208,19 @@ export default function App() {
   useEffect(() => {
     initFahhSfx(() => useFahhStore.getState().external());
     return () => teardownFahhSfx();
+  }, []);
+
+  // A quiet update check at launch: once a day, a toast once per new version (Settings > Updates).
+  useEffect(() => {
+    let store: Storage | undefined;
+    try {
+      store = localStorage;
+    } catch {
+      return;
+    }
+    void launchUpdateCheck(useSettingsStore.getState().checkUpdatesOnLaunch, store, __APP_VERSION__).then((msg) => {
+      if (msg) useToastStore.getState().show(msg);
+    });
   }, []);
 
   // Fahh Local: keep hearing the agent while its panel is hidden.
@@ -340,7 +356,8 @@ export default function App() {
       { id: "fahh.subtle", group: "Fahh", label: "Effects: Subtle", keywords: "intensity quiet", run: intensity("subtle") },
       { id: "fahh.off", group: "Fahh", label: "Effects: Off", keywords: "intensity silent disable", run: intensity("off") },
       { id: "fahh.mute", group: "Fahh", label: "Mute / Unmute Sound", keywords: "volume silence", run: () => useFahhStore.getState().toggleMute() },
-      { id: "help.welcome", group: "Help", label: "Show Welcome", keywords: "onboarding tour getting started intro", run: () => setShowWelcome(true) },
+      { id: "help.welcome", group: "Help", label: "Show Welcome", keywords: "onboarding tour getting started intro first run", run: () => setShowWelcome(true) },
+      { id: "help.checkSetup", group: "Fahh", label: "Check Setup", keywords: "doctor tools installed versions git python node cargo wsl language server lsp missing", run: () => setShowSetup(true) },
       { id: "cli.install", group: "Tools", label: "Install 'fahh' Command in PATH", keywords: "shell terminal code command line cli", run: () => {
         installCli().then((m) => useToastStore.getState().show(m)).catch((e) => useToastStore.getState().show(String(e), "error"));
       } },
@@ -553,6 +570,7 @@ export default function App() {
         onSetBottomTab={show}
         onSaveActive={() => void saveActive()}
         onShowWelcome={() => setShowWelcome(true)}
+        onShowSetup={() => setShowSetup(true)}
         onShowInstaller={() => setShowInstaller(true)}
         onShowAbout={() => setShowAbout(true)}
       />
@@ -648,18 +666,10 @@ export default function App() {
         <InstallerWizard onClose={() => setShowInstaller(false)} />
       )}
 
-      {showWelcome && (
-        <Welcome
-          onClose={closeWelcome}
-          onOpenAI={() => revealView("agent")}
-          onOpenFolder={() => {
-            revealView("explorer");
-            window.setTimeout(() => window.dispatchEvent(new Event(OPEN_FOLDER_EVENT)), 0);
-          }}
-        />
-      )}
+      {showWelcome && <Welcome onClose={closeWelcome} />}
 
       {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
+      {showSetup && <CheckSetupDialog onClose={() => setShowSetup(false)} />}
       <DialogHost />
       <Toasts />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />

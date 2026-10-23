@@ -3,6 +3,7 @@ import { Bell } from "lucide-react";
 import { DEFAULT_SETTINGS, useSettingsStore, type Settings } from "../../store/settingsStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFahhStore } from "../../store/fahhStore";
+import { SoundPicker } from "../Fahh/SoundPicker";
 
 const input =
   "rounded border border-fahh-surface bg-fahh-sidebar px-2 py-1 text-xs text-fahh-text outline-none focus:border-fahh-accent";
@@ -98,6 +99,9 @@ export function SettingsPanel() {
               </button>
             </div>
           </Row>
+          <Row label="Error sound" hint="Plays for diagnostics, failed runs, failed terminal commands and the bell.">
+            <SoundPicker />
+          </Row>
           <Row label="Lifetime fahhs" hint="Every fahh this editor has ever let out.">
             <span className="text-xs tabular-nums text-fahh-text" data-testid="lifetime-fahhs">
               {lifetime} <span className="text-fahh-muted">({session} this session)</span>
@@ -114,6 +118,12 @@ export function SettingsPanel() {
         <Section title="Session">
           <Row label="Restore session on launch" hint="Reopen the last folder and its tabs, in their groups." htmlFor="set-restore">
             <Toggle id="set-restore" value={s.restoreSession} onChange={(v) => s.set("restoreSession", v)} />
+          </Row>
+        </Section>
+
+        <Section title="Updates">
+          <Row label="Check for updates at launch" hint="Once a day; a small note when a new version is out, never a popup. Help > About checks now." htmlFor="set-updates">
+            <Toggle id="set-updates" value={s.checkUpdatesOnLaunch} onChange={(v) => s.set("checkUpdatesOnLaunch", v)} />
           </Row>
         </Section>
 

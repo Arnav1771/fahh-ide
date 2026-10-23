@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { assetFor, checkForUpdates, compareVersions } from "./updates";
+import { assetFor, checkForUpdates, compareVersions, launchUpdateCheck } from "./updates";
 
 describe("compareVersions", () => {
   it("compares numerically, ignores a leading v, and puts pre-releases first", () => {
@@ -39,5 +39,35 @@ describe("checkForUpdates", () => {
     await expect(checkForUpdates("0.6.4", limited as unknown as typeof fetch)).rejects.toThrow(/rate limit/);
     const empty = vi.fn().mockResolvedValue({ ok: true, json: async () => ({}) });
     await expect(checkForUpdates("0.6.4", empty as unknown as typeof fetch)).rejects.toThrow(/no release/);
+  });
+});
+
+describe("launchUpdateCheck", () => {
+  const mem = () => {
+    const m = new Map<string, string>();
+    return { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  };
+  const release = (tag: string) => vi.fn(async () => new Response(JSON.stringify({ tag_name: tag, html_url: "u", assets: [] }), { status: 200 })) as unknown as typeof fetch;
+
+  it("does nothing when switched off", async () => {
+    const f = release("v9.0.0");
+    expect(await launchUpdateCheck(false, mem(), "0.6.4", f)).toBeNull();
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it("tells once per new version and checks at most once a day", async () => {
+    const s = mem();
+    const f = release("v9.0.0");
+    expect(await launchUpdateCheck(true, s, "0.6.4", f, 1_000)).toContain("Fahh 9.0.0 is out");
+    expect(await launchUpdateCheck(true, s, "0.6.4", f, 2_000)).toBeNull(); // same day: no request
+    expect(f).toHaveBeenCalledTimes(1);
+    expect(await launchUpdateCheck(true, s, "0.6.4", f, 1_000 + 25 * 3600_000)).toBeNull(); // already told about 9.0.0
+    expect(f).toHaveBeenCalledTimes(2);
+  });
+
+  it("stays quiet when up to date or offline", async () => {
+    expect(await launchUpdateCheck(true, mem(), "0.6.4", release("v0.6.4"))).toBeNull();
+    const offline = vi.fn(async () => { throw new Error("offline"); }) as unknown as typeof fetch;
+    expect(await launchUpdateCheck(true, mem(), "0.6.4", offline)).toBeNull();
   });
 });

@@ -17,3 +17,4 @@ pub mod preview;
 pub mod proc;
 pub mod syntax;
 pub mod wsl;
+pub mod setup;

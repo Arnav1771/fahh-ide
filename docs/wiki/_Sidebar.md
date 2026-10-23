@@ -1,6 +1,7 @@
 ### [Fahh Editor Wiki](Home)
 
 - **[Home](Home)**
+- **[Getting Started](Getting-Started)**
 - **[CATE Spatial Canvas](CATE-Spatial-Canvas)**
 - **[VS Code Multi-Terminal](VS-Code-Multi-Terminal)**
 - **[Native Titlebar & Menus](Native-Titlebar-and-Menus)**

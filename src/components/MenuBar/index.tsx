@@ -33,6 +33,7 @@ import {
   History,
   Settings as SettingsIcon,
   Info,
+  Stethoscope,
 } from "lucide-react";
 import {
   openNewWindow,
@@ -83,6 +84,7 @@ export function MenuBar({
   onSetBottomTab,
   onSaveActive,
   onShowWelcome,
+  onShowSetup,
   onShowInstaller,
   onShowAbout,
 }: {
@@ -94,6 +96,7 @@ export function MenuBar({
   onSetBottomTab: (tab: BottomTab) => void;
   onSaveActive: () => void;
   onShowWelcome: () => void;
+  onShowSetup: () => void;
   onShowInstaller: () => void;
   onShowAbout: () => void;
 }) {
@@ -630,9 +633,14 @@ export function MenuBar({
       label: "Help",
       items: [
         {
-          label: "Welcome Tour",
+          label: "Welcome",
           icon: <Flame size={13} className="text-amber-400" />,
           action: onShowWelcome,
+        },
+        {
+          label: "Check Setup…",
+          icon: <Stethoscope size={13} />,
+          action: onShowSetup,
         },
         {
           label: "Documentation Hub",
