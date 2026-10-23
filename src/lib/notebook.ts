@@ -69,7 +69,7 @@ function parseOutput(raw: unknown): NotebookOutput | null {
 export function parseNotebook(json: string): ParsedNotebook {
   let nb: Record<string, unknown>;
   try {
-    nb = obj(JSON.parse(json));
+    nb = obj(JSON.parse(json.replace(/^\uFEFF/, "")));
   } catch (e) {
     return { error: `Not valid notebook JSON: ${(e as Error).message}` };
   }

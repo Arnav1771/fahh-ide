@@ -83,3 +83,12 @@ describe("notebook preview wiring", () => {
     expect(modeOf({}, "/a/README.md")).toBe("off");
   });
 });
+
+describe("BOM", () => {
+  it("renders a notebook saved with a UTF-8 BOM", () => {
+    const nb = '﻿{"cells":[{"cell_type":"markdown","metadata":{},"source":["# Notebook heading"]}],"metadata":{},"nbformat":4,"nbformat_minor":5}';
+    const r = parseNotebook(nb) as unknown as { cells?: unknown[]; error?: string };
+    expect(r.error).toBeUndefined();
+    expect(r.cells?.length).toBe(1);
+  });
+});
