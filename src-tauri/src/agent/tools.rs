@@ -2,8 +2,8 @@
 //! Tools never decide permissions: they take paths already resolved by
 //! `perm::Workspace` and approved by `perm::Engine`.
 
-use super::perm::{glob_match, Kind, Workspace};
-use serde::Serialize;
+use super::perm::{glob_match, Kind, Mode, Workspace};
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use std::path::PathBuf;
 use std::time::Duration;
@@ -23,6 +23,7 @@ pub fn kind_of(tool: &str) -> Option<Kind> {
         "edit_file" | "write_file" => Kind::Edit,
         "run_command" => Kind::Run,
         "write_plan" => Kind::Plan,
+        "delegate" => Kind::Agent,
         _ => return None,
     })
 }
@@ -31,7 +32,26 @@ fn obj(props: Value, required: &[&str]) -> Value {
     json!({"type": "object", "properties": props, "required": required})
 }
 
-/// Tool list for a mode (Plan mode hides the tools it could not use anyway).
+/// Tool list for a mode. Read-only modes only see tools they can use:
+/// Qa gets the read tools, Plan adds read-only commands and `write_plan`.
+/// `delegate` is offered only where a subagent may be started.
+pub fn specs_for(mode: Mode, allow_delegate: bool) -> Vec<ToolSpec> {
+    let keep: &[&str] = match mode {
+        Mode::Qa => &["list_dir", "read_file", "search", "get_diagnostics"],
+        Mode::Plan => &["list_dir", "read_file", "search", "get_diagnostics", "run_command", "write_plan"],
+        _ => &[],
+    };
+    let mut v: Vec<ToolSpec> = specs(mode == Mode::Plan).into_iter().filter(|t| keep.is_empty() || keep.contains(&t.name)).collect();
+    if allow_delegate {
+        v.push(ToolSpec {
+            name: "delegate",
+            description: "Hand a self-contained task to a subagent (see the list in the system prompt). It works with a fresh context and returns a short result.",
+            parameters: obj(json!({"agent": {"type": "string"}, "task": {"type": "string"}}), &["agent", "task"]),
+        });
+    }
+    v
+}
+
 pub fn specs(plan_mode: bool) -> Vec<ToolSpec> {
     let s = |name, description, parameters| ToolSpec { name, description, parameters };
     let mut v = vec![
@@ -195,19 +215,22 @@ pub fn commit_edit(plan: &EditPlan) -> Result<(), String> {
 
 // ─── checkpoints ──────────────────────────────────────────────────────────────
 
+#[derive(Serialize, Deserialize, Clone)]
 struct Snapshot {
     abs: PathBuf,
     rel: String,
-    /// `None`: the file did not exist before the agent created it.
-    before: Option<Vec<u8>>,
+    /// `None`: the file did not exist before the agent created it. The edit tools
+    /// only touch UTF-8 text, so a string is enough.
+    before: Option<String>,
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 struct TurnCheckpoint {
     id: u32,
     files: Vec<Snapshot>,
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize, Clone)]
 pub struct Checkpoints {
     turns: Vec<TurnCheckpoint>,
 }
@@ -229,7 +252,7 @@ impl Checkpoints {
         if t.files.iter().any(|s| s.abs == *abs) {
             return;
         }
-        t.files.push(Snapshot { abs: abs.clone(), rel: rel.to_string(), before: std::fs::read(abs).ok() });
+        t.files.push(Snapshot { abs: abs.clone(), rel: rel.to_string(), before: std::fs::read_to_string(abs).ok() });
     }
 
     pub fn files(&self, turn: u32) -> Vec<String> {
@@ -242,7 +265,7 @@ impl Checkpoints {
             .iter()
             .map(|s| FileDiff {
                 path: s.rel.clone(),
-                before: s.before.as_ref().map(|b| String::from_utf8_lossy(b).into_owned()),
+                before: s.before.clone(),
                 after: std::fs::read_to_string(&s.abs).ok(),
             })
             .collect()
@@ -250,7 +273,7 @@ impl Checkpoints {
 
     fn restore(s: &Snapshot) -> Result<(), String> {
         match &s.before {
-            Some(bytes) => std::fs::write(&s.abs, bytes).map_err(|e| e.to_string()),
+            Some(text) => std::fs::write(&s.abs, text).map_err(|e| e.to_string()),
             None => match std::fs::remove_file(&s.abs) {
                 Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e.to_string()),
                 _ => Ok(()),
@@ -270,6 +293,17 @@ impl Checkpoints {
         Ok(done)
     }
 
+    /// Revert turn `from` and every later turn (newest first): what "rewind to step N" needs.
+    pub fn revert_from(&mut self, from: u32) -> Result<Vec<String>, String> {
+        let mut ids: Vec<u32> = self.turns.iter().map(|t| t.id).filter(|id| *id >= from).collect();
+        ids.sort_unstable_by(|a, b| b.cmp(a));
+        let mut all = Vec::new();
+        for id in ids {
+            all.extend(self.revert_turn(id)?);
+        }
+        Ok(all)
+    }
+
     /// Reject one file of a turn.
     pub fn revert_file(&mut self, turn: u32, rel: &str) -> Result<(), String> {
         let t = self.turns.iter_mut().find(|t| t.id == turn).ok_or("unknown turn")?;
@@ -277,6 +311,30 @@ impl Checkpoints {
         let s = t.files.remove(i);
         Self::restore(&s)
     }
+}
+
+/// A small unified-style diff: common head and tail trimmed, 3 lines of context.
+pub fn simple_diff(path: &str, before: Option<&str>, after: Option<&str>) -> String {
+    let (b, a): (Vec<&str>, Vec<&str>) = (before.unwrap_or("").lines().collect(), after.unwrap_or("").lines().collect());
+    let head = b.iter().zip(&a).take_while(|(x, y)| x == y).count();
+    let tail = b[head..].iter().rev().zip(a[head..].iter().rev()).take_while(|(x, y)| x == y).count();
+    let ctx = 3;
+    let start = head.saturating_sub(ctx);
+    let mut out = format!("--- {path}{}\n", if before.is_none() { " (new file)" } else { "" });
+    out += &format!("@@ line {} @@\n", start + 1);
+    for l in &b[start..head] {
+        out += &format!(" {l}\n");
+    }
+    for l in &b[head..b.len() - tail] {
+        out += &format!("-{l}\n");
+    }
+    for l in &a[head..a.len() - tail] {
+        out += &format!("+{l}\n");
+    }
+    for l in b[b.len() - tail..].iter().take(ctx) {
+        out += &format!(" {l}\n");
+    }
+    out
 }
 
 // ─── run_command ──────────────────────────────────────────────────────────────
@@ -303,13 +361,26 @@ pub fn shell(command: &str, cwd: &std::path::Path) -> tokio::process::Command {
     c
 }
 
-pub async fn run_command(ws: &Workspace, command: &str, timeout_secs: u64) -> (bool, String) {
+/// Resolves when the flag is set (polled: a flag has no waker).
+async fn cancelled(flag: &std::sync::atomic::AtomicBool) {
+    while !flag.load(std::sync::atomic::Ordering::Relaxed) {
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+}
+
+/// Run a shell command; stopping the agent (or its subagent) kills the process.
+pub async fn run_command(ws: &Workspace, command: &str, timeout_secs: u64, cancel: &std::sync::atomic::AtomicBool) -> (bool, String) {
     let mut cmd = shell(command, &ws.root);
-    let fut = cmd.output();
-    match tokio::time::timeout(Duration::from_secs(timeout_secs.clamp(1, 600)), fut).await {
-        Err(_) => (false, format!("timed out after {timeout_secs}s and was killed")),
-        Ok(Err(e)) => (false, format!("could not start: {e}")),
-        Ok(Ok(out)) => {
+    let fut = cmd.output(); // dropped on cancel or timeout: kill_on_drop ends the process
+    let outcome = tokio::select! {
+        r = tokio::time::timeout(Duration::from_secs(timeout_secs.clamp(1, 600)), fut) => Some(r),
+        _ = cancelled(cancel) => None,
+    };
+    match outcome {
+        None => (false, "stopped by the user; the command was killed".to_string()),
+        Some(Err(_)) => (false, format!("timed out after {timeout_secs}s and was killed")),
+        Some(Ok(Err(e))) => (false, format!("could not start: {e}")),
+        Some(Ok(Ok(out))) => {
             let code = out.status.code();
             let mut s = format!("exit code: {}\n", code.map(|c| c.to_string()).unwrap_or_else(|| "none".into()));
             let so = String::from_utf8_lossy(&out.stdout);
@@ -399,6 +470,41 @@ mod tests {
     }
 
     #[test]
+    fn tool_sets_per_mode() {
+        let names = |m, d| specs_for(m, d).into_iter().map(|t| t.name).collect::<Vec<_>>();
+        assert_eq!(names(Mode::Qa, false), vec!["list_dir", "read_file", "search", "get_diagnostics"]);
+        let plan = names(Mode::Plan, false);
+        assert!(plan.contains(&"write_plan") && plan.contains(&"run_command") && !plan.contains(&"edit_file") && !plan.contains(&"write_file"));
+        let ask = names(Mode::Ask, false);
+        assert!(ask.contains(&"edit_file") && !ask.contains(&"delegate"));
+        assert!(names(Mode::Ask, true).contains(&"delegate"));
+        assert!(names(Mode::Qa, true).contains(&"delegate")); // children are read-only too
+    }
+
+    #[test]
+    fn checkpoints_survive_serialization_and_rewind() {
+        let (d, w) = ws();
+        std::fs::write(d.path().join("a.txt"), "one").unwrap();
+        let (a, ra) = w.resolve("a.txt", true).unwrap();
+        let mut cp = Checkpoints::default();
+        cp.touch(1, &a, &ra);
+        std::fs::write(&a, "two").unwrap();
+        cp.touch(2, &a, &ra);
+        std::fs::write(&a, "three").unwrap();
+        let mut back: Checkpoints = serde_json::from_str(&serde_json::to_string(&cp).unwrap()).unwrap();
+        assert_eq!(back.diff(2)[0].before.as_deref(), Some("two"));
+        assert_eq!(back.revert_from(1).unwrap(), vec!["a.txt".to_string(), "a.txt".to_string()]);
+        assert_eq!(std::fs::read_to_string(&a).unwrap(), "one");
+    }
+
+    #[test]
+    fn diff_shows_only_the_change() {
+        let d = simple_diff("a.rs", Some("a\nb\nc\nd\ne\nf\ng\nh\n"), Some("a\nb\nc\nd\nE\nf\ng\nh\n"));
+        assert!(d.contains("-e\n+E\n") && d.contains(" d\n") && d.starts_with("--- a.rs"), "{d}");
+        assert!(simple_diff("n.rs", None, Some("x\n")).contains("(new file)"));
+    }
+
+    #[test]
     fn read_list_search() {
         let (d, w) = ws();
         std::fs::create_dir(d.path().join("src")).unwrap();
@@ -416,9 +522,15 @@ mod tests {
     #[tokio::test]
     async fn run_command_captures_output() {
         let (_d, w) = ws();
-        let (ok, out) = run_command(&w, "echo hello", 10).await;
+        let no = std::sync::atomic::AtomicBool::new(false);
+        let (ok, out) = run_command(&w, "echo hello", 10, &no).await;
         assert!(ok && out.contains("hello"), "{out}");
-        let (ok, out) = run_command(&w, "exit 3", 10).await;
+        let (ok, out) = run_command(&w, "exit 3", 10, &no).await;
         assert!(!ok && out.contains("exit code: 3"), "{out}");
+        // a stop flag kills a long command promptly
+        let stop = std::sync::atomic::AtomicBool::new(true);
+        let t = std::time::Instant::now();
+        let (ok, out) = run_command(&w, "sleep 20", 60, &stop).await;
+        assert!(!ok && out.contains("stopped") && t.elapsed() < Duration::from_secs(5), "{out}");
     }
 }

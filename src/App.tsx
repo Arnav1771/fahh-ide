@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { initAgentEvents, useAgentStore } from "./store/agentStore";
+import { isAgentToggle } from "./lib/hotkeys";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
 import { Toasts } from "./components/Toasts";
@@ -342,11 +343,9 @@ export default function App() {
         e.stopPropagation();
         setPaletteOpen(false);
         setQuickOpen((v) => !v);
-      } else if (
-        (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "l" && !(e.target as Element | null)?.closest?.(".monaco-editor")) ||
-        (mod && e.shiftKey && e.key.toLowerCase() === "a")
-      ) {
-        // Ctrl+L (outside the editor, where it keeps Monaco select-line) or Ctrl+Shift+A: Toggle Fahh Local agent panel
+      } else if (isAgentToggle(e, e.target as Element | null)) {
+        // Ctrl+L (not inside the editor or terminal, where it means select-line / clear)
+        // or Ctrl+Shift+A (everywhere): toggle Fahh Local
         e.preventDefault();
         e.stopPropagation();
         toggleView("agent");

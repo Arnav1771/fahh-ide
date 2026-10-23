@@ -50,6 +50,9 @@ self.MonacoEnvironment = {
 
 // Hand the React wrapper the bundled instance so it never touches the CDN.
 loader.config({ monaco });
+// agentMarkers.ts reads the editor's markers and selection through this global, so the
+// agent's get_diagnostics and context see them without importing Monaco (keeps it testable).
+(window as unknown as { monaco: typeof monaco }).monaco = monaco;
 
 // Monaco's built-in TypeScript checker sees one file at a time, with no
 // node_modules and no tsconfig. Left at its defaults it underlines every JSX

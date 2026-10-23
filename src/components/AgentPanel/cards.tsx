@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { DiffEditor } from "@monaco-editor/react";
-import { Check, CircleAlert, FileEdit, FileSearch, ListChecks, Loader2, ShieldQuestion, Terminal, Undo2, X } from "lucide-react";
+import { Bot, Check, CircleAlert, FileEdit, FileSearch, ListChecks, Loader2, ShieldQuestion, Square, Terminal, Undo2, X } from "lucide-react";
 
 import { agentTurnDiff } from "../../lib/agent";
 import type { Item, TurnInfo } from "../../lib/agentState";
@@ -41,7 +41,7 @@ export function Diff({ path, before, after }: { path: string; before: string; af
   );
 }
 
-const ICONS: Record<AgentToolKind, typeof Terminal> = { read: FileSearch, edit: FileEdit, run: Terminal, plan: ListChecks };
+const ICONS: Record<AgentToolKind, typeof Terminal> = { read: FileSearch, edit: FileEdit, run: Terminal, plan: ListChecks, agent: Bot };
 
 function brief(args: Record<string, unknown>): string {
   const v = args.path ?? args.command ?? args.pattern ?? args.title ?? "";
@@ -196,6 +196,77 @@ export function ReviewCard({ turn, onOpen }: { turn: TurnInfo; onOpen: (rel: str
             </button>
           </div>
           {shown === f && diffs[f] && <div className="mt-1"><Diff path={f} before={diffs[f].before ?? ""} after={diffs[f].after ?? ""} /></div>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type SubItem = Extract<Item, { kind: "sub" }>;
+type SessionsItem = Extract<Item, { kind: "sessions" }>;
+
+/** A subagent: status, model, mode, its tool lines and approvals, and its own Stop button. */
+export function SubCard({ item }: { item: SubItem }) {
+  const stopChild = useAgentStore((s) => s.stopChild);
+  const tone = item.status === "running" ? "text-fahh-accent" : item.status === "done" ? "text-green-400" : "text-fahh-error";
+  return (
+    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-[#0d0f14] text-[11px]" data-testid="sub-card" data-status={item.status}>
+      <div className="flex items-center gap-1.5 px-2 py-1">
+        {item.status === "running" ? <Loader2 size={12} className="animate-spin text-fahh-accent shrink-0" /> : <Bot size={12} className={`${tone} shrink-0`} />}
+        <span className="font-medium text-fahh-text">{item.name}</span>
+        <span className="text-[10px] text-fahh-muted truncate min-w-0 flex-1">
+          {item.model ?? "session model"} · {item.mode}
+        </span>
+        {item.status === "running" ? (
+          <button onClick={() => void stopChild(item.child)} title="Stop this subagent only" className="flex items-center gap-1 text-fahh-muted hover:text-fahh-error">
+            <Square size={10} /> Stop
+          </button>
+        ) : (
+          <span className={`text-[10px] ${tone}`}>{item.status === "done" ? `done, ${item.steps} step${item.steps === 1 ? "" : "s"}` : "stopped or failed"}</span>
+        )}
+      </div>
+      <div className="px-2 pb-1 text-fahh-muted break-words">{item.task}</div>
+      {item.items.map((c, i) =>
+        c.kind === "tool" ? <ToolCard key={i} item={c} /> : c.kind === "approval" ? <ApprovalCard key={c.id} item={c} /> : c.kind === "notice" ? <div key={i} className="px-2 pb-1 text-[10px] text-fahh-muted break-words">{c.text}</div> : null
+      )}
+      {item.status !== "running" && item.summary && <div className="px-2 pb-1.5 text-neutral-300 whitespace-pre-wrap break-words">{item.summary}</div>}
+    </div>
+  );
+}
+
+/** /ls and /resume: saved sessions of this workspace. */
+export function SessionsCard({ item }: { item: SessionsItem }) {
+  const loadSession = useAgentStore((s) => s.loadSession);
+  const handleInput = useAgentStore((s) => s.handleInput);
+  const [removed, setRemoved] = useState<string[]>([]);
+  return (
+    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-[#111318] text-[11px]" data-testid="sessions">
+      <div className="px-2 py-1 text-fahh-text font-medium">Saved sessions</div>
+      {item.sessions.filter((s) => !removed.includes(s.id)).map((s) => (
+        <div key={s.id} className="flex items-center gap-1.5 px-2 pb-1">
+          <span className="min-w-0 flex-1 truncate" title={s.id}>
+            {s.title} <span className="text-fahh-muted">· {s.steps} step{s.steps === 1 ? "" : "s"} · {new Date(s.updated * 1000).toLocaleDateString()}</span>
+          </span>
+          {s.id === item.current ? (
+            <span className="text-[10px] text-fahh-muted">current</span>
+          ) : (
+            <button onClick={() => void loadSession(s.id)} className="px-1.5 py-0.5 rounded bg-fahh-accent/20 text-fahh-accent hover:bg-fahh-accent hover:text-white">
+              Resume
+            </button>
+          )}
+          {s.id !== item.current && (
+            <button
+              onClick={() => {
+                if (!window.confirm(`Delete the saved session "${s.title}"?`)) return;
+                setRemoved((r) => [...r, s.id]);
+                void handleInput(`/rm-session ${s.id}`);
+              }}
+              title="Delete this saved session"
+              className="px-1.5 py-0.5 rounded text-fahh-muted hover:text-fahh-error"
+            >
+              Delete
+            </button>
+          )}
         </div>
       ))}
     </div>

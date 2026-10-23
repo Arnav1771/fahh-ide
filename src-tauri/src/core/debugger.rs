@@ -493,10 +493,14 @@ mod tests {
 
     #[test]
     fn free_port_is_actually_free() {
-        let port = free_port().unwrap();
-        assert!(port > 0);
-        // Nothing is listening there, so we can take it ourselves.
-        assert!(std::net::TcpListener::bind(("127.0.0.1", port)).is_ok());
+        // free_port() releases the port before returning, so a test running in parallel (or
+        // any other process) can take the same ephemeral port before we rebind it. That race
+        // is inherent and made this test flaky; a few attempts tell it apart from a real bug.
+        let ok = (0..5).any(|_| {
+            let port = free_port().unwrap();
+            port > 0 && std::net::TcpListener::bind(("127.0.0.1", port)).is_ok()
+        });
+        assert!(ok, "free_port() never returned a port we could bind");
     }
 
     #[test]
