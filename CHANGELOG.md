@@ -16,6 +16,28 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The layout is **saved per workspace** and restored on launch; **View > Reset Layout** brings back the default (Explorer left, Fahh Local right, panel below).
 - Keyboard path for every drag: palette commands "Move <view> to Left Side Bar / Right Side Bar / Panel / Editor Area", plus Toggle Primary / Secondary Side Bar (Ctrl+B / Ctrl+Alt+B) and Toggle Maximized Panel.
 
+### Added (Fahh Local)
+
+- **Sessions**, saved after every step per workspace with their checkpoints: new (**+**, `/clear`), list and switch (clock button, `/ls`, `/resume`, `/continue`), rename (`/title`), delete (**Delete** in the list, `/rm-session`), plus `/steps`, `/fork`, `/revert <step>`, `/undo`, `/export`, `/compact`, `/context`, `/usage`.
+- **Modes**: Normal (Ask), Accept Edits, Smart (a judge model screens commands), Plan, Bypass (red badge; deny rules still apply), and one-shot `/ask`.
+- **Slash commands**: a `/` menu in the panel and the same commands in the `fahh-agent` REPL, from one table (`src/lib/slash-commands.json`).
+- **`/loop <prompt>`**: run, then a reviewer subagent checks the diff and asks for fixes until it approves (3 rounds by default); one step, one `/revert`.
+- **Subagents**: `.fahh/agents/*.md` and `~/.fahh/agents/*.md` definitions plus built-in `explore`, `reviewer`, `planner`; a `delegate` tool, `/agents`, `/agent <name> <task>`, per-child Stop, never more permission than the parent.
+- `fahh-agent` CLI: `-c`, `-r <id>`, `-p`, `--prompt-file`, `--config`, `--export`, `--fast-model`, `--judge-model`, `models list`, `sessions ls`; bundled next to the editor (`scripts/prepare-sidecar.mjs`).
+- `Ctrl+Shift+A` toggles the panel everywhere; `Ctrl+L` too, except in the editor (select line) and terminal (clear).
+- A run-status line built from the turn's events (running subagent or tool, or waiting for the model).
+
+### Fixed
+
+- The agent's `get_diagnostics`, the "fahh when the agent adds errors" check and the selection context were always empty: `window.monaco` was never set. `monaco-setup.ts` sets it now.
+- Steer (`Ctrl+Enter` while running) waited a fixed 150 ms after Stop and could hit "the agent is already working on a turn"; it now sends once the turn has really ended.
+- `core::debugger::tests::free_port_is_actually_free` was flaky: a parallel test could take the released port before the rebind. It now retries.
+
+### Removed (simulated)
+
+- **Alt+V / paste image in the agent panel**: it only typed `[Image: name attached]` into the prompt. No provider path here sends images, so the model never saw one.
+- The fixed **"Devin Task Execution Loop / analyzing AST"** banner shown while the agent ran (replaced by the real run-status line).
+
 ---
 
 ## [0.6.4] — 2026-10-22

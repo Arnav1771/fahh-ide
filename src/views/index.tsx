@@ -21,6 +21,7 @@ import { ProblemsPanel } from "../components/ProblemsPanel";
 import { TerminalPanel } from "../components/Terminal/TerminalPanel";
 import { useDiagnosticsStore } from "../store/diagnosticsStore";
 import { registerView } from "../lib/viewRegistry";
+import { toggleView } from "../lib/workbench";
 
 function ProblemsBadge() {
   const diagnostics = useDiagnosticsStore((s) => s.diagnostics);
@@ -63,7 +64,9 @@ registerView({
   defaultLocation: "sidebar",
   keywords: "color appearance",
 });
-registerView({ id: "agent", title: "Fahh Local", icon: Bot, component: AgentPanel, defaultLocation: "secondary", keys: "Ctrl+L", keywords: "ai agent chat llm ollama groq" });
+// /exit in the panel hides the view, wherever it is docked (a stable handler: the panel stores it in an effect)
+const hideAgent = () => toggleView("agent");
+registerView({ id: "agent", title: "Fahh Local", icon: Bot, component: () => <AgentPanel onClose={hideAgent} />, defaultLocation: "secondary", keys: "Ctrl+L", keywords: "ai agent chat llm ollama groq" });
 registerView({ id: "problems", title: "Problems", icon: AlertCircle, component: ProblemsPanel, defaultLocation: "panel", badge: ProblemsBadge, keywords: "errors diagnostics warnings lsp" });
 registerView({ id: "debug", title: "Debug Console", icon: Bug, component: DebugPanel, defaultLocation: "panel", keywords: "debugger eval breakpoints" });
 registerView({ id: "terminal", title: "Terminal", icon: SquareTerminal, component: TerminalPanel, defaultLocation: "panel", keywords: "shell console powershell bash" });

@@ -2,15 +2,22 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type {
+  AgentContextInfo,
   AgentDecision,
   AgentDiagFile,
   AgentEnvelope,
   AgentFileDiff,
+  AgentLoaded,
   AgentMode,
   AgentProviderConfig,
   AgentProviderKind,
+  AgentRevertResult,
+  AgentSessionInfo,
   AgentStartParams,
   AgentStartResult,
+  AgentTurnRec,
+  AgentUsage,
+  AgentsReport,
 } from "./types";
 
 export const agentStart = (params: AgentStartParams) => invoke<AgentStartResult>("agent_start", { params });
@@ -23,6 +30,24 @@ export const agentRevertFile = (session: string, turn: number, path: string) =>
 export const agentTurnDiff = (session: string, turn: number) => invoke<AgentFileDiff[]>("agent_turn_diff", { session, turn });
 export const agentListModels = (provider: AgentProviderConfig) => invoke<string[]>("agent_list_models", { provider });
 export const agentSetDiagnostics = (files: AgentDiagFile[]) => invoke<void>("agent_set_diagnostics", { files });
+
+export const agentStopChild = (session: string, child: string) => invoke<void>("agent_stop_child", { session, child });
+
+// sessions, steps, context
+export const agentSessions = (workspace: string) => invoke<AgentSessionInfo[]>("agent_sessions", { workspace });
+export const agentSessionLoad = (workspace: string, id?: string | null, extraDirs?: string[]) =>
+  invoke<AgentLoaded>("agent_session_load", { workspace, id: id ?? null, extraDirs: extraDirs ?? [] });
+export const agentSessionFork = (session: string, step?: number | null) => invoke<AgentLoaded>("agent_session_fork", { session, step: step ?? null });
+export const agentSessionRevert = (session: string, step: number) => invoke<AgentRevertResult>("agent_session_revert", { session, step });
+export const agentSessionRename = (session: string, title: string) => invoke<void>("agent_session_rename", { session, title });
+export const agentSessionRemove = (workspace: string, id: string) => invoke<void>("agent_session_remove", { workspace, id });
+export const agentSteps = (session: string) => invoke<AgentTurnRec[]>("agent_steps", { session });
+export const agentCompact = (session: string, provider: AgentProviderConfig) =>
+  invoke<{ folded: number; before: number; after: number }>("agent_compact", { session, provider });
+export const agentContext = (session: string, model: string) => invoke<AgentContextInfo>("agent_context", { session, model });
+export const agentUsage = (session: string) => invoke<AgentUsage>("agent_usage", { session });
+export const agentExport = (session: string, path?: string | null) => invoke<string>("agent_export", { session, path: path ?? null });
+export const agentAgents = (workspace: string) => invoke<AgentsReport>("agent_agents", { workspace });
 
 export const listenAgent = (cb: (e: AgentEnvelope) => void): Promise<UnlistenFn> =>
   listen<AgentEnvelope>("agent://event", (e) => cb(e.payload));
@@ -159,6 +184,10 @@ export interface AgentSettings {
   model: string;
   apiKey: string;
   mode: AgentMode;
+  /** The fast model: /fast, and the Smart-mode judge. Empty = use the main model. */
+  fastModel: string;
+  /** Folders added with /add-dir. */
+  extraDirs: string[];
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -167,9 +196,12 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   model: "",
   apiKey: "",
   mode: "ask",
+  fastModel: "",
+  extraDirs: [],
 };
 
-const MODES: AgentMode[] = ["ask", "auto-edit", "plan"];
+/** Modes that can be the default (qa is only ever the one-shot /ask). */
+const MODES: AgentMode[] = ["ask", "auto-edit", "smart", "plan", "bypass"];
 
 /**
  * Parse persisted settings defensively. An older (pre-Fahh Local) AI config
@@ -196,11 +228,13 @@ export function parseAgentSettings(raw: string | null, legacy: string | null = n
       model,
       apiKey: str(cur.apiKey, ""),
       mode: MODES.includes(cur.mode as AgentMode) ? (cur.mode as AgentMode) : "ask",
+      fastModel: str(cur.fastModel, ""),
+      extraDirs: Array.isArray(cur.extraDirs) ? cur.extraDirs.filter((d): d is string => typeof d === "string") : [],
     };
   }
   const old = read(legacy);
   if (old && typeof old.baseUrl === "string" && old.baseUrl) {
-    return { provider: "custom", baseUrl: old.baseUrl, model: str(old.model, ""), apiKey: str(old.apiKey, ""), mode: "ask" };
+    return { provider: "custom", baseUrl: old.baseUrl, model: str(old.model, ""), apiKey: str(old.apiKey, ""), mode: "ask", fastModel: "", extraDirs: [] };
   }
   return { ...DEFAULT_AGENT_SETTINGS };
 }
@@ -214,12 +248,17 @@ export function settingsProblem(s: AgentSettings): string | null {
   return null;
 }
 
-export function toProviderConfig(s: AgentSettings): AgentProviderConfig {
+export function toProviderConfig(s: AgentSettings, modelOverride?: string): AgentProviderConfig {
   const preset = PROVIDER_PRESETS.find((p) => p.id === s.provider);
   return {
     kind: preset?.kind ?? "openai",
     base_url: s.baseUrl.trim(),
-    model: s.model.trim(),
+    model: (modelOverride ?? s.model).trim(),
     api_key: s.apiKey.trim() || null,
   };
+}
+
+/** The Smart-mode judge: the fast model when one is set, else the backend falls back to the main model. */
+export function toJudgeConfig(s: AgentSettings): AgentProviderConfig | null {
+  return s.fastModel.trim() ? toProviderConfig(s, s.fastModel) : null;
 }

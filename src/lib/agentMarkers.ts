@@ -2,6 +2,20 @@
 import type { AgentDiagFile } from "./types";
 import { relToRoot } from "./agentState";
 
+/** The text selected in the editor showing `activePath`, or null. */
+export function currentSelection(activePath: string | null): string | null {
+  const monacoGlobal = typeof window !== "undefined" ? (window as any).monaco : undefined;
+  if (!activePath || !monacoGlobal?.editor?.getEditors) return null;
+  for (const ed of monacoGlobal.editor.getEditors()) {
+    const model = ed.getModel();
+    const sel = ed.getSelection();
+    if (!model || !sel || sel.isEmpty()) continue;
+    if (model.uri.path.replace(/^\/([A-Za-z]:)/, "$1").toLowerCase() !== activePath.replace(/\\/g, "/").toLowerCase()) continue;
+    return model.getValueInRange(sel) || null;
+  }
+  return null;
+}
+
 export function collectMarkers(root: string): { files: AgentDiagFile[]; errors: number } {
   const byFile = new Map<string, AgentDiagFile>();
   let errors = 0;
