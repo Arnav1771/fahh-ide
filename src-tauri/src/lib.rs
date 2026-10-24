@@ -6,7 +6,7 @@ mod core;
 mod app;
 pub mod agent;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git, preview, syntax};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git, preview, syntax, setup};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -51,6 +51,11 @@ pub fn run() {
             error_detector::trigger_error_sound,
             // Syntax errors for Python and Rust without a language server
             syntax::syntax_check,
+            // First run: Check Setup and the custom error sound
+            setup::check_setup,
+            setup::set_custom_sound,
+            setup::load_custom_sound,
+            setup::clear_custom_sound,
             // Optional tool installer
             installer::get_tool_status,
             installer::install_tool,

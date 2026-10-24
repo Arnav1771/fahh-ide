@@ -11,6 +11,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Added
 
+- **First run, rebuilt:** a five-step welcome where every step is something to do, with ticks as you go and Skip on every step plus Skip tour. 1 Sound: ring the bell, set the volume or mute, and pick your own error sound. 2 Code: Open Folder, Open Recent, open a VS Code `.code-workspace`, a WSL hint on Windows, and a one-line try-it box where breaking the JavaScript rings the real fahh. 3 Look: Fahh Gold, Fahh Dark or Fahh Light applied live behind the card, and a button that really moves Explorer to the right and back. 4 Fahh Local (optional): provider, key and a real Test connection (the models list). 5 Check Setup, live. Shown once; **Help > Welcome** (or "Show Welcome") brings it back. Focus trap, Esc, Left/Right between steps, fits a 480 px window.
+- **Custom error sound:** Settings > Fahh > Error sound (and the welcome tour): Change sound… takes an mp3, wav, ogg or m4a up to 5 MB, previews it, and every fahh plays it (diagnostics, failed runs, failed terminal commands, the bell), at the Settings volume and respecting mute. Fahh keeps its own copy in the app data folder, so moving the original changes nothing. Reset to default brings the fahh back. Files that are too big or not audio are refused with the reason. New Rust commands `set_custom_sound`, `load_custom_sound`, `clear_custom_sound`, with tests.
+- **Check Setup** (Help > Check Setup…, palette "Fahh: Check Setup"): git, Python, Node, cargo, WSL (Windows) and the language servers Fahh uses (rust-analyzer, typescript-language-server, pylsp or pyright), each with its version, or its one-line install command when missing. New Rust command `check_setup` (spawns through `core::proc::cmd`, 5 s timeout per tool), with version-parsing tests.
+- **Quiet update check at launch:** at most once a day, a toast once per new version, never a popup. Off switch in Settings > Updates; Help > About still checks on demand.
 - **Dockable layout** (dockview 8.5.1): drag Explorer, Search, Source Control, Extensions, Colour Theme, Fahh Local, Problems, Debug Console, Terminal and Run to the left or right side bar, the bottom panel, or the editor area as tabs.
 - **Editor splits:** Split Editor Right (Ctrl+\) and Split Editor Down; drag tabs between groups. A file open twice shares one model.
 - The layout is **saved per workspace** and restored on launch; **View > Reset Layout** brings back the default (Explorer left, Fahh Local right, panel below).
@@ -28,6 +32,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The old three-card welcome (Next, Next, Next; it still called Fahh Local "the AI panel") is replaced by the interactive tour above. Help > Welcome Tour is now Help > Welcome.
 - `window.prompt` / `confirm` / `alert` are gone: every question is an app dialog (focus stays inside, Esc cancels).
 - Narrow side bars show view tabs as icons, with the active one named and the full name as a tooltip (no more "Sear…").
 - Clicking a file that is already open switches to its tab instead of re-reading it from disk (which replaced unsaved changes).

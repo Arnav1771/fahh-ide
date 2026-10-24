@@ -58,3 +58,36 @@ export async function checkForUpdates(current: string, fetcher: typeof fetch = f
     download: assetFor(rel.assets ?? [], ua)?.browser_download_url,
   };
 }
+
+// ─── The quiet check at launch (Settings > Updates, on by default) ─────────────
+
+export const UPDATE_CHECKED_KEY = "fahh-update-checked";
+export const UPDATE_TOLD_KEY = "fahh-update-told";
+const DAY = 24 * 60 * 60 * 1000;
+
+type KV = Pick<Storage, "getItem" | "setItem">;
+
+/**
+ * At most once a day, and a toast once per new version: never a popup, never a nag.
+ * Resolves to the toast text, or null when there is nothing to say (or the check failed).
+ */
+export async function launchUpdateCheck(
+  enabled: boolean,
+  store: KV,
+  current: string,
+  fetcher: typeof fetch = fetch,
+  now = Date.now()
+): Promise<string | null> {
+  if (!enabled) return null;
+  try {
+    const last = Number(store.getItem(UPDATE_CHECKED_KEY));
+    if (last > 0 && now >= last && now - last < DAY) return null;
+    store.setItem(UPDATE_CHECKED_KEY, String(now));
+    const r = await checkForUpdates(current, fetcher);
+    if (!r.newer || store.getItem(UPDATE_TOLD_KEY) === r.latest) return null;
+    store.setItem(UPDATE_TOLD_KEY, r.latest);
+    return `Fahh ${r.latest} is out. Help > About Fahh Editor has the download.`;
+  } catch {
+    return null; // offline or rate-limited: say nothing, try again tomorrow
+  }
+}

@@ -21,7 +21,7 @@ The header hosts full desktop menus:
 - **Go**: Back (`Alt+Left`), Forward (`Alt+Right`), Go to File (`Ctrl+P`), Go to Line (`Ctrl+G`), Next / Previous Problem, Go to Definition, Go to References.
 - **Run**: Start Debugging, Run Without Debugging, Stop Debugging.
 - **Terminal**: New Terminal (`Ctrl+Shift+` `), Split Terminal (`Ctrl+Shift+5`), Clear Terminal.
-- **Help**: Welcome Tour, Documentation, Optional Tools, Ring the Bell, Report Issue, **About** (version, release notes, Check for updates against the latest GitHub release).
+- **Help**: Welcome (the first-run tour), Check Setup…, Documentation, Optional Tools, Ring the Bell, Report Issue, **About** (version, release notes, Check for updates against the latest GitHub release).
 
 The title bar also has **Back / Forward** arrows next to the Search box. The title bar and menus follow the colour theme (light under Fahh Light).
 

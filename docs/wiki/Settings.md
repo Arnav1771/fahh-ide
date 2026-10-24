@@ -15,9 +15,11 @@ Every change applies at once (all open editors update without reopening) and is 
 | Editor | Insert spaces | Off: Tab inserts a tab character. |
 | Editor | Auto save | Saves a second after you stop typing, and when the window loses focus (the same switch as File > Auto Save). |
 | Fahh | Volume | 0 to 100. 0 is silent; the mute button in the status bar still works on top of it. The bell button plays a test fahh. |
+| Fahh | Error sound | The default fahh or your own mp3, wav, ogg or m4a (up to 5 MB): Change sound…, preview either one, Reset to default. Fahh keeps a copy in its data folder (`FAHH_DATA_DIR`, or the OS data dir + `fahh/sounds`), so the original can move. It plays everywhere the fahh does, at the volume above, and mute silences it. |
 | Fahh | Lifetime fahhs | How many fahhs this editor has ever let out (also in the status bar tooltip). |
 | Terminal | Font size | 8 to 32 px. |
 | Session | Restore session on launch | Reopen the last folder or workspace with its tabs back in their dock groups. A tab whose file is gone comes back as a Welcome placeholder. |
+| Updates | Check for updates at launch | On by default. At most once a day; when a newer release is out you get one toast per version, never a popup. Help > About checks on demand. |
 
 **Reset to defaults** puts everything back.
 

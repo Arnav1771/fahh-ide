@@ -56,6 +56,20 @@ Coupled with a **2D infinite spatial canvas**, the **Fahh Local coding agent**, 
 
 ---
 
+## First run
+
+No account, no signup: everything stays on your machine. The first launch opens a short tour over the real editor, five steps, each one a thing to do (every step has Skip, and so does the whole tour):
+
+1. **Sound:** ring the bell, set the volume or mute, and keep the fahh or pick your own sound file.
+2. **Code:** Open Folder, Open Recent, or a VS Code `.code-workspace` (WSL folders work on Windows). Or break the one-line try-it box and hear it.
+3. **Look:** Fahh Gold, Fahh Dark or Fahh Light, applied as you click; move Explorer to the right and back. Drag any view anywhere; View > Reset Layout undoes it.
+4. **Fahh Local** (optional): pick a provider, paste a key, Test connection.
+5. **Check Setup:** git, Python, Node, cargo, WSL and the language servers, with versions or the install command for what is missing. Plus the once-a-day update check (Settings > Updates turns it off).
+
+It shows once. **Help > Welcome** brings it back; **Help > Check Setup…** (or "Fahh: Check Setup" in the palette) reruns the check any time.
+
+---
+
 ## Try it without installing
 
 **[play.fahh →](https://arnav1771.github.io/fahh-ide/play.html)**
@@ -192,7 +206,9 @@ working out of the box, not so it sounds like the meme.
 
 ### Swapping in your own sound
 
-Drop your own clip over the bundled one:
+**In the app:** Settings > Fahh > Error sound > Change sound… (also step 1 of the welcome tour). Any mp3, wav, ogg or m4a up to 5 MB; Fahh keeps its own copy, and Reset to default brings the fahh back.
+
+**In a build of your own,** drop your clip over the bundled one:
 
 ```bash
 cp /path/to/your-sound.mp3 src-tauri/assets/fahh.mp3

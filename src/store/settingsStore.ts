@@ -18,6 +18,10 @@ export interface Settings {
   terminalFontSize: number;
   /** Reopen the last folder and its tabs at launch. */
   restoreSession: boolean;
+  /** The custom error sound's file name; "" plays the bundled fahh. */
+  fahhSound: string;
+  /** Look for a new release at launch (at most once a day; a toast, never a popup). */
+  checkUpdatesOnLaunch: boolean;
 }
 
 export const SETTINGS_KEY = "fahh-settings";
@@ -33,6 +37,8 @@ export const DEFAULT_SETTINGS: Settings = {
   fahhVolume: 80,
   terminalFontSize: 12,
   restoreSession: true,
+  fahhSound: "",
+  checkUpdatesOnLaunch: true,
 };
 
 const clamp = (v: unknown, lo: number, hi: number, d: number) =>
@@ -60,6 +66,8 @@ export function parseSettings(raw: string | null | undefined): Settings {
     fahhVolume: clamp(o.fahhVolume, 0, 100, d.fahhVolume),
     terminalFontSize: clamp(o.terminalFontSize, 8, 32, d.terminalFontSize),
     restoreSession: bool(o.restoreSession, d.restoreSession),
+    fahhSound: typeof o.fahhSound === "string" ? o.fahhSound.slice(0, 200) : d.fahhSound,
+    checkUpdatesOnLaunch: bool(o.checkUpdatesOnLaunch, d.checkUpdatesOnLaunch),
   };
 }
 

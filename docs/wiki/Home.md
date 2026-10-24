@@ -8,6 +8,7 @@
 
 | Wiki Page | Description |
 |---|---|
+| **[Getting Started](Getting-Started)** | The first-run tour (sound, code, look, Fahh Local, Check Setup), your own error sound, update checks |
 | **[CATE Spatial Canvas](CATE-Spatial-Canvas)** | Infinite 2D zooming canvas, Monaco editor nodes, dynamic font scaling, 1:1 crisp focus (`Alt+1`) |
 | **[VS Code Multi-Terminal](VS-Code-Multi-Terminal)** | Multi-session terminal tabs, side-by-side split panes (`Ctrl+\`), shell selector |
 | **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)** | Material, Fahh Colour and Minimal icon themes; how file and folder icons are chosen |
