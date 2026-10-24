@@ -25,10 +25,37 @@ pub fn setup(app: &mut App) -> Result<()> {
     Ok(())
 }
 
-/// A second `fahh <path>` while running: when a path/project is given, we open a NEW WINDOW
-/// so the user can work on multiple projects simultaneously without replacing their active workspace.
+/// A plain file (not a workspace file) goes to an existing window as a tab, like `code file`.
+/// Each extra window is a whole WebView renderer (~160 MB), so `fahh a.ts b.ts ...` from a shell
+/// used to cost a window per file.
+fn opens_as_tab(req: &cli::OpenRequest) -> bool {
+    let lower = req.path.to_ascii_lowercase();
+    req.kind == cli::Kind::File && !lower.ends_with(".code-workspace") && !lower.ends_with(".fahh-workspace")
+}
+
+/// The window a forwarded file should land in: the focused one, else main, else any.
+fn target_window(app: &tauri::AppHandle) -> Option<tauri::WebviewWindow> {
+    let windows = app.webview_windows();
+    windows
+        .values()
+        .find(|w| w.is_focused().unwrap_or(false))
+        .cloned()
+        .or_else(|| app.get_webview_window("main"))
+        .or_else(|| windows.values().next().cloned())
+}
+
+/// A second `fahh <path>` while running: a file opens as a tab in an existing window; a folder
+/// (or workspace file) opens a NEW WINDOW so several projects can be open side by side.
 pub fn on_second_launch(app: &tauri::AppHandle, argv: Vec<String>, cwd: String) {
     match cli::parse(&argv, std::path::Path::new(&cwd)) {
+        cli::Launch::Open(req) if opens_as_tab(&req) => {
+            if let Some(w) = target_window(app) {
+                let _ = w.unminimize();
+                let _ = w.show();
+                let _ = w.set_focus();
+                let _ = w.emit_to(w.label(), "fahh://open", req);
+            }
+        }
         cli::Launch::Open(req) => {
             let timestamp = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
@@ -152,4 +179,22 @@ pub fn open_new_window(
     let _ = win.show();
     let _ = win.set_focus();
     Ok(label)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{cli, opens_as_tab};
+
+    fn req(path: &str, kind: cli::Kind) -> cli::OpenRequest {
+        cli::OpenRequest { path: path.into(), line: None, kind }
+    }
+
+    #[test]
+    fn files_open_as_tabs_folders_and_workspaces_get_windows() {
+        assert!(opens_as_tab(&req("C:\\p\\a.ts", cli::Kind::File)));
+        assert!(!opens_as_tab(&req("C:\\p", cli::Kind::Dir)));
+        assert!(!opens_as_tab(&req("C:\\p\\team.code-workspace", cli::Kind::File)));
+        assert!(!opens_as_tab(&req("/p/x.FAHH-WORKSPACE", cli::Kind::File)));
+        assert!(!opens_as_tab(&req("/p/new.ts", cli::Kind::Missing)));
+    }
 }
