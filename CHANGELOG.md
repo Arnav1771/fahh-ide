@@ -9,6 +9,10 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Changed
+
+- `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
+
 ### Added
 
 - **First run, rebuilt:** a five-step welcome where every step is something to do, with ticks as you go and Skip on every step plus Skip tour. 1 Sound: ring the bell, set the volume or mute, and pick your own error sound. 2 Code: Open Folder, Open Recent, open a VS Code `.code-workspace`, a WSL hint on Windows, and a one-line try-it box where breaking the JavaScript rings the real fahh. 3 Look: Fahh Gold, Fahh Dark or Fahh Light applied live behind the card, and a button that really moves Explorer to the right and back. 4 Fahh Local (optional): provider, key and a real Test connection (the models list). 5 Check Setup, live. Shown once; **Help > Welcome** (or "Show Welcome") brings it back. Focus trap, Esc, Left/Right between steps, fits a 480 px window.
