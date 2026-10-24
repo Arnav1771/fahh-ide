@@ -253,5 +253,5 @@ fresh context and only its final message returns to the parent. Safety:
 - Smart mode trusts a model's judgement of a command: it is a convenience, not a sandbox.
 - Permission grants made with "Always" are saved per project; there are no per-session grants.
 - Not built: MCP, worktree sessions, autonomous mode (needs a sandbox), rebindable shortcuts.
-- The terminal binary is bundled next to the editor by `scripts/prepare-sidecar.mjs`
-  (Tauri `externalBin`); a plain `cargo build` leaves a stand-in instead.
+- The terminal binary is a `[[bin]]` of the package; Tauri ships every bin next to the
+  editor, so installers include `fahh-agent` with no sidecar config.

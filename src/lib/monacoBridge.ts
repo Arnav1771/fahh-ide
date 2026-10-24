@@ -154,10 +154,16 @@ export function runEditorAction(id: string): boolean {
  * The Monaco model path for a file on disk. Each file gets its own model, so
  * TypeScript sees the real extension (a .tsx file parses JSX) and each tab
  * keeps its own undo history. Windows paths become `file:///C:/...`, because
- * a bare `C:\...` would be read as a URI with the scheme "c".
+ * a bare `C:\...` would be read as a URI with the scheme "c". UNC paths
+ * (`\\wsl.localhost\Ubuntu\...`) keep their host as the URI authority:
+ * `file:////host/...` is rejected by Monaco and blanked the whole app.
  */
 export function modelPathFor(path: string): string {
   const forward = path.replace(/\\/g, "/");
+  if (forward.startsWith("//")) {
+    const slash = forward.indexOf("/", 2);
+    return slash < 0 ? `file://${forward.slice(2)}/` : `file://${forward.slice(2, slash)}${forward.slice(slash)}`;
+  }
   return forward.startsWith("/") ? `file://${forward}` : `file:///${forward}`;
 }
 

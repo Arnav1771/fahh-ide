@@ -25,6 +25,7 @@ import { modeOf, usePreviewStore } from "../../store/previewStore";
 import { ContextMenu, type MenuEntry } from "../ContextMenu";
 import { revealPath } from "../../lib/tauri";
 import { useToastStore } from "../../store/toastStore";
+import { ErrorBoundary } from "../ErrorBoundary";
 import {
   closeEditorGroup,
   closeEditorPanel,
@@ -50,7 +51,9 @@ function ViewHost({ params }: IDockviewPanelProps<{ viewId: string }>) {
   const C = def.component;
   return (
     <div className={`fahh-sidebar flex h-full w-full flex-col overflow-hidden ${def.defaultLocation === "panel" ? "bg-fahh-bg" : "bg-fahh-sidebar"}`}>
-      <C />
+      <ErrorBoundary label={def.title ?? params.viewId}>
+        <C />
+      </ErrorBoundary>
     </div>
   );
 }
@@ -60,8 +63,10 @@ function EditorPanel({ api, params }: IDockviewPanelProps<{ path: string }>) {
   const monacoTheme = THEME_DEFINITIONS.find((d) => d.id === activeTheme)?.monacoTheme ?? "vs-dark";
   return (
     <div className="flex h-full w-full min-h-0 flex-col">
-      <Breadcrumbs path={params.path} />
-      <EditorPane path={params.path} dock={api} monacoTheme={monacoTheme} />
+      <ErrorBoundary label={`Editor (${params.path.split(/[\\/]/).pop()})`}>
+        <Breadcrumbs path={params.path} />
+        <EditorPane path={params.path} dock={api} monacoTheme={monacoTheme} />
+      </ErrorBoundary>
     </div>
   );
 }

@@ -7,12 +7,11 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build && node scripts/prepare-sidecar.mjs",
+    "beforeBuildCommand": "pnpm build",
     "frontendDist": "../dist"
   },
   "bundle": {
     "active": true,
-    "externalBin": ["binaries/fahh-agent"],
     "targets": "all",
     "icon": [
       "icons/32x32.png",

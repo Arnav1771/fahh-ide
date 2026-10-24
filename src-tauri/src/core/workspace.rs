@@ -62,7 +62,9 @@ pub fn get_file_tree(root: String) -> Result<FileEntry, String> {
 #[tauri::command]
 pub fn read_file(path: String) -> Result<String, String> {
     match std::fs::read(&path) {
-        Ok(bytes) => Ok(String::from_utf8_lossy(&bytes).to_string()),
+        // Windows tools (PowerShell, Notepad, some exporters) prefix a UTF-8 BOM; it broke JSON
+        // parsing (notebooks, .code-workspace) and showed as a stray glyph in the editor.
+        Ok(bytes) => Ok(String::from_utf8_lossy(bytes.strip_prefix(b"\xEF\xBB\xBF").unwrap_or(&bytes)).to_string()),
         Err(e) => Err(e.to_string()),
     }
 }
@@ -534,5 +536,20 @@ mod tests {
     #[test]
     fn reveal_path_rejects_missing_paths() {
         assert!(reveal_path("/definitely/not/here/fahh".into()).unwrap_err().contains("does not exist"));
+    }
+}
+
+#[cfg(test)]
+mod bom_tests {
+    use super::read_file;
+
+    #[test]
+    fn read_file_strips_utf8_bom() {
+        let p = std::env::temp_dir().join(format!("fahh-bom-{}.json", std::process::id()));
+        std::fs::write(&p, b"\xEF\xBB\xBF{\"a\":1}").unwrap();
+        assert_eq!(read_file(p.to_string_lossy().to_string()).unwrap(), "{\"a\":1}");
+        std::fs::write(&p, b"{\"b\":2}").unwrap();
+        assert_eq!(read_file(p.to_string_lossy().to_string()).unwrap(), "{\"b\":2}");
+        let _ = std::fs::remove_file(&p);
     }
 }
