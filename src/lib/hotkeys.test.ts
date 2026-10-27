@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { debugKeyAction, isAgentToggle, keepsOwnCtrlL, matchesKeys } from "./hotkeys";
+import { debugKeyAction, isAgentToggle, isSessionSearch, keepsOwnCtrlL, matchesKeys } from "./hotkeys";
 
 const key = (k: string, mods: Partial<{ ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }> = {}) => ({
   key: k,
@@ -28,10 +28,12 @@ describe("Fahh Local toggle shortcut", () => {
     expect(isAgentToggle(key("l", { ctrlKey: true }), inside(".xterm"))).toBe(false);
   });
 
-  it("Ctrl+Shift+A toggles everywhere, editor included", () => {
-    expect(isAgentToggle(key("a", { ctrlKey: true, shiftKey: true }), inside(".monaco-editor"))).toBe(true);
-    expect(isAgentToggle(key("A", { ctrlKey: true, shiftKey: true }), inside(".xterm"))).toBe(true);
-    expect(isAgentToggle(key("a", { metaKey: true, shiftKey: true }), null)).toBe(true);
+  it("Ctrl+Shift+A searches sessions everywhere, editor included (it no longer toggles)", () => {
+    expect(isSessionSearch(key("a", { ctrlKey: true, shiftKey: true }))).toBe(true);
+    expect(isSessionSearch(key("A", { ctrlKey: true, shiftKey: true }))).toBe(true);
+    expect(isSessionSearch(key("a", { metaKey: true, shiftKey: true }))).toBe(true);
+    expect(isSessionSearch(key("a", { ctrlKey: true }))).toBe(false);
+    expect(isAgentToggle(key("a", { ctrlKey: true, shiftKey: true }), null)).toBe(false);
   });
 
   it("ignores everything else", () => {

@@ -4,6 +4,7 @@
  * "open this file at this line" for search results, Problems and history.
  */
 import { useEditorStore } from "../store/editorStore";
+import { ensureEditorMode } from "../store/layoutModeStore";
 import { useToastStore } from "../store/toastStore";
 import { NavHistory, cycleIndex, touchMru, type Loc } from "./history";
 import { getActiveDocument, revealLine } from "./monacoBridge";
@@ -63,6 +64,7 @@ async function show(path: string): Promise<void> {
 
 /** Open (or switch to) a file and put the cursor on a line once its editor is up. */
 export async function openAt(path: string, line?: number, column = 1): Promise<void> {
+  ensureEditorMode();
   await show(path);
   if (!line) return;
   // The editor mounts (or takes focus) a moment after the tab does: jump once it is the one on screen.

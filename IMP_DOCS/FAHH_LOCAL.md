@@ -163,9 +163,12 @@ judge_model; flags win), `--export <path|->`, `--fast-model`, `--judge-model`. S
 
 ## Panel shortcuts
 
-- **Ctrl+Shift+A** toggles the panel from anywhere. **Ctrl+L** does too, except while the
-  cursor is in the code editor (it keeps "select line", the VS Code convention) or the
-  terminal (clear screen).
+- **Ctrl+L** toggles the panel, except while the cursor is in the code editor (it keeps
+  "select line", the VS Code convention) or the terminal (clear screen).
+- **Ctrl+Shift+A** searches the folder's saved sessions (from anywhere); picking one opens it.
+- **Agent mode**: the Agent | Editor switch at the top left turns the window into the chat,
+  with New session and the sessions list on the left. The editor stays open underneath;
+  anything that needs it (a view, a file, a debug stop) switches back.
 - **Esc** stops a running turn; with the "/" or "@" menu open it only closes the menu.
 - **Enter** or **Ctrl+Enter** sends, **Shift+Enter** adds a line.
 - While a turn runs: **Enter** queues the prompt (it runs when the turn ends; the queue shows

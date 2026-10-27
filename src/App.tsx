@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { initAgentEvents, useAgentStore } from "./store/agentStore";
-import { debugKeyAction, isAgentToggle } from "./lib/hotkeys";
+import { debugKeyAction, isAgentToggle, isSessionSearch } from "./lib/hotkeys";
+import { useLayoutModeStore } from "./store/layoutModeStore";
+import { AgentMode, onSessionSearch } from "./components/AgentMode";
+import { ago, listSessions } from "./lib/agentSessionsList";
+import type { AgentSessionInfo } from "./lib/types";
 import { useDebugStore } from "./store/debugStore";
 import { createLaunchJson } from "./lib/debugSession";
 import { runDebugAction, runWithoutDebugging } from "./lib/debugActions";
@@ -125,6 +129,27 @@ export default function App() {
 
   const { activeTheme, setTheme } = useThemeStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const layoutMode = useLayoutModeStore((s) => s.mode);
+  // Ctrl+Shift+A: search Fahh Local sessions (both modes); picking one opens it.
+  const [sessionSearch, setSessionSearch] = useState<AgentSessionInfo[] | null>(null);
+  const openSessionSearch = () => {
+    setPaletteOpen(false);
+    void listSessions().then(setSessionSearch);
+  };
+  useEffect(() => onSessionSearch(openSessionSearch), []);
+  const sessionCommands = useMemo<PaletteCommand[]>(
+    () =>
+      (sessionSearch ?? []).map((s) => ({
+        id: `session.${s.id}`,
+        group: ago(s.updated),
+        label: s.title || "Untitled",
+        run: () => {
+          void useAgentStore.getState().loadSession(s.id);
+          if (useLayoutModeStore.getState().mode === "editor") revealView("agent");
+        },
+      })),
+    [sessionSearch]
+  );
   const [quickOpen, setQuickOpen] = useState(false);
   const cursorPosition = useEditorStore((s) => s.cursorPosition);
   const activeTab = useEditorStore((s) => s.activeTab);
@@ -350,6 +375,9 @@ export default function App() {
       { id: "debug.toggleBreakpoint", group: "Run", label: "Toggle Breakpoint", keys: ["F9"], keywords: "debugger", run: () => runDebugAction("toggleBreakpoint") },
       { id: "debug.removeAllBreakpoints", group: "Run", label: "Remove All Breakpoints", keywords: "debugger clear", run: () => useDebugStore.getState().clearBreakpoints() },
       { id: "debug.launchJson", group: "Run", label: "Open launch.json (create if missing)", keywords: "debug configuration launch config", run: () => void createLaunchJson() },
+      { id: "view.agentMode", group: "View", label: "Switch to Agent Mode", keywords: "chat sessions fahh local ai", run: () => useLayoutModeStore.getState().setMode("agent") },
+      { id: "view.editorMode", group: "View", label: "Switch to Editor Mode", keywords: "workbench code files", run: () => useLayoutModeStore.getState().setMode("editor") },
+      { id: "agent.searchSessions", group: "Fahh Local", label: "Search Sessions", keys: ["Ctrl", "Shift", "A"], keywords: "history chats agent", run: openSessionSearch },
       { id: "view.runDebug", group: "View", label: "Run and Debug", keys: ["Ctrl", "Shift", "D"], keywords: "debugger breakpoints", run: () => revealView("runDebug") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
@@ -465,11 +493,15 @@ export default function App() {
         e.stopPropagation();
         setPaletteOpen(false);
         setQuickOpen((v) => !v);
-      } else if (isAgentToggle(e, e.target as Element | null)) {
-        // Ctrl+L (not inside the editor or terminal, where it means select-line / clear)
-        // or Ctrl+Shift+A (everywhere): toggle Fahh Local
+      } else if (isSessionSearch(e)) {
         e.preventDefault();
         e.stopPropagation();
+        openSessionSearch();
+      } else if (isAgentToggle(e, e.target as Element | null)) {
+        // Ctrl+L (not inside the editor or terminal, where it means select-line / clear): toggle Fahh Local
+        e.preventDefault();
+        e.stopPropagation();
+        if (useLayoutModeStore.getState().mode === "agent") return;
         toggleView("agent");
       } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "w") {
         // Ctrl+W: close the active tab, asking first when it is unsaved.
@@ -612,8 +644,10 @@ export default function App() {
           <SpatialCanvas />
         </div>
       ) : (
-        /* ── Workspace Area (Activity bar + the dock) ── */
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <>
+        {layoutMode === "agent" && <AgentMode />}
+        {/* ── Workspace Area (Activity bar + the dock); kept mounted, hidden, in agent mode ── */}
+        <div className="flex flex-1 min-h-0 overflow-hidden" style={layoutMode === "agent" ? { display: "none" } : undefined}>
           {/* Non-rendering LSP bridge */}
           <LspBridge />
 
@@ -690,6 +724,7 @@ export default function App() {
         </div>
       </div>
       </div>
+        </>
       )}
 
       {showInstaller && (
@@ -703,6 +738,15 @@ export default function App() {
       <DialogHost />
       <Toasts />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
+      <CommandPalette
+        open={sessionSearch !== null}
+        onClose={() => setSessionSearch(null)}
+        commands={sessionCommands}
+        label="Search sessions"
+        placeholder="Search Fahh Local sessions"
+        recentKey="fahh-session-search-recent"
+        emptyText="No saved sessions in this folder yet."
+      />
       <CommandPalette
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
@@ -718,7 +762,7 @@ export default function App() {
 }
 
 /** The activity bar, top to bottom (Colour Theme sits at the foot). */
-const ACTIVITY = ["explorer", "search", "git", "debug", "agent", "extensions"];
+const ACTIVITY = ["explorer", "search", "git", "runDebug", "agent", "extensions"];
 
 function ViewBtn({ id, active }: { id: string; active: boolean }) {
   const v = getView(id);

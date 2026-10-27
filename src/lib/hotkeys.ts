@@ -23,12 +23,15 @@ export function keepsOwnCtrlL(target: Targetish | null | undefined): boolean {
   return !!target?.closest?.(".monaco-editor, .xterm");
 }
 
-/** Ctrl/Cmd+L (not inside the editor or terminal) or Ctrl/Cmd+Shift+A (anywhere) toggles Fahh Local. */
+/** Ctrl/Cmd+L (not inside the editor or terminal) toggles Fahh Local. */
 export function isAgentToggle(e: KeyLike, target: Targetish | null | undefined): boolean {
-  if (!(e.ctrlKey || e.metaKey) || e.altKey) return false;
-  const k = e.key.toLowerCase();
-  if (e.shiftKey) return k === "a";
-  return k === "l" && !keepsOwnCtrlL(target);
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return false;
+  return e.key.toLowerCase() === "l" && !keepsOwnCtrlL(target);
+}
+
+/** Ctrl/Cmd+Shift+A (anywhere): search Fahh Local sessions. */
+export function isSessionSearch(e: KeyLike): boolean {
+  return (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "a";
 }
 
 /** Does the event match a shortcut written like "Ctrl+Shift+E" or "F9"? Ctrl also matches Cmd. */
