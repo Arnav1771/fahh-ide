@@ -188,6 +188,33 @@ export const ptyResize = (id: number, cols: number, rows: number) => invoke<void
 
 export const ptyKill = (id: number) => invoke<void>("pty_kill", { id });
 
+// ─── Remote Explorer ──────────────────────────────────────────────────────────
+
+export interface WslDistro {
+  name: string;
+  default: boolean;
+  running: boolean;
+  version: number;
+}
+export interface SshHost {
+  name: string;
+  hostname: string | null;
+  user: string | null;
+}
+export interface Container {
+  id: string;
+  name: string;
+  image: string;
+  status: string;
+}
+
+export const remoteWslDistros = () => invoke<WslDistro[]>("remote_wsl_distros");
+/** The distro user's home as a Windows path (\\wsl.localhost\<distro>\home\me). */
+export const remoteWslHome = (distro: string) => invoke<string>("remote_wsl_home", { distro });
+export const remoteSshHosts = () => invoke<SshHost[]>("remote_ssh_hosts");
+/** Running containers; rejects with a readable reason when Docker is missing or stopped. */
+export const remoteContainers = () => invoke<Container[]>("remote_containers");
+
 export const launchAgyTerminal = (cwd?: string, args?: string[]) =>
   invoke<string>("launch_agy_terminal", { cwd, args });
 

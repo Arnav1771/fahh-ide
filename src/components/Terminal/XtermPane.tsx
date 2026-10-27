@@ -85,7 +85,7 @@ export function XtermPane({ session, active, onFocus }: { session: TerminalSessi
     const profile = session.profile || settings.terminalDefaultProfile;
     void attach(
       session.id,
-      { profile, cwd: useTerminalStore.getState().cwd, cols: term.cols, rows: term.rows },
+      { profile, cwd: session.cwd ?? useTerminalStore.getState().cwd, cols: term.cols, rows: term.rows },
       (data) => {
         term.write(data);
         noteLocalUrls(data.replace(ANSI, "")); // offer "localhost:5173" in the status bar

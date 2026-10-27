@@ -7,6 +7,8 @@ export interface TerminalSession {
   title: string;
   /** Profile id (PowerShell, cmd, Git Bash, WSL, bash…); "" uses the default profile. */
   profile: string;
+  /** Folder to start in; unset: the open workspace. */
+  cwd?: string;
 }
 
 export type TerminalSplitLayout = "horizontal" | "vertical";
@@ -20,7 +22,7 @@ interface TerminalStore {
   /** Folder new terminals start in (the open workspace). */
   cwd: string;
 
-  createSession: (profile?: string, title?: string) => string;
+  createSession: (profile?: string, title?: string, cwd?: string) => string;
   closeSession: (id: string) => void;
   setActiveSession: (id: string) => void;
   renameSession: (id: string, title: string) => void;
@@ -31,9 +33,9 @@ interface TerminalStore {
 }
 
 let counter = 0;
-const newSession = (profile = "", title?: string): TerminalSession => {
+const newSession = (profile = "", title?: string, cwd?: string): TerminalSession => {
   counter += 1;
-  return { id: `term-${Date.now()}-${counter}`, title: title ?? (profile || "terminal"), profile };
+  return { id: `term-${Date.now()}-${counter}`, title: title ?? (profile || "terminal"), profile, ...(cwd ? { cwd } : {}) };
 };
 
 const first = newSession();
@@ -46,8 +48,8 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   splitLayout: "horizontal",
   cwd: "",
 
-  createSession: (profile, title) => {
-    const s = newSession(profile, title);
+  createSession: (profile, title, cwd) => {
+    const s = newSession(profile, title, cwd);
     set((st) => ({ sessions: [...st.sessions, s], activeSessionId: s.id }));
     return s.id;
   },

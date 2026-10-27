@@ -378,6 +378,7 @@ export default function App() {
       { id: "view.agentMode", group: "View", label: "Switch to Agent Mode", keywords: "chat sessions fahh local ai", run: () => useLayoutModeStore.getState().setMode("agent") },
       { id: "view.editorMode", group: "View", label: "Switch to Editor Mode", keywords: "workbench code files", run: () => useLayoutModeStore.getState().setMode("editor") },
       { id: "agent.searchSessions", group: "Fahh Local", label: "Search Sessions", keys: ["Ctrl", "Shift", "A"], keywords: "history chats agent", run: openSessionSearch },
+      { id: "view.remote", group: "View", label: "Remote Explorer", keywords: "wsl ssh docker containers", run: () => revealView("remote") },
       { id: "view.runDebug", group: "View", label: "Run and Debug", keys: ["Ctrl", "Shift", "D"], keywords: "debugger breakpoints", run: () => revealView("runDebug") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
@@ -762,7 +763,7 @@ export default function App() {
 }
 
 /** The activity bar, top to bottom (Colour Theme sits at the foot). */
-const ACTIVITY = ["explorer", "search", "git", "runDebug", "agent", "extensions"];
+const ACTIVITY = ["explorer", "search", "git", "runDebug", "remote", "agent", "extensions"];
 
 function ViewBtn({ id, active }: { id: string; active: boolean }) {
   const v = getView(id);
