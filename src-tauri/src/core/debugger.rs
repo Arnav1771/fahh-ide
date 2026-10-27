@@ -129,9 +129,9 @@ fn adapter_command(adapter: &str, port: u16) -> Result<(String, Vec<String>), St
     let addr = format!("127.0.0.1:{port}");
     match adapter {
         "python" | "debugpy" => {
-            let python = if which::which("python3").is_ok() { "python3" } else { "python" };
+            // The runner's pick: never the Microsoft Store alias in WindowsApps, which does not run Python.
             Ok((
-                python.into(),
+                crate::core::runner::resolve_python(),
                 vec!["-m".into(), "debugpy.adapter".into(), "--host".into(), "127.0.0.1".into(), "--port".into(), port.to_string()],
             ))
         }
