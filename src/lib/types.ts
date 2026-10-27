@@ -52,7 +52,9 @@ export type ThemeId =
   | "github-dark"
   | "dracula"
   | "solarized-dark"
-  | "cate-obsidian";
+  | "cate-obsidian"
+  /** A colour theme installed from Open VSX (see lib/vscodeTheme). */
+  | `ext-${string}`;
 
 export interface RunConfig {
   /** Absolute path to the file to execute */

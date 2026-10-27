@@ -43,7 +43,8 @@ import { alertDialog, confirmDialog, promptDialog } from "./store/dialogStore";
 import { cycleTabs, endCycle, goBack, goForward, initNavigation, reopenClosedTab } from "./lib/navigation";
 import { loadRecent } from "./lib/recent";
 import { useSettingsStore } from "./store/settingsStore";
-import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
+import { allThemes, applyThemeCssVars } from "./components/ThemePanel";
+import { useExtensionThemes } from "./store/extensionThemesStore";
 import { Settings, Play, Globe } from "lucide-react";
 import { MenuBar } from "./components/MenuBar";
 import { SpatialCanvas } from "./components/SpatialCanvas";
@@ -230,10 +231,11 @@ export default function App() {
   }, [openFolder, openFileInEditor]);
 
   // Apply theme CSS vars on mount and whenever the active theme changes
+  const installedThemes = useExtensionThemes((s) => s.themes);
   useEffect(() => {
-    const def = THEME_DEFINITIONS.find((d) => d.id === activeTheme);
+    const def = allThemes(installedThemes).find((d) => d.id === activeTheme);
     if (def) applyThemeCssVars(def);
-  }, [activeTheme]);
+  }, [activeTheme, installedThemes]);
 
   // Fahh SFX. Errors from the backend (builds, language servers) go through
   // the HUD store, which owns the cooldown, the combo and the mute.
@@ -384,7 +386,7 @@ export default function App() {
       { id: "view.runDebug", group: "View", label: "Run and Debug", keys: ["Ctrl", "Shift", "D"], keywords: "debugger breakpoints", run: () => revealView("runDebug") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
-      ...THEME_DEFINITIONS.map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
+      ...allThemes().map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
       { id: "preview.toggle", group: "Preview", label: "Toggle Preview (PDF, Markdown, HTML, SVG, CSV)", keys: ["Ctrl", "Shift", "V"], keywords: "markdown html image csv pdf document preview source", run: () => {
         const path = useEditorStore.getState().activeTab;
         if (path && previewKindFor(path)) usePreviewStore.getState().toggleInPlace(path);

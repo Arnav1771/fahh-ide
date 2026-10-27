@@ -6,7 +6,7 @@ mod core;
 mod app;
 pub mod agent;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, pty, remote, formatter, plugin, error_detector, git, preview, syntax, setup};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, pty, remote, extensions, formatter, plugin, error_detector, git, preview, syntax, setup};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -82,6 +82,7 @@ pub fn run() {
             remote::remote_wsl_home,
             remote::remote_ssh_hosts,
             remote::remote_containers,
+            extensions::ext_install_theme,
             // Formatter (Phase 2)
             formatter::format_file,
             // Plugin registry (Phase 2)

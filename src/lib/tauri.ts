@@ -366,3 +366,16 @@ export const closeWindow = async () => {
     await getCurrentWindow().close();
   } catch {}
 };
+
+// ─── Extensions (Open VSX colour themes) ──────────────────────────────────────
+
+export interface ExtensionThemeFile {
+  label: string;
+  ui_theme: string;
+  json: string;
+  include_json: string | null;
+}
+
+/** Download an Open VSX extension and return its colour themes ("" version: latest); rejects for any other kind. */
+export const extInstallTheme = (namespace: string, name: string, version: string) =>
+  invoke<ExtensionThemeFile[]>("ext_install_theme", { namespace, name, version });

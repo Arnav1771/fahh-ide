@@ -48,6 +48,8 @@ futures-util = "0.3"
 regex = "1"
 # Real terminals (ConPTY on Windows)
 portable-pty = "0.9"
+# Colour themes from Open VSX (.vsix is a zip)
+zip = { version = "2", default-features = false, features = ["deflate"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"

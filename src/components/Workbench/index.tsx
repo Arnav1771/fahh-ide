@@ -12,7 +12,7 @@ import { EditorPane } from "../Editor/EditorPane";
 import { Breadcrumbs } from "../Breadcrumbs";
 import { TitleScreen } from "../Fahh/TitleScreen";
 import { ImpactLayer } from "../Fahh/ImpactLayer";
-import { THEME_DEFINITIONS } from "../ThemePanel";
+import { allThemes } from "../ThemePanel";
 import { getView, listViews } from "../../lib/viewRegistry";
 import { matchesKeys } from "../../lib/hotkeys";
 import { runCommand } from "../../lib/commands";
@@ -65,7 +65,7 @@ function ViewHost({ params }: IDockviewPanelProps<{ viewId: string }>) {
 
 function EditorPanel({ api, params }: IDockviewPanelProps<{ path: string }>) {
   const activeTheme = useThemeStore((s) => s.activeTheme);
-  const monacoTheme = THEME_DEFINITIONS.find((d) => d.id === activeTheme)?.monacoTheme ?? "vs-dark";
+  const monacoTheme = allThemes().find((d) => d.id === activeTheme)?.monacoTheme ?? "vs-dark";
   return (
     <div className="flex h-full w-full min-h-0 flex-col">
       <ErrorBoundary label={`Editor (${params.path.split(/[\\/]/).pop()})`}>
