@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
-  CommandOutput,
   DapConfig,
   Document,
   FahhConfig,
@@ -169,19 +168,28 @@ export const getOpenDocuments = () =>
 
 // ─── Terminal / command ───────────────────────────────────────────────────────
 
-export const executeCommand = (
-  command: string,
-  args: string[] = [],
-  cwd?: string,
-  /** "cmd" | "powershell" | "wsl"; omitted = the backend picks for the folder. */
-  shell?: string
-) => invoke<CommandOutput>("execute_command", { command, args, cwd, shell });
+/** A shell the terminal can start (PowerShell, Command Prompt, Git Bash, WSL, bash, zsh…). */
+export interface TerminalProfile {
+  id: string;
+  name: string;
+  program: string;
+  args: string[];
+}
+
+export const terminalProfiles = () => invoke<TerminalProfile[]>("terminal_profiles");
+
+/** Start a shell on a pseudo-terminal; output arrives as `pty://data`, the end as `pty://exit`. */
+export const ptySpawn = (profile: string, cwd: string, cols: number, rows: number) =>
+  invoke<number>("pty_spawn", { profile, cwd, cols, rows });
+
+export const ptyWrite = (id: number, data: string) => invoke<void>("pty_write", { id, data });
+
+export const ptyResize = (id: number, cols: number, rows: number) => invoke<void>("pty_resize", { id, cols, rows });
+
+export const ptyKill = (id: number) => invoke<void>("pty_kill", { id });
 
 export const launchAgyTerminal = (cwd?: string, args?: string[]) =>
   invoke<string>("launch_agy_terminal", { cwd, args });
-
-export const writeStdin = (pid: number, data: string) =>
-  invoke<void>("write_stdin", { pid, data });
 
 // ─── Installer / tools ────────────────────────────────────────────────────────
 

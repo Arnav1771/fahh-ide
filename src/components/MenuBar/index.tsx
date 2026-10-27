@@ -50,6 +50,7 @@ import { OPEN_FOLDER_EVENT, OPEN_FILE_EVENT } from "../../lib/commands";
 import { useFahhStore } from "../../store/fahhStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
+import { useTerminalStore } from "../../store/terminalStore";
 import { useSpatialStore } from "../../store/spatialStore";
 import { saveWorkspaceAs, openWorkspaceFromFile, openRecentEntry } from "../../lib/workspaceManager";
 import { useWorkspace } from "../../hooks/useWorkspace";
@@ -633,7 +634,18 @@ export function MenuBar({
           label: "New Terminal",
           keys: ["Ctrl", "Shift", "`"],
           icon: <TerminalIcon size={13} />,
-          action: () => onSetBottomTab("terminal"),
+          action: () => {
+            useTerminalStore.getState().createSession();
+            onSetBottomTab("terminal");
+          },
+        },
+        {
+          label: "Split Terminal",
+          keys: ["Ctrl", "Shift", "5"],
+          action: () => {
+            useTerminalStore.getState().splitTerminal();
+            onSetBottomTab("terminal");
+          },
         },
         {
           label: "Launch Antigravity CLI (agy)",

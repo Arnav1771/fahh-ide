@@ -45,23 +45,15 @@ describe("file-system wrappers", () => {
   });
 });
 
-describe("execute_command", () => {
-  it("defaults args to an empty array so the Rust side never sees null", async () => {
-    await tauri.executeCommand("ls");
-    expect(invoke).toHaveBeenCalledWith("execute_command", {
-      command: "ls",
-      args: [],
-      cwd: undefined,
-    });
+describe("terminal wrappers", () => {
+  it("spawns a profile in a folder at a size", async () => {
+    await tauri.ptySpawn("pwsh", "C:\\proj", 120, 30);
+    expect(invoke).toHaveBeenCalledWith("pty_spawn", { profile: "pwsh", cwd: "C:\\proj", cols: 120, rows: 30 });
   });
 
-  it("forwards args and cwd when given", async () => {
-    await tauri.executeCommand("git", ["status"], "/repo");
-    expect(invoke).toHaveBeenCalledWith("execute_command", {
-      command: "git",
-      args: ["status"],
-      cwd: "/repo",
-    });
+  it("writes keystrokes to a pty", async () => {
+    await tauri.ptyWrite(3, "ls\r");
+    expect(invoke).toHaveBeenCalledWith("pty_write", { id: 3, data: "ls\r" });
   });
 });
 

@@ -6,7 +6,7 @@ mod core;
 mod app;
 pub mod agent;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git, preview, syntax, setup};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, pty, formatter, plugin, error_detector, git, preview, syntax, setup};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -73,6 +73,11 @@ pub fn run() {
             debugger::debug_start,
             debugger::debug_request,
             debugger::debug_stop,
+            pty::terminal_profiles,
+            pty::pty_spawn,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill,
             // Formatter (Phase 2)
             formatter::format_file,
             // Plugin registry (Phase 2)

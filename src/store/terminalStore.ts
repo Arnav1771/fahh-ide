@@ -1,279 +1,92 @@
 import { create } from "zustand";
-import { pushHistory } from "../lib/termHistory";
-import { detectShell, shellName } from "../lib/shellCwd";
+import { kill } from "../lib/ptySessions";
 
-export interface TerminalLine {
-  text: string;
-  type: "stdout" | "stderr" | "info";
-}
-
+/** One terminal tab: a shell on a pseudo-terminal (see lib/ptySessions). */
 export interface TerminalSession {
   id: string;
   title: string;
-  shell: string;
-  lines: TerminalLine[];
-  cwd: string;
-  history: string[];
+  /** Profile id (PowerShell, cmd, Git Bash, WSL, bash…); "" uses the default profile. */
+  profile: string;
 }
-
-// On Windows a plain tab is "auto": WSL for a folder inside WSL, cmd otherwise.
-const defaultShell = detectShell() === "cmd" ? "auto" : "posix";
-const defaultName = detectShell() === "cmd" ? "terminal" : shellName("posix");
-const initialTitle = `1: ${defaultName}`;
-
-const createInitialSession = (): TerminalSession => ({
-  id: "term-1",
-  title: initialTitle,
-  shell: defaultShell,
-  lines: [],
-  cwd: "",
-  history: [],
-});
 
 export type TerminalSplitLayout = "horizontal" | "vertical";
 
 interface TerminalStore {
   sessions: TerminalSession[];
   activeSessionId: string;
-
-  // Split pane support (side-by-side terminal panes like VS Code):
   splitSessionIds: string[];
   isSplitView: boolean;
   splitLayout: TerminalSplitLayout;
-
-  // Active session shortcuts:
-  lines: TerminalLine[];
+  /** Folder new terminals start in (the open workspace). */
   cwd: string;
-  history: string[];
 
-  // Session management:
-  createSession: (customShell?: string, title?: string) => string;
+  createSession: (profile?: string, title?: string) => string;
   closeSession: (id: string) => void;
   setActiveSession: (id: string) => void;
   renameSession: (id: string, title: string) => void;
-
-  // Split view management:
-  splitTerminal: (customShell?: string) => string;
-  toggleSplitView: () => void;
+  splitTerminal: (profile?: string) => string;
   setSplitLayout: (layout: TerminalSplitLayout) => void;
   closeSplitPane: (id: string) => void;
-
-  // Output & state for active or specific session:
-  remember: (cmd: string, sessionId?: string) => void;
-  addLine: (text: string, type?: TerminalLine["type"], sessionId?: string) => void;
-  clearLines: (sessionId?: string) => void;
-  setCwd: (cwd: string, sessionId?: string) => void;
+  setCwd: (cwd: string) => void;
 }
 
-const initialSession = createInitialSession();
+let counter = 0;
+const newSession = (profile = "", title?: string): TerminalSession => {
+  counter += 1;
+  return { id: `term-${Date.now()}-${counter}`, title: title ?? (profile || "terminal"), profile };
+};
+
+const first = newSession();
 
 export const useTerminalStore = create<TerminalStore>((set, get) => ({
-  sessions: [initialSession],
-  activeSessionId: initialSession.id,
-
-  splitSessionIds: [initialSession.id],
+  sessions: [first],
+  activeSessionId: first.id,
+  splitSessionIds: [first.id],
   isSplitView: false,
   splitLayout: "horizontal",
+  cwd: "",
 
-  lines: initialSession.lines,
-  cwd: initialSession.cwd,
-  history: initialSession.history,
+  createSession: (profile, title) => {
+    const s = newSession(profile, title);
+    set((st) => ({ sessions: [...st.sessions, s], activeSessionId: s.id }));
+    return s.id;
+  },
 
-  createSession: (customShell, title) => {
-    const state = get();
-    const count = state.sessions.length + 1;
-    const shell = customShell ?? defaultShell;
-    const sessionTitle = title ?? `${count}: ${customShell ?? defaultName}`;
-    const newSession: TerminalSession = {
-      id: `term-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      title: sessionTitle,
-      shell,
-      lines: [],
-      cwd: state.cwd || "",
-      history: [],
-    };
-
+  splitTerminal: (profile) => {
+    const { activeSessionId, splitSessionIds, isSplitView } = get();
+    const id = get().createSession(profile);
     set({
-      sessions: [...state.sessions, newSession],
-      activeSessionId: newSession.id,
-      lines: newSession.lines,
-      cwd: newSession.cwd,
-      history: newSession.history,
+      isSplitView: true,
+      splitSessionIds: isSplitView && splitSessionIds.includes(activeSessionId) ? [...splitSessionIds, id] : [activeSessionId, id],
     });
-    return newSession.id;
+    return id;
   },
 
-  splitTerminal: (customShell) => {
-    const state = get();
-    const newId = state.createSession(customShell);
-    set((prev) => {
-      const nextSplitIds = prev.splitSessionIds.includes(prev.activeSessionId)
-        ? [...prev.splitSessionIds, newId]
-        : [prev.activeSessionId, newId];
-      return {
-        splitSessionIds: nextSplitIds,
-        isSplitView: true,
-      };
-    });
-    return newId;
-  },
+  setSplitLayout: (splitLayout) => set({ splitLayout }),
 
-  toggleSplitView: () => {
-    const state = get();
-    if (!state.isSplitView) {
-      if (state.sessions.length > 1) {
-        const other = state.sessions.find((s) => s.id !== state.activeSessionId);
-        set({
-          isSplitView: true,
-          splitSessionIds: [state.activeSessionId, other!.id],
-        });
-      } else {
-        state.splitTerminal();
-      }
-    } else {
-      set({ isSplitView: false });
-    }
-  },
+  closeSplitPane: (id) => get().closeSession(id),
 
-  setSplitLayout: (layout) => {
-    set({ splitLayout: layout });
-  },
-
-  closeSplitPane: (id) => {
-    const state = get();
-    const nextSplit = state.splitSessionIds.filter((sId) => sId !== id);
-    if (nextSplit.length <= 1) {
-      set({
-        splitSessionIds: nextSplit.length === 1 ? nextSplit : [state.sessions[0].id],
-        isSplitView: false,
-        activeSessionId: nextSplit[0] ?? state.sessions[0].id,
-      });
-    } else {
-      set({
-        splitSessionIds: nextSplit,
-        activeSessionId: state.activeSessionId === id ? nextSplit[0] : state.activeSessionId,
-      });
-    }
-  },
-
-  closeSession: (id: string) => {
-    const state = get();
-    if (state.sessions.length <= 1) {
-      // Don't close last session; just reset its lines
-      const resetSession: TerminalSession = {
-        ...state.sessions[0],
-        lines: [],
-      };
-      set({
-        sessions: [resetSession],
-        lines: resetSession.lines,
-        isSplitView: false,
-        splitSessionIds: [resetSession.id],
-      });
-      return;
-    }
-
-    const nextSessions = state.sessions.filter((s) => s.id !== id);
-    const wasActive = state.activeSessionId === id;
-    const nextActive = wasActive
-      ? nextSessions[nextSessions.length - 1]
-      : state.sessions.find((s) => s.id === state.activeSessionId) ?? nextSessions[0];
-
-    const nextSplit = state.splitSessionIds.filter((sId) => sId !== id);
-
+  closeSession: (id) => {
+    kill(id);
+    const st = get();
+    let sessions = st.sessions.filter((s) => s.id !== id);
+    // The panel always has a terminal: closing the last one starts a fresh shell.
+    if (sessions.length === 0) sessions = [newSession()];
+    const activeSessionId = sessions.some((s) => s.id === st.activeSessionId) ? st.activeSessionId : sessions[sessions.length - 1].id;
+    const split = st.splitSessionIds.filter((s) => s !== id && sessions.some((x) => x.id === s));
     set({
-      sessions: nextSessions,
-      activeSessionId: nextActive.id,
-      lines: nextActive.lines,
-      cwd: nextActive.cwd,
-      history: nextActive.history,
-      splitSessionIds: nextSplit.length > 0 ? nextSplit : [nextActive.id],
-      isSplitView: nextSplit.length > 1 ? state.isSplitView : false,
+      sessions,
+      activeSessionId,
+      splitSessionIds: split.length ? split : [activeSessionId],
+      isSplitView: st.isSplitView && split.length > 1,
     });
   },
 
-  setActiveSession: (id: string) => {
-    const state = get();
-    const session = state.sessions.find((s) => s.id === id);
-    if (!session) return;
-    set({
-      activeSessionId: session.id,
-      lines: session.lines,
-      cwd: session.cwd,
-      history: session.history,
-    });
+  setActiveSession: (id) => {
+    if (get().sessions.some((s) => s.id === id)) set({ activeSessionId: id });
   },
 
-  renameSession: (id: string, title: string) => {
-    set((state) => {
-      const sessions = state.sessions.map((s) =>
-        s.id === id ? { ...s, title } : s
-      );
-      return { sessions };
-    });
-  },
+  renameSession: (id, title) => set((st) => ({ sessions: st.sessions.map((s) => (s.id === id ? { ...s, title } : s)) })),
 
-  remember: (cmd: string, sessionId?: string) => {
-    set((state) => {
-      const targetId = sessionId ?? state.activeSessionId;
-      const sessions = state.sessions.map((s) => {
-        if (s.id === targetId) {
-          const nextHist = pushHistory(s.history, cmd);
-          return { ...s, history: nextHist };
-        }
-        return s;
-      });
-      const active = sessions.find((s) => s.id === state.activeSessionId);
-      return {
-        sessions,
-        history: active ? active.history : state.history,
-      };
-    });
-  },
-
-  addLine: (text: string, type: TerminalLine["type"] = "stdout", sessionId?: string) => {
-    set((state) => {
-      const targetId = sessionId ?? state.activeSessionId;
-      const sessions = state.sessions.map((s) => {
-        if (s.id === targetId) {
-          const nextLines = [...s.lines.slice(-999), { text, type }];
-          return { ...s, lines: nextLines };
-        }
-        return s;
-      });
-      const active = sessions.find((s) => s.id === state.activeSessionId);
-      return {
-        sessions,
-        lines: active ? active.lines : state.lines,
-      };
-    });
-  },
-
-  clearLines: (sessionId?: string) => {
-    set((state) => {
-      const targetId = sessionId ?? state.activeSessionId;
-      const sessions = state.sessions.map((s) =>
-        s.id === targetId ? { ...s, lines: [] } : s
-      );
-      const active = sessions.find((s) => s.id === state.activeSessionId);
-      return {
-        sessions,
-        lines: active ? active.lines : [],
-      };
-    });
-  },
-
-  setCwd: (cwd: string, sessionId?: string) => {
-    set((state) => {
-      const targetId = sessionId ?? state.activeSessionId;
-      const sessions = state.sessions.map((s) =>
-        s.id === targetId ? { ...s, cwd } : s
-      );
-      const active = sessions.find((s) => s.id === state.activeSessionId);
-      return {
-        sessions,
-        cwd: active ? active.cwd : cwd,
-      };
-    });
-  },
+  setCwd: (cwd) => set({ cwd }),
 }));

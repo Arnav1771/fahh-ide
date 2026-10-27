@@ -11,6 +11,7 @@ pub mod installer;
 pub mod runner;
 pub mod lsp_client;
 pub mod debugger;
+pub mod pty;
 pub mod formatter;
 pub mod git;
 pub mod preview;

@@ -16,6 +16,8 @@ export interface Settings {
   /** 0 to 100. */
   fahhVolume: number;
   terminalFontSize: number;
+  /** Terminal profile "+" starts (PowerShell, cmd, Git Bash, WSL, bash…); "" = the first found. */
+  terminalDefaultProfile: string;
   /** Reopen the last folder and its tabs at launch. */
   restoreSession: boolean;
   /** The custom error sound's file name; "" plays the bundled fahh. */
@@ -36,6 +38,7 @@ export const DEFAULT_SETTINGS: Settings = {
   lineNumbers: true,
   fahhVolume: 80,
   terminalFontSize: 12,
+  terminalDefaultProfile: "",
   restoreSession: true,
   fahhSound: "",
   checkUpdatesOnLaunch: true,
@@ -65,6 +68,7 @@ export function parseSettings(raw: string | null | undefined): Settings {
     lineNumbers: bool(o.lineNumbers, d.lineNumbers),
     fahhVolume: clamp(o.fahhVolume, 0, 100, d.fahhVolume),
     terminalFontSize: clamp(o.terminalFontSize, 8, 32, d.terminalFontSize),
+    terminalDefaultProfile: typeof o.terminalDefaultProfile === "string" ? o.terminalDefaultProfile.slice(0, 40) : d.terminalDefaultProfile,
     restoreSession: bool(o.restoreSession, d.restoreSession),
     fahhSound: typeof o.fahhSound === "string" ? o.fahhSound.slice(0, 200) : d.fahhSound,
     checkUpdatesOnLaunch: bool(o.checkUpdatesOnLaunch, d.checkUpdatesOnLaunch),
