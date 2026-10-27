@@ -21,6 +21,8 @@ import { ensureBaseline, isDirtyAt } from "../../lib/saveBaseline";
 import { saveActive } from "../../lib/tabActions";
 import { recordCursor } from "../../lib/navigation";
 import { useSettingsStore } from "../../store/settingsStore";
+import { useDebugStore } from "../../store/debugStore";
+import { samePath, toggleBreakpointAt } from "../../lib/debugSession";
 
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
@@ -367,6 +369,44 @@ export function EditorPane({
       })
     );
 
+    // Breakpoints: click the glyph margin (left of the line numbers) or press F9.
+    // The paused line is highlighted with an arrow in the same margin.
+    const fileHere = () => path ?? useEditorStore.getState().activeTab;
+    let debugDecorations: string[] = [];
+    const paintDebug = () => {
+      const model = editor.getModel();
+      const file = fileHere();
+      if (!model || model.isDisposed?.() || !file) return;
+      const { breakpoints, currentFile, currentLine, isPaused } = useDebugStore.getState();
+      const lines = Object.entries(breakpoints).find(([f]) => samePath(f, file))?.[1] ?? [];
+      const max = model.getLineCount();
+      const decs: Parameters<typeof editor.deltaDecorations>[1] = lines
+        .filter((l) => l <= max)
+        .map((l) => ({
+          range: new monaco.Range(l, 1, l, 1),
+          options: { glyphMarginClassName: "fahh-bp-glyph", glyphMarginHoverMessage: { value: "Breakpoint (click to remove)" }, stickiness: 1 },
+        }));
+      if (isPaused && currentFile && currentLine && currentLine <= max && samePath(currentFile, file)) {
+        decs.push({
+          range: new monaco.Range(currentLine, 1, currentLine, 1),
+          options: { isWholeLine: true, className: "fahh-debug-line", glyphMarginClassName: "fahh-debug-glyph" },
+        });
+      }
+      debugDecorations = editor.deltaDecorations(debugDecorations, decs);
+    };
+    paintDebug();
+    disposablesRef.current.push(
+      editor.onMouseDown((e) => {
+        if (e.target.type !== monaco.editor.MouseTargetType.GUTTER_GLYPH_MARGIN) return;
+        toggleBreakpointAt(fileHere(), e.target.position?.lineNumber ?? null);
+      }),
+      editor.onDidChangeModel(() => {
+        debugDecorations = [];
+        paintDebug();
+      }),
+      { dispose: useDebugStore.subscribe(paintDebug) }
+    );
+
     // Python and Rust have no built-in Monaco linter: check their syntax so errors underline and fahh.
     disposablesRef.current.push(attachSyntaxCheck(monaco, editor));
 
@@ -435,6 +475,7 @@ export function EditorPane({
             smoothScrolling: true,
             cursorBlinking: "phase",
             renderLineHighlight: "all",
+            glyphMargin: true,
             padding: { top: 8 },
             readOnly: previewOnly,
             suggest: {

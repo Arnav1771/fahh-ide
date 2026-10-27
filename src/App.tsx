@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { initAgentEvents, useAgentStore } from "./store/agentStore";
-import { isAgentToggle } from "./lib/hotkeys";
+import { debugKeyAction, isAgentToggle } from "./lib/hotkeys";
+import { useDebugStore } from "./store/debugStore";
+import { createLaunchJson } from "./lib/debugSession";
+import { runDebugAction, runWithoutDebugging } from "./lib/debugActions";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
 import { Toasts } from "./components/Toasts";
@@ -337,7 +340,17 @@ export default function App() {
       { id: "panel.debug", group: "View", label: "Debug Console", keywords: "eval debugger console", run: bottom("debug") },
       { id: "panel.terminal", group: "View", label: "Terminal", keywords: "shell console powershell bash", run: bottom("terminal") },
       { id: "panel.run", group: "Run", label: "Run Panel", keywords: "execute active file runner", run: bottom("run") },
-      { id: "run.active", group: "Run", label: "Run Active File", keys: ["F5"], keywords: "execute script python node rust", run: bottom("run") },
+      { id: "run.active", group: "Run", label: "Run Without Debugging", keys: ["Ctrl", "F5"], keywords: "execute active file script python node rust", run: runWithoutDebugging },
+      { id: "debug.start", group: "Run", label: "Start Debugging / Continue", keys: ["F5"], keywords: "debugger debugpy delve lldb launch", run: () => runDebugAction("startOrContinue") },
+      { id: "debug.stop", group: "Run", label: "Stop Debugging", keys: ["Shift", "F5"], keywords: "debugger end terminate", run: () => runDebugAction("stop") },
+      { id: "debug.restart", group: "Run", label: "Restart Debugging", keys: ["Ctrl", "Shift", "F5"], keywords: "debugger", run: () => runDebugAction("restart") },
+      { id: "debug.stepOver", group: "Run", label: "Step Over", keys: ["F10"], keywords: "debugger next", run: () => runDebugAction("stepOver") },
+      { id: "debug.stepInto", group: "Run", label: "Step Into", keys: ["F11"], keywords: "debugger", run: () => runDebugAction("stepInto") },
+      { id: "debug.stepOut", group: "Run", label: "Step Out", keys: ["Shift", "F11"], keywords: "debugger", run: () => runDebugAction("stepOut") },
+      { id: "debug.toggleBreakpoint", group: "Run", label: "Toggle Breakpoint", keys: ["F9"], keywords: "debugger", run: () => runDebugAction("toggleBreakpoint") },
+      { id: "debug.removeAllBreakpoints", group: "Run", label: "Remove All Breakpoints", keywords: "debugger clear", run: () => useDebugStore.getState().clearBreakpoints() },
+      { id: "debug.launchJson", group: "Run", label: "Open launch.json (create if missing)", keywords: "debug configuration launch config", run: () => void createLaunchJson() },
+      { id: "view.runDebug", group: "View", label: "Run and Debug", keys: ["Ctrl", "Shift", "D"], keywords: "debugger breakpoints", run: () => revealView("runDebug") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
       ...THEME_DEFINITIONS.map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
@@ -395,6 +408,19 @@ export default function App() {
     let chordAt = 0;
     const MODIFIERS = ["Control", "Meta", "Shift", "Alt"];
     const onKey = (e: KeyboardEvent) => {
+      const debugAction = debugKeyAction(e, useDebugStore.getState().isDebugging);
+      if (debugAction) {
+        e.preventDefault();
+        e.stopPropagation();
+        runDebugAction(debugAction);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key === "F5") {
+        e.preventDefault();
+        e.stopPropagation();
+        runWithoutDebugging();
+        return;
+      }
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
       const inEditor = !!(e.target as Element | null)?.closest?.(".monaco-editor");

@@ -44,6 +44,8 @@ import {
   launchAgyTerminal,
 } from "../../lib/tauri";
 import { runEditorAction } from "../../lib/monacoBridge";
+import { runDebugAction, runWithoutDebugging } from "../../lib/debugActions";
+import { createLaunchJson } from "../../lib/debugSession";
 import { OPEN_FOLDER_EVENT, OPEN_FILE_EVENT } from "../../lib/commands";
 import { useFahhStore } from "../../store/fahhStore";
 import { useEditorStore } from "../../store/editorStore";
@@ -590,21 +592,38 @@ export function MenuBar({
       label: "Run",
       items: [
         {
-          label: "Run Active File",
+          label: "Start Debugging",
           keys: ["F5"],
           icon: <Play size={13} className="text-emerald-400" />,
-          action: () => onSetBottomTab("run"),
+          action: () => runDebugAction("startOrContinue"),
         },
         {
-          label: "Open Run Panel",
-          action: () => onSetBottomTab("run"),
+          label: "Run Without Debugging",
+          keys: ["Ctrl", "F5"],
+          action: runWithoutDebugging,
         },
+        {
+          label: "Stop Debugging",
+          keys: ["Shift", "F5"],
+          action: () => runDebugAction("stop"),
+        },
+        {
+          label: "Restart Debugging",
+          keys: ["Ctrl", "Shift", "F5"],
+          action: () => runDebugAction("restart"),
+        },
+        { separator: true, label: "", action: () => {} },
+        { label: "Step Over", keys: ["F10"], action: () => runDebugAction("stepOver") },
+        { label: "Step Into", keys: ["F11"], action: () => runDebugAction("stepInto") },
+        { label: "Step Out", keys: ["Shift", "F11"], action: () => runDebugAction("stepOut") },
         { separator: true, label: "", action: () => {} },
         {
           label: "Toggle Breakpoint",
           keys: ["F9"],
-          action: () => runEditorAction("editor.debug.action.toggleBreakpoint"),
+          action: () => runDebugAction("toggleBreakpoint"),
         },
+        { label: "Open launch.json", action: () => void createLaunchJson() },
+        { label: "Open Run Panel", action: () => onSetBottomTab("run") },
       ],
     },
     {

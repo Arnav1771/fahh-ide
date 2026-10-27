@@ -85,16 +85,16 @@ describe("LSP wrappers", () => {
 
 describe("debugger wrappers", () => {
   it("uses camelCase sessionId, which Tauri maps to session_id", async () => {
-    await tauri.debugContinue(7);
-    expect(invoke).toHaveBeenCalledWith("debug_continue", { sessionId: 7 });
+    await tauri.debugStop(7);
+    expect(invoke).toHaveBeenCalledWith("debug_stop", { sessionId: 7 });
   });
 
-  it("sends breakpoint lines as an array", async () => {
-    await tauri.debugSetBreakpoints(1, "/a.py", [3, 9]);
-    expect(invoke).toHaveBeenCalledWith("debug_set_breakpoints", {
+  it("sends a DAP request with its arguments", async () => {
+    await tauri.debugRequest(1, "setBreakpoints", { source: { path: "/a.py" } });
+    expect(invoke).toHaveBeenCalledWith("debug_request", {
       sessionId: 1,
-      file: "/a.py",
-      lines: [3, 9],
+      command: "setBreakpoints",
+      arguments: { source: { path: "/a.py" } },
     });
   });
 });

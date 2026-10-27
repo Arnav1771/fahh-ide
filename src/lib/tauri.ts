@@ -227,32 +227,17 @@ export const formatFile = (path: string, language: string) =>
 
 // ─── Phase 2: DAP debugger ────────────────────────────────────────────────────
 
-/** Launch a debug session. Returns the session id. */
+/** Start a debug adapter and connect to it. Returns the session id. */
 export const debugStart = (config: DapConfig) =>
   invoke<number>("debug_start", { config });
 
-/** Resume execution in the given debug session. */
-export const debugContinue = (sessionId: number) =>
-  invoke<void>("debug_continue", { sessionId });
+/** Send one DAP request; resolves to its seq. The response arrives on `dap://event`. */
+export const debugRequest = (sessionId: number, command: string, args: unknown = {}) =>
+  invoke<number>("debug_request", { sessionId, command, arguments: args ?? {} });
 
-/** Step over the current statement. */
-export const debugStepOver = (sessionId: number) =>
-  invoke<void>("debug_step_over", { sessionId });
-
-/** Step into the current call. */
-export const debugStepIn = (sessionId: number) =>
-  invoke<void>("debug_step_in", { sessionId });
-
-/** Terminate the debug session. */
+/** Terminate the debug session and its adapter. */
 export const debugStop = (sessionId: number) =>
   invoke<void>("debug_stop", { sessionId });
-
-/** Set breakpoints for a file (replaces all previous breakpoints in that file). */
-export const debugSetBreakpoints = (
-  sessionId: number,
-  file: string,
-  lines: number[]
-) => invoke<void>("debug_set_breakpoints", { sessionId, file, lines });
 
 // ─── Phase 2: Plugins ─────────────────────────────────────────────────────────
 

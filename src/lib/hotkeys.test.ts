@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isAgentToggle, keepsOwnCtrlL } from "./hotkeys";
+import { debugKeyAction, isAgentToggle, keepsOwnCtrlL, matchesKeys } from "./hotkeys";
 
 const key = (k: string, mods: Partial<{ ctrlKey: boolean; metaKey: boolean; shiftKey: boolean; altKey: boolean }> = {}) => ({
   key: k,
@@ -40,5 +40,38 @@ describe("Fahh Local toggle shortcut", () => {
     expect(isAgentToggle(key("l", { ctrlKey: true, shiftKey: true }), null)).toBe(false);
     expect(isAgentToggle(key("l", { ctrlKey: true, altKey: true }), null)).toBe(false);
     expect(isAgentToggle(key("p", { ctrlKey: true, shiftKey: true }), null)).toBe(false);
+  });
+});
+
+describe("view shortcuts", () => {
+  it("matches written shortcuts exactly", () => {
+    expect(matchesKeys(key("E", { ctrlKey: true, shiftKey: true }), "Ctrl+Shift+E")).toBe(true);
+    expect(matchesKeys(key("e", { metaKey: true, shiftKey: true }), "Ctrl+Shift+E")).toBe(true);
+    expect(matchesKeys(key("e", { ctrlKey: true }), "Ctrl+Shift+E")).toBe(false);
+    expect(matchesKeys(key("e", { ctrlKey: true, shiftKey: true, altKey: true }), "Ctrl+Shift+E")).toBe(false);
+    expect(matchesKeys(key(",", { ctrlKey: true }), "Ctrl+,")).toBe(true);
+    expect(matchesKeys(key("F9"), "F9")).toBe(true);
+  });
+});
+
+describe("debug keys", () => {
+  it("F5 starts or continues; Shift+F5 stops and Ctrl+Shift+F5 restarts only while debugging", () => {
+    expect(debugKeyAction(key("F5"), false)).toBe("startOrContinue");
+    expect(debugKeyAction(key("F5", { shiftKey: true }), false)).toBeNull();
+    expect(debugKeyAction(key("F5", { shiftKey: true }), true)).toBe("stop");
+    expect(debugKeyAction(key("F5", { ctrlKey: true, shiftKey: true }), true)).toBe("restart");
+    expect(debugKeyAction(key("F5", { ctrlKey: true }), true)).toBeNull();
+  });
+
+  it("stepping keys act only during a session", () => {
+    expect(debugKeyAction(key("F10"), false)).toBeNull();
+    expect(debugKeyAction(key("F10"), true)).toBe("stepOver");
+    expect(debugKeyAction(key("F11"), true)).toBe("stepInto");
+    expect(debugKeyAction(key("F11", { shiftKey: true }), true)).toBe("stepOut");
+    expect(debugKeyAction(key("F6"), true)).toBe("pause");
+  });
+
+  it("F9 toggles a breakpoint any time", () => {
+    expect(debugKeyAction(key("F9"), false)).toBe("toggleBreakpoint");
   });
 });

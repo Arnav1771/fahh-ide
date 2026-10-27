@@ -71,11 +71,8 @@ pub fn run() {
             lsp_client::lsp_stop,
             // Debugger / DAP (Phase 2)
             debugger::debug_start,
-            debugger::debug_continue,
-            debugger::debug_step_over,
-            debugger::debug_step_in,
+            debugger::debug_request,
             debugger::debug_stop,
-            debugger::debug_set_breakpoints,
             // Formatter (Phase 2)
             formatter::format_file,
             // Plugin registry (Phase 2)
