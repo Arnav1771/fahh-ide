@@ -146,9 +146,11 @@ fn adapter_command(adapter: &str, port: u16) -> Result<(String, Vec<String>), St
     }
 }
 
-/// Wait until the adapter listens on `port`, or fail as soon as it exits.
+/// Connect to the adapter as soon as it listens on `port`, or fail as soon as it exits.
+/// The first connection IS the session: debugpy and Delve serve one client and quit when
+/// it disconnects, so a "is it up yet?" probe that closed again killed the adapter.
 /// On failure the adapter process is killed, so nothing is left running.
-fn wait_for_adapter(child: &mut Option<Child>, adapter: &str, port: u16, timeout_ms: u64) -> Result<(), String> {
+fn wait_for_adapter(child: &mut Option<Child>, adapter: &str, port: u16, timeout_ms: u64) -> Result<TcpStream, String> {
     let deadline = std::time::Instant::now() + Duration::from_millis(timeout_ms);
     let addr: std::net::SocketAddr = format!("127.0.0.1:{port}")
         .parse()
@@ -162,8 +164,8 @@ fn wait_for_adapter(child: &mut Option<Child>, adapter: &str, port: u16, timeout
                 ));
             }
         }
-        if TcpStream::connect_timeout(&addr, Duration::from_millis(200)).is_ok() {
-            return Ok(());
+        if let Ok(stream) = TcpStream::connect_timeout(&addr, Duration::from_millis(200)) {
+            return Ok(stream);
         }
         std::thread::sleep(Duration::from_millis(100));
     }
@@ -252,10 +254,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
 
     // Wait for the adapter to open its port (up to 10 seconds), failing fast
     // if it exits first (e.g. `python -m debugpy.adapter` without debugpy installed).
-    wait_for_adapter(&mut child, &config.adapter, port, 10_000)?;
-
-    let stream = TcpStream::connect(format!("127.0.0.1:{port}"))
-        .map_err(|e| format!("Failed to connect to debug adapter on port {port}: {e}"))?;
+    let stream = wait_for_adapter(&mut child, &config.adapter, port, 10_000)?;
     let reader_stream = stream.try_clone().map_err(|e| format!("Failed to clone TCP stream: {e}"))?;
 
     spawn_dap_reader(session_id, reader_stream, app);
@@ -335,6 +334,28 @@ mod tests {
         let port = listener.local_addr().unwrap().port();
         let mut child = Some(crate::core::proc::cmd("sleep").arg("5").spawn().unwrap());
         assert!(wait_for_adapter(&mut child, "debugpy", port, 3_000).is_ok());
+        let _ = child.as_mut().unwrap().kill();
+    }
+
+    #[test]
+    fn the_first_connection_is_the_session() {
+        // Like debugpy and Delve: serve exactly one client, then stop listening.
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let server = std::thread::spawn(move || {
+            let (mut s, _) = listener.accept().unwrap();
+            let mut buf = [0u8; 4];
+            s.read_exact(&mut buf).unwrap();
+            s.write_all(if &buf == b"ping" { b"pong" } else { b"nope" }).unwrap();
+        });
+        let mut child = Some(crate::core::proc::cmd("sleep").arg("5").spawn().unwrap());
+        let mut stream = wait_for_adapter(&mut child, "debugpy", port, 3_000).unwrap();
+        stream.write_all(b"ping").unwrap();
+        let mut reply = [0u8; 4];
+        stream.read_exact(&mut reply).unwrap();
+        assert_eq!(&reply, b"pong");
+        server.join().unwrap();
         let _ = child.as_mut().unwrap().kill();
     }
 

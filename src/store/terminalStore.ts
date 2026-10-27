@@ -50,7 +50,8 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
 
   createSession: (profile, title, cwd) => {
     const s = newSession(profile, title, cwd);
-    set((st) => ({ sessions: [...st.sessions, s], activeSessionId: s.id }));
+    // A new terminal shows on its own (VS Code does the same); splitTerminal() splits it back in.
+    set((st) => ({ sessions: [...st.sessions, s], activeSessionId: s.id, isSplitView: false, splitSessionIds: [s.id] }));
     return s.id;
   },
 
