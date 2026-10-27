@@ -23,6 +23,7 @@ import { recordCursor } from "../../lib/navigation";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useDebugStore } from "../../store/debugStore";
 import { samePath, toggleBreakpointAt } from "../../lib/debugSession";
+import { seeWiki } from "../../store/deepwikiStore";
 
 interface EditorPaneProps {
   /** Monaco editor theme name — pass from themeStore to keep in sync */
@@ -405,6 +406,21 @@ export function EditorPane({
         paintDebug();
       }),
       { dispose: useDebugStore.subscribe(paintDebug) }
+    );
+
+    // DeepWiki: right-click a symbol, See Wiki (also in the palette).
+    disposablesRef.current.push(
+      editor.addAction({
+        id: "fahh.seeWiki",
+        label: "See Wiki",
+        contextMenuGroupId: "navigation",
+        contextMenuOrder: 0.5,
+        run: (ed) => {
+          const pos = ed.getPosition();
+          const word = pos ? ed.getModel()?.getWordAtPosition(pos)?.word : undefined;
+          if (word) void seeWiki(word);
+        },
+      })
     );
 
     // Python and Rust have no built-in Monaco linter: check their syntax so errors underline and fahh.
