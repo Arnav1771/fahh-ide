@@ -70,6 +70,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.6.6] — 2026-10-28
+
+### Added
+- **Git in the status bar:** branch, Sync Changes with pull/push counts, Publish Branch (#95).
+- **Outline view** for any language and Markdown (#95).
+- **Timeline view:** commits that changed the active file, with their diffs (#95).
+- **Settings search** and section navigation (#96).
+- **Account menu** in the activity bar (#96).
+- Terminal **+** names the profile it starts (#96).
+
+### Fixed
+- Real installer sizes and measured memory figures in the docs and site (#94).
+
+---
+
 ## [0.6.5] — 2026-10-28
 
 ### Added
