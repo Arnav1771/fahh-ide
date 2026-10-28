@@ -4,6 +4,7 @@ import { DEFAULT_SETTINGS, useSettingsStore, type Settings } from "../../store/s
 import { useEditorStore } from "../../store/editorStore";
 import { useFahhStore } from "../../store/fahhStore";
 import { SoundPicker } from "../Fahh/SoundPicker";
+import { AccountSection } from "./AccountSection";
 import { getProfiles } from "../../lib/ptySessions";
 import type { TerminalProfile } from "../../lib/tauri";
 
@@ -87,6 +88,10 @@ export function SettingsPanel() {
     <div className="h-full overflow-y-auto bg-fahh-bg select-text" data-testid="settings-panel">
       <div className="mx-auto max-w-2xl px-6 py-5">
         <h2 className="mb-4 text-base font-semibold text-fahh-text">Settings</h2>
+
+        <Section title="Account">
+          <AccountSection />
+        </Section>
 
         <Section title="Editor">
           <Row label="Font family" hint="A CSS font list; the first one installed is used." htmlFor="set-font">

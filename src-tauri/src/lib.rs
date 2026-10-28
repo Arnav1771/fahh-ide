@@ -6,7 +6,7 @@ mod core;
 mod app;
 pub mod agent;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, pty, remote, extensions, watch, formatter, plugin, error_detector, git, preview, syntax, setup};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, pty, remote, extensions, watch, account, formatter, plugin, error_detector, git, preview, syntax, setup};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -84,6 +84,12 @@ pub fn run() {
             remote::remote_containers,
             extensions::ext_install_theme,
             watch::watch_workspace,
+            account::account_status,
+            account::account_sign_up,
+            account::account_sign_in,
+            account::account_sign_out,
+            account::account_push_settings,
+            account::account_pull_settings,
             // Formatter (Phase 2)
             formatter::format_file,
             // Plugin registry (Phase 2)
