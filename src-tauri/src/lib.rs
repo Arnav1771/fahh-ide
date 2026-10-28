@@ -6,7 +6,7 @@ mod core;
 mod app;
 pub mod agent;
 
-use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, formatter, plugin, error_detector, git, preview, syntax, setup};
+use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, pty, remote, extensions, watch, formatter, plugin, error_detector, git, preview, syntax, setup};
 
 pub fn run() {
     core::runtime::init_logging();
@@ -71,11 +71,19 @@ pub fn run() {
             lsp_client::lsp_stop,
             // Debugger / DAP (Phase 2)
             debugger::debug_start,
-            debugger::debug_continue,
-            debugger::debug_step_over,
-            debugger::debug_step_in,
+            debugger::debug_request,
             debugger::debug_stop,
-            debugger::debug_set_breakpoints,
+            pty::terminal_profiles,
+            pty::pty_spawn,
+            pty::pty_write,
+            pty::pty_resize,
+            pty::pty_kill,
+            remote::remote_wsl_distros,
+            remote::remote_wsl_home,
+            remote::remote_ssh_hosts,
+            remote::remote_containers,
+            extensions::ext_install_theme,
+            watch::watch_workspace,
             // Formatter (Phase 2)
             formatter::format_file,
             // Plugin registry (Phase 2)

@@ -1,3 +1,9 @@
+import { loader } from "@monaco-editor/react";
+import { extInstallTheme } from "../../lib/tauri";
+import { convertVsCodeTheme } from "../../lib/vscodeTheme";
+import { useExtensionThemes } from "../../store/extensionThemesStore";
+import { DEFAULT_THEME, useThemeStore } from "../../store/themeStore";
+import { allThemes, applyThemeCssVars, defineExtensionThemes } from "../ThemePanel";
 import { useEffect, useState, useMemo } from "react";
 import {
   Search,
@@ -253,11 +259,15 @@ export function ExtensionsPanel() {
 
   const [installedMap, setInstalledMap] = useState<Record<string, MarketplaceExtension>>(() => {
     try {
-      return JSON.parse(localStorage.getItem(INSTALLED_EXTENSIONS_KEY) || "{}");
+      const saved: Record<string, MarketplaceExtension> = JSON.parse(localStorage.getItem(INSTALLED_EXTENSIONS_KEY) || "{}");
+      // Before themes were really installed, "Install" only recorded the click: drop those.
+      const real = new Set(useExtensionThemes.getState().themes.map((t) => t.extId));
+      return Object.fromEntries(Object.entries(saved).filter(([id]) => real.has(id)));
     } catch {
       return {};
     }
   });
+  const [busy, setBusy] = useState<string | null>(null);
 
   // Local/built-in plugins from backend
   const [plugins, setPlugins] = useState<Plugin[]>([]);
@@ -301,19 +311,41 @@ export function ExtensionsPanel() {
     }
   };
 
-  const handleInstall = (ext: MarketplaceExtension) => {
-    const next = { ...installedMap, [ext.id]: ext };
-    saveInstalled(next);
-
-    // Inform user if this is a PDF extension that Fahh has built-in PDF viewer
+  /**
+   * Fahh has no VS Code extension host: it installs what it can really use, colour themes
+   * (downloaded from Open VSX and converted), and says so for anything else.
+   */
+  const handleInstall = async (ext: MarketplaceExtension) => {
     if (isPdfExtension(ext)) {
-      setThemeToast(`Fahh Editor includes native PDF viewing! Open any .pdf in your workspace directly.`);
-      setTimeout(() => setThemeToast(null), 5000);
+      setThemeToast("No need: Fahh opens .pdf files itself. Open one from the explorer.");
       return;
+    }
+    setBusy(ext.id);
+    try {
+      const found = await extInstallTheme(ext.namespace, ext.name, "");
+      const themes = found.map((t) => convertVsCodeTheme(ext.id, t.label, t.ui_theme, t.json, t.include_json ?? undefined));
+      useExtensionThemes.getState().add(ext.id, themes);
+      const monaco = await loader.init().catch(() => null);
+      if (monaco) defineExtensionThemes(monaco, themes);
+      saveInstalled({ ...installedMap, [ext.id]: ext });
+      setThemeToast(`Installed ${themes.map((t) => t.name).join(", ")}. Pick it in Colour Theme (or the palette: Theme).`);
+    } catch (e) {
+      setThemeToast(`${ext.displayName}: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      setBusy(null);
     }
   };
 
   const handleUninstall = (id: string) => {
+    const gone = useExtensionThemes.getState().themes.filter((t) => t.extId === id).map((t) => t.id as string);
+    useExtensionThemes.getState().remove(id);
+    // Using a theme that is going away: back to the default one.
+    const { activeTheme, setTheme } = useThemeStore.getState();
+    if (gone.includes(activeTheme)) {
+      setTheme(DEFAULT_THEME);
+      const def = allThemes().find((d) => d.id === DEFAULT_THEME);
+      if (def) applyThemeCssVars(def);
+    }
     const next = { ...installedMap };
     delete next[id];
     saveInstalled(next);
@@ -402,6 +434,10 @@ export function ExtensionsPanel() {
           Installed ({Object.keys(installedMap).length + plugins.length})
         </button>
       </div>
+
+      <p className="mx-3 mt-2 text-[11px] text-fahh-muted">
+        Install works for colour themes from Open VSX. Other VS Code extensions need an extension host, which Fahh does not have yet; Fahh says so when you try.
+      </p>
 
       {/* Dynamic Theme Activation Notification */}
       {themeToast && (
@@ -581,11 +617,12 @@ export function ExtensionsPanel() {
               ) : (
                 <button
                   type="button"
-                  onClick={() => handleInstall(selectedExt)}
-                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs bg-fahh-accent text-white font-medium hover:bg-fahh-accent/90 transition-colors shadow-sm"
+                  onClick={() => void handleInstall(selectedExt)}
+                  disabled={busy !== null}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded text-xs bg-fahh-accent text-white font-medium hover:bg-fahh-accent/90 transition-colors shadow-sm disabled:opacity-60"
                 >
                   <Download size={12} />
-                  <span>Install to Fahh Editor</span>
+                  <span>{busy === selectedExt.id ? "Installing…" : "Install to Fahh Editor"}</span>
                 </button>
               )}
 
@@ -720,11 +757,12 @@ export function ExtensionsPanel() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => handleInstall(ext)}
-                              className="flex items-center gap-1 px-2.5 py-0.5 rounded text-[10.5px] bg-fahh-accent text-white font-medium hover:bg-fahh-accent/90 transition-colors shadow-sm"
+                              onClick={() => void handleInstall(ext)}
+                              disabled={busy !== null}
+                              className="flex items-center gap-1 px-2.5 py-0.5 rounded text-[10.5px] bg-fahh-accent text-white font-medium hover:bg-fahh-accent/90 transition-colors shadow-sm disabled:opacity-60"
                             >
                               <Download size={11} />
-                              <span>Install</span>
+                              <span>{busy === ext.id ? "Installing…" : "Install"}</span>
                             </button>
                           )}
                         </div>

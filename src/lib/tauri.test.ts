@@ -45,23 +45,15 @@ describe("file-system wrappers", () => {
   });
 });
 
-describe("execute_command", () => {
-  it("defaults args to an empty array so the Rust side never sees null", async () => {
-    await tauri.executeCommand("ls");
-    expect(invoke).toHaveBeenCalledWith("execute_command", {
-      command: "ls",
-      args: [],
-      cwd: undefined,
-    });
+describe("terminal wrappers", () => {
+  it("spawns a profile in a folder at a size", async () => {
+    await tauri.ptySpawn("pwsh", "C:\\proj", 120, 30);
+    expect(invoke).toHaveBeenCalledWith("pty_spawn", { profile: "pwsh", cwd: "C:\\proj", cols: 120, rows: 30 });
   });
 
-  it("forwards args and cwd when given", async () => {
-    await tauri.executeCommand("git", ["status"], "/repo");
-    expect(invoke).toHaveBeenCalledWith("execute_command", {
-      command: "git",
-      args: ["status"],
-      cwd: "/repo",
-    });
+  it("writes keystrokes to a pty", async () => {
+    await tauri.ptyWrite(3, "ls\r");
+    expect(invoke).toHaveBeenCalledWith("pty_write", { id: 3, data: "ls\r" });
   });
 });
 
@@ -85,16 +77,16 @@ describe("LSP wrappers", () => {
 
 describe("debugger wrappers", () => {
   it("uses camelCase sessionId, which Tauri maps to session_id", async () => {
-    await tauri.debugContinue(7);
-    expect(invoke).toHaveBeenCalledWith("debug_continue", { sessionId: 7 });
+    await tauri.debugStop(7);
+    expect(invoke).toHaveBeenCalledWith("debug_stop", { sessionId: 7 });
   });
 
-  it("sends breakpoint lines as an array", async () => {
-    await tauri.debugSetBreakpoints(1, "/a.py", [3, 9]);
-    expect(invoke).toHaveBeenCalledWith("debug_set_breakpoints", {
+  it("sends a DAP request with its arguments", async () => {
+    await tauri.debugRequest(1, "setBreakpoints", { source: { path: "/a.py" } });
+    expect(invoke).toHaveBeenCalledWith("debug_request", {
       sessionId: 1,
-      file: "/a.py",
-      lines: [3, 9],
+      command: "setBreakpoints",
+      arguments: { source: { path: "/a.py" } },
     });
   });
 });

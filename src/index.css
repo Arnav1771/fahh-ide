@@ -441,3 +441,33 @@ html[data-fahh-theme="fahh-light"] ::-webkit-scrollbar-thumb:hover { background:
 @keyframes fahh-setup-in { from { opacity: 0; transform: translateY(3px); } to { opacity: 1; transform: none; } }
 .fahh-setup-row { animation: fahh-setup-in 0.25s ease-out both; }
 @media (prefers-reduced-motion: reduce) { .fahh-setup-row { animation: none; } }
+
+/* ── Debugger: breakpoints and the paused line (EditorPane) ── */
+.monaco-editor .fahh-bp-glyph {
+  cursor: pointer;
+}
+.monaco-editor .fahh-bp-glyph::before {
+  content: "";
+  display: block;
+  width: 9px;
+  height: 9px;
+  margin: 5px auto 0;
+  border-radius: 50%;
+  background: #e51400;
+}
+.monaco-editor .glyph-margin {
+  cursor: pointer;
+}
+.monaco-editor .fahh-debug-line {
+  background: rgba(255, 204, 0, 0.18);
+}
+.monaco-editor .fahh-debug-glyph::after {
+  content: "";
+  display: block;
+  margin: 4px auto 0;
+  width: 0;
+  height: 0;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+  border-left: 9px solid #ffcc00;
+}

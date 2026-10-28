@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { initAgentEvents, useAgentStore } from "./store/agentStore";
-import { isAgentToggle } from "./lib/hotkeys";
+import { debugKeyAction, isAgentToggle, isSessionSearch } from "./lib/hotkeys";
+import { useLayoutModeStore } from "./store/layoutModeStore";
+import { initFsWatch } from "./lib/fsWatch";
+import { AgentMode, onSessionSearch } from "./components/AgentMode";
+import { ago, listSessions } from "./lib/agentSessionsList";
+import type { AgentSessionInfo } from "./lib/types";
+import { useDebugStore } from "./store/debugStore";
+import { createLaunchJson } from "./lib/debugSession";
+import { runDebugAction, runWithoutDebugging } from "./lib/debugActions";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
 import { Toasts } from "./components/Toasts";
@@ -36,7 +44,8 @@ import { alertDialog, confirmDialog, promptDialog } from "./store/dialogStore";
 import { cycleTabs, endCycle, goBack, goForward, initNavigation, reopenClosedTab } from "./lib/navigation";
 import { loadRecent } from "./lib/recent";
 import { useSettingsStore } from "./store/settingsStore";
-import { THEME_DEFINITIONS, applyThemeCssVars } from "./components/ThemePanel";
+import { allThemes, applyThemeCssVars } from "./components/ThemePanel";
+import { useExtensionThemes } from "./store/extensionThemesStore";
 import { Settings, Play, Globe } from "lucide-react";
 import { MenuBar } from "./components/MenuBar";
 import { SpatialCanvas } from "./components/SpatialCanvas";
@@ -122,6 +131,29 @@ export default function App() {
 
   const { activeTheme, setTheme } = useThemeStore();
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const layoutMode = useLayoutModeStore((s) => s.mode);
+  // Ctrl+Shift+A: search Fahh Local sessions (both modes); picking one opens it.
+  const [sessionSearch, setSessionSearch] = useState<AgentSessionInfo[] | null>(null);
+  const openSessionSearch = () => {
+    setPaletteOpen(false);
+    void listSessions().then(setSessionSearch);
+  };
+  useEffect(() => onSessionSearch(openSessionSearch), []);
+  // The Explorer follows changes made in the terminal, by the agent or by other programs.
+  useEffect(() => initFsWatch(), []);
+  const sessionCommands = useMemo<PaletteCommand[]>(
+    () =>
+      (sessionSearch ?? []).map((s) => ({
+        id: `session.${s.id}`,
+        group: ago(s.updated),
+        label: s.title || "Untitled",
+        run: () => {
+          void useAgentStore.getState().loadSession(s.id);
+          if (useLayoutModeStore.getState().mode === "editor") revealView("agent");
+        },
+      })),
+    [sessionSearch]
+  );
   const [quickOpen, setQuickOpen] = useState(false);
   const cursorPosition = useEditorStore((s) => s.cursorPosition);
   const activeTab = useEditorStore((s) => s.activeTab);
@@ -202,10 +234,11 @@ export default function App() {
   }, [openFolder, openFileInEditor]);
 
   // Apply theme CSS vars on mount and whenever the active theme changes
+  const installedThemes = useExtensionThemes((s) => s.themes);
   useEffect(() => {
-    const def = THEME_DEFINITIONS.find((d) => d.id === activeTheme);
+    const def = allThemes(installedThemes).find((d) => d.id === activeTheme);
     if (def) applyThemeCssVars(def);
-  }, [activeTheme]);
+  }, [activeTheme, installedThemes]);
 
   // Fahh SFX. Errors from the backend (builds, language servers) go through
   // the HUD store, which owns the cooldown, the combo and the mute.
@@ -337,10 +370,26 @@ export default function App() {
       { id: "panel.debug", group: "View", label: "Debug Console", keywords: "eval debugger console", run: bottom("debug") },
       { id: "panel.terminal", group: "View", label: "Terminal", keywords: "shell console powershell bash", run: bottom("terminal") },
       { id: "panel.run", group: "Run", label: "Run Panel", keywords: "execute active file runner", run: bottom("run") },
-      { id: "run.active", group: "Run", label: "Run Active File", keys: ["F5"], keywords: "execute script python node rust", run: bottom("run") },
+      { id: "run.active", group: "Run", label: "Run Without Debugging", keys: ["Ctrl", "F5"], keywords: "execute active file script python node rust", run: runWithoutDebugging },
+      { id: "debug.start", group: "Run", label: "Start Debugging / Continue", keys: ["F5"], keywords: "debugger debugpy delve lldb launch", run: () => runDebugAction("startOrContinue") },
+      { id: "debug.stop", group: "Run", label: "Stop Debugging", keys: ["Shift", "F5"], keywords: "debugger end terminate", run: () => runDebugAction("stop") },
+      { id: "debug.restart", group: "Run", label: "Restart Debugging", keys: ["Ctrl", "Shift", "F5"], keywords: "debugger", run: () => runDebugAction("restart") },
+      { id: "debug.stepOver", group: "Run", label: "Step Over", keys: ["F10"], keywords: "debugger next", run: () => runDebugAction("stepOver") },
+      { id: "debug.stepInto", group: "Run", label: "Step Into", keys: ["F11"], keywords: "debugger", run: () => runDebugAction("stepInto") },
+      { id: "debug.stepOut", group: "Run", label: "Step Out", keys: ["Shift", "F11"], keywords: "debugger", run: () => runDebugAction("stepOut") },
+      { id: "debug.toggleBreakpoint", group: "Run", label: "Toggle Breakpoint", keys: ["F9"], keywords: "debugger", run: () => runDebugAction("toggleBreakpoint") },
+      { id: "debug.removeAllBreakpoints", group: "Run", label: "Remove All Breakpoints", keywords: "debugger clear", run: () => useDebugStore.getState().clearBreakpoints() },
+      { id: "debug.launchJson", group: "Run", label: "Open launch.json (create if missing)", keywords: "debug configuration launch config", run: () => void createLaunchJson() },
+      { id: "view.agentMode", group: "View", label: "Switch to Agent Mode", keywords: "chat sessions fahh local ai", run: () => useLayoutModeStore.getState().setMode("agent") },
+      { id: "view.editorMode", group: "View", label: "Switch to Editor Mode", keywords: "workbench code files", run: () => useLayoutModeStore.getState().setMode("editor") },
+      { id: "agent.searchSessions", group: "Fahh Local", label: "Search Sessions", keys: ["Ctrl", "Shift", "A"], keywords: "history chats agent", run: openSessionSearch },
+      { id: "view.deepwiki", group: "View", label: "DeepWiki", keywords: "symbol wiki docs definition usages", run: () => revealView("deepwiki") },
+      { id: "deepwiki.seeWiki", group: "DeepWiki", label: "See Wiki for Symbol at Cursor", keywords: "explain definition usages references docs", run: () => runEditorAction("fahh.seeWiki") },
+      { id: "view.remote", group: "View", label: "Remote Explorer", keywords: "wsl ssh docker containers", run: () => revealView("remote") },
+      { id: "view.runDebug", group: "View", label: "Run and Debug", keys: ["Ctrl", "Shift", "D"], keywords: "debugger breakpoints", run: () => revealView("runDebug") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
-      ...THEME_DEFINITIONS.map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
+      ...allThemes(installedThemes).map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
       { id: "preview.toggle", group: "Preview", label: "Toggle Preview (PDF, Markdown, HTML, SVG, CSV)", keys: ["Ctrl", "Shift", "V"], keywords: "markdown html image csv pdf document preview source", run: () => {
         const path = useEditorStore.getState().activeTab;
         if (path && previewKindFor(path)) usePreviewStore.getState().toggleInPlace(path);
@@ -369,7 +418,7 @@ export default function App() {
       { id: "file.quickOpen", group: "Go", label: "Go to File…", keys: ["Ctrl", "P"], keywords: "quick open find file", run: () => setQuickOpen(true) },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setTheme, recentTick]);
+  }, [setTheme, recentTick, installedThemes]);
 
   // Quick Open lists every file in the opened folder (VS Code's Ctrl+P).
   const quickOpenFiles = useMemo<PaletteCommand[]>(
@@ -395,6 +444,19 @@ export default function App() {
     let chordAt = 0;
     const MODIFIERS = ["Control", "Meta", "Shift", "Alt"];
     const onKey = (e: KeyboardEvent) => {
+      const debugAction = debugKeyAction(e, useDebugStore.getState().isDebugging);
+      if (debugAction) {
+        e.preventDefault();
+        e.stopPropagation();
+        runDebugAction(debugAction);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key === "F5") {
+        e.preventDefault();
+        e.stopPropagation();
+        runWithoutDebugging();
+        return;
+      }
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
       const inEditor = !!(e.target as Element | null)?.closest?.(".monaco-editor");
@@ -439,11 +501,15 @@ export default function App() {
         e.stopPropagation();
         setPaletteOpen(false);
         setQuickOpen((v) => !v);
-      } else if (isAgentToggle(e, e.target as Element | null)) {
-        // Ctrl+L (not inside the editor or terminal, where it means select-line / clear)
-        // or Ctrl+Shift+A (everywhere): toggle Fahh Local
+      } else if (isSessionSearch(e)) {
         e.preventDefault();
         e.stopPropagation();
+        openSessionSearch();
+      } else if (isAgentToggle(e, e.target as Element | null)) {
+        // Ctrl+L (not inside the editor or terminal, where it means select-line / clear): toggle Fahh Local
+        e.preventDefault();
+        e.stopPropagation();
+        if (useLayoutModeStore.getState().mode === "agent") return;
         toggleView("agent");
       } else if (mod && !e.shiftKey && !e.altKey && e.key.toLowerCase() === "w") {
         // Ctrl+W: close the active tab, asking first when it is unsaved.
@@ -586,8 +652,10 @@ export default function App() {
           <SpatialCanvas />
         </div>
       ) : (
-        /* ── Workspace Area (Activity bar + the dock) ── */
-        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <>
+        {layoutMode === "agent" && <AgentMode />}
+        {/* ── Workspace Area (Activity bar + the dock); kept mounted, hidden, in agent mode ── */}
+        <div className="flex flex-1 min-h-0 overflow-hidden" style={layoutMode === "agent" ? { display: "none" } : undefined}>
           {/* Non-rendering LSP bridge */}
           <LspBridge />
 
@@ -664,6 +732,7 @@ export default function App() {
         </div>
       </div>
       </div>
+        </>
       )}
 
       {showInstaller && (
@@ -677,6 +746,15 @@ export default function App() {
       <DialogHost />
       <Toasts />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
+      <CommandPalette
+        open={sessionSearch !== null}
+        onClose={() => setSessionSearch(null)}
+        commands={sessionCommands}
+        label="Search sessions"
+        placeholder="Search Fahh Local sessions"
+        recentKey="fahh-session-search-recent"
+        emptyText="No saved sessions in this folder yet."
+      />
       <CommandPalette
         open={quickOpen}
         onClose={() => setQuickOpen(false)}
@@ -692,7 +770,7 @@ export default function App() {
 }
 
 /** The activity bar, top to bottom (Colour Theme sits at the foot). */
-const ACTIVITY = ["explorer", "search", "git", "debug", "agent", "extensions"];
+const ACTIVITY = ["explorer", "search", "git", "deepwiki", "runDebug", "remote", "agent", "extensions"];
 
 function ViewBtn({ id, active }: { id: string; active: boolean }) {
   const v = getView(id);

@@ -107,6 +107,15 @@ export function RunPanel() {
     if (el) el.scrollTop = el.scrollHeight;
   }, [output.length]);
 
+  // Ctrl+F5 (Run Without Debugging) from anywhere: run as soon as this panel is up.
+  const runRequested = useRunnerStore((s) => s.runRequested);
+  const runRef = useRef<() => void>(() => {});
+  useEffect(() => {
+    if (!runRequested) return;
+    useRunnerStore.getState().requestRun(false);
+    if (!isRunning) runRef.current();
+  }, [runRequested, isRunning]);
+
   // Reset language override when active file changes
   useEffect(() => {
     setLanguageOverride(null);
@@ -150,6 +159,7 @@ export function RunPanel() {
     };
   }, []);
 
+  runRef.current = () => void handleRun();
   const handleRun = async () => {
     if (!activeDoc) return;
     clearOutput();

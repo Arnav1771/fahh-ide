@@ -6,6 +6,7 @@
 import type { DockviewApi, DockviewGroupPanel, IDockviewPanel } from "dockview-react";
 import { useEditorStore } from "../store/editorStore";
 import { useSettingsStore } from "../store/settingsStore";
+import { ensureEditorMode } from "../store/layoutModeStore";
 import { confirmClose, forceClose, rememberClosed } from "./tabActions";
 import { readFile } from "./tauri";
 import { isPreviewOnly } from "./preview";
@@ -281,6 +282,7 @@ function keepBarSizes(op: () => void): void {
 
 /** Show a view: add it where it belongs if it was closed, un-hide its bar, bring it to the front. */
 export function revealView(id: string): void {
+  ensureEditorMode();
   const def = getView(id);
   if (!api || !def) return;
   let fresh: IDockviewPanel | undefined;
@@ -306,6 +308,7 @@ const isOnScreen = (id: string) => {
 
 /** Activity bar and Ctrl+L: show the view, or hide its bar when it is already on screen. */
 export function toggleView(id: string): void {
+  ensureEditorMode();
   const p = api?.getPanel(VIEW_PREFIX + id);
   if (p && isOnScreen(id)) {
     const zone = zoneOfGroup(p.group);

@@ -1,12 +1,14 @@
 import type { Monaco } from "@monaco-editor/react";
 import { useThemeStore } from "../../store/themeStore";
+import { useExtensionThemes } from "../../store/extensionThemesStore";
+import type { ConvertedTheme } from "../../lib/vscodeTheme";
 import type { ThemeId } from "../../lib/types";
 import { useIconThemeStore, ICON_THEMES } from "../../store/iconThemeStore";
 import { renderFileIcon, renderFolderIcon } from "../../lib/iconTheme";
 
 // ─── Theme definitions ────────────────────────────────────────────────────────
 
-interface ThemeDef {
+export interface ThemeDef {
   id: ThemeId;
   name: string;
   /** Monaco editor theme name */
@@ -158,6 +160,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
 // Call once after Monaco is ready. Registers fahh-* theme IDs so setTheme() works.
 
 export function defineMonacoThemes(monaco: Monaco): void {
+  defineExtensionThemes(monaco);
   monaco.editor.defineTheme("cate-obsidian", {
     base: "vs-dark",
     inherit: true,
@@ -290,6 +293,22 @@ export function defineMonacoThemes(monaco: Monaco): void {
   });
 }
 
+/** Register installed Open VSX colour themes with Monaco (at start-up and on install). */
+export function defineExtensionThemes(monaco: Monaco, themes: ConvertedTheme[] = useExtensionThemes.getState().themes): void {
+  for (const t of themes) {
+    try {
+      monaco.editor.defineTheme(t.monacoTheme, t.monaco);
+    } catch {
+      // a broken theme must not stop the editor from starting
+    }
+  }
+}
+
+/** The shipped themes plus the installed extension themes. */
+export function allThemes(extra: ConvertedTheme[] = useExtensionThemes.getState().themes): ThemeDef[] {
+  return [...THEME_DEFINITIONS, ...extra];
+}
+
 // ─── CSS variable application ─────────────────────────────────────────────────
 
 export function applyThemeCssVars(def: ThemeDef): void {
@@ -312,6 +331,7 @@ export function applyThemeCssVars(def: ThemeDef): void {
 export function ThemePanel() {
   const { activeTheme, setTheme } = useThemeStore();
   const { activeIconTheme, setIconTheme } = useIconThemeStore();
+  const installed = useExtensionThemes((s) => s.themes);
 
   const handleSelect = (def: ThemeDef) => {
     setTheme(def.id);
@@ -324,7 +344,7 @@ export function ThemePanel() {
         Colour Theme
       </p>
 
-      {THEME_DEFINITIONS.map((def) => {
+      {allThemes(installed).map((def) => {
         const isActive = def.id === activeTheme;
         const [bg, sidebar, surface, accent] = def.swatches;
 
