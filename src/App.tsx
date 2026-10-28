@@ -25,6 +25,7 @@ import { useFahhStore, type Intensity } from "./store/fahhStore";
 import { StatusHud, HudControls, CleanSweep, LspStatusItem } from "./components/Fahh/StatusHud";
 import { useGitStore } from "./store/gitStore";
 import { GitStatusItem } from "./components/GitSidebar/GitStatusItem";
+import { AccountMenu } from "./components/AccountMenu";
 import { CommandPalette } from "./components/Fahh/CommandPalette";
 import { FAHH_COMMAND, OPEN_FOLDER_EVENT, OPEN_FILE_EVENT } from "./lib/commands";
 import { getActiveDocument, revealLine, runEditorAction } from "./lib/monacoBridge";
@@ -676,6 +677,7 @@ export default function App() {
             {ACTIVITY.map((id) => <ViewBtn key={id} id={id} active={shownViews.includes(id)} />)}
             <div className="flex-1" />
             <ViewBtn id="theme" active={shownViews.includes("theme")} />
+            <AccountMenu />
 
             {/* Settings (Optional Tools stay in Help and the palette) */}
             <button

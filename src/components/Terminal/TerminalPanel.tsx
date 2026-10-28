@@ -161,8 +161,15 @@ export function TerminalPanel() {
           })}
         </div>
 
-        <button type="button" onClick={() => newTerminal()} title="New Terminal (Ctrl+Shift+`)" aria-label="New Terminal" className={iconBtn}>
+        <button
+          type="button"
+          onClick={() => newTerminal()}
+          title={`New Terminal: ${defaultProfile(profiles)?.name ?? "default shell"} (Ctrl+Shift+\`)`}
+          aria-label="New Terminal"
+          className={`${iconBtn} flex items-center gap-1`}
+        >
           <Plus size={14} />
+          <span className="text-[10px] max-[700px]:hidden" data-testid="terminal-profile-label">{defaultProfile(profiles)?.name}</span>
         </button>
         <button
           ref={chevronRef}

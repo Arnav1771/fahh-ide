@@ -471,3 +471,6 @@ html[data-fahh-theme="fahh-light"] ::-webkit-scrollbar-thumb:hover { background:
   border-bottom: 6px solid transparent;
   border-left: 9px solid #ffcc00;
 }
+
+/* Settings search: say so when no row matches. */
+.settings-body:not(:has([data-row])) .settings-empty { display: block; }
