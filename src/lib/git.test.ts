@@ -33,6 +33,9 @@ function repo(partial: Partial<GitStatus> = {}): GitStatus {
     unborn: false,
     staged: [],
     unstaged: [],
+    upstream: null,
+    ahead: 0,
+    behind: 0,
     ...partial,
   };
 }

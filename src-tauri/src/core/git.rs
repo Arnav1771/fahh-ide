@@ -15,7 +15,8 @@
 use std::path::{Path, PathBuf};
 
 use git2::{
-    Delta, DiffFormat, DiffOptions, ErrorCode, Repository, Status, StatusOptions, StatusShow,
+    BranchType, Delta, Diff, DiffFormat, DiffOptions, ErrorCode, Oid, Repository, Sort, Status,
+    StatusOptions, StatusShow,
 };
 use serde::{Deserialize, Serialize};
 
@@ -60,6 +61,23 @@ pub struct GitStatus {
     pub unborn: bool,
     pub staged: Vec<GitFileChange>,
     pub unstaged: Vec<GitFileChange>,
+    /// Upstream branch (`origin/main`), `None` when the branch is not published.
+    pub upstream: Option<String>,
+    /// Commits on HEAD that the upstream lacks (to push).
+    pub ahead: usize,
+    /// Commits on the upstream that HEAD lacks (to pull).
+    pub behind: usize,
+}
+
+/// One commit in a file's history, for the Timeline view.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GitCommitInfo {
+    pub oid: String,
+    pub short: String,
+    pub summary: String,
+    pub author: String,
+    /// Seconds since the epoch.
+    pub time: i64,
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -158,6 +176,84 @@ fn branch_name(repo: &Repository) -> (Option<String>, bool) {
     }
 }
 
+/// Upstream name and ahead/behind counts for HEAD's branch. Uses the last fetched
+/// state of the remote; `git_sync` fetches.
+fn tracking(repo: &Repository) -> (Option<String>, usize, usize) {
+    let Ok(head) = repo.head() else { return (None, 0, 0) };
+    let Some(name) = head.shorthand().filter(|_| head.is_branch()) else { return (None, 0, 0) };
+    let Ok(up) = repo.find_branch(name, BranchType::Local).and_then(|b| b.upstream()) else {
+        return (None, 0, 0);
+    };
+    let up_name = up.name().ok().flatten().map(str::to_string);
+    match (head.target(), up.get().target()) {
+        (Some(local), Some(remote)) => match repo.graph_ahead_behind(local, remote) {
+            Ok((a, b)) => (up_name, a, b),
+            Err(_) => (up_name, 0, 0),
+        },
+        _ => (up_name, 0, 0),
+    }
+}
+
+/// `file` (absolute or repo-relative) as a forward-slashed path relative to the work tree.
+fn repo_relative(repo: &Repository, file: &str) -> String {
+    let root = workdir(repo);
+    let canon = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    let abs = Path::new(file);
+    let rel = if abs.is_absolute() {
+        canon(abs)
+            .strip_prefix(canon(&root))
+            .map(Path::to_path_buf)
+            .unwrap_or_else(|_| abs.strip_prefix(&root).unwrap_or(abs).to_path_buf())
+    } else {
+        abs.to_path_buf()
+    };
+    rel.to_string_lossy().replace('\\', "/")
+}
+
+/// A diff as unified patch text (`+`, `-`, ` ` prefixed lines).
+fn patch_text(diff: &Diff) -> Result<String, String> {
+    let mut out = String::new();
+    diff.print(DiffFormat::Patch, |_delta, _hunk, line| {
+        if matches!(line.origin(), '+' | '-' | ' ') {
+            out.push(line.origin());
+        }
+        out.push_str(&String::from_utf8_lossy(line.content()));
+        true
+    })
+    .map_err(map_err)?;
+    if out.is_empty() && diff.deltas().any(|d| d.flags().is_binary() || d.status() == Delta::Renamed) {
+        return Ok("(binary or rename-only change — no textual diff)".to_string());
+    }
+    Ok(out)
+}
+
+/// Run the `git` CLI in `dir`. Used only for network operations (pull/push), which
+/// need the user's credential helper and SSH setup that libgit2 does not have.
+fn run_git(dir: &Path, args: &[&str]) -> Result<String, String> {
+    let out = crate::core::proc::cmd("git")
+        .args(args)
+        .current_dir(dir)
+        .env("GIT_TERMINAL_PROMPT", "0")
+        .output()
+        .map_err(|e| format!("could not run git ({e}). Install Git to pull and push."))?;
+    let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
+    if out.status.success() { Ok(text.trim().to_string()) } else { Err(text.trim().to_string()) }
+}
+
+fn sync_blocking(path: &str) -> Result<String, String> {
+    let repo = require_repo(path)?;
+    let dir = workdir(&repo);
+    let (branch, _) = branch_name(&repo);
+    let branch = branch.filter(|b| !b.starts_with("detached")).ok_or("check out a branch to sync")?;
+    if tracking(&repo).0.is_none() {
+        // Not published yet: VS Code's "Publish Branch".
+        return run_git(&dir, &["push", "-u", "origin", &branch]);
+    }
+    let pulled = run_git(&dir, &["pull", "--no-edit"])?;
+    let pushed = run_git(&dir, &["push"])?;
+    Ok(format!("{pulled}\n{pushed}").trim().to_string())
+}
+
 // ─── Commands ─────────────────────────────────────────────────────────────────
 
 /// Full status snapshot for the folder open in the editor.
@@ -208,6 +304,7 @@ pub fn git_status(path: String) -> Result<GitStatus, String> {
 
     staged.sort_by(|a, b| a.path.cmp(&b.path));
     unstaged.sort_by(|a, b| a.path.cmp(&b.path));
+    let (upstream, ahead, behind) = tracking(&repo);
 
     Ok(GitStatus {
         is_repo: true,
@@ -216,6 +313,9 @@ pub fn git_status(path: String) -> Result<GitStatus, String> {
         unborn,
         staged,
         unstaged,
+        upstream,
+        ahead,
+        behind,
     })
 }
 
@@ -344,26 +444,110 @@ pub fn git_diff(path: String, file: String, staged: bool) -> Result<String, Stri
             .map_err(map_err)?
     };
 
-    let mut out = String::new();
-    diff.print(DiffFormat::Patch, |_delta, _hunk, line| {
-        match line.origin() {
-            '+' | '-' | ' ' => out.push(line.origin()),
-            _ => {}
-        }
-        out.push_str(&String::from_utf8_lossy(line.content()));
-        true
-    })
-    .map_err(map_err)?;
+    patch_text(&diff)
+}
 
-    if out.is_empty() {
-        // Binary files, or a rename with no content change.
-        let binary = diff
-            .deltas()
-            .any(|d| d.flags().is_binary() || d.status() == Delta::Renamed);
-        if binary {
-            return Ok("(binary or rename-only change — no textual diff)".to_string());
+/// Pull, then push (VS Code's Sync Changes). Publishes the branch when it has no
+/// upstream yet. Runs off the UI thread: the network can take a while.
+#[tauri::command]
+pub async fn git_sync(path: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || sync_blocking(&path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// Commits that changed `file`, newest first, for the Timeline view.
+// ponytail: compares the blob at one path per commit, so history stops at a rename
+// (no --follow); scans at most 5000 commits.
+#[tauri::command]
+pub fn git_file_log(path: String, file: String, limit: Option<usize>) -> Result<Vec<GitCommitInfo>, String> {
+    let Some(repo) = discover(&path)? else { return Ok(Vec::new()) };
+    let rel = repo_relative(&repo, &file);
+    let limit = limit.unwrap_or(50);
+    let mut walk = repo.revwalk().map_err(map_err)?;
+    if walk.push_head().is_err() {
+        return Ok(Vec::new()); // no commits yet
+    }
+    walk.set_sorting(Sort::TIME).map_err(map_err)?;
+    let blob_at = |tree: &git2::Tree| tree.get_path(Path::new(&rel)).ok().map(|e| e.id());
+    let mut out = Vec::new();
+    for oid in walk.take(5000) {
+        let commit = repo.find_commit(oid.map_err(map_err)?).map_err(map_err)?;
+        let now = blob_at(&commit.tree().map_err(map_err)?);
+        let before = match commit.parent(0) {
+            Ok(p) => blob_at(&p.tree().map_err(map_err)?),
+            Err(_) => None,
+        };
+        if now == before {
+            continue;
+        }
+        let id = commit.id().to_string();
+        out.push(GitCommitInfo {
+            short: id[..7].to_string(),
+            oid: id,
+            summary: commit.summary().unwrap_or("").to_string(),
+            author: commit.author().name().unwrap_or("").to_string(),
+            time: commit.time().seconds(),
+        });
+        if out.len() >= limit {
+            break;
         }
     }
-
     Ok(out)
+}
+
+/// What commit `oid` changed in `file`, as a unified diff against its first parent.
+#[tauri::command]
+pub fn git_file_commit_diff(path: String, oid: String, file: String) -> Result<String, String> {
+    let repo = require_repo(&path)?;
+    let commit = repo.find_commit(Oid::from_str(&oid).map_err(map_err)?).map_err(map_err)?;
+    let tree = commit.tree().map_err(map_err)?;
+    let parent = commit.parent(0).ok().map(|p| p.tree()).transpose().map_err(map_err)?;
+    let mut opts = DiffOptions::new();
+    opts.pathspec(repo_relative(&repo, &file)).context_lines(3);
+    let diff = repo
+        .diff_tree_to_tree(parent.as_ref(), Some(&tree), Some(&mut opts))
+        .map_err(map_err)?;
+    patch_text(&diff)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn commit_file(repo: &Repository, name: &str, body: &str, msg: &str) {
+        std::fs::write(workdir(repo).join(name), body).unwrap();
+        let mut index = repo.index().unwrap();
+        index.add_path(Path::new(name)).unwrap();
+        index.write().unwrap();
+        let tree = repo.find_tree(index.write_tree().unwrap()).unwrap();
+        let sig = git2::Signature::now("t", "t@example.com").unwrap();
+        let parents: Vec<git2::Commit> = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).into_iter().collect();
+        let refs: Vec<&git2::Commit> = parents.iter().collect();
+        repo.commit(Some("HEAD"), &sig, &sig, msg, &tree, &refs).unwrap();
+    }
+
+    #[test]
+    fn file_log_and_commit_diff() {
+        let dir = std::env::temp_dir().join(format!("fahh-git-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+        commit_file(&repo, "a.txt", "one\n", "add a");
+        commit_file(&repo, "b.txt", "x\n", "add b");
+        commit_file(&repo, "a.txt", "two\n", "edit a");
+        let p = dir.to_string_lossy().to_string();
+
+        let abs = dir.join("a.txt").to_string_lossy().to_string();
+        let log = git_file_log(p.clone(), abs.clone(), None).unwrap();
+        let msgs: Vec<&str> = log.iter().map(|c| c.summary.as_str()).collect();
+        assert_eq!(msgs, ["edit a", "add a"], "b.txt commit must be skipped");
+
+        let diff = git_file_commit_diff(p.clone(), log[0].oid.clone(), abs).unwrap();
+        assert!(diff.contains("-one") && diff.contains("+two"), "{diff}");
+
+        let st = git_status(p).unwrap();
+        assert_eq!((st.upstream, st.ahead, st.behind), (None, 0, 0));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

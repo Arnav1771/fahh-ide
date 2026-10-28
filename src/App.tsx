@@ -23,6 +23,8 @@ import { initFahhSfx, teardownFahhSfx } from "./lib/fahh";
 import { useThemeStore } from "./store/themeStore";
 import { useFahhStore, type Intensity } from "./store/fahhStore";
 import { StatusHud, HudControls, CleanSweep, LspStatusItem } from "./components/Fahh/StatusHud";
+import { useGitStore } from "./store/gitStore";
+import { GitStatusItem } from "./components/GitSidebar/GitStatusItem";
 import { CommandPalette } from "./components/Fahh/CommandPalette";
 import { FAHH_COMMAND, OPEN_FOLDER_EVENT, OPEN_FILE_EVENT } from "./lib/commands";
 import { getActiveDocument, revealLine, runEditorAction } from "./lib/monacoBridge";
@@ -392,6 +394,9 @@ export default function App() {
       { id: "agent.searchSessions", group: "Fahh Local", label: "Search Sessions", keys: ["Ctrl", "Shift", "A"], keywords: "history chats agent", run: openSessionSearch },
       { id: "view.deepwiki", group: "View", label: "DeepWiki", keywords: "symbol wiki docs definition usages", run: () => revealView("deepwiki") },
       { id: "deepwiki.seeWiki", group: "DeepWiki", label: "See Wiki for Symbol at Cursor", keywords: "explain definition usages references docs", run: () => runEditorAction("fahh.seeWiki") },
+      { id: "view.outline", group: "View", label: "Outline", keywords: "symbols structure functions classes", run: () => revealView("outline") },
+      { id: "view.timeline", group: "View", label: "Timeline", keywords: "file history git log commits", run: () => revealView("timeline") },
+      { id: "git.sync", group: "Git", label: "Sync Changes (pull, then push)", keywords: "pull push publish branch remote", run: () => void useGitStore.getState().sync() },
       { id: "view.remote", group: "View", label: "Remote Explorer", keywords: "wsl ssh docker containers", run: () => revealView("remote") },
       { id: "view.runDebug", group: "View", label: "Run and Debug", keys: ["Ctrl", "Shift", "D"], keywords: "debugger breakpoints", run: () => revealView("runDebug") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
@@ -689,6 +694,7 @@ export default function App() {
 
         {/* Status bar */}
         <div className="fahh-statusbar relative overflow-hidden h-6 shrink-0 bg-fahh-sidebar border-t border-fahh-surface flex items-center px-3 gap-4 max-[900px]:gap-3 text-xs text-fahh-muted [&>*]:shrink-0 [&>*]:whitespace-nowrap">
+          <GitStatusItem />
           <CleanSweep />
           <StatusHud />
           <LocalServerItem />

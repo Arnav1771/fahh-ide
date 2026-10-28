@@ -150,7 +150,7 @@ function ChangeGroup({
 
 // ─── Diff viewer ──────────────────────────────────────────────────────────────
 
-function DiffView({
+export function DiffView({
   file,
   text,
   onClose,

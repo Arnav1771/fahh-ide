@@ -5,8 +5,10 @@ import {
   gitCommit,
   gitStage,
   gitStatus as fetchGitStatus,
+  gitSync,
   gitUnstage,
 } from "../lib/tauri";
+import { useToastStore } from "./toastStore";
 
 interface GitStore {
   /** Absolute path of the folder the sidebar is reporting on. */
@@ -20,6 +22,8 @@ interface GitStore {
   /** Repo-relative paths with an in-flight stage/unstage. */
   busy: string[];
   committing: boolean;
+  /** A pull/push is running. */
+  syncing: boolean;
   /** Short oid of the last commit made from the sidebar, for the toast. */
   lastCommit: string | null;
 
@@ -31,6 +35,8 @@ interface GitStore {
   stageAll: () => Promise<void>;
   unstageAll: () => Promise<void>;
   commit: () => Promise<void>;
+  /** Pull then push, like VS Code's Sync Changes. */
+  sync: () => Promise<void>;
   dismissLastCommit: () => void;
 }
 
@@ -42,6 +48,7 @@ export const useGitStore = create<GitStore>((set, get) => ({
   commitMessage: "",
   busy: [],
   committing: false,
+  syncing: false,
   lastCommit: null,
 
   setCommitMessage: (message) => set({ commitMessage: message }),
@@ -163,6 +170,21 @@ export const useGitStore = create<GitStore>((set, get) => ({
       await get().refresh();
     } catch (err) {
       set({ error: friendlyGitError(err), committing: false });
+    }
+  },
+
+  sync: async () => {
+    const { root, syncing, status } = get();
+    if (!root || syncing) return;
+    set({ syncing: true });
+    try {
+      await gitSync(root);
+      useToastStore.getState().show(status.upstream ? "Synced with " + status.upstream : "Published " + (status.branch ?? "branch"));
+    } catch (err) {
+      useToastStore.getState().show("Sync failed: " + friendlyGitError(err), "error");
+    } finally {
+      set({ syncing: false });
+      await get().refresh();
     }
   },
 

@@ -27,6 +27,9 @@ function status(partial: Partial<GitStatus> = {}): GitStatus {
     unborn: false,
     staged: [],
     unstaged: [{ path: "a.ts", status: "modified", staged: false }],
+    upstream: null,
+    ahead: 0,
+    behind: 0,
     ...partial,
   };
 }

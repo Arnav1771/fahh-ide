@@ -8,7 +8,7 @@
  * Ids are saved in layouts: never rename a shipped one.
  */
 import { useMemo } from "react";
-import { AlertCircle, Blocks, BookOpenText, Bot, Bug, BugPlay, FolderTree, MonitorCloud, GitBranch, Palette, Play, Search, Settings as SettingsIcon, SquareTerminal } from "lucide-react";
+import { AlertCircle, Blocks, BookOpenText, Bot, Bug, BugPlay, FolderTree, MonitorCloud, GitBranch, History, ListTree, Palette, Play, Search, Settings as SettingsIcon, SquareTerminal } from "lucide-react";
 import { SettingsPanel } from "../components/SettingsPanel";
 import { FileTree } from "../components/FileTree/FileTree";
 import { SearchSidebar } from "../components/SearchSidebar/SearchSidebar";
@@ -20,6 +20,8 @@ import { DebugPanel } from "../components/DebugPanel";
 import { RunDebugView } from "../components/DebugPanel/RunDebugView";
 import { RemoteExplorer } from "../components/RemoteExplorer";
 import { DeepWiki } from "../components/DeepWiki";
+import { Outline } from "../components/Outline";
+import { Timeline } from "../components/Timeline";
 import { RunPanel } from "../components/RunPanel";
 import { ProblemsPanel } from "../components/ProblemsPanel";
 import { TerminalPanel } from "../components/Terminal/TerminalPanel";
@@ -41,6 +43,8 @@ function ProblemsBadge() {
 registerView({ id: "explorer", title: "Explorer", icon: FolderTree, component: FileTree, defaultLocation: "sidebar", keys: "Ctrl+Shift+E", keywords: "files tree" });
 registerView({ id: "search", title: "Search", icon: Search, component: () => <SearchSidebar />, defaultLocation: "sidebar", keys: "Ctrl+Shift+F", keywords: "find in files grep replace" });
 registerView({ id: "git", title: "Source Control", icon: GitBranch, component: GitSidebar, defaultLocation: "sidebar", keys: "Ctrl+Shift+G", keywords: "git branch commit diff" });
+registerView({ id: "outline", title: "Outline", icon: ListTree, component: Outline, defaultLocation: "sidebar", keywords: "symbols structure functions classes headings" });
+registerView({ id: "timeline", title: "Timeline", icon: History, component: Timeline, defaultLocation: "sidebar", keywords: "history git log commits file" });
 registerView({ id: "deepwiki", title: "DeepWiki", icon: BookOpenText, component: DeepWiki, defaultLocation: "sidebar", keywords: "symbol wiki docs definition usages references explain" });
 registerView({ id: "remote", title: "Remote Explorer", icon: MonitorCloud, component: RemoteExplorer, defaultLocation: "sidebar", keywords: "wsl ssh docker dev containers remote distro host" });
 registerView({ id: "runDebug", title: "Run and Debug", icon: BugPlay, component: RunDebugView, defaultLocation: "sidebar", keys: "Ctrl+Shift+D", keywords: "debugger breakpoints launch.json step variables call stack debugpy delve lldb" });

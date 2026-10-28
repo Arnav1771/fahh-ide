@@ -8,6 +8,7 @@
 - **[Agent Mode](Agent-Mode)**
 - **[Remote Explorer](Remote-Explorer)**
 - **[DeepWiki](DeepWiki)**
+- **[Outline, Timeline & Git Status](Outline-Timeline-and-Git-Status)**
 - **[Accounts & Sync](Accounts-and-Sync)**
 - **[Native Titlebar & Menus](Native-Titlebar-and-Menus)**
 - **[Multi-Window Architecture](Multi-Window-Architecture)**

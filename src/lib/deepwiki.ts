@@ -7,7 +7,7 @@ import type { SearchMatch } from "./types";
 
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-const KEYWORDS = "def|class|function\\*?|fn|struct|enum|trait|impl|interface|type|const|let|var|func|module|record|object|val|macro_rules!|namespace|protocol|extension";
+export const KEYWORDS = "def|class|function\\*?|fn|struct|enum|trait|impl|interface|type|const|let|var|func|module|record|object|val|macro_rules!|namespace|protocol|extension";
 
 /** Does this line declare `name` (rather than use it)? */
 export function isDefinitionLine(line: string, name: string): boolean {
