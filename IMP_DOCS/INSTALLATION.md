@@ -15,7 +15,7 @@ No build tools required. Just download and run.
 
 ### Windows
 
-1. Download [`Fahh.Editor_0.6.5_x64-setup.exe`](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.5/Fahh.Editor_0.6.5_x64-setup.exe) (~6MB)
+1. Download [`Fahh.Editor_0.6.5_x64-setup.exe`](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.5/Fahh.Editor_0.6.5_x64-setup.exe) (~10.6MB)
 2. Double-click to install (installs to `AppData\Local\Fahh Editor\`, no admin required)
 3. Find **Fahh Editor** in Start Menu or on Desktop
 
@@ -44,8 +44,8 @@ Start Menu → Fahh Editor → Uninstall
 ### macOS
 
 1. Download the correct `.dmg` for your Mac:
-   - **Apple Silicon (M1/M2/M3/M4):** `Fahh.Editor_0.6.5_aarch64.dmg` (~7.3MB)
-   - **Intel:** `Fahh.Editor_0.6.5_x64.dmg` (~7.4MB)
+   - **Apple Silicon (M1/M2/M3/M4):** `Fahh.Editor_0.6.5_aarch64.dmg` (~13.1MB)
+   - **Intel:** `Fahh.Editor_0.6.5_x64.dmg` (~13.5MB)
 2. Open the `.dmg`, drag **Fahh Editor** to Applications
 3. First launch: right-click → Open (to bypass Gatekeeper unsigned warning)
 

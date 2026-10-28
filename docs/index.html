@@ -603,7 +603,7 @@
         <div class="section-head reveal">
           <span class="section-label">[Architecture]</span>
           <h2 id="bento-h"><span class="hl-muted">Tauri 2 &amp; Rust.</span> <span class="hl-bright">Engineered for speed.</span></h2>
-          <p>Designed from the metal up to deliver sub-100MB RAM consumption, zero cloud telemetry, and native performance.</p>
+          <p>A native Rust core on the system WebView: a small installer, zero cloud telemetry, and native performance.</p>
         </div>
 
         <div class="bento-grid">
@@ -656,8 +656,8 @@
               <div class="bento-icon">
                 <svg class="icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               </div>
-              <h3 class="bento-title">&lt;100MB RAM Footprint</h3>
-              <p class="bento-desc">Built with Tauri 2 and native WebViews instead of heavy Electron wrappers. Cold boot in under 400ms, a 6MB installer, and whisper-quiet CPU usage during active compilation.</p>
+              <h3 class="bento-title">An 11 MB Installer</h3>
+              <p class="bento-desc">Built with Tauri 2 and the system WebView instead of bundling Chromium like Electron does, so the Windows installer is about 11 MB and quiet on CPU while you work.</p>
             </div>
           </div>
 
@@ -751,14 +751,14 @@
               </tr>
               <tr>
                 <td><strong>Memory Footprint (Idle)</strong></td>
-                <td class="col-highlight"><span class="badge-fahh">&lt; 90 MB (Tauri 2)</span></td>
+                <td class="col-highlight"><span class="badge-fahh">~400–520 MB (WebView included, measured)</span></td>
                 <td>~850 MB (Electron)</td>
                 <td>~750 MB (Electron)</td>
                 <td>~120 MB (GPUI)</td>
               </tr>
               <tr>
                 <td><strong>Installer / Binary Size</strong></td>
-                <td class="col-highlight"><span class="badge-fahh">~6 MB</span></td>
+                <td class="col-highlight"><span class="badge-fahh">~11 MB</span></td>
                 <td>~160 MB</td>
                 <td>~120 MB</td>
                 <td>~45 MB</td>
