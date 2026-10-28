@@ -14,7 +14,7 @@ LATEST_RELEASE=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest"
 TAG=$(echo "$LATEST_RELEASE" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || true)
 
 if [ -z "$TAG" ]; then
-  TAG="v0.6.4"
+  TAG="v0.6.5"
 fi
 
 echo "Installing Fahh Editor $TAG for $OS ($ARCH)..."

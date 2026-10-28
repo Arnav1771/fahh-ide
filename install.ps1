@@ -46,7 +46,7 @@ try {
 
 if (-not $assetUrl) {
     # Fallback to direct latest release binary URL
-    $assetUrl = "https://github.com/$repo/releases/latest/download/Fahh.Editor_0.6.4_x64-setup.exe"
+    $assetUrl = "https://github.com/$repo/releases/latest/download/Fahh.Editor_0.6.5_x64-setup.exe"
 }
 
 Write-Host "Downloading Fahh Editor $version..." -ForegroundColor Green
