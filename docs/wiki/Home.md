@@ -1,6 +1,6 @@
 # Welcome to the Fahh Editor Wiki
 
-**Fahh Editor** (`v0.6.4`) is a next-generation AI-native desktop IDE built with **Tauri 2 (Rust)**, **React 18**, **TypeScript**, **Monaco Editor**, and **Tailwind CSS**. It combines the productivity of linear modern code editors (like VS Code and Cursor) with an infinite 2D **CATE Spatial Canvas** and autonomous AI agent sidecars.
+**Fahh Editor** (`v0.6.5`) is a next-generation AI-native desktop IDE built with **Tauri 2 (Rust)**, **React 18**, **TypeScript**, **Monaco Editor**, and **Tailwind CSS**. It combines the productivity of linear modern code editors (like VS Code and Cursor) with an infinite 2D **CATE Spatial Canvas** and autonomous AI agent sidecars.
 
 ---
 
@@ -10,7 +10,12 @@
 |---|---|
 | **[Getting Started](Getting-Started)** | The first-run tour (sound, code, look, Fahh Local, Check Setup), your own error sound, update checks |
 | **[CATE Spatial Canvas](CATE-Spatial-Canvas)** | Infinite 2D zooming canvas, Monaco editor nodes, dynamic font scaling, 1:1 crisp focus (`Alt+1`) |
-| **[VS Code Multi-Terminal](VS-Code-Multi-Terminal)** | Multi-session terminal tabs, side-by-side split panes (`Ctrl+\`), shell selector |
+| **[Run and Debug](Run-and-Debug)** | DAP debugging for Python, Go, C/C++/Rust: breakpoints, stepping, variables, Debug Console, `launch.json` (`Ctrl+Shift+D`) |
+| **[Terminal](VS-Code-Multi-Terminal)** | Real shells (PowerShell, cmd, Git Bash, WSL, bash/zsh), profiles, splits (`Ctrl+Shift+5`), `tasks.json` |
+| **[Agent Mode](Agent-Mode)** | The Agent / Editor switch, sessions sidebar, session search (`Ctrl+Shift+A`) |
+| **[Remote Explorer](Remote-Explorer)** | WSL distros, SSH hosts and Docker containers |
+| **[DeepWiki](DeepWiki)** | See Wiki on a symbol: definition, docs, usages, AI explanation |
+| **[Accounts & Sync](Accounts-and-Sync)** | Optional account: upload and download settings and theme, What's new |
 | **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)** | Material, Fahh Colour and Minimal icon themes; how file and folder icons are chosen |
 | **[Native Titlebar & Menus](Native-Titlebar-and-Menus)** | Seamless borderless titlebar, client-side window controls, VS Code menu bar |
 | **[Multi-Window Architecture](Multi-Window-Architecture)** | $N$-window concurrency, isolated state stores, smart instance de-duplication (`Ctrl+Shift+N`) |
@@ -29,7 +34,7 @@
 
 ### 2. Multi-Terminal with Side-by-Side Splits
 - Run $N$ concurrent terminal sessions with independent state, working directories, and scroll buffers.
-- Split any active terminal horizontally or vertically (`Ctrl+\`) to monitor servers and run git commands side-by-side.
+- Split any active terminal (`Ctrl+Shift+5`) to monitor servers and run git commands side-by-side.
 
 ### 3. Native Titlebar & Menu Bar
 - Custom frameless titlebar with integrated client-side Minimize, Maximize/Restore, and Close buttons.
@@ -44,10 +49,10 @@
 ## Installation & Running
 
 ### Desktop Application
-Download the latest installers from [GitHub Releases](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.4):
-- Windows: `Fahh.Editor_0.6.4_x64-setup.exe` or `.msi`
-- macOS: `Fahh.Editor_0.6.4_aarch64.dmg` / `x64.dmg`
-- Linux: `Fahh.Editor_0.6.4_amd64.AppImage` / `.deb` / `.rpm`
+Download the latest installers from [GitHub Releases](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.5):
+- Windows: `Fahh.Editor_0.6.5_x64-setup.exe` or `.msi`
+- macOS: `Fahh.Editor_0.6.5_aarch64.dmg` / `x64.dmg`
+- Linux: `Fahh.Editor_0.6.5_amd64.AppImage` / `.deb` / `.rpm`
 
 ### Developer Quickstart
 ```bash

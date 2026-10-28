@@ -3,7 +3,12 @@
 - **[Home](Home)**
 - **[Getting Started](Getting-Started)**
 - **[CATE Spatial Canvas](CATE-Spatial-Canvas)**
-- **[VS Code Multi-Terminal](VS-Code-Multi-Terminal)**
+- **[Run and Debug](Run-and-Debug)**
+- **[Terminal](VS-Code-Multi-Terminal)**
+- **[Agent Mode](Agent-Mode)**
+- **[Remote Explorer](Remote-Explorer)**
+- **[DeepWiki](DeepWiki)**
+- **[Accounts & Sync](Accounts-and-Sync)**
 - **[Native Titlebar & Menus](Native-Titlebar-and-Menus)**
 - **[Multi-Window Architecture](Multi-Window-Architecture)**
 - **[Workspace Search & Replace](Workspace-Search-and-Replace)**

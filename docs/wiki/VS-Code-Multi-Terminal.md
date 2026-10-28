@@ -1,42 +1,41 @@
-# VS Code-Style Multi-Terminal & Split View
+# Terminal
 
-Fahh Editor delivers a terminal experience comparable to Visual Studio Code, complete with $N$-session tab management, side-by-side terminal splits, and shell selection.
-
----
-
-## Features
-
-### 1. Multi-Session Management
-- Create an unlimited number of concurrent terminal sessions.
-- Top session tabs bar displays all active sessions (e.g. `1: powershell`, `2: bash`, `3: cmd`).
-- Each terminal session maintains its own:
-  - Working directory (`cwd`)
-  - Command history (navigable with `Up` / `Down` arrows)
-  - Output lines buffer
-  - Running processes
-
-### 2. Side-by-Side Split Panes
-- Click the **Split Terminal** button (`Columns2` icon) or press `Ctrl+Shift+5` to split the active terminal side-by-side.
-- Split multiple times to view up to 4 concurrent terminal panes on screen at the same time.
-- Switch between **Horizontal** (columns) and **Vertical** (rows) split layouts on the fly.
-- Close individual split panes with the `X` button on the pane header without killing the underlying session.
-
-### 3. Shell Selection
-- Launch any installed system shell via the `+ Shell` dropdown:
-  - **PowerShell** (Default on Windows)
-  - **Command Prompt** (`cmd.exe`)
-  - **Bash / WSL** (Windows Subsystem for Linux or Unix shell)
-
-### 4. Interactive Utilities
-- **Tab Completion**: Auto-completes files and directory paths in the current workspace.
+Every terminal tab is a **real shell** on a pseudo-terminal, like VS Code's: interactive programs (python, node, vim, htop), colours, Tab completion, `Ctrl+C`, and resizing all work.
 
 ---
 
-## Shortcuts
+## Profiles
+
+| Platform | Profiles |
+|---|---|
+| Windows | PowerShell, Command Prompt, Git Bash (if installed), each WSL distro |
+| Linux / macOS | your login shell, bash, zsh, fish (whichever are installed) |
+
+Open the `+` dropdown on the terminal bar to start a specific profile, or choose **Set Default Profile**. Settings > Terminal also sets the default.
+
+## Tabs and splits
 
 | Action | Shortcut |
 |---|---|
-| **New Terminal** | `Ctrl+Shift+` ` |
-| **Split Terminal** | `Ctrl+Shift+5` |
-| **Clear Terminal** | `Ctrl+L` or type `clear` / `cls` |
-| **Focus Editor** | `Escape` |
+| New terminal | ``Ctrl+Shift+` `` |
+| Split terminal | `Ctrl+Shift+5` |
+| Toggle the panel | ``Ctrl+` `` |
+
+Each tab keeps its own shell, working directory and scrollback. Closing a split pane does not kill other sessions. The terminal starts in the open folder.
+
+## Tasks
+
+**Run Task…** in the terminal bar menu (or the command palette) lists the tasks in `.vscode/tasks.json` and runs the chosen one in a new terminal:
+
+```json
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "dev", "type": "shell", "command": "npm run dev" }
+  ]
+}
+```
+
+## The Explorer follows the terminal
+
+Files and folders made in the terminal (`mkdir`, `git clone`, `npm create`) appear in the Explorer without a refresh.

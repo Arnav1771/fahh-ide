@@ -36,3 +36,11 @@ Installing an icon theme from the Extensions panel does **not** change Fahh's ic
 ## Extension Architecture Note
 
 Open VSX packages (`.vsix`) are designed for VS Code's Node.js extension host. Fahh Editor is a Tauri 2 + Rust + Monaco desktop application and does not run that host. PDF viewing, Markdown preview, HTML preview and CSV viewing are built into the editor instead.
+
+---
+
+## Colour themes from Open VSX
+
+Search the Extensions view (`Ctrl+Shift+X`) for a colour theme (One Dark Pro, Dracula, Tokyo Night...) and press **Install**. Fahh downloads the extension from Open VSX, converts its theme to Monaco and the workbench, and lists it under Settings > Appearance. Uninstall removes it.
+
+Other VS Code extensions (language servers, debuggers, commands) need the VS Code extension host, which Fahh does not run. Their Install button says so instead of pretending to work.
