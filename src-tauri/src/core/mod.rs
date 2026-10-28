@@ -14,6 +14,7 @@ pub mod debugger;
 pub mod pty;
 pub mod remote;
 pub mod extensions;
+pub mod watch;
 pub mod formatter;
 pub mod git;
 pub mod preview;

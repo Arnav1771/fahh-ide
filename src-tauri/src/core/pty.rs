@@ -42,12 +42,19 @@ fn profile(id: &str, name: &str, program: &str, args: &[&str]) -> TerminalProfil
 
 #[cfg(windows)]
 fn detect_profiles() -> Vec<TerminalProfile> {
+    // Windows PowerShell 5.1 and cmd read the pseudo-console in the OEM code page, so typed
+    // "é" arrived as "Ã©": switch their console to UTF-8 first (pwsh is UTF-8 already).
     let mut out = vec![if which::which("pwsh.exe").is_ok() {
         profile("pwsh", "PowerShell", "pwsh.exe", &["-NoLogo"])
     } else {
-        profile("powershell", "PowerShell", "powershell.exe", &["-NoLogo"])
+        profile(
+            "powershell",
+            "PowerShell",
+            "powershell.exe",
+            &["-NoLogo", "-NoExit", "-Command", "[Console]::InputEncoding = [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)"],
+        )
     }];
-    out.push(profile("cmd", "Command Prompt", "cmd.exe", &[]));
+    out.push(profile("cmd", "Command Prompt", "cmd.exe", &["/K", "chcp 65001 >nul"]));
     if let Some(bash) = git_bash() {
         out.push(TerminalProfile { id: "gitbash".into(), name: "Git Bash".into(), program: bash, args: vec!["--login".into(), "-i".into()] });
     }

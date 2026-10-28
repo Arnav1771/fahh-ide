@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { initAgentEvents, useAgentStore } from "./store/agentStore";
 import { debugKeyAction, isAgentToggle, isSessionSearch } from "./lib/hotkeys";
 import { useLayoutModeStore } from "./store/layoutModeStore";
+import { initFsWatch } from "./lib/fsWatch";
 import { AgentMode, onSessionSearch } from "./components/AgentMode";
 import { ago, listSessions } from "./lib/agentSessionsList";
 import type { AgentSessionInfo } from "./lib/types";
@@ -138,6 +139,8 @@ export default function App() {
     void listSessions().then(setSessionSearch);
   };
   useEffect(() => onSessionSearch(openSessionSearch), []);
+  // The Explorer follows changes made in the terminal, by the agent or by other programs.
+  useEffect(() => initFsWatch(), []);
   const sessionCommands = useMemo<PaletteCommand[]>(
     () =>
       (sessionSearch ?? []).map((s) => ({

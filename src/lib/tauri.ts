@@ -379,3 +379,6 @@ export interface ExtensionThemeFile {
 /** Download an Open VSX extension and return its colour themes ("" version: latest); rejects for any other kind. */
 export const extInstallTheme = (namespace: string, name: string, version: string) =>
   invoke<ExtensionThemeFile[]>("ext_install_theme", { namespace, name, version });
+
+/** Watch the open folder; changes made outside the Explorer arrive as `fs://changed`. */
+export const watchWorkspace = (root: string) => invoke<void>("watch_workspace", { root });
