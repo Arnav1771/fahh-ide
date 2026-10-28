@@ -70,20 +70,27 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
-## [0.6.5] — 2026-10-25
+## [0.6.5] — 2026-10-28
 
 ### Added
-- **Single-instance CLI file opening:** `fahh <file>` now opens as a tab in the running window instead of launching a separate window and WebView2 renderer (#90).
-- **Interactive Onboarding:** 3-step skippable welcome tour with custom error sound picker and test preview (#89).
-- **Check Setup Diagnostic:** Built-in environment and tool diagnostic modal verifying Git, Node, Rust, and Claude/Ollama availability (#89).
-- **Fahh Local Coding Agent:** Multi-turn autonomous agent sessions, modes, permissions, slash commands, and subagent dispatch (#86).
-- **Dockable multi-panel layout:** Drag-and-drop workspace panels anywhere, flexible sidebars, and split editor views (#85).
-- **Daily update checker:** Automatic non-intrusive notification when a newer Fahh Editor version is available on GitHub Releases (#89).
+- **Run and Debug:** DAP debugging (Python/debugpy, Go/Delve, C/C++/Rust/lldb-dap), gutter breakpoints, F5/F9/F10/F11, Variables, Call Stack, Debug Console, `.vscode/launch.json` (#92).
+- **Terminal:** real shells on a pseudo-terminal (PowerShell, Command Prompt, Git Bash, WSL; bash/zsh), profiles, split, default profile, Run Task from `.vscode/tasks.json` (#92).
+- **Agent mode:** Agent | Editor switch, sessions sidebar, Ctrl+Shift+A session search (#92).
+- **Remote Explorer:** WSL distros, SSH hosts, Docker containers (#92).
+- **DeepWiki:** See Wiki on any symbol: definition, docs, usages, AI explanation (#92).
+- **Open VSX colour themes** install for real; other extensions explain why they cannot run (#92).
+- **Accounts and settings sync** on Fahh Cloud (Neon): sign up, sign in, email codes, forgot password, upload/download settings and theme, newsletter opt-in, What's new popup (#93).
+- **Dockable layout** with split editors and a saved layout per folder (#85).
+- **Fahh Local** sessions, modes, slash commands, `/loop`, subagents (#86).
+- **Onboarding** tour, custom error sound, Check Setup, daily update check (#89).
+- **QoL:** MRU tabs, back/forward, Open Recent and session restore, explorer drag-and-drop, Settings page, app dialogs (#87).
 
 ### Fixed
-- **Windows MSI build:** Resolved WiX toolset duplicate binary bundling conflict where `fahh-agent` was packaged twice (#88).
-- **UTF-8 BOM file loading:** Cleanly reads and preserves UTF-8 byte-order marks without corrupting line buffers (#88).
-- **QoL & Theme Polish:** Restored Open Recent session state, refined Fahh Light theme contrast, and added tab close protection (#87).
+- The Explorer refreshes on changes made outside it (file watcher) (#92).
+- View shortcuts (Ctrl+Shift+E/F/G/X/D) work (#92).
+- `fahh <file>` opens a tab in the running window (#90).
+- Windows MSI build (fahh-agent packaged twice); UTF-8 BOM files and notebooks open correctly (#88).
+- Blank window after restoring a WSL session (#88).
 
 ---
 
