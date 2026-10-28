@@ -137,6 +137,8 @@ export function launchArguments(cfg: LaunchConfig, ctx: VarContext): Record<stri
   const args: Record<string, unknown> = { cwd: ctx.workspaceFolder, ...rest };
   // debugpy's default console is a terminal it asks the editor to open; Fahh shows output in the Debug Console.
   if (adapterFor(type) === "debugpy" && (!args.console || args.console === "integratedTerminal")) args.console = "internalConsole";
+  // ...and only sends the program's prints as output events when asked to.
+  if (adapterFor(type) === "debugpy" && args.redirectOutput === undefined) args.redirectOutput = true;
   return args;
 }
 

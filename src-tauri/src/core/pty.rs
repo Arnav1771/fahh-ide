@@ -111,6 +111,19 @@ fn plan(profile: &TerminalProfile, cwd: &str, home: &str) -> (String, Vec<String
     (profile.program.clone(), args, dir.to_string())
 }
 
+/// Windows: "ignore Ctrl+C" is a per-process flag that children inherit. Launched from a
+/// shell or tool that set it, Fahh would pass it to every terminal: Ctrl+C would not stop
+/// `npm run dev` or a Python script. Clear it for this process (and so for the shells).
+#[cfg(windows)]
+fn allow_ctrl_c() {
+    // SAFETY: with a null handler this only sets the process' Ctrl+C attribute.
+    unsafe {
+        windows_sys::Win32::System::Console::SetConsoleCtrlHandler(None, 0);
+    }
+}
+#[cfg(not(windows))]
+fn allow_ctrl_c() {}
+
 /// Decode as much of `pending` as is valid UTF-8, keeping a character cut at the end of a read
 /// for the next one (a read can split "é" or an emoji).
 fn take_utf8(pending: &mut Vec<u8>) -> String {
@@ -155,6 +168,7 @@ fn spawn_raw(
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
     cmd.env("TERM_PROGRAM", "fahh");
+    allow_ctrl_c();
     let mut child = pair.slave.spawn_command(cmd).map_err(|e| format!("Could not start {program}: {e}"))?;
     drop(pair.slave);
 

@@ -80,7 +80,7 @@ describe("adapters and launch arguments", () => {
       { name: "x", type: "debugpy", request: "launch", program: "/a.py", console: "integratedTerminal", preLaunchTask: "build" },
       { file: "/a.py", workspaceFolder: "/w" }
     );
-    expect(args).toEqual({ cwd: "/w", program: "/a.py", console: "internalConsole" });
+    expect(args).toEqual({ cwd: "/w", program: "/a.py", console: "internalConsole", redirectOutput: true });
   });
 
   it("keeps an explicit cwd", () => {

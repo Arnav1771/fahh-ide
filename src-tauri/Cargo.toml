@@ -54,6 +54,10 @@ zip = { version = "2", default-features = false, features = ["deflate"] }
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
 
+[target.'cfg(windows)'.dependencies]
+# Re-enable Ctrl+C for the shells the terminal starts (core/pty.rs)
+windows-sys = { version = "0.61", features = ["Win32_System_Console"] }
+
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
 

@@ -6,9 +6,38 @@ import "@xterm/xterm/css/xterm.css";
 import { attach, clearBuffer, resize, write } from "../../lib/ptySessions";
 import { noteLocalUrls, openBrowser } from "../../lib/browser";
 import { useSettingsStore } from "../../store/settingsStore";
-import { useTerminalStore, type TerminalSession } from "../../store/terminalStore";
+import {
+  useTerminalStore,
+  type TerminalSession,
+} from "../../store/terminalStore";
 
-const ANSI = new RegExp("\\u001b\\[[0-9;?]*[ -/]*[@-~]|\\u001b\\][^\\u0007]*\\u0007", "g");
+const ANSI = new RegExp(
+  "\\u001b\\[[0-9;?]*[ -/]*[@-~]|\\u001b\\][^\\u0007]*\\u0007",
+  "g",
+);
+
+/**
+ * The folder a new shell starts in. At launch the terminal panel mounts before the folder
+ * passed on the command line (or restored) is open: wait a moment for it rather than
+ * starting in the home folder.
+ */
+function startFolder(own?: string): Promise<string> {
+  if (own) return Promise.resolve(own);
+  const now = useTerminalStore.getState().cwd;
+  if (now) return Promise.resolve(now);
+  return new Promise((resolve) => {
+    const timer = window.setTimeout(() => {
+      unsub();
+      resolve(useTerminalStore.getState().cwd);
+    }, 3000);
+    const unsub = useTerminalStore.subscribe((s) => {
+      if (!s.cwd) return;
+      window.clearTimeout(timer);
+      unsub();
+      resolve(s.cwd);
+    });
+  });
+}
 
 /** Live xterm instances, for Clear and focus from the toolbar. */
 const terms = new Map<string, Terminal>();
@@ -20,7 +49,8 @@ export function clearTerminal(sessionId: string): void {
 
 function themeFromCss() {
   const css = getComputedStyle(document.documentElement);
-  const v = (name: string, fallback: string) => css.getPropertyValue(name).trim() || fallback;
+  const v = (name: string, fallback: string) =>
+    css.getPropertyValue(name).trim() || fallback;
   return {
     background: v("--fahh-bg", "#1e1e2e"),
     foreground: v("--fahh-text", "#cdd6f4"),
@@ -31,7 +61,15 @@ function themeFromCss() {
 }
 
 /** One terminal tab: xterm.js drawing a real shell (see lib/ptySessions). */
-export function XtermPane({ session, active, onFocus }: { session: TerminalSession; active: boolean; onFocus: () => void }) {
+export function XtermPane({
+  session,
+  active,
+  onFocus,
+}: {
+  session: TerminalSession;
+  active: boolean;
+  onFocus: () => void;
+}) {
   const ref = useRef<HTMLDivElement>(null);
   const termRef = useRef<Terminal | null>(null);
   const fitRef = useRef<FitAddon | null>(null);
@@ -68,7 +106,8 @@ export function XtermPane({ session, active, onFocus }: { session: TerminalSessi
       if (e.type !== "keydown" || !(e.ctrlKey || e.metaKey)) return true;
       const k = e.key.toLowerCase();
       if (k === "c" && (e.shiftKey || term.hasSelection())) {
-        if (term.hasSelection()) void navigator.clipboard?.writeText(term.getSelection());
+        if (term.hasSelection())
+          void navigator.clipboard?.writeText(term.getSelection());
         e.preventDefault();
         return false;
       }
@@ -83,17 +122,23 @@ export function XtermPane({ session, active, onFocus }: { session: TerminalSessi
     let alive = true;
     let detach = () => {};
     const profile = session.profile || settings.terminalDefaultProfile;
-    void attach(
-      session.id,
-      { profile, cwd: session.cwd ?? useTerminalStore.getState().cwd, cols: term.cols, rows: term.rows },
-      (data) => {
-        term.write(data);
-        noteLocalUrls(data.replace(ANSI, "")); // offer "localhost:5173" in the status bar
-      },
-      (code) => term.write(`\r\n\x1b[2m[process exited${code === null ? "" : ` with code ${code}`}]\x1b[0m\r\n`)
-    ).then((fn) => {
-      if (alive) detach = fn;
-      else fn();
+    void startFolder(session.cwd).then((cwd) => {
+      if (!alive) return;
+      void attach(
+        session.id,
+        { profile, cwd, cols: term.cols, rows: term.rows },
+        (data) => {
+          term.write(data);
+          noteLocalUrls(data.replace(ANSI, "")); // offer "localhost:5173" in the status bar
+        },
+        (code) =>
+          term.write(
+            `\r\n\x1b[2m[process exited${code === null ? "" : ` with code ${code}`}]\x1b[0m\r\n`,
+          ),
+      ).then((fn) => {
+        if (alive) detach = fn;
+        else fn();
+      });
     });
     const input = term.onData((d) => void write(session.id, d));
 
@@ -107,7 +152,8 @@ export function XtermPane({ session, active, onFocus }: { session: TerminalSessi
       }
     });
     ro.observe(el);
-    const retheme = () => window.setTimeout(() => (term.options.theme = themeFromCss()), 0);
+    const retheme = () =>
+      window.setTimeout(() => (term.options.theme = themeFromCss()), 0);
     window.addEventListener("fahh-theme-change", retheme);
 
     return () => {
@@ -140,5 +186,12 @@ export function XtermPane({ session, active, onFocus }: { session: TerminalSessi
     if (active) termRef.current?.focus();
   }, [active]);
 
-  return <div ref={ref} onMouseDown={onFocus} className="fahh-xterm h-full w-full min-h-0 min-w-0 pl-2 pt-1" data-session={session.id} />;
+  return (
+    <div
+      ref={ref}
+      onMouseDown={onFocus}
+      className="fahh-xterm h-full w-full min-h-0 min-w-0 pl-2 pt-1"
+      data-session={session.id}
+    />
+  );
 }
