@@ -200,3 +200,34 @@ svg.icon { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-w
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; }
   .reveal { opacity: 1; transform: none; }
 }
+
+/* Hero install picker */
+.install-pick { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 24px; }
+.install-pick .terminal-install-box { margin-top: 0; max-width: 100%; }
+.install-pick .terminal-cmd { overflow-x: auto; white-space: nowrap; }
+.install-tabs { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border-subtle); border-radius: 999px; background: rgba(14, 13, 11, 0.8); }
+.install-tabs button { border: 0; background: none; color: var(--fg-body); font: 500 12px var(--font-sans, inherit); padding: 5px 14px; border-radius: 999px; cursor: pointer; }
+.install-tabs button:hover { color: var(--text-primary); }
+.install-tabs button[aria-selected="true"] { background: var(--accent-subtle); color: var(--accent-bright); box-shadow: inset 0 0 0 1px var(--border-accent); }
+.install-alt { font-size: 13px; color: var(--fg-body); }
+.install-alt:hover { color: var(--accent-bright); }
+
+/* Download dialog with the optional account */
+dialog.getfahh { width: min(460px, calc(100vw - 32px)); max-height: calc(100vh - 32px); overflow: auto; padding: 28px; border: 1px solid var(--border-medium); border-radius: var(--r-lg); background: var(--bg-card); color: var(--text-primary); box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6); }
+dialog.getfahh::backdrop { background: rgba(5, 4, 3, 0.72); backdrop-filter: blur(4px); }
+.getfahh h2 { font-size: 20px; margin: 0 0 8px; }
+.getfahh h3 { font-size: 15px; margin: 0 0 6px; }
+.getfahh h3 span { margin-left: 6px; font-size: 11px; font-weight: 500; color: var(--fg-body); border: 1px solid var(--border-subtle); border-radius: 999px; padding: 1px 8px; vertical-align: middle; }
+.getfahh p { margin: 0 0 10px; font-size: 13px; color: var(--fg-body); }
+.getfahh .gf-file code { color: var(--text-primary); }
+.getfahh a { color: var(--accent-bright); }
+.getfahh hr { border: 0; border-top: 1px solid var(--border-subtle); margin: 18px 0; }
+.getfahh label { display: block; font-size: 12px; color: var(--fg-body); margin-bottom: 10px; }
+.getfahh input { display: block; width: 100%; margin-top: 4px; padding: 9px 11px; border-radius: var(--r-sm); border: 1px solid var(--border-medium); background: var(--bg-base); color: var(--text-primary); font: 14px inherit; }
+.getfahh input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+.getfahh .gf-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+.getfahh .gf-close { position: absolute; top: 12px; right: 14px; border: 0; background: none; color: var(--fg-body); font-size: 22px; line-height: 1; cursor: pointer; }
+.getfahh .gf-close:hover { color: var(--text-primary); }
+.getfahh .gf-done { color: var(--success); font-weight: 600; font-size: 15px; }
+.getfahh .gf-msg { margin: 10px 0 0; min-height: 1em; }
+.getfahh .gf-msg.bad { color: var(--error); }

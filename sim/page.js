@@ -582,9 +582,16 @@ if (btnHeroSound) {
 
 const btnCopyCmd = $("#btn-copy-cmd");
 const cmdText = $("#terminal-cmd-text");
-if (cmdText && /Mac OS X|Macintosh|Linux/i.test(navigator.userAgent) && !/Android|iPhone|iPad/i.test(navigator.userAgent)) {
-  cmdText.textContent = "curl -fsSL https://fahhide.duckdns.org/install.sh | bash";
-}
+// Install command per system: PowerShell for Windows, the shell script for macOS and Linux.
+const INSTALL = { win: "irm https://fahhide.duckdns.org/install.ps1 | iex", mac: "curl -fsSL https://fahhide.duckdns.org/install.sh | bash", linux: "curl -fsSL https://fahhide.duckdns.org/install.sh | bash" };
+const installTabs = [...document.querySelectorAll(".install-tabs [role=tab]")];
+const pickInstall = (os) => {
+  installTabs.forEach((t) => t.setAttribute("aria-selected", String(t.dataset.os === os)));
+  if (cmdText) cmdText.textContent = INSTALL[os];
+};
+installTabs.forEach((t) => t.addEventListener("click", () => pickInstall(t.dataset.os)));
+const uaOs = /Mac OS X|Macintosh/i.test(navigator.userAgent) && !/iPhone|iPad/i.test(navigator.userAgent) ? "mac" : /Linux/i.test(navigator.userAgent) && !/Android/i.test(navigator.userAgent) ? "linux" : "win";
+pickInstall(uaOs);
 if (btnCopyCmd && cmdText) {
   btnCopyCmd.addEventListener("click", () => {
     navigator.clipboard?.writeText(cmdText.textContent.trim()).then(() => {

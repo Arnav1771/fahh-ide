@@ -72,12 +72,19 @@
           <a class="btn btn-secondary" href="#superpowers">Spatial Canvas</a>
         </div>
 
-        <div class="terminal-install-box reveal">
-          <span class="terminal-prefix">$</span>
-          <span class="terminal-cmd" id="terminal-cmd-text">irm https://fahhide.duckdns.org/install.ps1 | iex</span>
-          <button type="button" class="btn-copy-cmd" id="btn-copy-cmd" aria-label="Copy terminal install command">Copy</button>
+        <div class="install-pick reveal">
+          <div class="install-tabs" role="tablist" aria-label="Install command for">
+            <button type="button" role="tab" aria-selected="true" data-os="win">Windows</button>
+            <button type="button" role="tab" aria-selected="false" data-os="mac">macOS</button>
+            <button type="button" role="tab" aria-selected="false" data-os="linux">Linux</button>
+          </div>
+          <div class="terminal-install-box">
+            <span class="terminal-prefix">$</span>
+            <span class="terminal-cmd" id="terminal-cmd-text">irm https://fahhide.duckdns.org/install.ps1 | iex</span>
+            <button type="button" class="btn-copy-cmd" id="btn-copy-cmd" aria-label="Copy terminal install command">Copy</button>
+          </div>
+          <a class="install-alt" href="download.html">or pick an installer</a>
         </div>
-        <p class="fine center reveal" style="margin-top:8px">Windows (PowerShell): <code>irm https://fahhide.duckdns.org/install.ps1 | iex</code> · macOS and Linux: <code>curl -fsSL https://fahhide.duckdns.org/install.sh | bash</code> · or <a href="download.html">pick an installer</a></p>
 
         <!-- Hero Desktop App Showcase Frame -->
         <div class="hero-showcase-container reveal">
@@ -982,5 +989,6 @@
   </footer>
 
   <script type="module" src="sim/page.js"></script>
+  <script type="module" src="sim/getfahh.js"></script>
 </body>
 </html>
