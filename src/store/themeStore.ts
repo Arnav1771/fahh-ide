@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ThemeId } from "../lib/types";
+import { useExtensionThemes } from "./extensionThemesStore";
 
 const STORAGE_KEY = "fahh-theme";
 
@@ -16,8 +17,11 @@ export const THEME_IDS: readonly ThemeId[] = [
 /** New installs start here. Anyone who already picked a theme keeps it. */
 export const DEFAULT_THEME: ThemeId = "fahh-gold";
 
+/** A shipped theme, or an installed extension theme that is still installed. */
 export function isThemeId(value: unknown): value is ThemeId {
-  return typeof value === "string" && (THEME_IDS as readonly string[]).includes(value);
+  if (typeof value !== "string") return false;
+  if ((THEME_IDS as readonly string[]).includes(value)) return true;
+  return value.startsWith("ext-") && useExtensionThemes.getState().themes.some((t) => t.id === value);
 }
 
 export function readPersistedTheme(): ThemeId {

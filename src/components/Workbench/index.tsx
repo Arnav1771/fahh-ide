@@ -12,8 +12,9 @@ import { EditorPane } from "../Editor/EditorPane";
 import { Breadcrumbs } from "../Breadcrumbs";
 import { TitleScreen } from "../Fahh/TitleScreen";
 import { ImpactLayer } from "../Fahh/ImpactLayer";
-import { THEME_DEFINITIONS } from "../ThemePanel";
-import { getView } from "../../lib/viewRegistry";
+import { allThemes } from "../ThemePanel";
+import { getView, listViews } from "../../lib/viewRegistry";
+import { matchesKeys } from "../../lib/hotkeys";
 import { runCommand } from "../../lib/commands";
 import { isPreviewOnly, previewKindFor } from "../../lib/preview";
 import { openBrowser } from "../../lib/browser";
@@ -35,6 +36,7 @@ import {
   loadLayout,
   saveLayoutNow,
   scheduleSave,
+  revealView,
   setDockApi,
   splitActiveEditor,
   syncEditors,
@@ -42,6 +44,9 @@ import {
 } from "../../lib/workbench";
 import { EDITOR_PREFIX, HOME_PREFIX } from "../../lib/dockLayout";
 import "../../views";
+
+/** Views whose shortcut App.tsx handles itself (it needs to know where focus is). */
+const APP_OWNED_KEYS = new Set(["agent", "settings"]);
 
 const announce = () => window.dispatchEvent(new Event("fahh-dock-active"));
 
@@ -60,7 +65,7 @@ function ViewHost({ params }: IDockviewPanelProps<{ viewId: string }>) {
 
 function EditorPanel({ api, params }: IDockviewPanelProps<{ path: string }>) {
   const activeTheme = useThemeStore((s) => s.activeTheme);
-  const monacoTheme = THEME_DEFINITIONS.find((d) => d.id === activeTheme)?.monacoTheme ?? "vs-dark";
+  const monacoTheme = allThemes().find((d) => d.id === activeTheme)?.monacoTheme ?? "vs-dark";
   return (
     <div className="flex h-full w-full min-h-0 flex-col">
       <ErrorBoundary label={`Editor (${params.path.split(/[\\/]/).pop()})`}>
@@ -281,6 +286,14 @@ export function Workbench() {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       if (!mod) return;
+      // Ctrl+Shift+E / F / G / X / D: the shortcuts each view advertises (App owns Ctrl+L and Ctrl+,).
+      const view = listViews().find((v) => v.keys && !APP_OWNED_KEYS.has(v.id) && matchesKeys(e, v.keys));
+      if (view) {
+        e.preventDefault();
+        e.stopPropagation();
+        revealView(view.id);
+        return;
+      }
       const k = e.key.toLowerCase();
       if (k === "\\" && !e.shiftKey && !e.altKey) {
         e.preventDefault();

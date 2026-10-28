@@ -27,6 +27,9 @@ interface RunnerStore {
   setLanguage: (language: string) => void;
   /** Called when the child process exits */
   finishRun: (exitCode: number | null, durationMs: number) => void;
+  /** Ctrl+F5 asked for a run; the Run panel starts it once it is mounted. */
+  runRequested: boolean;
+  requestRun: (requested: boolean) => void;
 }
 
 export const useRunnerStore = create<RunnerStore>((set) => ({
@@ -37,6 +40,8 @@ export const useRunnerStore = create<RunnerStore>((set) => ({
   startedAt: null,
   exitCode: null,
   durationMs: null,
+  runRequested: false,
+  requestRun: (runRequested) => set({ runRequested }),
 
   startRun: (pid, language) =>
     set({

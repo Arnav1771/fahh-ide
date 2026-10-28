@@ -1,6 +1,6 @@
 # Fahh Local Agent
 
-**Fahh Local** is Fahh Editor's coding agent. It runs on your machine with your own provider key and works on the open folder: chat, a card per tool call, approvals, and per-file diff review. Open it from the robot icon or with `Ctrl+L` (outside the editor and terminal) / `Ctrl+Shift+A` (anywhere). It docks in the right side bar by default and can be dragged (or moved from the palette) anywhere; `/exit` hides it. The same agent runs in a terminal as `fahh-agent`. Details: [IMP_DOCS/FAHH_LOCAL.md](https://github.com/Arnav1771/fahh-ide/blob/main/IMP_DOCS/FAHH_LOCAL.md).
+**Fahh Local** is Fahh Editor's coding agent. It runs on your machine with your own provider key and works on the open folder: chat, a card per tool call, approvals, and per-file diff review. Open it from the robot icon or with `Ctrl+L` (outside the editor and terminal). `Ctrl+Shift+A` searches your saved sessions. **Agent mode** (the Agent | Editor switch at the top left) turns the window into the chat, with New session and your sessions on the left. It docks in the right side bar by default and can be dragged (or moved from the palette) anywhere; `/exit` hides it. The same agent runs in a terminal as `fahh-agent`. Details: [IMP_DOCS/FAHH_LOCAL.md](https://github.com/Arnav1771/fahh-ide/blob/main/IMP_DOCS/FAHH_LOCAL.md).
 
 ---
 

@@ -52,7 +52,9 @@ export type ThemeId =
   | "github-dark"
   | "dracula"
   | "solarized-dark"
-  | "cate-obsidian";
+  | "cate-obsidian"
+  /** A colour theme installed from Open VSX (see lib/vscodeTheme). */
+  | `ext-${string}`;
 
 export interface RunConfig {
   /** Absolute path to the file to execute */
@@ -79,17 +81,13 @@ export interface RunOutputEvent {
   stream: "stdout" | "stderr" | "info";
 }
 
+/** Starts a debug adapter; the protocol itself is driven from src/lib/dap.ts. */
 export interface DapConfig {
-  /** DAP adapter executable */
+  /** debugpy, dlv-dap or lldb-dap (aliases: python, go, lldb). */
   adapter: string;
-  adapter_args?: string[];
-  language: string;
-  /** Absolute path to the program to debug */
+  /** The file or binary being debugged; picks the adapter's working directory. */
   program: string;
-  args?: string[];
   cwd?: string;
-  env?: Record<string, string>;
-  stop_on_entry?: boolean;
 }
 
 export interface StackFrame {
@@ -104,13 +102,14 @@ export interface Variable {
   name: string;
   value: string;
   type: string | null;
+  /** Non-zero when the value has children (fetch them with a `variables` request). */
   variablesReference: number;
 }
 
-export interface DebugEvent {
+/** A raw DAP message from the adapter, as emitted on `dap://event`. */
+export interface DapEventPayload {
   session_id: number;
-  event: "stopped" | "continued" | "exited" | "output" | "breakpoint";
-  body: Record<string, unknown>;
+  message: string;
 }
 
 export type PluginKind =

@@ -1,9 +1,36 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Bell } from "lucide-react";
 import { DEFAULT_SETTINGS, useSettingsStore, type Settings } from "../../store/settingsStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFahhStore } from "../../store/fahhStore";
 import { SoundPicker } from "../Fahh/SoundPicker";
+import { AccountSection } from "./AccountSection";
+import { getProfiles } from "../../lib/ptySessions";
+import type { TerminalProfile } from "../../lib/tauri";
+
+function ProfileSelect() {
+  const value = useSettingsStore((s) => s.terminalDefaultProfile);
+  const set = useSettingsStore((s) => s.set);
+  const [profiles, setProfiles] = useState<TerminalProfile[]>([]);
+  useEffect(() => {
+    void getProfiles().then(setProfiles);
+  }, []);
+  return (
+    <select
+      id="set-term-profile"
+      value={value}
+      onChange={(e) => set("terminalDefaultProfile", e.target.value)}
+      className="bg-fahh-surface rounded px-2 py-1 text-xs outline-none"
+    >
+      <option value="">{profiles[0] ? `Automatic (${profiles[0].name})` : "Automatic"}</option>
+      {profiles.map((p) => (
+        <option key={p.id} value={p.id}>
+          {p.name}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 const input =
   "rounded border border-fahh-surface bg-fahh-sidebar px-2 py-1 text-xs text-fahh-text outline-none focus:border-fahh-accent";
@@ -62,6 +89,10 @@ export function SettingsPanel() {
       <div className="mx-auto max-w-2xl px-6 py-5">
         <h2 className="mb-4 text-base font-semibold text-fahh-text">Settings</h2>
 
+        <Section title="Account">
+          <AccountSection />
+        </Section>
+
         <Section title="Editor">
           <Row label="Font family" hint="A CSS font list; the first one installed is used." htmlFor="set-font">
             <input id="set-font" value={s.fontFamily} onChange={(e) => s.set("fontFamily", e.target.value)} spellCheck={false} className={`${input} w-72 max-w-full font-mono`} />
@@ -112,6 +143,9 @@ export function SettingsPanel() {
         <Section title="Terminal">
           <Row label="Font size" htmlFor="set-term">
             <NumberField id="set-term" k="terminalFontSize" min={8} max={32} />
+          </Row>
+          <Row label="Default profile" hint="The shell a new terminal starts." htmlFor="set-term-profile">
+            <ProfileSelect />
           </Row>
         </Section>
 

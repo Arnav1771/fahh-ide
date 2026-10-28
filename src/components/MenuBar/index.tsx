@@ -44,10 +44,37 @@ import {
   launchAgyTerminal,
 } from "../../lib/tauri";
 import { runEditorAction } from "../../lib/monacoBridge";
+import { runDebugAction, runWithoutDebugging } from "../../lib/debugActions";
+import { createLaunchJson } from "../../lib/debugSession";
 import { OPEN_FOLDER_EVENT, OPEN_FILE_EVENT } from "../../lib/commands";
 import { useFahhStore } from "../../store/fahhStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
+import { useTerminalStore } from "../../store/terminalStore";
+import { useLayoutModeStore, type LayoutMode } from "../../store/layoutModeStore";
+
+/** Agent | Editor, like Devin and Windsurf: the chat with its sessions, or the workbench. */
+function ModeSwitch() {
+  const mode = useLayoutModeStore((s) => s.mode);
+  const setMode = useLayoutModeStore((s) => s.setMode);
+  const opt = (m: LayoutMode, label: string) => (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={mode === m}
+      onClick={() => setMode(m)}
+      className={`px-2 py-0.5 rounded text-[11px] transition-colors ${mode === m ? "bg-fahh-surface text-fahh-text" : "text-fahh-muted hover:text-fahh-text"}`}
+    >
+      {label}
+    </button>
+  );
+  return (
+    <div role="radiogroup" aria-label="Layout mode" className="fahh-mode-switch flex items-center gap-0.5 p-0.5 mr-2 rounded-md border border-fahh-surface">
+      {opt("agent", "Agent")}
+      {opt("editor", "Editor")}
+    </div>
+  );
+}
 import { useSpatialStore } from "../../store/spatialStore";
 import { saveWorkspaceAs, openWorkspaceFromFile, openRecentEntry } from "../../lib/workspaceManager";
 import { useWorkspace } from "../../hooks/useWorkspace";
@@ -590,21 +617,38 @@ export function MenuBar({
       label: "Run",
       items: [
         {
-          label: "Run Active File",
+          label: "Start Debugging",
           keys: ["F5"],
           icon: <Play size={13} className="text-emerald-400" />,
-          action: () => onSetBottomTab("run"),
+          action: () => runDebugAction("startOrContinue"),
         },
         {
-          label: "Open Run Panel",
-          action: () => onSetBottomTab("run"),
+          label: "Run Without Debugging",
+          keys: ["Ctrl", "F5"],
+          action: runWithoutDebugging,
         },
+        {
+          label: "Stop Debugging",
+          keys: ["Shift", "F5"],
+          action: () => runDebugAction("stop"),
+        },
+        {
+          label: "Restart Debugging",
+          keys: ["Ctrl", "Shift", "F5"],
+          action: () => runDebugAction("restart"),
+        },
+        { separator: true, label: "", action: () => {} },
+        { label: "Step Over", keys: ["F10"], action: () => runDebugAction("stepOver") },
+        { label: "Step Into", keys: ["F11"], action: () => runDebugAction("stepInto") },
+        { label: "Step Out", keys: ["Shift", "F11"], action: () => runDebugAction("stepOut") },
         { separator: true, label: "", action: () => {} },
         {
           label: "Toggle Breakpoint",
           keys: ["F9"],
-          action: () => runEditorAction("editor.debug.action.toggleBreakpoint"),
+          action: () => runDebugAction("toggleBreakpoint"),
         },
+        { label: "Open launch.json", action: () => void createLaunchJson() },
+        { label: "Open Run Panel", action: () => onSetBottomTab("run") },
       ],
     },
     {
@@ -614,7 +658,18 @@ export function MenuBar({
           label: "New Terminal",
           keys: ["Ctrl", "Shift", "`"],
           icon: <TerminalIcon size={13} />,
-          action: () => onSetBottomTab("terminal"),
+          action: () => {
+            useTerminalStore.getState().createSession();
+            onSetBottomTab("terminal");
+          },
+        },
+        {
+          label: "Split Terminal",
+          keys: ["Ctrl", "Shift", "5"],
+          action: () => {
+            useTerminalStore.getState().splitTerminal();
+            onSetBottomTab("terminal");
+          },
         },
         {
           label: "Launch Antigravity CLI (agy)",
@@ -683,8 +738,9 @@ export function MenuBar({
       className="fahh-titlebar h-8 w-full border-b border-fahh-surface flex items-center px-2 select-none text-xs text-fahh-muted shrink-0 z-30 justify-between"
       role="menubar"
     >
-      {/* ── Left Side: App Icon + Menu Dropdowns ── */}
+      {/* ── Left Side: Agent/Editor switch, App Icon + Menu Dropdowns ── */}
       <div className="flex items-center gap-1 shrink-0">
+        <ModeSwitch />
         {/* Brand logo & version */}
         <div
           data-tauri-drag-region

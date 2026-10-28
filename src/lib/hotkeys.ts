@@ -23,10 +23,55 @@ export function keepsOwnCtrlL(target: Targetish | null | undefined): boolean {
   return !!target?.closest?.(".monaco-editor, .xterm");
 }
 
-/** Ctrl/Cmd+L (not inside the editor or terminal) or Ctrl/Cmd+Shift+A (anywhere) toggles Fahh Local. */
+/** Ctrl/Cmd+L (not inside the editor or terminal) toggles Fahh Local. */
 export function isAgentToggle(e: KeyLike, target: Targetish | null | undefined): boolean {
-  if (!(e.ctrlKey || e.metaKey) || e.altKey) return false;
-  const k = e.key.toLowerCase();
-  if (e.shiftKey) return k === "a";
-  return k === "l" && !keepsOwnCtrlL(target);
+  if (!(e.ctrlKey || e.metaKey) || e.altKey || e.shiftKey) return false;
+  return e.key.toLowerCase() === "l" && !keepsOwnCtrlL(target);
+}
+
+/** Ctrl/Cmd+Shift+A (anywhere): search Fahh Local sessions. */
+export function isSessionSearch(e: KeyLike): boolean {
+  return (e.ctrlKey || e.metaKey) && e.shiftKey && !e.altKey && e.key.toLowerCase() === "a";
+}
+
+/** Does the event match a shortcut written like "Ctrl+Shift+E" or "F9"? Ctrl also matches Cmd. */
+export function matchesKeys(e: KeyLike, keys: string): boolean {
+  const parts = keys.split("+").map((p) => p.trim().toLowerCase());
+  const key = parts.pop();
+  if (!key) return false;
+  const want = { ctrl: parts.includes("ctrl"), shift: parts.includes("shift"), alt: parts.includes("alt") };
+  return (
+    (e.ctrlKey || e.metaKey) === want.ctrl &&
+    e.shiftKey === want.shift &&
+    !!e.altKey === want.alt &&
+    e.key.toLowerCase() === key
+  );
+}
+
+export type DebugKeyAction = "startOrContinue" | "stop" | "restart" | "pause" | "stepOver" | "stepInto" | "stepOut" | "toggleBreakpoint";
+
+/**
+ * VS Code's debug keys. Stepping and stopping only act during a session, so F10/F11
+ * keep doing nothing (or whatever the focused widget wants) otherwise.
+ */
+export function debugKeyAction(e: KeyLike, debugging: boolean): DebugKeyAction | null {
+  if (e.altKey) return null;
+  const mod = e.ctrlKey || e.metaKey;
+  switch (e.key) {
+    case "F5":
+      if (mod && e.shiftKey) return debugging ? "restart" : null;
+      if (mod) return null; // Ctrl+F5: run without debugging
+      return e.shiftKey ? (debugging ? "stop" : null) : "startOrContinue";
+    case "F6":
+      return !mod && !e.shiftKey && debugging ? "pause" : null;
+    case "F9":
+      return !mod && !e.shiftKey ? "toggleBreakpoint" : null;
+    case "F10":
+      return !mod && !e.shiftKey && debugging ? "stepOver" : null;
+    case "F11":
+      if (mod || !debugging) return null;
+      return e.shiftKey ? "stepOut" : "stepInto";
+    default:
+      return null;
+  }
 }

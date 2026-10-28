@@ -11,6 +11,7 @@
  * to the backend only for the request; nothing is written into the project.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
+import { ensureEditorMode } from "../../store/layoutModeStore";
 import { Bot, Compass, History, ListPlus, Plus, Send, Settings2, ShieldAlert, Square, Trash2, X } from "lucide-react";
 
 import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
@@ -418,7 +419,7 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
         )}
 
         {review.map((t) => (
-          <ReviewCard key={t.turn} turn={t} onOpen={(rel) => root && void openFileInEditor(`${root.replace(/[\\/]+$/, "")}/${rel}`)} />
+          <ReviewCard key={t.turn} turn={t} onOpen={(rel) => root && (ensureEditorMode(), void openFileInEditor(`${root.replace(/[\\/]+$/, "")}/${rel}`))} />
         ))}
       </div>
 

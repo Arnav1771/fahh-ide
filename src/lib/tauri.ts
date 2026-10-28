@@ -1,6 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
-  CommandOutput,
   DapConfig,
   Document,
   FahhConfig,
@@ -169,19 +168,55 @@ export const getOpenDocuments = () =>
 
 // ─── Terminal / command ───────────────────────────────────────────────────────
 
-export const executeCommand = (
-  command: string,
-  args: string[] = [],
-  cwd?: string,
-  /** "cmd" | "powershell" | "wsl"; omitted = the backend picks for the folder. */
-  shell?: string
-) => invoke<CommandOutput>("execute_command", { command, args, cwd, shell });
+/** A shell the terminal can start (PowerShell, Command Prompt, Git Bash, WSL, bash, zsh…). */
+export interface TerminalProfile {
+  id: string;
+  name: string;
+  program: string;
+  args: string[];
+}
+
+export const terminalProfiles = () => invoke<TerminalProfile[]>("terminal_profiles");
+
+/** Start a shell on a pseudo-terminal; output arrives as `pty://data`, the end as `pty://exit`. */
+export const ptySpawn = (profile: string, cwd: string, cols: number, rows: number) =>
+  invoke<number>("pty_spawn", { profile, cwd, cols, rows });
+
+export const ptyWrite = (id: number, data: string) => invoke<void>("pty_write", { id, data });
+
+export const ptyResize = (id: number, cols: number, rows: number) => invoke<void>("pty_resize", { id, cols, rows });
+
+export const ptyKill = (id: number) => invoke<void>("pty_kill", { id });
+
+// ─── Remote Explorer ──────────────────────────────────────────────────────────
+
+export interface WslDistro {
+  name: string;
+  default: boolean;
+  running: boolean;
+  version: number;
+}
+export interface SshHost {
+  name: string;
+  hostname: string | null;
+  user: string | null;
+}
+export interface Container {
+  id: string;
+  name: string;
+  image: string;
+  status: string;
+}
+
+export const remoteWslDistros = () => invoke<WslDistro[]>("remote_wsl_distros");
+/** The distro user's home as a Windows path (\\wsl.localhost\<distro>\home\me). */
+export const remoteWslHome = (distro: string) => invoke<string>("remote_wsl_home", { distro });
+export const remoteSshHosts = () => invoke<SshHost[]>("remote_ssh_hosts");
+/** Running containers; rejects with a readable reason when Docker is missing or stopped. */
+export const remoteContainers = () => invoke<Container[]>("remote_containers");
 
 export const launchAgyTerminal = (cwd?: string, args?: string[]) =>
   invoke<string>("launch_agy_terminal", { cwd, args });
-
-export const writeStdin = (pid: number, data: string) =>
-  invoke<void>("write_stdin", { pid, data });
 
 // ─── Installer / tools ────────────────────────────────────────────────────────
 
@@ -227,32 +262,17 @@ export const formatFile = (path: string, language: string) =>
 
 // ─── Phase 2: DAP debugger ────────────────────────────────────────────────────
 
-/** Launch a debug session. Returns the session id. */
+/** Start a debug adapter and connect to it. Returns the session id. */
 export const debugStart = (config: DapConfig) =>
   invoke<number>("debug_start", { config });
 
-/** Resume execution in the given debug session. */
-export const debugContinue = (sessionId: number) =>
-  invoke<void>("debug_continue", { sessionId });
+/** Send one DAP request; resolves to its seq. The response arrives on `dap://event`. */
+export const debugRequest = (sessionId: number, command: string, args: unknown = {}) =>
+  invoke<number>("debug_request", { sessionId, command, arguments: args ?? {} });
 
-/** Step over the current statement. */
-export const debugStepOver = (sessionId: number) =>
-  invoke<void>("debug_step_over", { sessionId });
-
-/** Step into the current call. */
-export const debugStepIn = (sessionId: number) =>
-  invoke<void>("debug_step_in", { sessionId });
-
-/** Terminate the debug session. */
+/** Terminate the debug session and its adapter. */
 export const debugStop = (sessionId: number) =>
   invoke<void>("debug_stop", { sessionId });
-
-/** Set breakpoints for a file (replaces all previous breakpoints in that file). */
-export const debugSetBreakpoints = (
-  sessionId: number,
-  file: string,
-  lines: number[]
-) => invoke<void>("debug_set_breakpoints", { sessionId, file, lines });
 
 // ─── Phase 2: Plugins ─────────────────────────────────────────────────────────
 
@@ -346,3 +366,19 @@ export const closeWindow = async () => {
     await getCurrentWindow().close();
   } catch {}
 };
+
+// ─── Extensions (Open VSX colour themes) ──────────────────────────────────────
+
+export interface ExtensionThemeFile {
+  label: string;
+  ui_theme: string;
+  json: string;
+  include_json: string | null;
+}
+
+/** Download an Open VSX extension and return its colour themes ("" version: latest); rejects for any other kind. */
+export const extInstallTheme = (namespace: string, name: string, version: string) =>
+  invoke<ExtensionThemeFile[]>("ext_install_theme", { namespace, name, version });
+
+/** Watch the open folder; changes made outside the Explorer arrive as `fs://changed`. */
+export const watchWorkspace = (root: string) => invoke<void>("watch_workspace", { root });

@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import { canDrop, isUnder, languageFor, remapPath } from "./tabs";
 import { ALWAYS_DIRTY, clearBaseline, ensureBaseline, isDirtyAt, setBaseline } from "./saveBaseline";
 import { clampSize, loadSize, saveSize } from "./panelSize";
-import { pushHistory, stepHistory } from "./termHistory";
-import { detectShell, shellName } from "./shellCwd";
 import { nextTabIndex } from "../hooks/useFocusTrap";
 
 describe("tabs: path remapping", () => {
@@ -66,36 +64,6 @@ describe("panelSize", () => {
     const blocked = { getItem: () => { throw new Error("no"); }, setItem: () => { throw new Error("no"); } };
     expect(loadSize("k", 200, 100, 500, blocked)).toBe(200);
     expect(() => saveSize("k", 1, blocked)).not.toThrow();
-  });
-});
-
-describe("termHistory", () => {
-  it("skips blanks and immediate repeats", () => {
-    expect(pushHistory(pushHistory(pushHistory([], "ls"), "ls"), "  ")).toEqual(["ls"]);
-    expect(pushHistory(["ls"], "pwd")).toEqual(["ls", "pwd"]);
-  });
-  it("caps at 100 entries", () => {
-    let h: string[] = [];
-    for (let i = 0; i < 150; i++) h = pushHistory(h, `c${i}`);
-    expect(h).toHaveLength(100);
-    expect(h[99]).toBe("c149");
-  });
-  it("walks up and back down to the draft", () => {
-    const h = ["a", "b"];
-    expect(stepHistory(h, 2, "up", "typing")).toEqual({ idx: 1, value: "b" });
-    expect(stepHistory(h, 1, "up", "typing")).toEqual({ idx: 0, value: "a" });
-    expect(stepHistory(h, 0, "up", "typing")).toBeNull();
-    expect(stepHistory(h, 0, "down", "typing")).toEqual({ idx: 1, value: "b" });
-    expect(stepHistory(h, 1, "down", "typing")).toEqual({ idx: 2, value: "typing" });
-    expect(stepHistory(h, 2, "down", "typing")).toBeNull();
-    expect(stepHistory([], 0, "up", "")).toBeNull();
-  });
-});
-
-describe("shell name", () => {
-  it("is cmd on Windows and sh elsewhere", () => {
-    expect(shellName(detectShell("Mozilla/5.0 (Windows NT 10.0; Win64; x64)"))).toBe("cmd");
-    expect(shellName(detectShell("Mozilla/5.0 (X11; Linux x86_64)"))).toBe("sh");
   });
 });
 
