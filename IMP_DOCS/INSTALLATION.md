@@ -1,13 +1,30 @@
 # Fahh Editor — Installation Guide
 
 **Version:** v0.6.7  
-**Last updated:** 2026-10-08  
+**Last updated:** 2026-10-28  
 **Download page:** https://arnav1771.github.io/fahh-ide/download.html  
 **Landing page:** https://arnav1771.github.io/fahh-ide/  
 **Web IDE (try without installing):** https://arnav1771.github.io/fahh-ide/play.html  
 **GitHub Releases:** https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.7
 
 ---
+
+
+## Quick install (one line)
+
+**Install from a terminal (one line, always the latest release):**
+
+```powershell
+# Windows (PowerShell)
+irm https://fahhide.duckdns.org/install.ps1 | iex
+```
+
+```bash
+# macOS (installs Fahh Editor.app) and Linux x64 (AppImage as ~/.local/bin/fahh, plus an app-menu entry)
+curl -fsSL https://fahhide.duckdns.org/install.sh | bash
+```
+
+Or use the installers below.
 
 ## Option A: Install the release binary (recommended)
 
@@ -44,8 +61,8 @@ Start Menu → Fahh Editor → Uninstall
 ### macOS
 
 1. Download the correct `.dmg` for your Mac:
-   - **Apple Silicon (M1/M2/M3/M4):** `Fahh.Editor_0.6.7_aarch64.dmg` (~13.1MB)
-   - **Intel:** `Fahh.Editor_0.6.7_x64.dmg` (~13.5MB)
+   - **Apple Silicon (M1/M2/M3/M4):** `Fahh.Editor_0.6.7_aarch64.dmg` (~13.2MB)
+   - **Intel:** `Fahh.Editor_0.6.7_x64.dmg` (~13.6MB)
 2. Open the `.dmg`, drag **Fahh Editor** to Applications
 3. First launch: right-click → Open (to bypass Gatekeeper unsigned warning)
 

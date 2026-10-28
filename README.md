@@ -16,12 +16,26 @@ Coupled with a **2D infinite spatial canvas**, the **Fahh Local coding agent**, 
 
 ## Download v0.6.7
 
+**Install from a terminal (one line, always the latest release):**
+
+```powershell
+# Windows (PowerShell)
+irm https://fahhide.duckdns.org/install.ps1 | iex
+```
+
+```bash
+# macOS (installs Fahh Editor.app) and Linux x64 (AppImage as ~/.local/bin/fahh, plus an app-menu entry)
+curl -fsSL https://fahhide.duckdns.org/install.sh | bash
+```
+
+Or download an installer:
+
 | Platform | Installer | Size |
 |----------|-----------|------|
 | Windows 10/11 (x64) | [Fahh.Editor_0.6.7_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_x64-setup.exe) | ~10.6MB |
 | Windows (MSI) | [Fahh.Editor_0.6.7_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_x64_en-US.msi) | ~13.8MB |
-| macOS (Apple Silicon) | [Fahh.Editor_0.6.7_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_aarch64.dmg) | ~13.1MB |
-| macOS (Intel) | [Fahh.Editor_0.6.7_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_x64.dmg) | ~13.5MB |
+| macOS (Apple Silicon) | [Fahh.Editor_0.6.7_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_aarch64.dmg) | ~13.2MB |
+| macOS (Intel) | [Fahh.Editor_0.6.7_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_x64.dmg) | ~13.6MB |
 | Linux (AppImage) | [Fahh.Editor_0.6.7_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_amd64.AppImage) | ~89.5MB |
 | Linux (Debian/Ubuntu) | [Fahh.Editor_0.6.7_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_amd64.deb) | ~15.9MB |
 | Linux (Fedora/RHEL) | [Fahh.Editor-0.6.7-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor-0.6.7-1.x86_64.rpm) | ~15.9MB |
