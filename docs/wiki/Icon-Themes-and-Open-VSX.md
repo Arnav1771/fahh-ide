@@ -41,6 +41,6 @@ Open VSX packages (`.vsix`) are designed for VS Code's Node.js extension host. F
 
 ## Colour themes from Open VSX
 
-Search the Extensions view (`Ctrl+Shift+X`) for a colour theme (One Dark Pro, Dracula, Tokyo Night...) and press **Install**. Fahh downloads the extension from Open VSX, converts its theme to Monaco and the workbench, and lists it under Settings > Appearance. Uninstall removes it.
+Search the Extensions view (`Ctrl+Shift+X`) for a colour theme (One Dark Pro, Dracula, Tokyo Night...) and press **Install**. Fahh downloads the extension from Open VSX, converts its theme to Monaco and the workbench, and adds it to the **Colour Theme** view (also in the command palette under Theme). Uninstall removes it.
 
 Other VS Code extensions (language servers, debuggers, commands) need the VS Code extension host, which Fahh does not run. Their Install button says so instead of pretending to work.
