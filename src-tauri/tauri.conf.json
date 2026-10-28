@@ -3,7 +3,7 @@
   "identifier": "com.fahh.editor",
   "productName": "Fahh Editor",
   "mainBinaryName": "fahh-editor",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",

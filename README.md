@@ -2,7 +2,7 @@
 
 > A spatial AI code editor with loud opinions. Built with Tauri 2, Rust, Monaco, and React.
 
-**[Download v0.6.6](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.6)** · **[Website](https://fahhide.duckdns.org)** · **[Wiki Docs](https://github.com/Arnav1771/fahh-ide/wiki)** · **[Playground](https://fahhide.duckdns.org/play.html)**
+**[Download v0.6.7](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.7)** · **[Website](https://fahhide.duckdns.org)** · **[Wiki Docs](https://github.com/Arnav1771/fahh-ide/wiki)** · **[Playground](https://fahhide.duckdns.org/play.html)**
 
 ---
 
@@ -14,23 +14,23 @@ Coupled with a **2D infinite spatial canvas**, the **Fahh Local coding agent**, 
 
 ---
 
-## Download v0.6.6
+## Download v0.6.7
 
 | Platform | Installer | Size |
 |----------|-----------|------|
-| Windows 10/11 (x64) | [Fahh.Editor_0.6.6_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.6/Fahh.Editor_0.6.6_x64-setup.exe) | ~10.6MB |
-| Windows (MSI) | [Fahh.Editor_0.6.6_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.6/Fahh.Editor_0.6.6_x64_en-US.msi) | ~13.8MB |
-| macOS (Apple Silicon) | [Fahh.Editor_0.6.6_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.6/Fahh.Editor_0.6.6_aarch64.dmg) | ~13.1MB |
-| macOS (Intel) | [Fahh.Editor_0.6.6_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.6/Fahh.Editor_0.6.6_x64.dmg) | ~13.5MB |
-| Linux (AppImage) | [Fahh.Editor_0.6.6_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.6/Fahh.Editor_0.6.6_amd64.AppImage) | ~89.5MB |
-| Linux (Debian/Ubuntu) | [Fahh.Editor_0.6.6_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.6/Fahh.Editor_0.6.6_amd64.deb) | ~15.9MB |
-| Linux (Fedora/RHEL) | [Fahh.Editor-0.6.6-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.6/Fahh.Editor-0.6.6-1.x86_64.rpm) | ~15.9MB |
+| Windows 10/11 (x64) | [Fahh.Editor_0.6.7_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_x64-setup.exe) | ~10.6MB |
+| Windows (MSI) | [Fahh.Editor_0.6.7_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_x64_en-US.msi) | ~13.8MB |
+| macOS (Apple Silicon) | [Fahh.Editor_0.6.7_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_aarch64.dmg) | ~13.1MB |
+| macOS (Intel) | [Fahh.Editor_0.6.7_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_x64.dmg) | ~13.5MB |
+| Linux (AppImage) | [Fahh.Editor_0.6.7_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_amd64.AppImage) | ~89.5MB |
+| Linux (Debian/Ubuntu) | [Fahh.Editor_0.6.7_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor_0.6.7_amd64.deb) | ~15.9MB |
+| Linux (Fedora/RHEL) | [Fahh.Editor-0.6.7-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.7/Fahh.Editor-0.6.7-1.x86_64.rpm) | ~15.9MB |
 
 > **Native Performance**: Built on Tauri 2 with native OS web engines (WebView2 on Windows, WebKitGTK on Linux, WebKit on macOS). Not Electron — 10× lighter memory footprint and instant startup.
 
 ---
 
-## What's in Fahh Editor v0.6.6
+## What's in Fahh Editor v0.6.7
 
 | Capability | Hotkey / Status | What It Does |
 |------------|-----------------|--------------|
