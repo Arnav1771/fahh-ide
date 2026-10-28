@@ -65,7 +65,7 @@ export function AccountSection() {
           <button
             disabled={busy}
             className={`${button} text-fahh-muted hover:text-fahh-text`}
-            onClick={() => void run(async () => { await signOut(); setUser(null); return "Signed out."; })}
+            onClick={() => void run(async () => { await signOut(); setUser(null); setMode("in"); return "Signed out."; })}
           >
             <LogOut size={13} /> Sign out
           </button>
