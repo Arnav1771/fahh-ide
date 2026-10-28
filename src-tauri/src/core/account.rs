@@ -14,11 +14,11 @@ use serde_json::Value;
 /// The deployed backend; `FAHH_AUTH_URL` / `FAHH_API_URL` (build or run time) point elsewhere.
 const AUTH_URL: &str = match option_env!("FAHH_AUTH_URL") {
     Some(u) => u,
-    None => "https://ep-dry-term-ahdd7ccn.neonauth.c-3.us-east-1.aws.neon.tech/neondb/auth",
+    None => "https://ep-late-salad-b7hg67j3.neonauth.c-13.us-east-1.aws.neon.tech/neondb/auth",
 };
 const API_URL: &str = match option_env!("FAHH_API_URL") {
     Some(u) => u,
-    None => "https://br-proud-queen-ahotxvvz-fahhapi.compute.c-3.us-east-1.aws.neon.tech",
+    None => "https://br-floral-mountain-b7yj9n4w-fahhapi.compute.c-13.us-east-1.aws.neon.tech",
 };
 /// A trusted origin on the auth server (Windows' webview origin); Better Auth checks it on POSTs.
 const ORIGIN: &str = "https://tauri.localhost";

@@ -70,6 +70,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.6.7] — 2026-10-28
+
+### Changed
+- Accounts use Fahh's own backend (a separate Neon project), with email verification by code from StealthAI. Old test accounts do not carry over.
+
+---
+
 ## [0.6.6] — 2026-10-28
 
 ### Added
