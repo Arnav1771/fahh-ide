@@ -2,6 +2,7 @@
 // (Fahh Cloud, Neon Auth). The download never waits on the account. Bump VER with each release.
 const VER = "0.6.8";
 const REL = `https://github.com/Arnav1771/fahh-ide/releases/download/v${VER}/`;
+const API = "https://br-floral-mountain-b7yj9n4w-fahhapi.compute.c-13.us-east-1.aws.neon.tech";
 const AUTH = "https://ep-late-salad-b7hg67j3.neonauth.c-13.us-east-1.aws.neon.tech/neondb/auth";
 const FILES = {
   windows: { file: `Fahh.Editor_${VER}_x64-setup.exe`, hint: "Windows may say “Windows protected your PC”: choose More info, then Run anyway. The installer is not code-signed yet." },
@@ -27,6 +28,7 @@ dlg.innerHTML = `
       <label>Name<input name="name" autocomplete="name" required maxlength="80"></label>
       <label>Email<input name="email" type="email" autocomplete="email" required></label>
       <label>Password<input name="password" type="password" autocomplete="new-password" minlength="8" required></label>
+      <label class="gf-check"><input type="checkbox" name="newsletter"> Email me when a new version is out (a few times a year, unsubscribe in one click)</label>
       <div class="gf-row"><button class="btn btn-primary btn-sm" type="submit">Create account</button><button class="btn btn-secondary btn-sm" type="button" data-close>No thanks</button></div>
     </form>
     <form class="gf-step" data-step="code" hidden novalidate>
@@ -67,6 +69,8 @@ $('[data-step="signup"]').addEventListener("submit", (e) => {
   const d = Object.fromEntries(new FormData(f));
   busy(f, async () => {
     msg("Creating your account…");
+    // The newsletter needs a confirmed email: the backend applies this once the code is entered.
+    if (d.newsletter) await fetch(API + "/v1/newsletter-intent", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email: d.email.trim() }) }).catch(() => {});
     await auth("/sign-up/email", { name: d.name.trim(), email: d.email.trim(), password: d.password });
     email = d.email.trim();
     $(".gf-email").textContent = email;
