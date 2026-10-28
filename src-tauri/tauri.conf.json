@@ -32,7 +32,15 @@
     ],
     "resources": {
       "assets/fahh.mp3": "assets/fahh.mp3"
-    }
+    },
+    "publisher": "Stealth Keqing",
+    "copyright": "Copyright (c) 2026 Stealth Keqing. MIT License.",
+    "homepage": "https://fahhide.duckdns.org",
+    "category": "DeveloperTool",
+    "license": "MIT",
+    "licenseFile": "../LICENSE",
+    "shortDescription": "Code editor with a spatial canvas, a local coding agent, and the fahh",
+    "longDescription": "Fahh Editor is a desktop code editor built on Tauri 2 and Monaco: debugging, a real terminal, git, a 2D spatial canvas, and Fahh Local, a bring-your-own-key coding agent. It plays the fahh when your code breaks."
   },
   "app": {
     "security": {
