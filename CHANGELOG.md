@@ -70,6 +70,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.6.8] — 2026-10-28
+
+### Changed
+- Installers: publisher Stealth Keqing (Add/Remove Programs, MSI, exe details), setup-wizard artwork, installer icon, license page, Start Menu folder (#100).
+- One-line installs for every OS in the docs (#99).
+
+---
+
 ## [0.6.7] — 2026-10-28
 
 ### Changed
