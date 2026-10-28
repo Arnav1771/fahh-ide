@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 vi.mock("@tauri-apps/api/core", () => ({ invoke: vi.fn() }));
-import { applySynced, snapshot } from "./account";
+import { applySynced, nextAnnouncement, snapshot } from "./account";
 import { DEFAULT_SETTINGS, useSettingsStore } from "../store/settingsStore";
 import { useThemeStore } from "../store/themeStore";
 
@@ -33,5 +33,14 @@ describe("settings sync payload", () => {
   it("survives junk", () => {
     expect(() => applySynced(null)).not.toThrow();
     expect(() => applySynced("nope")).not.toThrow();
+  });
+});
+
+describe("what's new", () => {
+  const a = (id: number) => ({ id, title: `t${id}`, body: "", url: null });
+  it("shows only the newest announcement, and only once", () => {
+    expect(nextAnnouncement([a(2), a(5), a(3)], 0)?.id).toBe(5);
+    expect(nextAnnouncement([a(2), a(5)], 5)).toBeNull();
+    expect(nextAnnouncement([], 0)).toBeNull();
   });
 });

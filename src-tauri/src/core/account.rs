@@ -105,7 +105,23 @@ fn parse_auth(set_cookies: &[String], body: &Value) -> Result<Stored, String> {
     Ok(Stored { session, user })
 }
 
+/// After sign-up or sign-in: signed in, or the account must confirm its email with a code first.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+#[serde(tag = "status", rename_all = "camelCase")]
+pub enum AuthOutcome {
+    SignedIn { user: AccountUser },
+    NeedsCode { email: String },
+}
+
 async fn post_auth(path: &str, payload: Value) -> Result<AccountUser, String> {
+    match post_auth_outcome(path, payload).await? {
+        AuthOutcome::SignedIn { user } => Ok(user),
+        AuthOutcome::NeedsCode { .. } => Err("Confirm your email with the code we sent first.".into()),
+    }
+}
+
+async fn post_auth_outcome(path: &str, payload: Value) -> Result<AuthOutcome, String> {
+    let email = payload["email"].as_str().unwrap_or_default().to_string();
     let res = client()?
         .post(format!("{}{path}", auth_url()))
         .header("origin", ORIGIN)
@@ -116,12 +132,38 @@ async fn post_auth(path: &str, payload: Value) -> Result<AccountUser, String> {
     let status = res.status();
     let cookies: Vec<String> = res.headers().get_all("set-cookie").iter().filter_map(|v| v.to_str().ok()).map(str::to_string).collect();
     let body = res.text().await.unwrap_or_default();
+    if needs_verification(status, &body) {
+        return Ok(AuthOutcome::NeedsCode { email });
+    }
     if !status.is_success() {
         return Err(error_text(status, &body));
     }
-    let stored = parse_auth(&cookies, &serde_json::from_str(&body).map_err(|e| e.to_string())?)?;
+    let parsed: Value = serde_json::from_str(&body).map_err(|e| e.to_string())?;
+    // Sign-up with verification required answers 200 without a session.
+    if !cookies.iter().any(|c| c.contains("session_token=") && !c.contains("session_token=;")) {
+        return Ok(AuthOutcome::NeedsCode { email });
+    }
+    let stored = parse_auth(&cookies, &parsed)?;
     save(&account_file(), &stored)?;
-    Ok(stored.user)
+    Ok(AuthOutcome::SignedIn { user: stored.user })
+}
+
+/// Sign-in to an account whose email is not confirmed yet: 403 EMAIL_NOT_VERIFIED.
+fn needs_verification(status: reqwest::StatusCode, body: &str) -> bool {
+    status == reqwest::StatusCode::FORBIDDEN && body.contains("EMAIL_NOT_VERIFIED")
+}
+
+async fn post_plain(path: &str, payload: Value) -> Result<(), String> {
+    let res = client()?
+        .post(format!("{}{path}", auth_url()))
+        .header("origin", ORIGIN)
+        .json(&payload)
+        .send()
+        .await
+        .map_err(|e| format!("Could not reach the account service: {e}"))?;
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+    if status.is_success() { Ok(()) } else { Err(error_text(status, &body)) }
 }
 
 /// A short-lived JWT for the API, from the stored session. A dead session signs out.
@@ -148,14 +190,40 @@ pub fn account_status() -> Option<AccountUser> {
 }
 
 #[tauri::command]
-pub async fn account_sign_up(email: String, password: String, name: String) -> Result<AccountUser, String> {
+pub async fn account_sign_up(email: String, password: String, name: String) -> Result<AuthOutcome, String> {
     let name = if name.trim().is_empty() { email.split('@').next().unwrap_or("").to_string() } else { name };
-    post_auth("/sign-up/email", serde_json::json!({ "email": email.trim(), "password": password, "name": name.trim() })).await
+    post_auth_outcome("/sign-up/email", serde_json::json!({ "email": email.trim(), "password": password, "name": name.trim() })).await
 }
 
 #[tauri::command]
-pub async fn account_sign_in(email: String, password: String) -> Result<AccountUser, String> {
-    post_auth("/sign-in/email", serde_json::json!({ "email": email.trim(), "password": password })).await
+pub async fn account_sign_in(email: String, password: String) -> Result<AuthOutcome, String> {
+    let out = post_auth_outcome("/sign-in/email", serde_json::json!({ "email": email.trim(), "password": password })).await?;
+    if matches!(out, AuthOutcome::NeedsCode { .. }) {
+        // Not confirmed yet: send a fresh code so the next step can finish it.
+        account_send_code(email, "email-verification".into()).await?;
+    }
+    Ok(out)
+}
+
+/// Email a 6-digit code: `email-verification` (confirm the address) or `forget-password`.
+#[tauri::command]
+pub async fn account_send_code(email: String, purpose: String) -> Result<(), String> {
+    if purpose != "email-verification" && purpose != "forget-password" {
+        return Err("Unknown code purpose.".into());
+    }
+    post_plain("/email-otp/send-verification-otp", serde_json::json!({ "email": email.trim(), "type": purpose })).await
+}
+
+/// Confirm the email with its code; this also signs in.
+#[tauri::command]
+pub async fn account_verify_email(email: String, code: String) -> Result<AccountUser, String> {
+    post_auth("/email-otp/verify-email", serde_json::json!({ "email": email.trim(), "otp": code.trim() })).await
+}
+
+/// Set a new password with a `forget-password` code. Sign in afterwards.
+#[tauri::command]
+pub async fn account_reset_password(email: String, code: String, password: String) -> Result<(), String> {
+    post_plain("/email-otp/reset-password", serde_json::json!({ "email": email.trim(), "otp": code.trim(), "password": password })).await
 }
 
 #[tauri::command]
@@ -218,6 +286,42 @@ pub async fn account_pull_settings() -> Result<Option<CloudSettings>, String> {
     })
 }
 
+/// Newsletter opt-in or out for the signed-in account (unsubscribe links work too).
+#[tauri::command]
+pub async fn account_set_newsletter(subscribe: bool) -> Result<(), String> {
+    let token = jwt().await?;
+    let res = client()?
+        .put(format!("{}/v1/newsletter", api_url()))
+        .bearer_auth(token)
+        .json(&serde_json::json!({ "subscribe": subscribe }))
+        .send()
+        .await
+        .map_err(|e| format!("Could not reach the sync service: {e}"))?;
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+    if status.is_success() { Ok(()) } else { Err(error_text(status, &body)) }
+}
+
+/// An announcement for the "What's new" popup (posted with SQL in the fahh-cloud database).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct Announcement {
+    pub id: i64,
+    pub title: String,
+    #[serde(default)]
+    pub body: String,
+    #[serde(default)]
+    pub url: Option<String>,
+}
+
+/// The latest announcements; no account needed. An unreachable service is just "none".
+#[tauri::command]
+pub async fn cloud_announcements() -> Vec<Announcement> {
+    let Ok(c) = client() else { return vec![] };
+    let Ok(res) = c.get(format!("{}/v1/announcements", api_url())).send().await else { return vec![] };
+    let body: Value = res.json().await.unwrap_or_default();
+    serde_json::from_value(body["announcements"].clone()).unwrap_or_default()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -235,6 +339,14 @@ mod tests {
         assert_eq!(s.user, AccountUser { id: "u1".into(), email: "a@b.c".into(), name: "A".into() });
         assert!(parse_auth(&[], &body).is_err(), "no cookie, no session");
         assert!(parse_auth(&cookies, &serde_json::json!({ "user": {} })).is_err());
+    }
+
+    #[test]
+    fn tells_an_unconfirmed_email_from_a_wrong_password() {
+        assert!(needs_verification(reqwest::StatusCode::FORBIDDEN, r#"{"code":"EMAIL_NOT_VERIFIED","message":"Email not verified"}"#));
+        assert!(!needs_verification(reqwest::StatusCode::UNAUTHORIZED, r#"{"code":"INVALID_EMAIL_OR_PASSWORD"}"#));
+        let out = serde_json::to_value(AuthOutcome::NeedsCode { email: "a@b.c".into() }).unwrap();
+        assert_eq!(out, serde_json::json!({ "status": "needsCode", "email": "a@b.c" }));
     }
 
     #[test]
@@ -267,7 +379,11 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("fahh-account-live-{}", std::process::id()));
         std::env::set_var("FAHH_DATA_DIR", &dir);
         let email = format!("fahh-e2e-rust-{}@example.com", std::process::id());
-        let user = account_sign_up(email.clone(), "Fahh-Rust-test-1!".into(), "".into()).await.unwrap();
+        // Live while email verification is off; with it on, sign-up asks for the emailed code.
+        let user = match account_sign_up(email.clone(), "Fahh-Rust-test-1!".into(), "".into()).await.unwrap() {
+            AuthOutcome::SignedIn { user } => user,
+            AuthOutcome::NeedsCode { .. } => return, // covered by fahh-cloud/scripts/smoke.mjs, which reads the code
+        };
         assert_eq!(user.email, email);
         assert_eq!(account_status().map(|u| u.email), Some(email));
         account_push_settings(serde_json::json!({ "fontSize": 18 })).await.unwrap();

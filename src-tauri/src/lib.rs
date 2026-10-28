@@ -88,6 +88,11 @@ pub fn run() {
             account::account_sign_up,
             account::account_sign_in,
             account::account_sign_out,
+            account::account_send_code,
+            account::account_verify_email,
+            account::account_reset_password,
+            account::account_set_newsletter,
+            account::cloud_announcements,
             account::account_push_settings,
             account::account_pull_settings,
             // Formatter (Phase 2)

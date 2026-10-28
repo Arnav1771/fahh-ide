@@ -31,7 +31,7 @@ import { usePreviewStore } from "./store/previewStore";
 import { useEditorStore } from "./store/editorStore";
 import { useFileStore } from "./store/fileStore";
 import { previewKindFor } from "./lib/preview";
-import { openBrowser } from "./lib/browser";
+import { openBrowser, openExternal } from "./lib/browser";
 import { launchAgyTerminal } from "./lib/tauri";
 import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
@@ -40,6 +40,7 @@ import { DialogHost } from "./components/Dialog";
 import { AboutDialog } from "./components/Dialog/AboutDialog";
 import { CheckSetupDialog } from "./components/Dialog/CheckSetupDialog";
 import { launchUpdateCheck } from "./lib/updates";
+import { showWhatsNew } from "./lib/account";
 import { alertDialog, confirmDialog, promptDialog } from "./store/dialogStore";
 import { cycleTabs, endCycle, goBack, goForward, initNavigation, reopenClosedTab } from "./lib/navigation";
 import { loadRecent } from "./lib/recent";
@@ -258,6 +259,12 @@ export default function App() {
     void launchUpdateCheck(useSettingsStore.getState().checkUpdatesOnLaunch, store, __APP_VERSION__).then((msg) => {
       if (msg) useToastStore.getState().show(msg);
     });
+  }, []);
+
+  // "What's new": the newest announcement from Fahh Cloud, once, a few seconds after launch.
+  useEffect(() => {
+    const t = window.setTimeout(() => void showWhatsNew((url) => void openExternal(url)), 4000);
+    return () => window.clearTimeout(t);
   }, []);
 
   // Fahh Local: keep hearing the agent while its panel is hidden.
