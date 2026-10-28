@@ -386,7 +386,7 @@ export default function App() {
       { id: "view.runDebug", group: "View", label: "Run and Debug", keys: ["Ctrl", "Shift", "D"], keywords: "debugger breakpoints", run: () => revealView("runDebug") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
-      ...allThemes().map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
+      ...allThemes(installedThemes).map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
       { id: "preview.toggle", group: "Preview", label: "Toggle Preview (PDF, Markdown, HTML, SVG, CSV)", keys: ["Ctrl", "Shift", "V"], keywords: "markdown html image csv pdf document preview source", run: () => {
         const path = useEditorStore.getState().activeTab;
         if (path && previewKindFor(path)) usePreviewStore.getState().toggleInPlace(path);
@@ -415,7 +415,7 @@ export default function App() {
       { id: "file.quickOpen", group: "Go", label: "Go to File…", keys: ["Ctrl", "P"], keywords: "quick open find file", run: () => setQuickOpen(true) },
     ];
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [setTheme, recentTick]);
+  }, [setTheme, recentTick, installedThemes]);
 
   // Quick Open lists every file in the opened folder (VS Code's Ctrl+P).
   const quickOpenFiles = useMemo<PaletteCommand[]>(
