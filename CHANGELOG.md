@@ -70,6 +70,30 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.6.5] — 2026-10-28
+
+### Added
+- **Run and Debug:** DAP debugging (Python/debugpy, Go/Delve, C/C++/Rust/lldb-dap), gutter breakpoints, F5/F9/F10/F11, Variables, Call Stack, Debug Console, `.vscode/launch.json` (#92).
+- **Terminal:** real shells on a pseudo-terminal (PowerShell, Command Prompt, Git Bash, WSL; bash/zsh), profiles, split, default profile, Run Task from `.vscode/tasks.json` (#92).
+- **Agent mode:** Agent | Editor switch, sessions sidebar, Ctrl+Shift+A session search (#92).
+- **Remote Explorer:** WSL distros, SSH hosts, Docker containers (#92).
+- **DeepWiki:** See Wiki on any symbol: definition, docs, usages, AI explanation (#92).
+- **Open VSX colour themes** install for real; other extensions explain why they cannot run (#92).
+- **Accounts and settings sync** on Fahh Cloud (Neon): sign up, sign in, email codes, forgot password, upload/download settings and theme, newsletter opt-in, What's new popup (#93).
+- **Dockable layout** with split editors and a saved layout per folder (#85).
+- **Fahh Local** sessions, modes, slash commands, `/loop`, subagents (#86).
+- **Onboarding** tour, custom error sound, Check Setup, daily update check (#89).
+- **QoL:** MRU tabs, back/forward, Open Recent and session restore, explorer drag-and-drop, Settings page, app dialogs (#87).
+
+### Fixed
+- The Explorer refreshes on changes made outside it (file watcher) (#92).
+- View shortcuts (Ctrl+Shift+E/F/G/X/D) work (#92).
+- `fahh <file>` opens a tab in the running window (#90).
+- Windows MSI build (fahh-agent packaged twice); UTF-8 BOM files and notebooks open correctly (#88).
+- Blank window after restoring a WSL session (#88).
+
+---
+
 ## [0.6.4] — 2026-10-22
 
 ### Added
