@@ -40,6 +40,10 @@ export function AccountSection() {
       .then(setUser)
       .catch(() => setUser(null));
   }, []);
+  // Tell the avatar menu.
+  useEffect(() => {
+    if (user !== undefined) window.dispatchEvent(new Event("fahh:account"));
+  }, [user]);
 
   const go = (m: Mode, text?: string) => {
     setMode(m);
