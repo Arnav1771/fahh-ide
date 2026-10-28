@@ -14,6 +14,7 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolCall {
@@ -427,7 +428,27 @@ async fn http_complete(
                 .json(&anthropic_body(&cfg.model, system, history, tools))
         }
     };
-    let resp = req.send().await.map_err(|e| format!("could not reach the provider: {}", e.without_url()))?;
+    let mut attempt = 0;
+    let resp = loop {
+        let r = req.try_clone().ok_or("request could not be retried")?.send().await.map_err(|e| format!("could not reach the provider: {}", e.without_url()))?;
+        if r.status().as_u16() != 429 || attempt >= 3 {
+            break r;
+        }
+        let header = r.headers().get("retry-after").and_then(|v| v.to_str().ok()).map(str::to_string);
+        let body = r.text().await.unwrap_or_default();
+        // A long wait means a daily or monthly cap: report it instead of hanging the turn.
+        let Some(wait) = retry_wait(header.as_deref(), &body, attempt).filter(|w| *w <= Duration::from_secs(20)) else {
+            return Err(format!("provider returned 429 Too Many Requests (rate limited): {}", super::tools::truncate(body.trim(), 300)));
+        };
+        attempt += 1;
+        let until = std::time::Instant::now() + wait;
+        while std::time::Instant::now() < until {
+            if cancel.load(Ordering::Relaxed) {
+                return Err("stopped".into());
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    };
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
@@ -459,10 +480,39 @@ async fn http_complete(
     Ok(if cfg.kind == ProviderKind::Openai { oa.finish() } else { an.finish() })
 }
 
+/// How long a 429 asks us to wait: the Retry-After header (seconds), else the "try again in 712.5ms" /
+/// "in 2.5s" hint Groq and OpenAI put in the body, else 1 s, 2 s, 4 s by attempt.
+fn retry_wait(header: Option<&str>, body: &str, attempt: u32) -> Option<Duration> {
+    if let Some(secs) = header.and_then(|h| h.trim().parse::<f64>().ok()) {
+        return Some(Duration::from_secs_f64(secs.max(0.0)));
+    }
+    let lower = body.to_ascii_lowercase();
+    if let Some(i) = lower.find("try again in ") {
+        let rest = &lower[i + 13..];
+        let num: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
+        if let Ok(n) = num.parse::<f64>() {
+            let unit = &rest[num.len()..];
+            let secs = if unit.starts_with("ms") { n / 1000.0 } else if unit.starts_with('m') { n * 60.0 } else { n };
+            return Some(Duration::from_secs_f64(secs + 0.25));
+        }
+    }
+    Some(Duration::from_secs(1 << attempt.min(4)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::agent::tools::specs;
+
+    #[test]
+    fn retry_wait_reads_header_body_hint_or_backs_off() {
+        assert_eq!(retry_wait(Some("3"), "", 0), Some(Duration::from_secs(3)));
+        let groq = "Rate limit reached ... Please try again in 712.5ms. Need more tokens?";
+        assert_eq!(retry_wait(None, groq, 0), Some(Duration::from_secs_f64(0.7125 + 0.25)));
+        assert_eq!(retry_wait(None, "Please try again in 2.505s.", 0), Some(Duration::from_secs_f64(2.505 + 0.25)));
+        assert!(retry_wait(None, "try again in 7m12s", 0).unwrap() > Duration::from_secs(20), "minutes are not retried");
+        assert_eq!(retry_wait(None, "slow down", 2), Some(Duration::from_secs(4)));
+    }
 
     #[test]
     fn sse_frames_split_anywhere() {
