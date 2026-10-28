@@ -15,6 +15,7 @@
 | **[Agent Mode](Agent-Mode)** | The Agent / Editor switch, sessions sidebar, session search (`Ctrl+Shift+A`) |
 | **[Remote Explorer](Remote-Explorer)** | WSL distros, SSH hosts and Docker containers |
 | **[DeepWiki](DeepWiki)** | See Wiki on a symbol: definition, docs, usages, AI explanation |
+| **[Outline, Timeline & Git Status](Outline-Timeline-and-Git-Status)** | File symbols, file history, branch and Sync in the status bar |
 | **[Accounts & Sync](Accounts-and-Sync)** | Optional account: upload and download settings and theme, What's new |
 | **[File Icon Themes & Open VSX](Icon-Themes-and-Open-VSX)** | Material, Fahh Colour and Minimal icon themes; how file and folder icons are chosen |
 | **[Native Titlebar & Menus](Native-Titlebar-and-Menus)** | Seamless borderless titlebar, client-side window controls, VS Code menu bar |

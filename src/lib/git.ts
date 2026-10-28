@@ -16,6 +16,9 @@ export const EMPTY_GIT_STATUS: GitStatus = {
   unborn: false,
   staged: [],
   unstaged: [],
+  upstream: null,
+  ahead: 0,
+  behind: 0,
 };
 
 /** Single-letter badge, matching the letters git/VS Code use. */

@@ -6,6 +6,7 @@
 import { listen } from "@tauri-apps/api/event";
 import { getFileTree, watchWorkspace } from "./tauri";
 import { useFileStore } from "../store/fileStore";
+import { useGitStore } from "../store/gitStore";
 
 let timer: number | undefined;
 let started = false;
@@ -15,6 +16,7 @@ export function refreshTreeSoon(): void {
   timer = window.setTimeout(() => {
     const root = useFileStore.getState().root;
     if (!root) return;
+    if (useGitStore.getState().root === root) void useGitStore.getState().refresh();
     void getFileTree(root)
       .then((tree) => {
         // A different folder may have opened meanwhile.

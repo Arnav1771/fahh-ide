@@ -317,6 +317,17 @@ export const gitCommit = (path: string, message: string) =>
 export const gitDiff = (path: string, file: string, staged: boolean) =>
   invoke<string>("git_diff", { path, file, staged });
 
+/** Pull then push (publishes a branch with no upstream). Resolves with git's output. */
+export const gitSync = (path: string) => invoke<string>("git_sync", { path });
+
+/** Commits that changed `file`, newest first. */
+export const gitFileLog = (path: string, file: string, limit?: number) =>
+  invoke<import("./types").GitCommitInfo[]>("git_file_log", { path, file, limit });
+
+/** What commit `oid` changed in `file`, as a unified diff. */
+export const gitFileCommitDiff = (path: string, oid: string, file: string) =>
+  invoke<string>("git_file_commit_diff", { path, oid, file });
+
 // ─── Previews ─────────────────────────────────────────────────────────────────
 
 /** Let the previews load files from this folder (or this file's folder) through the asset protocol. */

@@ -172,6 +172,21 @@ export interface GitStatus {
   unborn: boolean;
   staged: GitFileChange[];
   unstaged: GitFileChange[];
+  /** Upstream branch (`origin/main`); `null` when the branch is not published. */
+  upstream: string | null;
+  /** Commits to push. */
+  ahead: number;
+  /** Commits to pull (as of the last fetch). */
+  behind: number;
+}
+
+/** One commit in a file's history (Timeline). `time` is in seconds. */
+export interface GitCommitInfo {
+  oid: string;
+  short: string;
+  summary: string;
+  author: string;
+  time: number;
 }
 
 // ─── Fahh Local (agent) ───────────────────────────────────────────────────────

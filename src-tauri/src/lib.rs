@@ -110,6 +110,9 @@ pub fn run() {
             git::git_unstage,
             git::git_commit,
             git::git_diff,
+            git::git_sync,
+            git::git_file_log,
+            git::git_file_commit_diff,
             // Previews: let the asset protocol load the opened folder
             preview::allow_preview,
             // Fahh Local agent
