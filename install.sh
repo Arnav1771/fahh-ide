@@ -13,7 +13,7 @@ ARCH="$(uname -m)"
 
 echo "=== Fahh Editor installer ==="
 TAG="$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest" 2>/dev/null | grep -m1 '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || true)"
-TAG="${TAG:-v0.6.8}"
+TAG="${TAG:-v0.6.9}"
 VER="${TAG#v}"
 BASE="https://github.com/$REPO/releases/download/$TAG"
 echo "Installing Fahh Editor $TAG for $OS ($ARCH)..."

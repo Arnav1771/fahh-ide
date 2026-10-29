@@ -1,5 +1,5 @@
 // Download page: highlight this visitor's system and show terminal installs.
-const VER = "0.6.8";
+const VER = "0.6.9";
 const REL = `https://github.com/Arnav1771/fahh-ide/releases/download/v${VER}`;
 const SH = "curl -fsSL https://fahhide.duckdns.org/install.sh | bash";
 const CLI = {
