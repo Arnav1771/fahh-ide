@@ -1,6 +1,6 @@
 // Download buttons: start the download for this system, then offer an optional free account
 // (Fahh Cloud, Neon Auth). The download never waits on the account. Bump VER with each release.
-const VER = "0.6.9";
+const VER = "0.7.0";
 const REL = `https://github.com/Arnav1771/fahh-ide/releases/download/v${VER}/`;
 const API = "https://br-floral-mountain-b7yj9n4w-fahhapi.compute.c-13.us-east-1.aws.neon.tech";
 const AUTH = "https://ep-late-salad-b7hg67j3.neonauth.c-13.us-east-1.aws.neon.tech/neondb/auth";
