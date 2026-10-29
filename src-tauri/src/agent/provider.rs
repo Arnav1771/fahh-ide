@@ -456,8 +456,8 @@ async fn http_complete(
         if code != 429 {
             return Err(format!("provider returned {code}: {}", super::tools::truncate(body.trim(), 300)));
         }
-        // A long wait means a daily or monthly cap: report it instead of hanging the turn.
-        let Some(wait) = retry_wait(header.as_deref(), &body, attempt).filter(|w| *w <= Duration::from_secs(20)) else {
+        // Per-minute limits clear within a minute; a longer wait is a daily cap: report it.
+        let Some(wait) = retry_wait(header.as_deref(), &body, attempt).filter(|w| *w <= Duration::from_secs(65)) else {
             return Err(format!("provider returned 429 Too Many Requests (rate limited): {}", super::tools::truncate(body.trim(), 300)));
         };
         attempt += 1;
@@ -551,7 +551,7 @@ mod tests {
         let groq = "Rate limit reached ... Please try again in 712.5ms. Need more tokens?";
         assert_eq!(retry_wait(None, groq, 0), Some(Duration::from_secs_f64(0.7125 + 0.25)));
         assert_eq!(retry_wait(None, "Please try again in 2.505s.", 0), Some(Duration::from_secs_f64(2.505 + 0.25)));
-        assert!(retry_wait(None, "try again in 7m12s", 0).unwrap() > Duration::from_secs(20), "minutes are not retried");
+        assert!(retry_wait(None, "try again in 7m12s", 0).unwrap() > Duration::from_secs(65), "minutes are not retried");
         assert_eq!(retry_wait(None, "slow down", 2), Some(Duration::from_secs(4)));
     }
 
