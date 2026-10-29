@@ -39,3 +39,11 @@ Each tab keeps its own shell, working directory and scrollback. Closing a split 
 ## The Explorer follows the terminal
 
 Files and folders made in the terminal (`mkdir`, `git clone`, `npm create`) appear in the Explorer without a refresh.
+
+## Clickable file locations (v0.7.0)
+
+File locations in terminal output open in the editor at that line: compiler and linter output (`src/app.ts:12:5`, `main.rs:7`, `C:\proj\x.py(3,1)`), test failures and Python tracebacks (`File "app.py", line 42`). Hover to underline, click to open. Relative paths are resolved against the open folder.
+
+## Drop files into the terminal
+
+Drag files from Windows Explorer, Finder or your file manager onto a terminal to type their paths (quoted when they contain spaces).
