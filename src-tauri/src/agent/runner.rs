@@ -251,6 +251,7 @@ fn drive(ctx: Arc<RunCtx>, ac: Arc<AgentCtx>, system: String, specs: Vec<ToolSpe
     Box::pin(async move {
         let turn = ctx.turn;
         let main = matches!(hist, Hist::Session(_));
+        let mut nudged = false;
         for step in 1..=max_steps {
             if cancelled(&ctx, &ac) {
                 return Err("stopped".into());
@@ -274,6 +275,11 @@ fn drive(ctx: Arc<RunCtx>, ac: Arc<AgentCtx>, system: String, specs: Vec<ToolSpe
                 ctx.s.save();
             }
             if reply.calls.is_empty() {
+                if reply.text.trim().is_empty() && step > 1 && !nudged {
+                    nudged = true;
+                    hist.push(Msg::User { text: "Now give your answer to my request, in plain text.".into() });
+                    continue;
+                }
                 return Ok((reply.text, step));
             }
 
@@ -800,6 +806,17 @@ mod tests {
         assert!(ev.iter().any(|e| matches!(e, AgentEvent::ToolResult { ok: true, output, .. } if output.contains("hello"))));
         assert!(matches!(ev.last().unwrap(), AgentEvent::Done { steps: 2, .. }));
         assert_eq!(h.s.history.lock().unwrap().len(), 4);
+    }
+
+    #[tokio::test]
+    async fn an_empty_answer_after_tools_gets_one_nudge() {
+        let h = harness(|_| yes());
+        std::fs::write(h.dir.path().join("a.txt"), "hello").unwrap();
+        let p = mock(vec![turn("", vec![call("1", "read_file", json!({"path": "a.txt"}))]), turn("", vec![]), turn("It says hello.", vec![])]);
+        run(&h, p, Mode::Ask, "what is in a.txt?", 1).await;
+        let ev = events(&h);
+        assert!(ev.iter().any(|e| matches!(e, AgentEvent::TextDelta { text, .. } if text == "It says hello.")), "{ev:?}");
+        assert!(matches!(ev.last().unwrap(), AgentEvent::Done { steps: 3, .. }));
     }
 
     #[tokio::test]

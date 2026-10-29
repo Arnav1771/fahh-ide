@@ -356,9 +356,11 @@ impl Workspace {
     /// Fails for anything outside the workspace; for writes also for any path that
     /// passes through a symlink.
     pub fn resolve(&self, input: &str, write: bool) -> Result<(PathBuf, String), String> {
-        if input.trim().is_empty() {
-            return Err("empty path".into());
-        }
+        let input = match input.trim() {
+            "" if write => return Err("empty path".into()),
+            "" => ".",
+            _ => input,
+        };
         let p = Path::new(input);
         let abs = normalize(&if p.is_absolute() { p.to_path_buf() } else { self.root.join(p) });
 
@@ -563,6 +565,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let ws = Workspace::new(dir.path().to_str().unwrap()).unwrap();
         assert!(ws.resolve("../etc/passwd", false).is_err());
+        assert_eq!(ws.resolve("", false).unwrap().1, ws.resolve(".", false).unwrap().1, "empty read path = the root");
+        assert!(ws.resolve(" ", true).is_err(), "writes still need a path");
         assert!(ws.resolve("a/../../x", true).is_err());
         let outside = tempfile::tempdir().unwrap();
         assert!(ws.resolve(outside.path().join("f").to_str().unwrap(), false).is_err());
