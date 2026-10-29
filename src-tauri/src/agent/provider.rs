@@ -14,6 +14,7 @@ use serde_json::{json, Value};
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
+use std::time::Duration;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ToolCall {
@@ -410,9 +411,15 @@ async fn http_complete(
     }
     let client = reqwest::Client::new();
     let key = cfg.api_key.as_deref().map(str::trim).filter(|k| !k.is_empty());
-    let req = match cfg.kind {
+    // `max_tokens` is left to the provider unless it refuses the default (see output_token_limit).
+    let build = |max_tokens: Option<u64>| -> Result<reqwest::RequestBuilder, String> {
+        Ok(match cfg.kind {
         ProviderKind::Openai => {
-            let mut r = client.post(openai_url(&cfg.base_url)).json(&openai_body(&cfg.model, system, history, tools));
+            let mut body = openai_body(&cfg.model, system, history, tools);
+            if let Some(m) = max_tokens {
+                body["max_tokens"] = json!(m);
+            }
+            let mut r = client.post(openai_url(&cfg.base_url)).json(&body);
             if let Some(k) = key {
                 r = r.bearer_auth(k);
             }
@@ -426,8 +433,42 @@ async fn http_complete(
                 .header("anthropic-version", "2023-06-01")
                 .json(&anthropic_body(&cfg.model, system, history, tools))
         }
+        })
     };
-    let resp = req.send().await.map_err(|e| format!("could not reach the provider: {}", e.without_url()))?;
+    let mut max_tokens = None;
+    let mut attempt = 0;
+    let resp = loop {
+        let r = build(max_tokens)?.send().await.map_err(|e| format!("could not reach the provider: {}", e.without_url()))?;
+        let code = r.status().as_u16();
+        if !matches!(code, 400 | 413 | 429) || attempt >= 3 {
+            break r;
+        }
+        let header = r.headers().get("retry-after").and_then(|v| v.to_str().ok()).map(str::to_string);
+        let body = r.text().await.unwrap_or_default();
+        // Small free tiers cap output below the provider's own default: ask for what it allows, once.
+        if max_tokens.is_none() && cfg.kind == ProviderKind::Openai {
+            if let Some(limit) = output_token_limit(&body) {
+                max_tokens = Some(limit);
+                attempt += 1;
+                continue;
+            }
+        }
+        if code != 429 {
+            return Err(format!("provider returned {code}: {}", super::tools::truncate(body.trim(), 300)));
+        }
+        // Per-minute limits clear within a minute; a longer wait is a daily cap: report it.
+        let Some(wait) = retry_wait(header.as_deref(), &body, attempt).filter(|w| *w <= Duration::from_secs(65)) else {
+            return Err(format!("provider returned 429 Too Many Requests (rate limited): {}", super::tools::truncate(body.trim(), 300)));
+        };
+        attempt += 1;
+        let until = std::time::Instant::now() + wait;
+        while std::time::Instant::now() < until {
+            if cancel.load(Ordering::Relaxed) {
+                return Err("stopped".into());
+            }
+            tokio::time::sleep(Duration::from_millis(100)).await;
+        }
+    };
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
@@ -459,10 +500,60 @@ async fn http_complete(
     Ok(if cfg.kind == ProviderKind::Openai { oa.finish() } else { an.finish() })
 }
 
+/// The output-token cap a provider says the request exceeded, e.g. Groq's "output tokens per minute
+/// (OTPM): Limit 1000, Requested 2048". `None` when the error is about something else.
+fn output_token_limit(body: &str) -> Option<u64> {
+    let lower = body.to_ascii_lowercase();
+    if !(lower.contains("output tokens") || lower.contains("max_tokens") || lower.contains("max tokens")) {
+        return None;
+    }
+    lower.match_indices("limit").find_map(|(i, _)| {
+        let n: String = lower[i + 5..].chars().skip_while(|c| *c == ':' || *c == ' ').take_while(|c| c.is_ascii_digit()).collect();
+        n.parse().ok().filter(|n: &u64| *n > 0)
+    })
+}
+
+/// How long a 429 asks us to wait: the Retry-After header (seconds), else the "try again in 712.5ms" /
+/// "in 2.5s" hint Groq and OpenAI put in the body, else 1 s, 2 s, 4 s by attempt.
+fn retry_wait(header: Option<&str>, body: &str, attempt: u32) -> Option<Duration> {
+    if let Some(secs) = header.and_then(|h| h.trim().parse::<f64>().ok()) {
+        return Some(Duration::from_secs_f64(secs.max(0.0)));
+    }
+    let lower = body.to_ascii_lowercase();
+    if let Some(i) = lower.find("try again in ") {
+        let rest = &lower[i + 13..];
+        let num: String = rest.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
+        if let Ok(n) = num.parse::<f64>() {
+            let unit = &rest[num.len()..];
+            let secs = if unit.starts_with("ms") { n / 1000.0 } else if unit.starts_with('m') { n * 60.0 } else { n };
+            return Some(Duration::from_secs_f64(secs + 0.25));
+        }
+    }
+    Some(Duration::from_secs(1 << attempt.min(4)))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::agent::tools::specs;
+
+    #[test]
+    fn output_token_limit_reads_the_cap() {
+        let groq = "Rate limit reached for model `qwen/qwen3.8-27b` on output tokens per minute (OTPM): Limit 1000, Requested 2048. The request's expected output tokens exceed the enforced limit; reduce max_tokens.";
+        assert_eq!(output_token_limit(groq), Some(1000));
+        assert_eq!(output_token_limit("Rate limit reached on tokens per minute (TPM): Limit 8000, Used 6224"), None, "not an output cap");
+        assert_eq!(output_token_limit("bad request"), None);
+    }
+
+    #[test]
+    fn retry_wait_reads_header_body_hint_or_backs_off() {
+        assert_eq!(retry_wait(Some("3"), "", 0), Some(Duration::from_secs(3)));
+        let groq = "Rate limit reached ... Please try again in 712.5ms. Need more tokens?";
+        assert_eq!(retry_wait(None, groq, 0), Some(Duration::from_secs_f64(0.7125 + 0.25)));
+        assert_eq!(retry_wait(None, "Please try again in 2.505s.", 0), Some(Duration::from_secs_f64(2.505 + 0.25)));
+        assert!(retry_wait(None, "try again in 7m12s", 0).unwrap() > Duration::from_secs(65), "minutes are not retried");
+        assert_eq!(retry_wait(None, "slow down", 2), Some(Duration::from_secs(4)));
+    }
 
     #[test]
     fn sse_frames_split_anywhere() {
