@@ -1,6 +1,6 @@
 # Welcome to the Fahh Editor Wiki
 
-**Fahh Editor** (`v0.6.9`) is a next-generation AI-native desktop IDE built with **Tauri 2 (Rust)**, **React 18**, **TypeScript**, **Monaco Editor**, and **Tailwind CSS**. It combines the productivity of linear modern code editors (like VS Code and Cursor) with an infinite 2D **CATE Spatial Canvas** and autonomous AI agent sidecars.
+**Fahh Editor** (`v0.7.0`) is a next-generation AI-native desktop IDE built with **Tauri 2 (Rust)**, **React 18**, **TypeScript**, **Monaco Editor**, and **Tailwind CSS**. It combines the productivity of linear modern code editors (like VS Code and Cursor) with an infinite 2D **CATE Spatial Canvas** and autonomous AI agent sidecars.
 
 ---
 
@@ -50,10 +50,10 @@
 ## Installation & Running
 
 ### Desktop Application
-Download the latest installers from [GitHub Releases](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.9):
-- Windows: `Fahh.Editor_0.6.9_x64-setup.exe` or `.msi`
-- macOS: `Fahh.Editor_0.6.9_aarch64.dmg` / `x64.dmg`
-- Linux: `Fahh.Editor_0.6.9_amd64.AppImage` / `.deb` / `.rpm`
+Download the latest installers from [GitHub Releases](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.7.0):
+- Windows: `Fahh.Editor_0.7.0_x64-setup.exe` or `.msi`
+- macOS: `Fahh.Editor_0.7.0_aarch64.dmg` / `x64.dmg`
+- Linux: `Fahh.Editor_0.7.0_amd64.AppImage` / `.deb` / `.rpm`
 
 ### Developer Quickstart
 ```bash
