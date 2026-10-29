@@ -130,3 +130,19 @@ jobs:
         with:
           releaseId: ${{ needs.create-release.outputs.release_id }}
           args: ${{ matrix.args }}
+
+  # Every installer is up: email newsletter subscribers about this release (Fahh Cloud mails each
+  # version once). Skipped until the FAHH_BROADCAST_KEY repository secret is set.
+  announce:
+    needs: [create-release, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Email subscribers
+        env:
+          KEY: ${{ secrets.FAHH_BROADCAST_KEY }}
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          if [ -z "$KEY" ]; then echo "FAHH_BROADCAST_KEY is not set: no release email."; exit 0; fi
+          curl -fsS -X POST "https://br-floral-mountain-b7yj9n4w-fahhapi.compute.c-13.us-east-1.aws.neon.tech/v1/broadcast" \
+            -H "content-type: application/json" -H "x-broadcast-key: $KEY" \
+            -d "{\"version\":\"$TAG\"}"
