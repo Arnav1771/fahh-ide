@@ -1,11 +1,11 @@
 # Fahh Editor — Installation Guide
 
-**Version:** v0.6.9  
+**Version:** v0.7.0  
 **Last updated:** 2026-10-28  
 **Download page:** https://arnav1771.github.io/fahh-ide/download.html  
 **Landing page:** https://arnav1771.github.io/fahh-ide/  
 **Web IDE (try without installing):** https://arnav1771.github.io/fahh-ide/play.html  
-**GitHub Releases:** https://github.com/Arnav1771/fahh-ide/releases/tag/v0.6.9
+**GitHub Releases:** https://github.com/Arnav1771/fahh-ide/releases/tag/v0.7.0
 
 ---
 
@@ -32,7 +32,7 @@ No build tools required. Just download and run.
 
 ### Windows
 
-1. Download [`Fahh.Editor_0.6.9_x64-setup.exe`](https://github.com/Arnav1771/fahh-ide/releases/download/v0.6.9/Fahh.Editor_0.6.9_x64-setup.exe) (~10.6MB)
+1. Download [`Fahh.Editor_0.7.0_x64-setup.exe`](https://github.com/Arnav1771/fahh-ide/releases/download/v0.7.0/Fahh.Editor_0.7.0_x64-setup.exe) (~10.6MB)
 2. Double-click to install (installs to `AppData\Local\Fahh Editor\`, no admin required)
 3. Find **Fahh Editor** in Start Menu or on Desktop
 
@@ -41,12 +41,12 @@ No build tools required. Just download and run.
 
 #### MSI installer (IT/enterprise)
 ```powershell
-msiexec /i Fahh.Editor_0.6.9_x64_en-US.msi /quiet
+msiexec /i Fahh.Editor_0.7.0_x64_en-US.msi /quiet
 ```
 
 #### Silent NSIS install
 ```powershell
-.\Fahh.Editor_0.6.9_x64-setup.exe /S
+.\Fahh.Editor_0.7.0_x64-setup.exe /S
 ```
 
 #### Uninstall
@@ -61,8 +61,8 @@ Start Menu → Fahh Editor → Uninstall
 ### macOS
 
 1. Download the correct `.dmg` for your Mac:
-   - **Apple Silicon (M1/M2/M3/M4):** `Fahh.Editor_0.6.9_aarch64.dmg` (~13.2MB)
-   - **Intel:** `Fahh.Editor_0.6.9_x64.dmg` (~13.6MB)
+   - **Apple Silicon (M1/M2/M3/M4):** `Fahh.Editor_0.7.0_aarch64.dmg` (~13.2MB)
+   - **Intel:** `Fahh.Editor_0.7.0_x64.dmg` (~13.6MB)
 2. Open the `.dmg`, drag **Fahh Editor** to Applications
 3. First launch: right-click → Open (to bypass Gatekeeper unsigned warning)
 
@@ -72,13 +72,13 @@ Start Menu → Fahh Editor → Uninstall
 
 #### AppImage (universal, any distro)
 ```bash
-chmod +x Fahh.Editor_0.6.9_amd64.AppImage
-./Fahh.Editor_0.6.9_amd64.AppImage
+chmod +x Fahh.Editor_0.7.0_amd64.AppImage
+./Fahh.Editor_0.7.0_amd64.AppImage
 ```
 
 #### Debian/Ubuntu .deb
 ```bash
-sudo dpkg -i Fahh.Editor_0.6.9_amd64.deb
+sudo dpkg -i Fahh.Editor_0.7.0_amd64.deb
 # If missing deps:
 sudo apt-get install -f
 # Launch:

@@ -70,6 +70,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.7.0] — 2026-10-29
+
+### Added
+- Format on save, trim trailing whitespace, final newline (#105).
+- Git change bars in the gutter (#105).
+- Clickable file:line locations in the terminal; drop files to type their paths (#105).
+- Explorer shows dotfiles and deep folders (#105).
+- Sticky scroll, bracket pair colours, ligatures, relative line numbers, multi-cursor modifier, window zoom (#105).
+- Breadcrumb folder menus; Fahh Local prompt history (#105).
+- Release emails to newsletter subscribers (release workflow) (#105).
+
+### Fixed
+- Debug Console output split across lines (#105).
+
+---
+
 ## [0.6.9] — 2026-10-29
 
 ### Added
