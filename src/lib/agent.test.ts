@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENT_SETTINGS, parseAgentSettings, settingsProblem, toJudgeConfig, toProviderConfig } from "./agent";
+import { endpointOf } from "./agent";
 
 describe("agent settings", () => {
   it("falls back to defaults on garbage", () => {
@@ -44,5 +45,24 @@ describe("agent settings", () => {
   it("builds the backend provider config", () => {
     expect(toProviderConfig({ ...DEFAULT_AGENT_SETTINGS, provider: "anthropic", apiKey: " k " })).toMatchObject({ kind: "anthropic", api_key: "k" });
     expect(toProviderConfig({ ...DEFAULT_AGENT_SETTINGS, provider: "ollama", apiKey: "" }).api_key).toBeNull();
+  });
+});
+
+describe("custom endpoints", () => {
+  const ep = { id: "a1", name: "Work LLM", baseUrl: "https://llm.example.com/v1", apiKey: "k", kind: "anthropic" };
+  it("keeps saved endpoints and a provider that points at one", () => {
+    const s = parseAgentSettings(JSON.stringify({ provider: "ep:a1", baseUrl: ep.baseUrl, model: "m", endpoints: [ep, { bad: true }] }));
+    expect(s.provider).toBe("ep:a1");
+    expect(s.endpoints).toEqual([ep]);
+    expect(endpointOf(s)?.name).toBe("Work LLM");
+  });
+  it("uses the endpoint type for the provider config", () => {
+    const s = parseAgentSettings(JSON.stringify({ provider: "ep:a1", baseUrl: ep.baseUrl, model: "m", endpoints: [ep] }));
+    expect(toProviderConfig(s)).toMatchObject({ kind: "anthropic", base_url: ep.baseUrl, model: "m" });
+  });
+  it("falls back to custom when the endpoint was removed", () => {
+    const s = parseAgentSettings(JSON.stringify({ provider: "ep:gone", baseUrl: "https://x/v1", model: "m", endpoints: [] }));
+    expect(s.provider).toBe("custom");
+    expect(toProviderConfig(s).kind).toBe("openai");
   });
 });

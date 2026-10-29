@@ -14,7 +14,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ensureEditorMode } from "../../store/layoutModeStore";
 import { Bot, Compass, History, ListPlus, Plus, Send, Settings2, ShieldAlert, Square, Trash2, X } from "lucide-react";
 
-import { agentListModels, PROVIDER_PRESETS, settingsProblem, toProviderConfig } from "../../lib/agent";
+import { agentListModels, endpointOf, PROVIDER_PRESETS, settingsProblem, toProviderConfig, type CustomEndpoint } from "../../lib/agent";
 import { pendingReview } from "../../lib/agentState";
 import { calculateContextTokens } from "../../lib/tokenEstimator";
 import { filterSlash, groupSlash, insertion, menuQuery, MODE_LABEL, type SlashDef } from "../../lib/slash";
@@ -51,6 +51,9 @@ function Settings({ onDone }: { onDone: () => void }) {
   const currentPreset = PROVIDER_PRESETS.find((x) => x.id === settings.provider) || PROVIDER_PRESETS[0];
   const [models, setModels] = useState<string[]>(currentPreset.popularModels || []);
   const [modelsMsg, setModelsMsg] = useState<string | null>(null);
+  const [adding, setAdding] = useState<Omit<CustomEndpoint, "id"> | null>(null);
+  const [addMsg, setAddMsg] = useState<{ text: string; ok?: boolean } | null>(null);
+  const saved = endpointOf(settings);
 
   // Auto-detect local Ollama models when Ollama is selected
   useEffect(() => {
@@ -72,7 +75,68 @@ function Settings({ onDone }: { onDone: () => void }) {
     }
   }, [settings.provider]);
 
+  const fetchModels = async (cfg: Parameters<typeof agentListModels>[0]) => {
+    setModelsMsg("Loading models…");
+    try {
+      const ids = await agentListModels(cfg);
+      setModels(ids);
+      setModelsMsg(ids.length ? `${ids.length} models` : "The endpoint listed no models: type a model name.");
+      return ids;
+    } catch (e) {
+      setModelsMsg(String(e));
+      return null;
+    }
+  };
+
+  /** Settings edits on a saved endpoint update the endpoint too. */
+  const patch = (p: Partial<typeof settings>) => {
+    if (saved && (p.baseUrl !== undefined || p.apiKey !== undefined)) {
+      const endpoints = settings.endpoints.map((e) => (e.id === saved.id ? { ...e, baseUrl: p.baseUrl ?? e.baseUrl, apiKey: p.apiKey ?? e.apiKey } : e));
+      updateSettings({ ...p, endpoints });
+    } else updateSettings(p);
+  };
+
+  const saveEndpoint = async (force = false) => {
+    if (!adding) return;
+    const ep = { ...adding, name: adding.name.trim() || "My endpoint", baseUrl: adding.baseUrl.trim() };
+    if (!/^https?:\/\//i.test(ep.baseUrl)) return setAddMsg({ text: "Enter a base URL starting with http:// or https:// (for example https://api.example.com/v1)." });
+    let ids: string[] = [];
+    if (!force) {
+      setAddMsg({ text: "Checking the endpoint…" });
+      try {
+        ids = await agentListModels({ kind: ep.kind, base_url: ep.baseUrl, model: "", api_key: ep.apiKey.trim() || null });
+      } catch (e) {
+        return setAddMsg({ text: `Could not list models: ${String(e)}` });
+      }
+    }
+    const id = Date.now().toString(36);
+    updateSettings({ endpoints: [...settings.endpoints, { id, ...ep }], provider: `ep:${id}`, baseUrl: ep.baseUrl, apiKey: ep.apiKey, model: ids[0] ?? "", fastModel: "" });
+    setModels(ids);
+    setModelsMsg(ids.length ? `${ids.length} models from ${ep.name}` : "Saved. Type the model name to use.");
+    setAdding(null);
+    setAddMsg(null);
+  };
+
+  const removeEndpoint = () => {
+    if (!saved) return;
+    const first = PROVIDER_PRESETS[0];
+    updateSettings({ endpoints: settings.endpoints.filter((e) => e.id !== saved.id), provider: first.id, baseUrl: first.baseUrl, model: first.defaultModel, apiKey: "", fastModel: "" });
+    setModels(first.popularModels || []);
+    setModelsMsg(null);
+  };
+
   const pick = (id: string) => {
+    if (id === "__add") {
+      setAdding({ name: "", baseUrl: "", apiKey: "", kind: "openai" });
+      setAddMsg(null);
+      return;
+    }
+    const ep = settings.endpoints.find((e) => `ep:${e.id}` === id);
+    if (ep) {
+      updateSettings({ provider: id, baseUrl: ep.baseUrl, apiKey: ep.apiKey, model: "", fastModel: "" });
+      void fetchModels({ kind: ep.kind, base_url: ep.baseUrl, model: "", api_key: ep.apiKey.trim() || null }).then((ids) => ids?.[0] && updateSettings({ model: ids[0] }));
+      return;
+    }
     const p = PROVIDER_PRESETS.find((x) => x.id === id);
     if (p) {
       updateSettings({ provider: id, baseUrl: p.baseUrl || settings.baseUrl, model: p.defaultModel, fastModel: "" });
@@ -81,31 +145,55 @@ function Settings({ onDone }: { onDone: () => void }) {
     setModelsMsg(null);
   };
 
-  const loadModels = async () => {
-    setModelsMsg("Loading…");
-    try {
-      const ids = await agentListModels(toProviderConfig(settings));
-      setModels(ids);
-      setModelsMsg(ids.length ? `${ids.length} models` : "The provider listed no models.");
-    } catch (e) {
-      setModelsMsg(String(e));
-    }
-  };
+  const loadModels = () => fetchModels(toProviderConfig(settings));
 
   return (
     <div className="p-2 space-y-2 border-b border-fahh-surface text-xs" data-testid="agent-settings">
       <label className="block">
         <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Provider</span>
-        <select value={settings.provider} onChange={(e) => pick(e.target.value)} className={field}>
+        <select value={adding ? "__add" : settings.provider} onChange={(e) => pick(e.target.value)} className={field} data-testid="agent-provider">
           {PROVIDER_PRESETS.map((p) => (
             <option key={p.id} value={p.id}>{p.label}</option>
           ))}
+          {settings.endpoints.length > 0 && (
+            <optgroup label="Your endpoints">
+              {settings.endpoints.map((e) => (
+                <option key={e.id} value={`ep:${e.id}`}>{e.name}</option>
+              ))}
+            </optgroup>
+          )}
+          <option value="__add">+ Add your own endpoint…</option>
         </select>
       </label>
+      {adding && (
+        <div className="space-y-1.5 rounded border border-fahh-accent/40 p-2" data-testid="add-endpoint">
+          <span className="block text-[10px] uppercase tracking-wider text-fahh-muted">Your own endpoint</span>
+          <input value={adding.name} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="Name, e.g. Work LLM" aria-label="Endpoint name" className={field} />
+          <input value={adding.baseUrl} onChange={(e) => setAdding({ ...adding, baseUrl: e.target.value })} placeholder="Base URL, e.g. https://llm.example.com/v1" aria-label="Endpoint base URL" spellCheck={false} className={field} />
+          <input type="password" value={adding.apiKey} onChange={(e) => setAdding({ ...adding, apiKey: e.target.value })} placeholder="API key (leave empty if none)" aria-label="Endpoint API key" spellCheck={false} className={field} />
+          <select value={adding.kind} onChange={(e) => setAdding({ ...adding, kind: e.target.value as CustomEndpoint["kind"] })} aria-label="Endpoint type" className={field}>
+            <option value="openai">OpenAI-compatible (/v1/chat/completions, /v1/models)</option>
+            <option value="anthropic">Anthropic Messages API</option>
+          </select>
+          {addMsg && <span className="block text-[10px] text-fahh-muted break-words" role="status">{addMsg.text}</span>}
+          <div className="flex gap-1">
+            <button type="button" onClick={() => void saveEndpoint()} className="flex-1 py-1 rounded bg-fahh-accent/90 text-white hover:bg-fahh-accent">Save and fetch models</button>
+            {addMsg?.text.startsWith("Could not") && (
+              <button type="button" onClick={() => void saveEndpoint(true)} className="px-2 py-1 rounded bg-fahh-surface text-fahh-text">Save anyway</button>
+            )}
+            <button type="button" onClick={() => { setAdding(null); setAddMsg(null); }} className="px-2 py-1 rounded bg-fahh-surface text-fahh-text">Cancel</button>
+          </div>
+        </div>
+      )}
       <label className="block">
         <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Base URL</span>
-        <input value={settings.baseUrl} onChange={(e) => updateSettings({ baseUrl: e.target.value })} spellCheck={false} className={field} />
+        <input value={settings.baseUrl} onChange={(e) => patch({ baseUrl: e.target.value })} spellCheck={false} className={field} />
       </label>
+      {saved && (
+        <button type="button" onClick={removeEndpoint} className="text-[10px] text-fahh-muted hover:text-fahh-error underline">
+          Remove “{saved.name}”
+        </button>
+      )}
       <div className="space-y-1">
         <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Model Selection</span>
         <select
@@ -144,7 +232,7 @@ function Settings({ onDone }: { onDone: () => void }) {
       </label>
       <label className="block">
         <span className="text-[10px] uppercase tracking-wider text-fahh-muted">API key</span>
-        <input type="password" value={settings.apiKey} onChange={(e) => updateSettings({ apiKey: e.target.value })} placeholder="not needed for local Ollama" spellCheck={false} className={field} />
+        <input type="password" value={settings.apiKey} onChange={(e) => patch({ apiKey: e.target.value })} placeholder="not needed for local Ollama" spellCheck={false} className={field} />
       </label>
       <p className="text-[10px] text-fahh-muted opacity-70 leading-relaxed">
         The key stays in this machine&apos;s localStorage (there is no OS keychain yet) and is sent only to the provider above. It is never written into your project.

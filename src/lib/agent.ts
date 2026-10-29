@@ -178,6 +178,19 @@ export const PROVIDER_PRESETS: ProviderPreset[] = [
   },
 ];
 
+/** An AI endpoint the user added (Settings > Fahh Local > Add your own endpoint). */
+export interface CustomEndpoint {
+  id: string;
+  name: string;
+  baseUrl: string;
+  apiKey: string;
+  kind: AgentProviderKind;
+}
+
+/** A saved endpoint is selected with provider `ep:<id>`. */
+export const endpointOf = (s: Pick<AgentSettings, "provider" | "endpoints">): CustomEndpoint | undefined =>
+  s.provider.startsWith("ep:") ? s.endpoints.find((e) => `ep:${e.id}` === s.provider) : undefined;
+
 export interface AgentSettings {
   provider: string;
   baseUrl: string;
@@ -188,6 +201,8 @@ export interface AgentSettings {
   fastModel: string;
   /** Folders added with /add-dir. */
   extraDirs: string[];
+  /** The user's own endpoints. */
+  endpoints: CustomEndpoint[];
 }
 
 export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
@@ -198,6 +213,7 @@ export const DEFAULT_AGENT_SETTINGS: AgentSettings = {
   mode: "ask",
   fastModel: "",
   extraDirs: [],
+  endpoints: [],
 };
 
 /** Modes that can be the default (qa is only ever the one-shot /ask). */
@@ -219,7 +235,11 @@ export function parseAgentSettings(raw: string | null, legacy: string | null = n
   const str = (v: unknown, d: string) => (typeof v === "string" ? v : d);
   const cur = read(raw);
   if (cur) {
-    const provider = PROVIDER_PRESETS.some((p) => p.id === cur.provider) ? (cur.provider as string) : "custom";
+    const endpoints: CustomEndpoint[] = (Array.isArray(cur.endpoints) ? cur.endpoints : [])
+      .filter((e): e is Record<string, unknown> => !!e && typeof e === "object" && typeof (e as Record<string, unknown>).id === "string" && typeof (e as Record<string, unknown>).baseUrl === "string")
+      .map((e) => ({ id: e.id as string, name: str(e.name, "My endpoint"), baseUrl: e.baseUrl as string, apiKey: str(e.apiKey, ""), kind: e.kind === "anthropic" ? "anthropic" : "openai" }));
+    const known = PROVIDER_PRESETS.some((p) => p.id === cur.provider) || endpoints.some((e) => `ep:${e.id}` === cur.provider);
+    const provider = known ? (cur.provider as string) : "custom";
     const preset = PROVIDER_PRESETS.find((p) => p.id === provider);
     const model = str(cur.model, "") || preset?.defaultModel || "";
     return {
@@ -230,11 +250,12 @@ export function parseAgentSettings(raw: string | null, legacy: string | null = n
       mode: MODES.includes(cur.mode as AgentMode) ? (cur.mode as AgentMode) : "ask",
       fastModel: str(cur.fastModel, ""),
       extraDirs: Array.isArray(cur.extraDirs) ? cur.extraDirs.filter((d): d is string => typeof d === "string") : [],
+      endpoints,
     };
   }
   const old = read(legacy);
   if (old && typeof old.baseUrl === "string" && old.baseUrl) {
-    return { provider: "custom", baseUrl: old.baseUrl, model: str(old.model, ""), apiKey: str(old.apiKey, ""), mode: "ask", fastModel: "", extraDirs: [] };
+    return { provider: "custom", baseUrl: old.baseUrl, model: str(old.model, ""), apiKey: str(old.apiKey, ""), mode: "ask", fastModel: "", extraDirs: [], endpoints: [] };
   }
   return { ...DEFAULT_AGENT_SETTINGS };
 }
@@ -251,7 +272,7 @@ export function settingsProblem(s: AgentSettings): string | null {
 export function toProviderConfig(s: AgentSettings, modelOverride?: string): AgentProviderConfig {
   const preset = PROVIDER_PRESETS.find((p) => p.id === s.provider);
   return {
-    kind: preset?.kind ?? "openai",
+    kind: endpointOf(s)?.kind ?? preset?.kind ?? "openai",
     base_url: s.baseUrl.trim(),
     model: (modelOverride ?? s.model).trim(),
     api_key: s.apiKey.trim() || null,
