@@ -18,6 +18,25 @@
 
 ---
 
+## Your own endpoint
+
+Any OpenAI-compatible server (vLLM, LM Studio, llama.cpp, LiteLLM, a company gateway, OpenRouter-style proxies) or an Anthropic Messages endpoint can be added once and picked like a built-in provider.
+
+1. Open Fahh Local settings (the gear in the Fahh Local header).
+2. In **Provider**, choose **+ Add your own endpoint…**.
+3. Enter a name, the base URL (for example `https://llm.example.com/v1`), the API key if it needs one, and the type.
+4. **Save and fetch models** calls the endpoint's `/models` and fills the model list; the first model is selected. If the endpoint does not list models, **Save anyway** keeps it and you type the model name.
+
+Saved endpoints appear under **Your endpoints** in the Provider list; picking one fetches its models again. Editing the base URL or key while one is selected updates it, and **Remove** deletes it. Keys stay in this machine's local storage and are never synced or written into your project.
+
+## Subagents
+
+The main agent can hand a self-contained job to a **subagent** with the `delegate` tool, in every mode. A subagent works with a fresh context and returns a short result; several can run at once, and each shows as its own card in the transcript.
+
+- Built in: `explore` (reads and searches the project), `reviewer` (reviews a diff), `planner` (writes a plan).
+- Your own: a Markdown file in `.fahh/agents/<name>.md` (project) or `~/.fahh/agents/<name>.md` (all projects) with `name`, `description`, `mode` and `max_steps` front matter; the body is its instructions. Project agents override user ones, which override built-ins.
+- Ask for one directly with `/agent <name> <task>`, or just say "use the explore subagent to …". A subagent never gets more permission than the turn that started it.
+
 ## Sessions
 
 Every conversation is a session, saved after each step under the app data folder, one folder per workspace (with its file checkpoints, so undo survives a restart).
