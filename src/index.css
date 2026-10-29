@@ -474,3 +474,8 @@ html[data-fahh-theme="fahh-light"] ::-webkit-scrollbar-thumb:hover { background:
 
 /* Settings search: say so when no row matches. */
 .settings-body:not(:has([data-row])) .settings-empty { display: block; }
+
+/* Git change bars in the editor gutter (useGitGutter). */
+.monaco-editor .fahh-git-added { border-left: 3px solid #3d9e5c; margin-left: 4px; }
+.monaco-editor .fahh-git-modified { border-left: 3px solid var(--fahh-accent, #d4a03c); margin-left: 4px; }
+.monaco-editor .fahh-git-deleted { border-left: 0; margin-left: 4px; width: 0 !important; height: 0 !important; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid #d0524d; }

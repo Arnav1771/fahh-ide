@@ -5,6 +5,30 @@ export interface ConsoleLine {
   /** DAP output category: stdout, stderr, console, plus "input" for what you typed. */
   category: string;
   text: string;
+  /** A program stream line still waiting for its newline (the next chunk continues it). */
+  open?: boolean;
+}
+
+/**
+ * Add adapter output to the console. Programs' stdout/stderr arrive in arbitrary chunks
+ * (`print("a", 1)` can come as "a", " 1", "\n"): a chunk continues the last line until a
+ * newline ends it, as in VS Code. Other categories (Fahh's own messages) are whole lines.
+ */
+export function appendOutput(prev: ConsoleLine[], category: string, text: string): ConsoleLine[] {
+  const stream = category === "stdout" || category === "stderr";
+  const parts = text.replace(/\r\n/g, "\n").split("\n");
+  const out = prev.slice();
+  const last = out[out.length - 1];
+  if (stream && last?.open && last.category === category) {
+    out[out.length - 1] = { category, text: last.text + parts[0], open: parts.length === 1 };
+    parts.shift();
+  }
+  parts.forEach((t, i) => {
+    const final = i === parts.length - 1;
+    if (final && t === "") return; // text ended with a newline
+    out.push(stream && final ? { category, text: t, open: true } : { category, text: t });
+  });
+  return out;
 }
 
 /** Keep the Debug Console bounded: a chatty loop must not eat the webview's memory. */
@@ -79,9 +103,7 @@ export const useDebugStore = create<DebugStore>((set, get) => ({
 
   log: (category, text) =>
     set((s) => {
-      // Adapters send output in chunks; one console line per text line.
-      const lines = text.replace(/\r\n/g, "\n").replace(/\n$/, "").split("\n").map((t) => ({ category, text: t }));
-      const next = s.console.concat(lines);
+      const next = appendOutput(s.console, category, text);
       return { console: next.length > MAX_CONSOLE_LINES ? next.slice(-MAX_CONSOLE_LINES) : next };
     }),
 

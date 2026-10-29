@@ -324,6 +324,10 @@ export const gitSync = (path: string) => invoke<string>("git_sync", { path });
 export const gitFileLog = (path: string, file: string, limit?: number) =>
   invoke<import("./types").GitCommitInfo[]>("git_file_log", { path, file, limit });
 
+/** Changed line ranges of the editor text against the file in HEAD, for the gutter. */
+export const gitLineChanges = (path: string, file: string, content: string) =>
+  invoke<{ kind: "added" | "modified" | "deleted"; start: number; end: number }[]>("git_line_changes", { path, file, content });
+
 /** What commit `oid` changed in `file`, as a unified diff. */
 export const gitFileCommitDiff = (path: string, oid: string, file: string) =>
   invoke<string>("git_file_commit_diff", { path, oid, file });

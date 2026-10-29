@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useGitGutter } from "./useGitGutter";
 import Editor, { type Monaco } from "@monaco-editor/react";
 import type { DockviewPanelApi } from "dockview-react";
 import { useEditorStore } from "../../store/editorStore";
@@ -98,6 +99,7 @@ export function EditorPane({
   const lastContent = useRef("");
   if (!closed) lastContent.current = activeTab ? fileContents[activeTab] ?? "" : "";
   const content = lastContent.current;
+  useGitGutter(editorRef, activeTab ?? null, content, !closed && !(activeTab && isPreviewOnly(activeTab)));
   const modelOpts = useRef({ tabSize, insertSpaces });
   modelOpts.current = { tabSize, insertSpaces };
   // Which preview this file can have, and how it is shown (VS Code's editor resolver, in small).
