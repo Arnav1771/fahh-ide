@@ -70,6 +70,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.6.9] — 2026-10-29
+
+### Added
+- Your own AI endpoints in Fahh Local, with model fetching (#103).
+
+### Fixed
+- Title-bar Minimize / Maximize / Close (#102).
+- Groq model presets; rate-limit waits and retries; free-tier output caps; empty final answers; empty search path (#102).
+
+---
+
 ## [0.6.8] — 2026-10-28
 
 ### Changed
