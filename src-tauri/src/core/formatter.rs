@@ -89,12 +89,14 @@ fn exists(name: &str) -> bool {
 /// Returns the formatted content as a string. Falls back to the original file
 /// content if no formatter is installed or the language is not supported.
 #[tauri::command]
-pub async fn format_file(path: String, language: String) -> Result<String, String> {
+pub async fn format_file(path: String, language: String, content: Option<String>) -> Result<String, String> {
     info!("format_file: path={path}, language={language}");
 
-    // Read the original content so we can fall back if needed.
-    let original = std::fs::read_to_string(&path)
-        .map_err(|e| format!("Failed to read file '{path}': {e}"))?;
+    // The editor's text when given (unsaved edits), else the file on disk.
+    let original = match content {
+        Some(c) => c,
+        None => std::fs::read_to_string(&path).map_err(|e| format!("Failed to read file '{path}': {e}"))?,
+    };
 
     match language.as_str() {
         // ------------------------------------------------------------------ Python

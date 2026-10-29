@@ -66,7 +66,15 @@ export function EditorPane({
   const fontSize = fontSizeProp ?? settings.fontSize;
   const wordWrap = wordWrapProp ?? (settings.wordWrap ? "on" : "off");
   const minimapEnabled = minimapProp ?? settings.minimap;
-  const { fontFamily, tabSize, insertSpaces, lineNumbers } = settings;
+  const { fontFamily, tabSize, insertSpaces, lineNumbers, relativeLineNumbers, stickyScroll, bracketPairs, fontLigatures, multiCursorModifier } = settings;
+  const lineNumbersOpt = !lineNumbers ? "off" : relativeLineNumbers ? "relative" : "on";
+  const extraOptions = {
+    stickyScroll: { enabled: stickyScroll },
+    bracketPairColorization: { enabled: bracketPairs },
+    guides: { bracketPairs: bracketPairs ? ("active" as const) : false, indentation: true },
+    fontLigatures,
+    multiCursorModifier,
+  };
   const activeTab = path ?? storeActive;
   /** Undocked there is one editor, always current; docked, the active tab of the active group is. */
   const isCurrent = () => !dock || (dock.isActive && dock.isGroupActive);
@@ -181,12 +189,13 @@ export function EditorPane({
       fontWeight,
       lineHeight: lineHeight ?? Math.round(fontSize * 1.55),
       minimap: { enabled: minimapEnabled },
-      lineNumbers: lineNumbers ? "on" : "off",
+      lineNumbers: lineNumbersOpt,
+      ...extraOptions,
     });
     const model = editorRef.current.getModel();
     if (model && !model.isDisposed?.()) model.updateOptions({ tabSize, insertSpaces });
     editorRef.current.layout?.();
-  }, [fontSize, fontFamily, wordWrap, fontWeight, lineHeight, minimapEnabled, lineNumbers, tabSize, insertSpaces]);
+  }, [fontSize, fontFamily, wordWrap, fontWeight, lineHeight, minimapEnabled, lineNumbersOpt, tabSize, insertSpaces, stickyScroll, bracketPairs, fontLigatures, multiCursorModifier]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Never let the bridge hold a reference to a disposed editor.
   useEffect(() => {
@@ -484,7 +493,8 @@ export function EditorPane({
             minimap: { enabled: minimapEnabled },
             scrollBeyondLastLine: false,
             wordWrap,
-            lineNumbers: lineNumbers ? "on" : "off",
+            lineNumbers: lineNumbersOpt,
+            ...extraOptions,
             tabSize,
             insertSpaces,
             automaticLayout: true,

@@ -20,10 +20,19 @@ import type { FahhMarker } from "./diagnostics";
 /** The owner string Monaco groups our markers under. */
 export const MARKER_OWNER = "fahh-lsp";
 
+export interface RangeLike {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+}
+
 export interface MonacoModelLike {
   isDisposed?: () => boolean;
   getAlternativeVersionId?: () => number;
   dispose?: () => void;
+  getValue?: () => string;
+  getFullModelRange?: () => RangeLike;
 }
 
 export interface MonacoApiLike {
@@ -40,7 +49,9 @@ export interface MonacoApiLike {
 
 export interface MonacoEditorLike {
   getModel(): MonacoModelLike | null;
-  getAction?(id: string): { run(): Promise<void> | void } | null;
+  getAction?(id: string): { run(): Promise<void> | void; isSupported?(): boolean } | null;
+  executeEdits?(source: string, edits: { range: RangeLike; text: string }[]): boolean;
+  pushUndoStop?(): boolean;
   focus?(): void;
   revealLineInCenter?(line: number): void;
   setPosition?(pos: { lineNumber: number; column: number }): void;
@@ -170,6 +181,29 @@ export function modelPathFor(path: string): string {
 /** Version id of the model on screen (see saveBaseline.ts); null when no editor is up. */
 export function getActiveVersionId(): number | null {
   return editorInstance?.getModel()?.getAlternativeVersionId?.() ?? null;
+}
+
+/** The text of the file on screen, or null when no editor is up. */
+export function getActiveText(): string | null {
+  return editorInstance?.getModel()?.getValue?.() ?? null;
+}
+
+/** Run Monaco's own formatter on the file on screen. False when the language has none. */
+export async function formatActiveBuiltin(): Promise<boolean> {
+  const action = editorInstance?.getAction?.("editor.action.formatDocument");
+  if (!action || (action.isSupported && !action.isSupported())) return false;
+  await action.run();
+  return true;
+}
+
+/** Replace the whole text of the file on screen as one undoable edit. */
+export function replaceActiveText(text: string): boolean {
+  const model = editorInstance?.getModel();
+  if (!editorInstance?.executeEdits || !model?.getFullModelRange) return false;
+  editorInstance.pushUndoStop?.();
+  editorInstance.executeEdits("fahh-save", [{ range: model.getFullModelRange(), text }]);
+  editorInstance.pushUndoStop?.();
+  return true;
 }
 
 /** Give the keyboard back to the editor (the terminal's Esc). False when no editor is up. */

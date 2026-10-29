@@ -113,6 +113,15 @@ function ActivityBtn({
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
+/** The zoom (percent) a Ctrl+key asks for, from the current setting; null for other keys. */
+function zoomFor(key: string): number | null {
+  const z = useSettingsStore.getState().uiZoom;
+  if (key === "=" || key === "+") return Math.min(200, z + 10);
+  if (key === "-" || key === "_") return Math.max(50, z - 10);
+  if (key === "0") return 100;
+  return null;
+}
+
 export default function App() {
   const [showInstaller, setShowInstaller] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
@@ -315,6 +324,9 @@ export default function App() {
       { id: "workspace.open", group: "File", label: "Open Workspace from File…", keywords: "workspace config file open fahh-workspace json", run: () => void openWorkspaceFromFile(openFolder, openFileInEditor) },
       { id: "workspace.saveAs", group: "File", label: "Save Workspace As…", keywords: "save workspace config export fahh-workspace json", run: () => void saveWorkspaceAs() },
       { id: "file.toggleAutoSave", group: "File", label: "Toggle Auto Save", keywords: "auto save toggle automatic background disk write", run: () => useEditorStore.getState().toggleAutoSave() },
+      { id: "view.zoomIn", group: "View", label: "Zoom In", keys: ["Ctrl", "="], keywords: "bigger larger font ui scale", run: () => useSettingsStore.getState().set("uiZoom", zoomFor("=")!) },
+      { id: "view.zoomOut", group: "View", label: "Zoom Out", keys: ["Ctrl", "-"], keywords: "smaller font ui scale", run: () => useSettingsStore.getState().set("uiZoom", zoomFor("-")!) },
+      { id: "view.zoomReset", group: "View", label: "Reset Zoom", keys: ["Ctrl", "0"], keywords: "actual size 100", run: () => useSettingsStore.getState().set("uiZoom", 100) },
       { id: "file.save", group: "File", label: "Save File", keys: ["Ctrl", "S"], keywords: "save write disk", run: () => void saveActive() },
       { id: "file.saveAll", group: "File", label: "Save All Files", keys: ["Ctrl", "K", "S"], keywords: "save all write dirty", run: () => void saveActive() },
       { id: "file.copyPath", group: "File", label: "Copy Active File Path", keywords: "copy full absolute path clipboard", run: () => {
@@ -590,6 +602,23 @@ export default function App() {
         e.preventDefault();
         void saveActive();
       }
+    };
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, []);
+
+  // Whole-window zoom (Settings > Editor > Zoom): Ctrl+= / Ctrl+- / Ctrl+0, kept across restarts.
+  const uiZoom = useSettingsStore((s) => s.uiZoom);
+  useEffect(() => {
+    void import("@tauri-apps/api/webview").then(({ getCurrentWebview }) => getCurrentWebview().setZoom(uiZoom / 100)).catch(() => {});
+  }, [uiZoom]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const zoom = zoomFor(e.key);
+      if (zoom === null) return;
+      e.preventDefault();
+      useSettingsStore.getState().set("uiZoom", zoom);
     };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);

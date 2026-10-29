@@ -256,9 +256,9 @@ export const lspSend = (language: string, message: string) =>
 export const lspStop = (language: string) =>
   invoke<void>("lsp_stop", { language });
 
-/** Ask the backend to format a file and return the formatted text. */
-export const formatFile = (path: string, language: string) =>
-  invoke<string>("format_file", { path, language });
+/** Format `content` (the editor text) with the language's formatter; the path picks config files. */
+export const formatFile = (path: string, language: string, content?: string) =>
+  invoke<string>("format_file", { path, language, content });
 
 // ─── Phase 2: DAP debugger ────────────────────────────────────────────────────
 
