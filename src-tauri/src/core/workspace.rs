@@ -11,7 +11,19 @@ pub struct FileEntry {
     pub children: Option<Vec<FileEntry>>,
 }
 
+/// Folders the Explorer never lists: VCS internals and dependency/build output that can hold
+/// hundreds of thousands of files. Dotfiles (.env, .github, .gitignore) are shown.
+const TREE_SKIP: &[&str] = &[".git", "node_modules", "target"];
+const TREE_MAX_DEPTH: usize = 16;
+// ponytail: one eager walk capped by depth and entry count; lazy loading on expand would lift both.
+const TREE_MAX_ENTRIES: usize = 30_000;
+
 fn build_tree(path: &Path, depth: usize) -> Result<FileEntry> {
+    let mut budget = TREE_MAX_ENTRIES;
+    build_tree_capped(path, depth, &mut budget)
+}
+
+fn build_tree_capped(path: &Path, depth: usize, budget: &mut usize) -> Result<FileEntry> {
     let name = path
         .file_name()
         .and_then(|n| n.to_str())
@@ -19,16 +31,19 @@ fn build_tree(path: &Path, depth: usize) -> Result<FileEntry> {
         .to_string();
     let is_dir = path.is_dir();
 
-    let children = if is_dir && depth < 5 {
+    let children = if is_dir && depth < TREE_MAX_DEPTH {
         let mut entries: Vec<FileEntry> = match std::fs::read_dir(path) {
             Ok(read_dir) => read_dir
                 .filter_map(|e| e.ok())
-                .filter(|e| {
-                    let name = e.file_name();
-                    let s = name.to_string_lossy();
-                    !s.starts_with('.') && s != "node_modules" && s != "target"
+                .filter(|e| !TREE_SKIP.contains(&e.file_name().to_string_lossy().as_ref()))
+                .take_while(|_| {
+                    let ok = *budget > 0;
+                    *budget = budget.saturating_sub(1);
+                    ok
                 })
-                .filter_map(|e| build_tree(&e.path(), depth + 1).ok())
+                .collect::<Vec<_>>()
+                .into_iter()
+                .filter_map(|e| build_tree_capped(&e.path(), depth + 1, budget).ok())
                 .collect(),
             Err(_) => Vec::new(),
         };
@@ -479,6 +494,24 @@ pub fn replace_in_workspace(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn tree_shows_dotfiles_and_deep_folders_but_skips_git_and_deps() {
+        let d = std::env::temp_dir().join(format!("fahh-tree-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&d);
+        let deep = (0..8).fold(d.clone(), |p, i| p.join(format!("l{i}")));
+        std::fs::create_dir_all(&deep).unwrap();
+        std::fs::write(deep.join("deep.rs"), "").unwrap();
+        for f in [".env", ".gitignore"] { std::fs::write(d.join(f), "").unwrap(); }
+        for dir in [".github/workflows", ".git/objects", "node_modules/x"] { std::fs::create_dir_all(d.join(dir)).unwrap(); }
+        let t = super::get_file_tree(d.to_string_lossy().to_string()).unwrap();
+        let names: Vec<String> = t.children.clone().unwrap().iter().map(|c| c.name.clone()).collect();
+        assert!(names.contains(&".env".into()) && names.contains(&".github".into()) && names.contains(&".gitignore".into()), "{names:?}");
+        assert!(!names.contains(&".git".into()) && !names.contains(&"node_modules".into()), "{names:?}");
+        fn find(e: &super::FileEntry, n: &str) -> bool { e.name == n || e.children.iter().flatten().any(|c| find(c, n)) }
+        assert!(find(&t, "deep.rs"), "8 levels deep is listed");
+        let _ = std::fs::remove_dir_all(&d);
+    }
+
     use super::*;
 
     fn s(p: &Path) -> String {

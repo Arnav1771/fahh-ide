@@ -24,6 +24,24 @@ export interface Settings {
   fahhSound: string;
   /** Look for a new release at launch (at most once a day; a toast, never a popup). */
   checkUpdatesOnLaunch: boolean;
+  /** Line numbers relative to the cursor line (Vim-style). */
+  relativeLineNumbers: boolean;
+  /** Keep the enclosing function/class header pinned at the top while scrolling. */
+  stickyScroll: boolean;
+  /** Colour matching brackets and draw their guides. */
+  bracketPairs: boolean;
+  /** Font ligatures (=> != ===) when the font has them. */
+  fontLigatures: boolean;
+  /** Which key adds a cursor on click: Alt (VS Code default) or Ctrl. */
+  multiCursorModifier: "alt" | "ctrlCmd";
+  /** Run the formatter when a file is saved. */
+  formatOnSave: boolean;
+  /** Remove spaces at line ends when saving. */
+  trimTrailingWhitespace: boolean;
+  /** End every saved file with one newline. */
+  insertFinalNewline: boolean;
+  /** Whole-window zoom in percent (Ctrl+= / Ctrl+- / Ctrl+0). */
+  uiZoom: number;
 }
 
 export const SETTINGS_KEY = "fahh-settings";
@@ -42,6 +60,15 @@ export const DEFAULT_SETTINGS: Settings = {
   restoreSession: true,
   fahhSound: "",
   checkUpdatesOnLaunch: true,
+  relativeLineNumbers: false,
+  stickyScroll: true,
+  bracketPairs: true,
+  fontLigatures: true,
+  multiCursorModifier: "alt",
+  formatOnSave: false,
+  trimTrailingWhitespace: false,
+  insertFinalNewline: false,
+  uiZoom: 100,
 };
 
 const clamp = (v: unknown, lo: number, hi: number, d: number) =>
@@ -72,6 +99,15 @@ export function parseSettings(raw: string | null | undefined): Settings {
     restoreSession: bool(o.restoreSession, d.restoreSession),
     fahhSound: typeof o.fahhSound === "string" ? o.fahhSound.slice(0, 200) : d.fahhSound,
     checkUpdatesOnLaunch: bool(o.checkUpdatesOnLaunch, d.checkUpdatesOnLaunch),
+    relativeLineNumbers: bool(o.relativeLineNumbers, d.relativeLineNumbers),
+    stickyScroll: bool(o.stickyScroll, d.stickyScroll),
+    bracketPairs: bool(o.bracketPairs, d.bracketPairs),
+    fontLigatures: bool(o.fontLigatures, d.fontLigatures),
+    multiCursorModifier: o.multiCursorModifier === "ctrlCmd" ? "ctrlCmd" : "alt",
+    formatOnSave: bool(o.formatOnSave, d.formatOnSave),
+    trimTrailingWhitespace: bool(o.trimTrailingWhitespace, d.trimTrailingWhitespace),
+    insertFinalNewline: bool(o.insertFinalNewline, d.insertFinalNewline),
+    uiZoom: clamp(o.uiZoom, 50, 200, d.uiZoom),
   };
 }
 

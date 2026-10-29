@@ -1,4 +1,8 @@
 import { useEffect, useRef } from "react";
+import { findFileLinks, resolveLinkPath } from "../../lib/termLinks";
+import { openAt } from "../../lib/navigation";
+import { useFileStore } from "../../store/fileStore";
+import { useToastStore } from "../../store/toastStore";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebLinksAddon } from "@xterm/addon-web-links";
@@ -90,6 +94,23 @@ export function XtermPane({
     const fit = new FitAddon();
     term.loadAddon(fit);
     term.loadAddon(new WebLinksAddon((_e, uri) => openBrowser(uri)));
+    // file:line in compiler, test and traceback output opens in the editor
+    const fileLinks = term.registerLinkProvider({
+      provideLinks(y, done) {
+        const text = term.buffer.active.getLine(y - 1)?.translateToString(true) ?? "";
+        done(
+          findFileLinks(text).map((l) => ({
+            range: { start: { x: l.start + 1, y }, end: { x: l.end, y } },
+            text: text.slice(l.start, l.end),
+            decorations: { underline: true, pointerCursor: true },
+            activate: () => {
+              const path = resolveLinkPath(l.path, useFileStore.getState().root);
+              openAt(path, l.line, l.column ?? 1).catch(() => useToastStore.getState().show(`Could not open ${l.path}`, "error"));
+            },
+          }))
+        );
+      },
+    });
     term.open(el);
     try {
       fit.fit();
@@ -141,6 +162,22 @@ export function XtermPane({
       });
     });
     const input = term.onData((d) => void write(session.id, d));
+    // Files dropped from the OS onto this terminal: type their quoted paths, like VS Code.
+    let offDrop: (() => void) | undefined;
+    void import("@tauri-apps/api/webview")
+      .then(({ getCurrentWebview }) =>
+        getCurrentWebview().onDragDropEvent((ev) => {
+          if (ev.payload.type !== "drop" || !ev.payload.paths.length) return;
+          const r = el.getBoundingClientRect();
+          const x = ev.payload.position.x / window.devicePixelRatio;
+          const y = ev.payload.position.y / window.devicePixelRatio;
+          if (x < r.left || x > r.right || y < r.top || y > r.bottom) return;
+          void write(session.id, ev.payload.paths.map((p) => (/\s/.test(p) ? `"${p}"` : p)).join(" ") + " ");
+          term.focus();
+        })
+      )
+      .then((off) => (offDrop = off))
+      .catch(() => {});
 
     const ro = new ResizeObserver(() => {
       if (!el.offsetWidth || !el.offsetHeight) return;
@@ -163,6 +200,8 @@ export function XtermPane({
       ro.disconnect();
       window.removeEventListener("fahh-theme-change", retheme);
       terms.delete(session.id);
+      fileLinks.dispose();
+      offDrop?.();
       term.dispose();
     };
     // One xterm per session for the pane's lifetime; settings changes are applied below.

@@ -27,3 +27,11 @@ When the open folder is a git repository, the left of the status bar shows:
 Pull and push use your installed `git` and its credentials (Git Credential Manager, SSH keys), so they behave like they do in a terminal. The counts follow the last fetch; Sync fetches. The status refreshes when files change and when the window regains focus.
 
 Both views can be opened from the command palette (**Outline**, **Timeline**; **Sync Changes** for git) and dragged anywhere like any other view.
+
+## Change bars in the gutter (v0.7.0)
+
+In a git repository the editor gutter marks lines that differ from the last commit: a green bar for added lines, a gold bar for changed lines and a red marker where lines were deleted. It compares the editor text, so unsaved edits show at once, and refreshes after commits.
+
+## Breadcrumbs
+
+Click any folder in the path above the editor to list its files; click a file to open it, or a folder to go into it. **Esc** closes the list.

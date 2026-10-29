@@ -76,3 +76,7 @@ Type `@` in the prompt to insert a reference: `@file <name>`, `@problems`, `@ter
 ## Removed: simulated features
 
 Earlier versions had a "REA" analysis panel and a Cursor-style Composer (`Ctrl+I`), removed after v0.6.3. The agent panel also had an **Alt+V image paste** that only typed `[Image: … attached]` into the prompt (no provider here takes images), and a fixed "Devin Task Execution Loop" banner while running. Both are gone; the run-status line above replaces the banner.
+
+## Prompt history
+
+In the Fahh Local box, **Up** (with the cursor at the start) brings back your earlier prompts in this session, and **Down** goes forward again to an empty box.

@@ -40,3 +40,21 @@ At launch, a path passed on the command line (`fahh <folder>`) wins; otherwise, 
 | `Alt+Left` / `Alt+Right` | Go back / forward (file switches, search and Problems jumps, go to definition) |
 | Middle-click a tab | Close it (asks first when unsaved) |
 | Right-click a tab | Close, Close Others, Close to the Right, Close All, Copy Path, Copy Relative Path, Reveal in File Explorer |
+
+## Editor options (v0.7.0)
+
+Settings > Editor also has:
+
+| Setting | What it does |
+|---|---|
+| Relative line numbers | Numbers count from the cursor line |
+| Sticky scroll | The enclosing function or class header stays at the top while you scroll (on by default) |
+| Bracket pair colours and guides | Matching brackets share a colour and a guide line (on by default) |
+| Font ligatures | `=>` `!=` `===` as one glyph when the font has them (on by default) |
+| Add a cursor with | Alt or Ctrl + click adds another cursor |
+| Format on save | Monaco's formatter for TS/JS/JSON/CSS/HTML; `black`, `rustfmt`, `gofmt` or `prettier` for others when installed. It formats what is in the editor, unsaved edits included |
+| Trim trailing whitespace on save | Removes spaces and tabs at line ends |
+| Insert final newline on save | Ends every saved file with exactly one newline (keeps CRLF files CRLF) |
+| Zoom | The whole window, 50 to 200 %. **Ctrl+=** / **Ctrl+-** step by 10 %, **Ctrl+0** resets |
+
+Each save action is one undo step.

@@ -250,6 +250,7 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
   const problem = settingsProblem(settings);
   const [showSettings, setShowSettings] = useState(!!problem);
   const [input, setInput] = useState("");
+  const [historyIdx, setHistoryIdx] = useState<number | null>(null);
   const [menuIndex, setMenuIndex] = useState(0);
   const [menuClosed, setMenuClosed] = useState(false);
   const scrollRef = useRef<HTMLDivElement | null>(null);
@@ -348,6 +349,24 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Up/Down at the start/end of the box walks through this session's earlier prompts.
+    if (!(menuOpen && menuItems.length > 0) && (e.key === "ArrowUp" || e.key === "ArrowDown") && !e.shiftKey) {
+      const ta = e.currentTarget;
+      const past = items.filter((i): i is { kind: "user"; text: string } => i.kind === "user").map((i) => i.text);
+      const atEdge = e.key === "ArrowUp" ? ta.selectionStart === 0 && ta.selectionEnd === 0 : ta.selectionStart === ta.value.length;
+      if (past.length && atEdge && (e.key === "ArrowUp" || historyIdx !== null)) {
+        e.preventDefault();
+        const idx = e.key === "ArrowUp" ? Math.max(0, (historyIdx ?? past.length) - 1) : (historyIdx ?? past.length) + 1;
+        if (idx >= past.length) {
+          setHistoryIdx(null);
+          setText("");
+        } else {
+          setHistoryIdx(idx);
+          setText(past[idx]);
+        }
+        return;
+      }
+    }
     if (menuOpen && menuItems.length > 0) {
       if (e.key === "ArrowDown") {
         e.preventDefault();

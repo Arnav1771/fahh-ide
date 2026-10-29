@@ -69,6 +69,16 @@ pub struct GitStatus {
     pub behind: usize,
 }
 
+/// A changed line range against the last commit, for the editor gutter.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct LineChange {
+    /// "added", "modified" or "deleted" (deleted marks the line the removal happened above).
+    pub kind: String,
+    /// 1-based, inclusive.
+    pub start: u32,
+    pub end: u32,
+}
+
 /// One commit in a file's history, for the Timeline view.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GitCommitInfo {
@@ -496,6 +506,31 @@ pub fn git_file_log(path: String, file: String, limit: Option<usize>) -> Result<
     Ok(out)
 }
 
+/// Lines of `content` (the editor text) that differ from the file in HEAD. Empty when the
+/// folder is not a repo or the file is not committed yet.
+#[tauri::command]
+pub fn git_line_changes(path: String, file: String, content: String) -> Result<Vec<LineChange>, String> {
+    let Some(repo) = discover(&path)? else { return Ok(Vec::new()) };
+    let rel = repo_relative(&repo, &file);
+    let Ok(head) = repo.head().and_then(|h| h.peel_to_tree()) else { return Ok(Vec::new()) };
+    let Ok(entry) = head.get_path(Path::new(&rel)) else { return Ok(Vec::new()) };
+    let blob = repo.find_blob(entry.id()).map_err(map_err)?;
+    let mut opts = DiffOptions::new();
+    opts.context_lines(0);
+    let patch = git2::Patch::from_blob_and_buffer(&blob, None, content.as_bytes(), None, Some(&mut opts)).map_err(map_err)?;
+    let mut out = Vec::new();
+    for i in 0..patch.num_hunks() {
+        let (h, _) = patch.hunk(i).map_err(map_err)?;
+        let (start, new_lines, old_lines) = (h.new_start(), h.new_lines(), h.old_lines());
+        out.push(match (old_lines, new_lines) {
+            (0, n) => LineChange { kind: "added".into(), start, end: start + n - 1 },
+            (_, 0) => LineChange { kind: "deleted".into(), start: start.max(1), end: start.max(1) },
+            (_, n) => LineChange { kind: "modified".into(), start, end: start + n - 1 },
+        });
+    }
+    Ok(out)
+}
+
 /// What commit `oid` changed in `file`, as a unified diff against its first parent.
 #[tauri::command]
 pub fn git_file_commit_diff(path: String, oid: String, file: String) -> Result<String, String> {
@@ -525,6 +560,26 @@ mod tests {
         let parents: Vec<git2::Commit> = repo.head().ok().and_then(|h| h.peel_to_commit().ok()).into_iter().collect();
         let refs: Vec<&git2::Commit> = parents.iter().collect();
         repo.commit(Some("HEAD"), &sig, &sig, msg, &tree, &refs).unwrap();
+    }
+
+    #[test]
+    fn line_changes_against_head() {
+        let dir = std::env::temp_dir().join(format!("fahh-gutter-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let repo = Repository::init(&dir).unwrap();
+        commit_file(&repo, "a.txt", "one\ntwo\nthree\nfour\n", "add a");
+        let p = dir.to_string_lossy().to_string();
+        let f = dir.join("a.txt").to_string_lossy().to_string();
+        // two changed, a line added after four, three removed
+        let now = "one\nTWO\nfour\nfive\n".to_string();
+        let ch = git_line_changes(p.clone(), f.clone(), now).unwrap();
+        let kinds: Vec<(&str, u32, u32)> = ch.iter().map(|c| (c.kind.as_str(), c.start, c.end)).collect();
+        assert!(kinds.contains(&("modified", 2, 2)) || kinds.contains(&("modified", 2, 3)), "{kinds:?}");
+        assert!(kinds.iter().any(|k| k.0 == "added" && k.1 == 4), "{kinds:?}");
+        assert!(git_line_changes(p.clone(), f.clone(), "one\ntwo\nthree\nfour\n".into()).unwrap().is_empty());
+        assert!(git_line_changes(p, dir.join("new.txt").to_string_lossy().to_string(), "x".into()).unwrap().is_empty(), "untracked: no markers");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

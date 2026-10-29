@@ -162,6 +162,36 @@ export function SettingsPanel() {
           <Row label="Line numbers" htmlFor="set-lines">
             <Toggle id="set-lines" value={s.lineNumbers} onChange={(v) => s.set("lineNumbers", v)} />
           </Row>
+          <Row label="Relative line numbers" hint="Count lines from the cursor (handy for Vim-style jumps)." htmlFor="set-rel">
+            <Toggle id="set-rel" value={s.relativeLineNumbers} onChange={(v) => s.set("relativeLineNumbers", v)} />
+          </Row>
+          <Row label="Sticky scroll" hint="Keep the current function or class header at the top while scrolling." htmlFor="set-sticky">
+            <Toggle id="set-sticky" value={s.stickyScroll} onChange={(v) => s.set("stickyScroll", v)} />
+          </Row>
+          <Row label="Bracket pair colours and guides" htmlFor="set-brackets">
+            <Toggle id="set-brackets" value={s.bracketPairs} onChange={(v) => s.set("bracketPairs", v)} />
+          </Row>
+          <Row label="Font ligatures" hint="Show => != === as one glyph when the font has them." htmlFor="set-lig">
+            <Toggle id="set-lig" value={s.fontLigatures} onChange={(v) => s.set("fontLigatures", v)} />
+          </Row>
+          <Row label="Add a cursor with" hint="Hold this key and click to place another cursor." htmlFor="set-mc">
+            <select id="set-mc" value={s.multiCursorModifier} onChange={(e) => s.set("multiCursorModifier", e.target.value as "alt" | "ctrlCmd")} className={`${input} w-28`}>
+              <option value="alt">Alt</option>
+              <option value="ctrlCmd">Ctrl</option>
+            </select>
+          </Row>
+          <Row label="Format on save" hint="Uses the editor's formatter, or black / rustfmt / gofmt / prettier when installed." htmlFor="set-fmt">
+            <Toggle id="set-fmt" value={s.formatOnSave} onChange={(v) => s.set("formatOnSave", v)} />
+          </Row>
+          <Row label="Trim trailing whitespace on save" htmlFor="set-trim">
+            <Toggle id="set-trim" value={s.trimTrailingWhitespace} onChange={(v) => s.set("trimTrailingWhitespace", v)} />
+          </Row>
+          <Row label="Insert final newline on save" htmlFor="set-eol">
+            <Toggle id="set-eol" value={s.insertFinalNewline} onChange={(v) => s.set("insertFinalNewline", v)} />
+          </Row>
+          <Row label="Zoom" hint="The whole window. Ctrl+= and Ctrl+- change it, Ctrl+0 resets." htmlFor="set-zoom">
+            <NumberField id="set-zoom" k="uiZoom" min={50} max={200} />
+          </Row>
           <Row label="Tab size" htmlFor="set-tab">
             <NumberField id="set-tab" k="tabSize" min={1} max={8} />
           </Row>

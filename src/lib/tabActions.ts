@@ -7,7 +7,10 @@ import { useEditorStore } from "../store/editorStore";
 import { useToastStore } from "../store/toastStore";
 import { writeFile } from "./tauri";
 import { clearBaseline, setBaseline } from "./saveBaseline";
-import { disposeModel, getActiveVersionId } from "./monacoBridge";
+import { disposeModel, formatActiveBuiltin, getActiveText, getActiveVersionId, replaceActiveText } from "./monacoBridge";
+import { useSettingsStore } from "../store/settingsStore";
+import { cleanText } from "./saveTransforms";
+import { formatFile } from "./tauri";
 import { isUnder } from "./tabs";
 import { isPreviewOnly } from "./preview";
 import { chooseDialog } from "../store/dialogStore";
@@ -133,14 +136,45 @@ export function unsavedMessage(): string | null {
   return `You have unsaved changes in ${names}. Close anyway and lose them?`;
 }
 
+/**
+ * Settings > Editor save actions on the file on screen: the formatter (Monaco's own, else the
+ * language's command-line formatter on the editor text), then whitespace clean-ups. Each change
+ * is one undoable edit. A formatter failure never blocks the save.
+ */
+async function beforeSave(path: string): Promise<void> {
+  const s = useSettingsStore.getState();
+  if (s.formatOnSave) {
+    try {
+      if (!(await formatActiveBuiltin())) {
+        const lang = useEditorStore.getState().openTabs.find((t) => t.path === path)?.language ?? "";
+        const text = getActiveText();
+        if (lang && text !== null) {
+          const formatted = await formatFile(path, lang, text);
+          if (formatted && formatted !== text) replaceActiveText(formatted);
+        }
+      }
+    } catch {
+      // no formatter for this language, or it failed: save as typed
+    }
+  }
+  if (s.trimTrailingWhitespace || s.insertFinalNewline) {
+    const text = getActiveText();
+    if (text !== null) {
+      const cleaned = cleanText(text, s);
+      if (cleaned !== text) replaceActiveText(cleaned);
+    }
+  }
+}
+
 /** Save the file on screen, from wherever the keyboard focus is. */
 export async function saveActive(silent = false): Promise<boolean> {
   const { activeTab, fileContents, markDirty } = useEditorStore.getState();
   if (!activeTab || isPreviewOnly(activeTab)) return false;
   const name = nameOf(activeTab);
   try {
+    await beforeSave(activeTab);
     const v = getActiveVersionId(); // the text being written, not whatever is typed meanwhile
-    await writeFile(activeTab, fileContents[activeTab] ?? "");
+    await writeFile(activeTab, getActiveText() ?? useEditorStore.getState().fileContents[activeTab] ?? fileContents[activeTab] ?? "");
     if (v !== null) setBaseline(activeTab, v);
     if (v === null || v === getActiveVersionId()) markDirty(activeTab, false);
     if (!silent) {
