@@ -212,7 +212,11 @@ function Transcript({ room, live, me, onUndo }: { room: RoomView | null; live: R
   }, [room]);
   const undone = useMemo(() => new Set([...(room?.history ?? []), ...(room?.waiting ?? []), ...(room?.running ? [room.running] : [])].filter((t) => t.undoes && t.status !== "failed" && t.status !== "cancelled").map((t) => t.undoes!)), [room]);
   const name = (id: string) => room?.members.find((m) => m.id === id)?.name ?? "someone";
-  useEffect(() => end.current?.scrollIntoView({ block: "end" }), [items.length, live]);
+  // Braces matter: newer WebView2 returns a Promise from scrollIntoView, and an
+  // effect that returns a non-function crashes React when it cleans up.
+  useEffect(() => {
+    end.current?.scrollIntoView({ block: "end" });
+  }, [items.length, live]);
 
   if (!room) return <div className="flex-1 p-3 text-fahh-muted">Sitting down…</div>;
   return (
