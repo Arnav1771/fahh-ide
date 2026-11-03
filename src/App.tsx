@@ -405,6 +405,7 @@ export default function App() {
       { id: "view.agentMode", group: "View", label: "Switch to Agent Mode", keywords: "chat sessions fahh local ai", run: () => useLayoutModeStore.getState().setMode("agent") },
       { id: "view.editorMode", group: "View", label: "Switch to Editor Mode", keywords: "workbench code files", run: () => useLayoutModeStore.getState().setMode("editor") },
       { id: "agent.searchSessions", group: "Fahh Local", label: "Search Sessions", keys: ["Ctrl", "Shift", "A"], keywords: "history chats agent", run: openSessionSearch },
+      { id: "view.roundtable", group: "View", label: "Roundtable: Start or Join a Table", keywords: "share pair collaborate multiplayer invite room", run: () => revealView("roundtable") },
       { id: "view.deepwiki", group: "View", label: "DeepWiki", keywords: "symbol wiki docs definition usages", run: () => revealView("deepwiki") },
       { id: "deepwiki.seeWiki", group: "DeepWiki", label: "See Wiki for Symbol at Cursor", keywords: "explain definition usages references docs", run: () => runEditorAction("fahh.seeWiki") },
       { id: "view.outline", group: "View", label: "Outline", keywords: "symbols structure functions classes", run: () => revealView("outline") },
@@ -814,7 +815,7 @@ export default function App() {
 }
 
 /** The activity bar, top to bottom (Colour Theme sits at the foot). */
-const ACTIVITY = ["explorer", "search", "git", "deepwiki", "runDebug", "remote", "agent", "extensions"];
+const ACTIVITY = ["explorer", "search", "git", "deepwiki", "runDebug", "remote", "roundtable", "agent", "extensions"];
 
 function ViewBtn({ id, active }: { id: string; active: boolean }) {
   const v = getView(id);

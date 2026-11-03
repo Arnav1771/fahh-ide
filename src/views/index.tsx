@@ -8,7 +8,7 @@
  * Ids are saved in layouts: never rename a shipped one.
  */
 import { useMemo } from "react";
-import { AlertCircle, Blocks, BookOpenText, Bot, Bug, BugPlay, FolderTree, MonitorCloud, GitBranch, History, ListTree, Palette, Play, Search, Settings as SettingsIcon, SquareTerminal } from "lucide-react";
+import { AlertCircle, Blocks, BookOpenText, Bot, Bug, BugPlay, FolderTree, MonitorCloud, GitBranch, History, ListTree, Palette, Play, Search, Settings as SettingsIcon, SquareTerminal, UsersRound } from "lucide-react";
 import { SettingsPanel } from "../components/SettingsPanel";
 import { FileTree } from "../components/FileTree/FileTree";
 import { SearchSidebar } from "../components/SearchSidebar/SearchSidebar";
@@ -20,6 +20,7 @@ import { DebugPanel } from "../components/DebugPanel";
 import { RunDebugView } from "../components/DebugPanel/RunDebugView";
 import { RemoteExplorer } from "../components/RemoteExplorer";
 import { DeepWiki } from "../components/DeepWiki";
+import { Roundtable } from "../components/Roundtable";
 import { Outline } from "../components/Outline";
 import { Timeline } from "../components/Timeline";
 import { RunPanel } from "../components/RunPanel";
@@ -46,6 +47,7 @@ registerView({ id: "git", title: "Source Control", icon: GitBranch, component: G
 registerView({ id: "outline", title: "Outline", icon: ListTree, component: Outline, defaultLocation: "sidebar", keywords: "symbols structure functions classes headings" });
 registerView({ id: "timeline", title: "Timeline", icon: History, component: Timeline, defaultLocation: "sidebar", keywords: "history git log commits file" });
 registerView({ id: "deepwiki", title: "DeepWiki", icon: BookOpenText, component: DeepWiki, defaultLocation: "sidebar", keywords: "symbol wiki docs definition usages references explain" });
+registerView({ id: "roundtable", title: "Roundtable", icon: UsersRound, component: Roundtable, defaultLocation: "sidebar", keywords: "share pair collaborate multiplayer table invite room together" });
 registerView({ id: "remote", title: "Remote Explorer", icon: MonitorCloud, component: RemoteExplorer, defaultLocation: "sidebar", keywords: "wsl ssh docker dev containers remote distro host" });
 registerView({ id: "runDebug", title: "Run and Debug", icon: BugPlay, component: RunDebugView, defaultLocation: "sidebar", keys: "Ctrl+Shift+D", keywords: "debugger breakpoints launch.json step variables call stack debugpy delve lldb" });
 registerView({
