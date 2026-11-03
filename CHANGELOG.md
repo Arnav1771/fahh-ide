@@ -70,6 +70,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.7.1] — 2026-11-03
+
+### Added
+- Roundtable panel: start or join a shared coding table, live transcript, typing status, ask/note, own keys, undo, files, invite, connect your AI agent (#107).
+
 ## [0.7.0] — 2026-10-29
 
 ### Added
