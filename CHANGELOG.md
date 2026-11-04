@@ -70,6 +70,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.7.2] — 2026-11-04
+
+### Fixed
+- Roundtable panel crashed when a turn started streaming output (#109).
+
 ## [0.7.1] — 2026-11-03
 
 ### Added
