@@ -204,7 +204,7 @@ pub fn plan_edit(ws: &Workspace, tool: &str, args: &Value) -> Result<EditPlan, S
         apply_edit(b, str_arg(args, "old_str")?, str_arg(args, "new_str")?, args.get("replace_all").and_then(Value::as_bool).unwrap_or(false))?
     };
     // an edit may step through a file that is already broken (fixing it); it may not break a valid one
-    if tool == "write_file" || before.as_deref().map_or(true, |b| check_structured(&rel, b).is_ok()) {
+    if tool == "write_file" || before.as_deref().is_none_or(|b| check_structured(&rel, b).is_ok()) {
         check_structured(&rel, &after)?;
     }
     Ok(EditPlan { abs, rel, before, after })
