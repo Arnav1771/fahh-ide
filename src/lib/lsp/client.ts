@@ -172,6 +172,8 @@ export class LspClient {
 
     st.ready = (async () => {
       try {
+        // A server that died mid-session is still registered on the Rust side: clear it first.
+        if (existing?.status === "failed") await this.transport.stop(key).catch(() => {});
         await this.transport.start(key, workspace);
         const reply = await this.sendRequest<{ capabilities?: Record<string, unknown> }>(
           st,
