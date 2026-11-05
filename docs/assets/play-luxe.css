@@ -68,9 +68,134 @@ html .file-icon, html .tab-icon {
 }
 
 /* Status bar: accent is an edge, never a full-width fill. */
-html #status-bar { background: #100f0d; box-shadow: inset 0 1px 0 rgba(212, 160, 60, 0.45); }
-html .status-item { color: #8a8070; border-right-color: rgba(255, 248, 230, 0.07); }
+html #status-bar {
+  background: #100f0d;
+  box-shadow: inset 0 1px 0 rgba(212, 160, 60, 0.45);
+  border-top: 1px solid rgba(255, 248, 230, 0.08);
+}
+html .status-item {
+  color: #8a8070;
+  border-right-color: rgba(255, 248, 230, 0.07);
+}
 html #st-lang { color: #e8b84e; }
 html .status-err-item { color: #e0706a; }
+
+html .status-dl-btn {
+  color: #8a8070 !important;
+  background: transparent !important;
+  transition: color .15s ease, background .15s ease !important;
+  display: inline-flex;
+  align-items: center;
+}
+html .status-dl-btn:hover {
+  color: #e8b84e !important;
+  background: rgba(212, 160, 60, 0.08) !important;
+}
+
+/* Center nav badge to balance the widescreen navbar */
+html #nav {
+  position: relative;
+  background: #0d0c0a;
+  border-bottom: 1px solid rgba(255, 248, 230, 0.09);
+}
+
+html .nav-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+html .nav-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-family: var(--code);
+  font-size: .68rem;
+  color: var(--text-2);
+  background: #161412;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(212, 160, 60, 0.22);
+  letter-spacing: .02em;
+}
+
+html .badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 8px rgba(232, 184, 78, 0.6);
+}
+
+@media (max-width: 900px) {
+  html .nav-center { display: none; }
+}
+
+/* Explorer tree and tabs polish */
+html #file-tree {
+  background: #0d0c0a;
+  border-right: 1px solid rgba(255, 248, 230, 0.08);
+}
+
+html .tree-header {
+  border-bottom: 1px solid rgba(255, 248, 230, 0.08) !important;
+  color: #8a8070 !important;
+}
+
+html .file-item:hover {
+  background: rgba(212, 160, 60, 0.05);
+  color: #f0ebe0;
+}
+
+html .file-item.active {
+  background: rgba(212, 160, 60, 0.09);
+  color: #f0ebe0;
+  border-left-color: var(--gold);
+}
+
+html #tabs-bar {
+  background: #0d0c0a;
+  border-bottom: 1px solid rgba(255, 248, 230, 0.08);
+}
+
+html .tab {
+  border-right: 1px solid rgba(255, 248, 230, 0.06);
+  color: #8a8070;
+}
+
+html .tab:hover {
+  background: rgba(255, 248, 230, 0.03);
+  color: #f0ebe0;
+}
+
+html .tab.active {
+  background: #0a0907;
+  color: #f0ebe0;
+  border-top-color: var(--gold);
+}
+
+/* Terminal panel polish */
+html #terminal-panel {
+  background: #0c0b09;
+  border-top: 1px solid rgba(255, 248, 230, 0.09);
+}
+
+html #terminal-header {
+  background: #12100d;
+  border-bottom: 1px solid rgba(255, 248, 230, 0.07);
+}
+
+html .term-title {
+  color: #8a8070;
+}
+
+html #term-resize {
+  background: rgba(255, 248, 230, 0.08);
+}
+
+html #term-resize:hover {
+  background: var(--gold);
+}
 
 html :focus-visible { outline: 2px solid #d4a03c; outline-offset: 2px; }
