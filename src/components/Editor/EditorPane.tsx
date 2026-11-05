@@ -67,7 +67,7 @@ export function EditorPane({
   const fontSize = fontSizeProp ?? settings.fontSize;
   const wordWrap = wordWrapProp ?? (settings.wordWrap ? "on" : "off");
   const minimapEnabled = minimapProp ?? settings.minimap;
-  const { fontFamily, tabSize, insertSpaces, lineNumbers, relativeLineNumbers, stickyScroll, bracketPairs, fontLigatures, multiCursorModifier } = settings;
+  const { fontFamily, tabSize, insertSpaces, lineNumbers, relativeLineNumbers, stickyScroll, bracketPairs, fontLigatures, multiCursorModifier, inlayHints } = settings;
   const lineNumbersOpt = !lineNumbers ? "off" : relativeLineNumbers ? "relative" : "on";
   const extraOptions = {
     stickyScroll: { enabled: stickyScroll },
@@ -75,6 +75,9 @@ export function EditorPane({
     guides: { bracketPairs: bracketPairs ? ("active" as const) : false, indentation: true },
     fontLigatures,
     multiCursorModifier,
+    // Rename the closing tag with the opening one (html, jsx), language servers' inline hints.
+    linkedEditing: true,
+    inlayHints: { enabled: inlayHints ? ("on" as const) : ("off" as const) },
   };
   const activeTab = path ?? storeActive;
   /** Undocked there is one editor, always current; docked, the active tab of the active group is. */
@@ -197,7 +200,7 @@ export function EditorPane({
     const model = editorRef.current.getModel();
     if (model && !model.isDisposed?.()) model.updateOptions({ tabSize, insertSpaces });
     editorRef.current.layout?.();
-  }, [fontSize, fontFamily, wordWrap, fontWeight, lineHeight, minimapEnabled, lineNumbersOpt, tabSize, insertSpaces, stickyScroll, bracketPairs, fontLigatures, multiCursorModifier]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [fontSize, fontFamily, wordWrap, fontWeight, lineHeight, minimapEnabled, lineNumbersOpt, tabSize, insertSpaces, stickyScroll, bracketPairs, fontLigatures, multiCursorModifier, inlayHints]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Never let the bridge hold a reference to a disposed editor.
   useEffect(() => {

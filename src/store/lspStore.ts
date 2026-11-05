@@ -12,10 +12,18 @@ export interface LspStatus {
 interface LspStore {
   servers: Record<string, LspStatus>;
   set: (language: string, state: LspState, detail?: string) => void;
+  /** The server was stopped (no tab needs it): show nothing for the language. */
+  clear: (language: string) => void;
 }
 
 export const useLspStore = create<LspStore>((set) => ({
   servers: {},
   set: (language, state, detail) =>
     set((s) => ({ servers: { ...s.servers, [language]: { state, detail } } })),
+  clear: (language) =>
+    set((s) => {
+      const servers = { ...s.servers };
+      delete servers[language];
+      return { servers };
+    }),
 }));

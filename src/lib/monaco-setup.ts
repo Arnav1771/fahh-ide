@@ -13,6 +13,7 @@
 
 import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
+import { initEditorExtras } from "./editorExtras";
 
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
@@ -94,3 +95,6 @@ if (typeof window !== "undefined") {
     if (r?.name === "Canceled" && r.message === "Canceled") e.preventDefault();
   });
 }
+
+// Emmet and relative-path completion (language servers are wired by LspBridge).
+initEditorExtras(monaco);

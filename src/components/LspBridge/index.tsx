@@ -1,50 +1,35 @@
 /**
  * LspBridge — non-rendering component that:
- *   1. Starts/stops LSP servers as the active file's language changes.
- *   2. Listens to `lsp://message` Tauri events.
+ *   1. Starts language servers for the languages of open tabs (the active tab's
+ *      language first), plus ESLint / Ruff / Tailwind beside them when installed and
+ *      the project uses them, and stops a server once no tab needs it.
+ *   2. Feeds every `lsp://message` Tauri event to the shared LspService
+ *      (`lib/lsp/monacoLsp`), which owns request/response correlation, document
+ *      sync and the Monaco providers (completion, hover, definition, references,
+ *      rename, signature help, code actions, inlay hints, highlights).
  *   3. Turns `textDocument/publishDiagnostics` into Monaco markers via
- *      `lib/monacoBridge` — this is what puts the squiggles in the editor.
- *   4. On error-severity diagnostics, invokes `trigger_error_sound`
- *      (which fires the fahh://error event consumed by fahh.ts), throttled
- *      locally so one cascade of diagnostics is one sound.
+ *      `lib/monacoBridge`, one set per server, and on error-severity diagnostics
+ *      invokes `trigger_error_sound` (throttled, so one cascade is one sound).
  */
 
 import { useEffect, useRef } from "react";
+import * as monaco from "monaco-editor";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
 import { useLspStore } from "../../store/lspStore";
-import { lspStart, lspStop, lspSend } from "../../lib/tauri";
+import { useToastStore } from "../../store/toastStore";
+import { createFile, lspSend, lspStart, lspStop, readFile, renameFile, writeFile } from "../../lib/tauri";
 import type { LspMessage } from "../../lib/types";
-import {
-  hasErrorDiagnostic,
-  lspToMarkers,
-  parsePublishDiagnostics,
-  uriToPath,
-} from "../../lib/diagnostics";
+import { hasErrorDiagnostic, lspToMarkers } from "../../lib/diagnostics";
 import { clearDiagnostics, publishDiagnostics } from "../../lib/monacoBridge";
 import { createCooldown, DEFAULT_COOLDOWN_MS } from "../../lib/cooldown";
-
-// ─── Language → LSP server detection ──────────────────────────────────────────
-
-const LSP_SUPPORTED: ReadonlySet<string> = new Set([
-  "python",
-  "javascript",
-  "typescript",
-  "rust",
-  "go",
-  "cpp",
-  "c",
-  "java",
-  "json",
-  "html",
-  "css",
-]);
-
-function hasLsp(language: string): boolean {
-  return LSP_SUPPORTED.has(language.toLowerCase());
-}
+import { languageFor } from "../../lib/tabs";
+import { openAt } from "../../lib/navigation";
+import { getLspService, LspService, setLspService } from "../../lib/lsp/monacoLsp";
+import { detectProjectTools, extraServersFor, isExtraServer, languagesOf, primaryServerFor } from "../../lib/lsp/servers";
+import { FILE_SAVED_EVENT } from "../../lib/tabActions";
 
 /**
  * One cooldown for the whole app lifetime, deliberately module-level: it must
@@ -53,209 +38,120 @@ function hasLsp(language: string): boolean {
  */
 const sfxCooldown = createCooldown(DEFAULT_COOLDOWN_MS);
 
-// ─── JSON-RPC helpers ─────────────────────────────────────────────────────────
+/** typescript-language-server: inlay hints and auto-import completions are opt-in. */
+const TS_INIT_OPTIONS = {
+  preferences: {
+    includeInlayParameterNameHints: "literals",
+    includeInlayFunctionLikeReturnTypeHints: true,
+    includeInlayPropertyDeclarationTypeHints: true,
+    includeInlayEnumMemberValueHints: true,
+    includeCompletionsForModuleExports: true,
+    includeCompletionsWithInsertText: true,
+  },
+};
 
-interface JsonRpcNotification {
-  jsonrpc: "2.0";
-  method: string;
-  params?: unknown;
-}
-
-function buildNotification(method: string, params: unknown): string {
-  return JSON.stringify({ jsonrpc: "2.0", method, params } satisfies JsonRpcNotification);
-}
-
-function buildInitialize(workspace: string): string {
-  return JSON.stringify({
-    jsonrpc: "2.0",
-    id: 1,
-    method: "initialize",
-    params: {
-      processId: null,
-      rootUri: `file://${workspace}`,
-      capabilities: {
-        textDocument: {
-          publishDiagnostics: { relatedInformation: true },
-          completion: { completionItem: { snippetSupport: true } },
-          hover: {},
-          definition: {},
-        },
-        workspace: {
-          workspaceFolders: true,
-          didChangeWatchedFiles: { dynamicRegistration: true },
-        },
+/** The one LspService, created on first use and kept across remounts of the bridge. */
+function service(): LspService {
+  const existing = getLspService();
+  if (existing) return existing;
+  const s: LspService = new LspService(
+    monaco,
+    { start: lspStart, send: lspSend, stop: lspStop },
+    {
+      openTabs: () => {
+        const { openTabs, fileContents } = useEditorStore.getState();
+        return openTabs.map((t) => ({ path: t.path, content: fileContents[t.path] }));
       },
-    },
-  });
+      setTabContent: (path, text) => {
+        const st = useEditorStore.getState();
+        st.setContent(path, text);
+        st.markDirty(path, true);
+      },
+      readFile,
+      writeFile,
+      createFile,
+      renameFile,
+      openAt,
+      languageFor,
+      toast: (text, kind) => useToastStore.getState().show(text, kind),
+      windows: typeof navigator !== "undefined" && /Windows/i.test(navigator.userAgent),
+      onStatus: (server, status, detail) => {
+        if (isExtraServer(server)) return; // extras are quiet; Check Setup lists them
+        for (const lang of languagesOf(server)) {
+          if (status === "stopped") useLspStore.getState().clear(lang);
+          else useLspStore.getState().set(lang, status as "starting" | "ready" | "failed", detail);
+        }
+      },
+      onDiagnostics: (server, uri, diagnostics) => {
+        const path = s.pathFor(uri);
+        // An empty array is meaningful: it clears the file.
+        publishDiagnostics(path, lspToMarkers(diagnostics as Parameters<typeof lspToMarkers>[0]), server);
+        if (hasErrorDiagnostic(diagnostics as Parameters<typeof hasErrorDiagnostic>[0]) && sfxCooldown.tryTrigger()) {
+          invoke("trigger_error_sound", { source: server }).catch((err: unknown) => console.warn("[LspBridge] trigger_error_sound failed:", err));
+        }
+      },
+    }
+  );
+  setLspService(s);
+  return s;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+/** The opened folder is the workspace (as in VS Code); a file outside it uses its own folder. */
+function workspaceFor(path: string): string {
+  const root = useFileStore.getState().root;
+  const r = root?.replace(/[\\/]+$/, "");
+  const inRoot = !!r && (path === root || path.startsWith(r + "/") || path.startsWith(r + "\\"));
+  return inRoot ? r! : path.replace(/[\\/][^\\/]+$/, "") || path;
+}
 
 export function LspBridge() {
-  const { activeTab, openTabs, fileContents } = useEditorStore();
+  const openTabs = useEditorStore((s) => s.openTabs);
+  const activeTab = useEditorStore((s) => s.activeTab);
+  const root = useFileStore((s) => s.root);
+  const tree = useFileStore((s) => s.tree);
+  const toolsRef = useRef<{ eslint: boolean; tailwind: boolean }>({ eslint: false, tailwind: false });
 
-  const activeDoc = openTabs.find((t) => t.path === activeTab) ?? null;
-  const language = activeDoc?.language ?? null;
-
-  // Track which language server is currently running
-  const runningLangRef = useRef<string | null>(null);
-  // Track which files we've sent didOpen for
-  const openedPathsRef = useRef<Set<string>>(new Set());
-  // Track the current workspace root
-  const workspaceRef = useRef<string>("");
-
-  // ── LSP server lifecycle ────────────────────────────────────────────────────
+  // ── What the project uses (decides ESLint / Tailwind) ──────────────────────
   useEffect(() => {
-    if (!activeDoc || !language || !hasLsp(language)) {
-      return;
-    }
-
-    // The opened folder is the workspace (as in VS Code); a file outside it
-    // falls back to its own folder.
-    const root = useFileStore.getState().root;
-    const inRoot = !!root && (activeDoc.path === root || activeDoc.path.startsWith(root.replace(/[\\/]+$/, "") + "/") || activeDoc.path.startsWith(root.replace(/[\\/]+$/, "") + "\\"));
-    const workspace = inRoot
-      ? root!.replace(/[\\/]+$/, "")
-      : activeDoc.path.replace(/[\\/][^\\/]+$/, "") || activeDoc.path;
-    workspaceRef.current = workspace;
-
-    // Stop the previous server if language changed
-    if (runningLangRef.current && runningLangRef.current !== language) {
-      const prev = runningLangRef.current;
-      lspStop(prev).catch((err: unknown) => {
-        console.warn(`[LspBridge] lsp_stop(${prev}) failed:`, err);
+    if (!root) return;
+    const files = (tree?.children ?? []).filter((c) => !c.is_dir).map((c) => c.name);
+    const sep = root.includes("\\") ? "\\" : "/";
+    readFile(root.replace(/[\\/]+$/, "") + sep + "package.json")
+      .catch(() => null)
+      .then((pkg) => {
+        toolsRef.current = detectProjectTools(files, pkg);
       });
-      runningLangRef.current = null;
-      openedPathsRef.current.clear();
-    }
+  }, [root, tree]);
 
-    if (runningLangRef.current === language) {
-      // Server already running — just send didOpen for new file if needed
-      if (!openedPathsRef.current.has(activeDoc.path)) {
-        const content = fileContents[activeDoc.path] ?? "";
-        const didOpen = buildNotification("textDocument/didOpen", {
-          textDocument: {
-            uri: `file://${activeDoc.path}`,
-            languageId: language,
-            version: 1,
-            text: content,
-          },
-        });
-        lspSend(language, didOpen).catch((err: unknown) =>
-          console.warn("[LspBridge] lsp_send(didOpen) failed:", err)
-        );
-        openedPathsRef.current.add(activeDoc.path);
+  // ── Server lifecycle ────────────────────────────────────────────────────────
+  useEffect(() => {
+    const s = service();
+    const active = openTabs.find((t) => t.path === activeTab);
+    if (active) {
+      const primary = primaryServerFor(active.language);
+      if (primary) {
+        const ws = workspaceFor(active.path);
+        const uri = s.uriForPath(ws);
+        void s.client.ensureServer(primary, ws, uri, primary === "typescript" ? TS_INIT_OPTIONS : undefined);
+        for (const extra of extraServersFor(active.language, toolsRef.current)) {
+          void s.client.ensureServer(extra, ws, uri);
+        }
       }
-      return;
     }
-
-    // Start fresh server
-    let mounted = true;
-    const status = useLspStore.getState();
-    status.set(language, "starting");
-
-    lspStart(language, workspace)
-      .then(() => {
-        if (!mounted) return;
-        runningLangRef.current = language;
-        openedPathsRef.current.clear();
-
-        // 1. initialize
-        useLspStore.getState().set(language, "ready", workspace);
-        return lspSend(language, buildInitialize(workspace));
-      })
-      .then(() => {
-        if (!mounted || !activeDoc) return;
-        // 2. initialized notification
-        return lspSend(
-          language,
-          buildNotification("initialized", {})
-        );
-      })
-      .then(() => {
-        if (!mounted || !activeDoc) return;
-        // 3. textDocument/didOpen
-        const content = fileContents[activeDoc.path] ?? "";
-        const didOpen = buildNotification("textDocument/didOpen", {
-          textDocument: {
-            uri: `file://${activeDoc.path}`,
-            languageId: language,
-            version: 1,
-            text: content,
-          },
-        });
-        openedPathsRef.current.add(activeDoc.path);
-        return lspSend(language, didOpen);
-      })
-      .catch((err: unknown) => {
-        console.warn("[LspBridge] LSP startup sequence failed:", err);
-        // Show why in the status bar, and never talk to a server that is not there.
-        useLspStore.getState().set(language, "failed", String(err));
-        if (runningLangRef.current === language) runningLangRef.current = null;
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, [language, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── textDocument/didChange ─────────────────────────────────────────────────
-  // Send didChange whenever the content for the active file changes
-  const changeVersionRef = useRef<Record<string, number>>({});
-
-  useEffect(() => {
-    if (!activeDoc || !language || !hasLsp(language)) return;
-    if (!openedPathsRef.current.has(activeDoc.path)) return;
-    if (runningLangRef.current !== language) return;
-
-    const content = fileContents[activeDoc.path];
-    if (content === undefined) return;
-
-    const ver = (changeVersionRef.current[activeDoc.path] ?? 1) + 1;
-    changeVersionRef.current[activeDoc.path] = ver;
-
-    const didChange = buildNotification("textDocument/didChange", {
-      textDocument: { uri: `file://${activeDoc.path}`, version: ver },
-      contentChanges: [{ text: content }],
-    });
-
-    lspSend(language, didChange).catch((err: unknown) => {
-      console.warn("[LspBridge] lsp_send(didChange) failed:", err);
-      // The server died mid-session: stop sending, say so, and let the next
-      // activation of this language start a fresh one.
-      useLspStore.getState().set(language, "failed", String(err));
-      runningLangRef.current = null;
-      openedPathsRef.current.clear();
-      lspStop(language).catch(() => {});
-    });
-  }, [fileContents, activeTab]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── textDocument/didSave ────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!activeDoc || !language || !hasLsp(language)) return;
-    // Only send if the file is no longer dirty (just saved)
-    if (activeDoc.dirty) return;
-    if (runningLangRef.current !== language) return;
-    if (!openedPathsRef.current.has(activeDoc.path)) return;
-
-    const didSave = buildNotification("textDocument/didSave", {
-      textDocument: { uri: `file://${activeDoc.path}` },
-    });
-
-    lspSend(language, didSave).catch((err: unknown) =>
-      console.warn("[LspBridge] lsp_send(didSave) failed:", err)
-    );
-  }, [activeDoc?.dirty]); // eslint-disable-line react-hooks/exhaustive-deps
+    // A server no open tab needs any more is stopped (frees its memory).
+    const languages = new Set(openTabs.map((t) => t.language));
+    for (const server of s.client.readyServers()) {
+      if (!languagesOf(server).some((l) => languages.has(l))) void s.client.stopServer(server);
+    }
+  }, [openTabs, activeTab]);
 
   // ── Inbound LSP messages from Tauri ────────────────────────────────────────
   useEffect(() => {
     let mounted = true;
     let unlisten: (() => void) | null = null;
-
-    listen<LspMessage>("lsp://message", async (event) => {
+    listen<LspMessage>("lsp://message", (event) => {
       if (!mounted) return;
-      const { language: msgLang, payload } = event.payload;
-
+      const { language: server, payload } = event.payload;
       let parsed: unknown;
       try {
         parsed = JSON.parse(payload);
@@ -263,67 +159,36 @@ export function LspBridge() {
         console.warn("[LspBridge] Could not parse LSP message:", payload);
         return;
       }
-
-      // textDocument/publishDiagnostics — the only inbound message that has a
-      // visible effect today. Everything else is forwarded below.
-      const params = parsePublishDiagnostics(parsed);
-      if (params) {
-        const path = uriToPath(params.uri);
-
-        // 1. Squiggles. An empty array is meaningful: it clears the file.
-        publishDiagnostics(path, lspToMarkers(params.diagnostics));
-
-        // 2. The Fahh SFX, throttled here so a 40-diagnostic cascade is one
-        //    sound even though it arrives as many notifications.
-        if (hasErrorDiagnostic(params.diagnostics) && sfxCooldown.tryTrigger()) {
-          invoke("trigger_error_sound", { source: msgLang }).catch(
-            (err: unknown) =>
-              console.warn("[LspBridge] trigger_error_sound failed:", err)
-          );
-        }
-      }
-
-      // Forward to Monaco's language client via a custom DOM event
-      // Monaco's services listen for window events when configured to do so.
-      window.dispatchEvent(
-        new CustomEvent("lsp-message", {
-          detail: { language: msgLang, message: parsed },
-        })
-      );
+      service().client.handleMessage(server, parsed);
     }).then((fn) => {
-      unlisten = fn;
-    });
-
+      if (mounted) unlisten = fn;
+      else fn();
+    }).catch(() => {});
     return () => {
       mounted = false;
       unlisten?.();
     };
   }, []);
 
+  // ── textDocument/didSave (the file on disk changed: some servers lint on save) ─
+  useEffect(() => {
+    const onSaved = (e: Event) => {
+      const path = (e as CustomEvent<{ path: string }>).detail?.path;
+      if (path) getLspService()?.didSave(path);
+    };
+    window.addEventListener(FILE_SAVED_EVENT, onSaved);
+    return () => window.removeEventListener(FILE_SAVED_EVENT, onSaved);
+  }, []);
+
   // ── Drop markers for files the user has closed ─────────────────────────────
   const knownPathsRef = useRef<string[]>([]);
-
   useEffect(() => {
     const current = openTabs.map((t) => t.path);
     for (const path of knownPathsRef.current) {
-      if (!current.includes(path)) {
-        clearDiagnostics(path);
-        openedPathsRef.current.delete(path);
-      }
+      if (!current.includes(path)) clearDiagnostics(path);
     }
     knownPathsRef.current = current;
   }, [openTabs]);
 
-  // ── Cleanup on unmount ─────────────────────────────────────────────────────
-  useEffect(() => {
-    return () => {
-      if (runningLangRef.current) {
-        lspStop(runningLangRef.current).catch(() => {});
-        runningLangRef.current = null;
-      }
-    };
-  }, []);
-
-  // Non-rendering component
   return null;
 }

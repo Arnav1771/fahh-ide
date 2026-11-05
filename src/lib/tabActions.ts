@@ -31,6 +31,12 @@ export function forceClose(path: string): void {
   disposeModel(path);
 }
 
+/** Fired on window after a file is written by Save: language servers get didSave, previews reload. */
+export const FILE_SAVED_EVENT = "fahh-file-saved";
+const announceSaved = (path: string) => {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(FILE_SAVED_EVENT, { detail: { path } }));
+};
+
 /** A tab that only lives in memory (New File) has no folder in its path and nowhere to save to. */
 const isUntitled = (p: string) => !/[\\/]/.test(p);
 
@@ -41,6 +47,7 @@ export async function savePath(path: string): Promise<boolean> {
   try {
     await writeFile(path, fileContents[path] ?? "");
     markDirty(path, false);
+    announceSaved(path);
     return true;
   } catch (err) {
     useToastStore.getState().show(`Could not save ${nameOf(path)}: ${String(err)}`, "error");
@@ -177,6 +184,7 @@ export async function saveActive(silent = false): Promise<boolean> {
     await writeFile(activeTab, getActiveText() ?? useEditorStore.getState().fileContents[activeTab] ?? fileContents[activeTab] ?? "");
     if (v !== null) setBaseline(activeTab, v);
     if (v === null || v === getActiveVersionId()) markDirty(activeTab, false);
+    announceSaved(activeTab);
     if (!silent) {
       useToastStore.getState().show(`Saved ${name}`);
     }

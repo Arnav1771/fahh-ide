@@ -108,6 +108,8 @@ function MarkdownPreview({ path, content }: { path: string; content: string }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const shadowRef = useRef<ShadowRoot | null>(null);
   const source = useDebounced(content, 200);
+  // A save anywhere (an image, an included file) re-renders, so the preview never shows stale assets.
+  const saved = useSaveTick();
   const topLine = usePreviewStore((s) => s.topLine);
   const { openFileInEditor } = useWorkspace();
 
@@ -121,7 +123,7 @@ function MarkdownPreview({ path, content }: { path: string; content: string }) {
       // which local images use; javascript: and other schemes stay blocked.
       ALLOWED_URI_REGEXP: SAFE_URL,
     });
-  }, [source, path]);
+  }, [source, path, saved]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const host = hostRef.current;
@@ -190,7 +192,22 @@ function withBase(html: string, baseHref: string): string {
   return `${tag}${html}`;
 }
 
+/**
+ * Counts saves (tabActions fires "fahh-file-saved"). The HTML preview reloads on each,
+ * so a saved stylesheet or script it links to shows up without touching the page.
+ */
+function useSaveTick(): number {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const on = () => setN((x) => x + 1);
+    window.addEventListener("fahh-file-saved", on);
+    return () => window.removeEventListener("fahh-file-saved", on);
+  }, []);
+  return n;
+}
+
 function HtmlPreview({ path, content }: { path: string; content: string }) {
+  const saved = useSaveTick();
   const allowed = usePreviewStore((s) => !!s.scripts[path]);
   const allowScripts = usePreviewStore((s) => s.allowScripts);
   const source = useDebounced(content, 300);
@@ -205,7 +222,7 @@ function HtmlPreview({ path, content }: { path: string; content: string }) {
         </button>
       </div>
       <iframe
-        key={allowed ? "scripts" : "static"}
+        key={`${allowed ? "scripts" : "static"}-${saved}`}
         title={`Preview of ${path}`}
         srcDoc={srcDoc}
         // No allow-same-origin: the page can never reach the editor.

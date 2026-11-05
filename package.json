@@ -22,6 +22,7 @@
     "@xterm/xterm": "^5.5.0",
     "dockview-react": "8.5.1",
     "dompurify": "^3.4.16",
+    "emmet-monaco-es": "^5.7.0",
     "lucide-react": "^1.21.0",
     "markdown-it": "^14.3.2",
     "monaco-editor": "^0.52.2",
