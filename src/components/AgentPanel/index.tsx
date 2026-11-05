@@ -233,6 +233,12 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
   const { openFileInEditor } = useWorkspace();
   const problem = settingsProblem(settings);
   const [showSettings, setShowSettings] = useState(!!problem);
+  // A notebook's Generate code sends people here when no model is set up.
+  useEffect(() => {
+    const show = () => setShowSettings(true);
+    window.addEventListener("fahh:agent-settings", show);
+    return () => window.removeEventListener("fahh:agent-settings", show);
+  }, []);
   // a fresh provider (or a model the user cleared) takes the provider's preferred live model
   const [models, reloadModels] = useModelList();
   const [input, setInput] = useState("");

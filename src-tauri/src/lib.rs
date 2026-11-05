@@ -141,6 +141,8 @@ pub fn run() {
             agent::agent_revert_file,
             agent::agent_turn_diff,
             agent::agent_set_diagnostics,
+            agent::agent_generate,
+            agent::agent_generate_stop,
         ])
         .setup(|app| {
             app::setup(app)?;

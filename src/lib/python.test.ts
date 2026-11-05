@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { applyKernelEvent, ipykernelInstallCommand, kernelBusy, lastLines, parseKernelLine, queueCells, settleRuns, shellProgram, type CellRuns, type KernelEvent } from "./python";
+import { applyKernelEvent, ipykernelInstallCommand, kernelBusy, lastLines, parseKernelLine, queueCells, serialQueue, settleRuns, shellProgram, type CellRuns, type KernelEvent } from "./python";
 
 describe("shellProgram", () => {
   it("makes a venv inside the folder relative, Windows and Unix", () => {
@@ -72,5 +72,42 @@ describe("applyKernelEvent", () => {
   it("settleRuns drops the queue and fails the running cell when the kernel goes away", () => {
     const r = settleRuns(run(queueCells({}, [1, 2]), { type: "busy", cell: 1 }));
     expect(r).toEqual({ 1: { status: "error", count: null, outputs: [] } });
+  });
+});
+
+describe("serialQueue (kernel stdin writes)", () => {
+  // A run_stdin invoke: the line reaches the kernel after a random delay, like concurrent Tauri IPC.
+  const fakeStdin = () => {
+    const received: string[] = [];
+    const write = (line: string) => new Promise<void>((done) => setTimeout(() => (received.push(line), done()), Math.random() * 15));
+    return { received, write };
+  };
+  const lines = Array.from({ length: 11 }, (_, i) => `run ${i}`);
+
+  it("delivers fire-and-forget writes in call order despite random delays", async () => {
+    const { received, write } = fakeStdin();
+    const q = serialQueue();
+    await Promise.all(lines.map((l) => q(() => write(l))));
+    expect(received).toEqual(lines);
+  });
+
+  it("(the old way, each write fired on its own, scrambles them)", async () => {
+    let scrambled = false;
+    for (let attempt = 0; attempt < 5 && !scrambled; attempt++) {
+      const { received, write } = fakeStdin();
+      await Promise.all(lines.map((l) => write(l)));
+      scrambled = received.join() !== lines.join();
+    }
+    expect(scrambled).toBe(true);
+  });
+
+  it("keeps going after a failed write; that write still rejects", async () => {
+    const q = serialQueue();
+    const seen: number[] = [];
+    const bad = q(() => Promise.reject(new Error("kernel stopped")));
+    const good = q(async () => void seen.push(2));
+    await expect(bad).rejects.toThrow("kernel stopped");
+    await good;
+    expect(seen).toEqual([2]);
   });
 });

@@ -6,6 +6,7 @@
  */
 import { pythonInterpreter } from "./tauri";
 import { parseOutput, type NotebookOutput } from "./notebook";
+import { parseInspect, type KernelState } from "./notebookGen";
 import { useFileStore } from "../store/fileStore";
 import { useSettingsStore } from "../store/settingsStore";
 
@@ -56,7 +57,8 @@ export type KernelEvent =
   | { type: "done"; cell: number; count: number | null; status: "ok" | "error" }
   | { type: "cancelled"; cells: number[] }
   | { type: "restarted" }
-  | { type: "fatal"; message: string };
+  | { type: "fatal"; message: string }
+  | { type: "inspect"; id: string; state: KernelState };
 
 /** One stdout line of the runner; null for anything else (a stray print from the kernel). */
 export function parseKernelLine(line: string): KernelEvent | null {
@@ -86,6 +88,8 @@ export function parseKernelLine(line: string): KernelEvent | null {
       return { type: "cancelled", cells: Array.isArray(o.cells) ? o.cells.map(Number) : [] };
     case "restarted":
       return { type: "restarted" };
+    case "inspect":
+      return { type: "inspect", id: String(o.id ?? ""), state: parseInspect(o) };
     case "fatal":
       return { type: "fatal", message: String(o.message ?? "") };
     default:
@@ -146,3 +150,18 @@ export const kernelBusy = (runs: CellRuns) => Object.values(runs).some((r) => r.
 
 /** localStorage key for the kernel picked for one notebook. */
 export const kernelKey = (notebookPath: string) => `fahh-nb-kernel:${notebookPath}`;
+
+/**
+ * Runs async tasks one after another, in call order. Each Tauri invoke is its own
+ * concurrent request, so firing `run_stdin` per cell without waiting let lines reach the
+ * kernel in any order (Run all ran cell 17 first). A failed task does not stop later ones;
+ * its own promise still rejects.
+ */
+export function serialQueue() {
+  let tail: Promise<unknown> = Promise.resolve();
+  return <T>(task: () => Promise<T>): Promise<T> => {
+    const run = tail.then(task);
+    tail = run.catch(() => {});
+    return run;
+  };
+}
