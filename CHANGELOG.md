@@ -9,24 +9,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-
-- **One model picker everywhere in Fahh Local.** Settings Model, Fast model, the panel-header model dropdown and the Welcome tour's Fahh Local step now all render the same `ModelPicker` (`src/components/ModelPicker.tsx`) over the same live `agent_list_models` list: one skeleton while loading, one error line with Retry, one empty-list hint, and "Type a model name…" on every one (Fast model adds "Same as main model"). The header dropdown used to have no escape hatch and no error state; the Welcome step could not choose a model at all. A test fails if a picker binds the model with its own `<select>` again.
-- **Accept all / Reject all in the agent's review.** "Review: N files changed" gets **Accept all** (keeps every file still under review) and **Reject all** (restores them: the whole-turn revert when nothing was accepted yet, otherwise only the pending files, so accepted ones stay). Shown when two or more files are pending (one file has its own ✓ ✗), keyboard reachable, and confirmed with a toast ("Accepted 2 files"). New reducer action `turn_accepted` and store action `rejectAll`, both tested.
-
-- **Spatial Canvas terminal: selection landed on the wrong row/column.** The canvas zooms nodes with CSS `transform: scale()`, and xterm.js measured the scaled terminal but divided by unscaled cell sizes, so at any zoom but 100% a drag selected the line above (zoom < 100%) or below (zoom > 100%). Selection, double-click word select, link clicks, right-click (word select and the Copy/Paste textarea), middle-click paste, drag-to-scroll and app mouse reporting (vim, htop) now map the pointer back through the zoom. The docked terminal was never affected.
-- **PowerShell terminals load your profile and `.venv\Scripts\Activate.ps1`.** On a machine left at Windows' default execution policy (Restricted) every new Fahh PowerShell printed "running scripts is disabled on this system" and venvs could not be activated. Fahh now starts PowerShell / pwsh terminals with `-ExecutionPolicy RemoteSigned` for that process only; machine and user policy are untouched, Group Policy still wins, never Bypass. Settings > Terminal > **PowerShell script policy for Fahh terminals** (RemoteSigned / System default) switches it off. The Run panel runner is unaffected (it does not go through PowerShell).
-
 ### Changed
 
-- Fahh Local provider settings: models load live from the provider's `/models` list (through the backend, so no CORS), filtered to chat models, with loading, error (e.g. "Key rejected (401)") and retry states. Hardcoded model lists are gone. Built-in providers no longer show their base URL (an "Edit endpoint" disclosure covers proxies); "Custom (OpenAI-compatible)" asks for a validated base URL and an optional key. Key placeholders say what each provider's key looks like.
-
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
-- **Python uses the project's venv.** Run (Ctrl+F5) used the system Python even with a `.venv` in the folder. Run, Debug (debugpy) and notebooks now pick, as VS Code does: Settings > Python > Interpreter path, then `<folder>/.venv` or `venv` (`Scripts\python.exe` on Windows, `bin/python` elsewhere), then `python` / `python3` on PATH. The Run header shows it: `Running which.py [python · .venv]`. New Rust command `python_interpreter` (pure `pick_python`, tested for both layouts and the order).
 
 ### Added
 
-- **Run Jupyter notebooks in the preview.** A live kernel per open notebook, like VS Code: ▶ Run cell on each code cell, Run all, Interrupt and Restart; `[*]` while a cell runs, then its count, with outputs (text, pandas HTML tables, matplotlib plots, tracebacks) appearing as they stream. Variables persist between runs. Outputs and counts are saved into the `.ipynb`. Only `ipykernel` is needed in the environment: Fahh ships a small runner (`src-tauri/assets/fahh_kernel.py`) that drives it with `jupyter_client`. A **kernel picker** lists the workspace `.venv` / `venv`, conda envs, `py -0p` and PATH Pythons (`Python 3.11 · .venv (workspace)`), marks those without ipykernel, and remembers the choice per notebook. Without ipykernel the notebook shows the exact `<python> -m pip install ipykernel` with Run in terminal and Copy; nothing is installed silently. New Rust commands `python_kernels` and `run_stdin`.
 - **First run, rebuilt:** a five-step welcome where every step is something to do, with ticks as you go and Skip on every step plus Skip tour. 1 Sound: ring the bell, set the volume or mute, and pick your own error sound. 2 Code: Open Folder, Open Recent, open a VS Code `.code-workspace`, a WSL hint on Windows, and a one-line try-it box where breaking the JavaScript rings the real fahh. 3 Look: Fahh Gold, Fahh Dark or Fahh Light applied live behind the card, and a button that really moves Explorer to the right and back. 4 Fahh Local (optional): provider, key and a real Test connection (the models list). 5 Check Setup, live. Shown once; **Help > Welcome** (or "Show Welcome") brings it back. Focus trap, Esc, Left/Right between steps, fits a 480 px window.
 - **Custom error sound:** Settings > Fahh > Error sound (and the welcome tour): Change sound… takes an mp3, wav, ogg or m4a up to 5 MB, previews it, and every fahh plays it (diagnostics, failed runs, failed terminal commands, the bell), at the Settings volume and respecting mute. Fahh keeps its own copy in the app data folder, so moving the original changes nothing. Reset to default brings the fahh back. Files that are too big or not audio are refused with the reason. New Rust commands `set_custom_sound`, `load_custom_sound`, `clear_custom_sound`, with tests.
 - **Check Setup** (Help > Check Setup…, palette "Fahh: Check Setup"): git, Python, Node, cargo, WSL (Windows) and the language servers Fahh uses (rust-analyzer, typescript-language-server, pylsp or pyright), each with its version, or its one-line install command when missing. New Rust command `check_setup` (spawns through `core::proc::cmd`, 5 s timeout per tool), with version-parsing tests.
@@ -81,6 +69,24 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The fixed **"Devin Task Execution Loop / analyzing AST"** banner shown while the agent ran (replaced by the real run-status line).
 
 ---
+
+## [0.7.3] — 2026-11-05
+
+### Added
+
+- **Run Jupyter notebooks in the preview.** A live kernel per open notebook, like VS Code: ▶ Run cell on each code cell, Run all, Interrupt and Restart; `[*]` while a cell runs, then its count, with outputs (text, pandas HTML tables, matplotlib plots, tracebacks) appearing as they stream. Variables persist between runs. Outputs and counts are saved into the `.ipynb`. Only `ipykernel` is needed in the environment: Fahh ships a small runner (`src-tauri/assets/fahh_kernel.py`) that drives it with `jupyter_client`. A **kernel picker** lists the workspace `.venv` / `venv`, conda envs, `py -0p` and PATH Pythons (`Python 3.11 · .venv (workspace)`), marks those without ipykernel, and remembers the choice per notebook. Without ipykernel the notebook shows the exact `<python> -m pip install ipykernel` with Run in terminal and Copy; nothing is installed silently. New Rust commands `python_kernels` and `run_stdin`.
+
+### Changed
+
+- **Python uses the project's venv.** Run (Ctrl+F5) used the system Python even with a `.venv` in the folder. Run, Debug (debugpy) and notebooks now pick, as VS Code does: Settings > Python > Interpreter path, then `<folder>/.venv` or `venv` (`Scripts\python.exe` on Windows, `bin/python` elsewhere), then `python` / `python3` on PATH. The Run header shows it: `Running which.py [python · .venv]`. New Rust command `python_interpreter` (pure `pick_python`, tested for both layouts and the order).
+- Fahh Local provider settings: models load live from the provider's `/models` list (through the backend, so no CORS), filtered to chat models, with loading, error (e.g. "Key rejected (401)") and retry states. Hardcoded model lists are gone. Built-in providers no longer show their base URL (an "Edit endpoint" disclosure covers proxies); "Custom (OpenAI-compatible)" asks for a validated base URL and an optional key. Key placeholders say what each provider's key looks like.
+
+### Fixed
+
+- **One model picker everywhere in Fahh Local.** Settings Model, Fast model, the panel-header model dropdown and the Welcome tour's Fahh Local step now all render the same `ModelPicker` (`src/components/ModelPicker.tsx`) over the same live `agent_list_models` list: one skeleton while loading, one error line with Retry, one empty-list hint, and "Type a model name…" on every one (Fast model adds "Same as main model"). The header dropdown used to have no escape hatch and no error state; the Welcome step could not choose a model at all. A test fails if a picker binds the model with its own `<select>` again.
+- **Accept all / Reject all in the agent's review.** "Review: N files changed" gets **Accept all** (keeps every file still under review) and **Reject all** (restores them: the whole-turn revert when nothing was accepted yet, otherwise only the pending files, so accepted ones stay). Shown when two or more files are pending (one file has its own ✓ ✗), keyboard reachable, and confirmed with a toast ("Accepted 2 files"). New reducer action `turn_accepted` and store action `rejectAll`, both tested.
+- **Spatial Canvas terminal: selection landed on the wrong row/column.** The canvas zooms nodes with CSS `transform: scale()`, and xterm.js measured the scaled terminal but divided by unscaled cell sizes, so at any zoom but 100% a drag selected the line above (zoom < 100%) or below (zoom > 100%). Selection, double-click word select, link clicks, right-click (word select and the Copy/Paste textarea), middle-click paste, drag-to-scroll and app mouse reporting (vim, htop) now map the pointer back through the zoom. The docked terminal was never affected.
+- **PowerShell terminals load your profile and `.venv\Scripts\Activate.ps1`.** On a machine left at Windows' default execution policy (Restricted) every new Fahh PowerShell printed "running scripts is disabled on this system" and venvs could not be activated. Fahh now starts PowerShell / pwsh terminals with `-ExecutionPolicy RemoteSigned` for that process only; machine and user policy are untouched, Group Policy still wins, never Bypass. Settings > Terminal > **PowerShell script policy for Fahh terminals** (RemoteSigned / System default) switches it off. The Run panel runner is unaffected (it does not go through PowerShell).
 
 ## [0.7.2] — 2026-11-04
 
@@ -189,7 +195,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - **+ Shell** (PowerShell / Command Prompt / Bash-WSL) really switches shell.
 - New windows (`fahh-win-*`) get the same permissions as the main window.
 - Open Folder opens one dialog and reports failures.
-
 
 ### Removed (simulated features)
 
