@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  activity, agentLine, browserLink, elapsed, joinTable, loadSeat, normalizeServer, parseInvite, saveSeat, sseParser, startTable, watch,
+  activity, agentLine, browserLink, checkPictures, elapsed, joinTable, loadSeat, mediaUrl, normalizeServer, parseInvite, pictureType, saveSeat, sayBody, sseParser, startTable, uploadPicture, watch,
   type Seat,
 } from "./roundtable";
 
@@ -91,5 +91,43 @@ describe("Roundtable client", () => {
     await watch(seat, (t) => seen.push(t), new AbortController().signal, (c) => states.push(c), fake);
     expect(seen).toEqual(["room.note", "room.gone"]);
     expect(states[0]).toBe(true);
+  });
+
+  it("checks pictures before sending: raster only, 5 MB, 4 at a time", () => {
+    const png = (name: string, size = 10) => ({ name, type: "image/png", size });
+    let r = checkPictures(0, [png("a"), { name: "x.svg", type: "image/svg+xml", size: 5 }, png("big", 5 * 1024 * 1024 + 1)]);
+    expect(r.ok.map((f) => f.name)).toEqual(["a"]);
+    expect(r.errors[0]).toMatch(/x\.svg is not a PNG, JPEG, WebP or GIF/);
+    expect(r.errors[1]).toMatch(/big is over 5 MB/);
+    r = checkPictures(3, [png("a"), png("b"), png("c")]);
+    expect(r.ok.map((f) => f.name)).toEqual(["a"]);
+    expect(r.errors).toEqual(["Share up to 4 pictures at a time."]);
+    expect(checkPictures(0, [png("edge", 5 * 1024 * 1024)]).ok).toHaveLength(1);
+    expect(pictureType("C:\\shots\\A.JPG")).toBe("image/jpeg");
+    expect(pictureType("/tmp/x.webp")).toBe("image/webp");
+    expect(pictureType("/tmp/x.svg")).toBe("");
+    expect(pictureType("/tmp/png")).toBe("");
+  });
+
+  it("builds a note's body and a picture's address", () => {
+    expect(sayBody(" hi ")).toEqual({ text: "hi" });
+    expect(sayBody("", ["a.png"])).toEqual({ text: "", images: ["a.png"] });
+    expect(() => sayBody("  ")).toThrow(/Write something/);
+    expect(mediaUrl("http://h:4173/", "ABC12", "0f.png")).toBe("http://h:4173/api/rooms/ABC12/media/0f.png");
+    expect(mediaUrl("https://h", "AB C", "../x")).toBe("https://h/api/rooms/AB%20C/media/..%2Fx");
+  });
+
+  it("uploads a picture's bytes with the seat, and passes the server's refusal through", async () => {
+    let got: [string, RequestInit | undefined] | null = null;
+    const ok = (async (url: string, init?: RequestInit) => ((got = [url, init]), new Response(JSON.stringify({ id: "ab.png", url: "/x" }), { status: 201 }))) as unknown as typeof fetch;
+    const blob = new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], { type: "image/png" });
+    expect(await uploadPicture(seat, blob, ok)).toBe("ab.png");
+    expect(got![0]).toBe("http://h:4173/api/rooms/ABC12/media");
+    expect(got![1]?.headers).toEqual({ "content-type": "image/png", "x-member": "tok" });
+    expect(got![1]?.body).toBe(blob);
+    const refused = (async () => new Response(JSON.stringify({ error: "Only PNG, JPEG, WebP or GIF pictures can be shared." }), { status: 400 })) as unknown as typeof fetch;
+    await expect(uploadPicture(seat, blob, refused)).rejects.toThrow("Only PNG, JPEG");
+    const down = (async () => { throw new TypeError("fetch failed"); }) as unknown as typeof fetch;
+    await expect(uploadPicture(seat, blob, down)).rejects.toThrow(/Couldn't reach/);
   });
 });

@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, ExternalLink, FileText, Hand, LogOut, Plus, Send, Bot, Undo2, Square, KeyRound, X, MessageSquare } from "lucide-react";
+import { Copy, ExternalLink, FileText, Hand, LogOut, Plus, Send, Bot, Undo2, Square, KeyRound, X, MessageSquare, ImagePlus, Loader2, Check } from "lucide-react";
 import { openExternal } from "../../lib/browser";
+import { useFocusTrap } from "../../hooks/useFocusTrap";
 import {
-  activity, agentLine, browserLink, call, elapsed, joinTable, loadSeat, loadServer, parseInvite, saveSeat, saveServer, startTable, watch,
+  activity, agentLine, browserLink, call, checkPictures, elapsed, joinTable, loadSeat, loadServer, mediaUrl, parseInvite, PICTURE_TYPES, pictureType, saveSeat, saveServer, sayBody, startTable,
+  uploadPicture, watch,
   type AgentEvent, type RoomView, type Seat, type Turn,
 } from "../../lib/roundtable";
 
@@ -80,6 +82,7 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<"table" | "files">("table");
+  const [viewing, setViewing] = useState<string | null>(null);
   const [, tick] = useState(0);
   const api = (path: string, opts: Parameters<typeof call>[2] = {}) => call(seat.base, `/api/rooms/${seat.code}${path}`, { token: seat.member.token, ...opts });
   const refreshTimer = useRef<ReturnType<typeof setTimeout>>();
@@ -156,7 +159,7 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
         <Files api={api} turns={room?.history.length ?? 0} />
       ) : (
         <>
-          <Transcript room={room} live={live} me={seat.member.id} onUndo={(id) => void api("/undo", { method: "POST", body: { turnId: id } }).catch((e) => setError(e.message))} />
+          <Transcript room={room} live={live} me={seat.member.id} picture={(id) => mediaUrl(seat.base, seat.code, id)} onView={setViewing} onUndo={(id) => void api("/undo", { method: "POST", body: { turnId: id } }).catch((e) => setError(e.message))} />
           {room?.running && (
             <div className="px-3 py-1 border-t border-fahh-surface text-fahh-muted flex items-center gap-1.5" aria-live="polite">
               <span className="w-1.5 h-1.5 rounded-full bg-fahh-accent animate-pulse" />
@@ -167,7 +170,7 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
               )}
             </div>
           )}
-          {room && <Composer room={room} me={seat.member.id} api={api} onError={setError} />}
+          {room && <Composer room={room} seat={seat} api={api} onError={setError} />}
         </>
       )}
       {(error || notice) && (
@@ -176,6 +179,30 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
           {error && <IconBtn title="Dismiss" onClick={() => setError(null)}><X size={11} /></IconBtn>}
         </div>
       )}
+      {viewing && <Lightbox src={viewing} onClose={() => setViewing(null)} />}
+    </div>
+  );
+}
+
+/** One picture, as large as the window allows. Esc, the backdrop or Close shut it. */
+function Lightbox({ src, onClose }: { src: string; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useFocusTrap(ref, onClose);
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Picture"
+      tabIndex={-1}
+      className="fixed inset-0 z-[1000] flex flex-col items-center justify-center gap-2 bg-black/75 p-4 outline-none"
+      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+    >
+      <img src={src} alt="Picture shared at the table" className="max-w-full max-h-[calc(100vh-72px)] object-contain rounded border border-fahh-surface bg-fahh-bg" />
+      <div className="flex gap-1.5">
+        <button className={quiet} onClick={() => void openExternal(src)}><ExternalLink size={11} /> Open in browser</button>
+        <button className={primary} onClick={onClose}>Close</button>
+      </div>
     </div>
   );
 }
@@ -200,7 +227,14 @@ function People({ room, me }: { room: RoomView; me: string }) {
   );
 }
 
-function Transcript({ room, live, me, onUndo }: { room: RoomView | null; live: Record<string, string>; me: string; onUndo: (id: string) => void }) {
+function Transcript({ room, live, me, picture, onView, onUndo }: {
+  room: RoomView | null;
+  live: Record<string, string>;
+  me: string;
+  picture: (id: string) => string;
+  onView: (src: string) => void;
+  onUndo: (id: string) => void;
+}) {
   const end = useRef<HTMLDivElement>(null);
   const items = useMemo(() => {
     if (!room) return [];
@@ -228,7 +262,12 @@ function Transcript({ room, live, me, onUndo }: { room: RoomView | null; live: R
             <MessageSquare size={11} className="mt-0.5 shrink-0 text-fahh-muted" />
             <div className="min-w-0">
               <span className="font-semibold text-fahh-text">{note.name}</span> <span className="text-fahh-muted">note</span>
-              <div className="text-fahh-text whitespace-pre-wrap break-words">{note.text || (note.images?.length ? `(${note.images.length} picture${note.images.length > 1 ? "s" : ""}: open in browser to see)` : "")}</div>
+              {note.text && <div className="text-fahh-text whitespace-pre-wrap break-words">{note.text}</div>}
+              {!!note.images?.length && (
+                <div className="mt-1 flex flex-wrap gap-1.5">
+                  {note.images.map((id) => <Thumb key={id} src={picture(id)} by={note.name} onView={onView} />)}
+                </div>
+              )}
             </div>
           </div>
         ) : turn ? (
@@ -255,22 +294,128 @@ function Transcript({ room, live, me, onUndo }: { room: RoomView | null; live: R
   );
 }
 
-function Composer({ room, me, api, onError }: { room: RoomView; me: string; api: (p: string, o?: any) => Promise<any>; onError: (m: string) => void }) {
-  const mine = room.members.find((m) => m.id === me);
+/** A shared picture on a note. If the table emptied, the server dropped it: say so, not a broken image. */
+function Thumb({ src, by, onView }: { src: string; by: string; onView: (src: string) => void }) {
+  const [gone, setGone] = useState(false);
+  if (gone) return <span className="text-[10px] italic text-fahh-muted">picture removed</span>;
+  return (
+    <button title="Open the picture" onClick={() => onView(src)} className="rounded overflow-hidden border border-fahh-surface hover:border-fahh-accent focus:outline-none focus-visible:ring-1 focus-visible:ring-fahh-accent cursor-zoom-in">
+      <img src={src} alt={`Picture from ${by}`} loading="lazy" onError={() => setGone(true)} className="block max-w-[140px] max-h-[110px] object-cover" />
+    </button>
+  );
+}
+
+type Sharing = { phase: "idle" } | { phase: "uploading"; done: number; total: number } | { phase: "failed"; error: string } | { phase: "done"; total: number };
+
+function Composer({ room, seat, api, onError }: { room: RoomView; seat: Seat; api: (p: string, o?: any) => Promise<any>; onError: (m: string) => void }) {
+  const mine = room.members.find((m) => m.id === seat.member.id);
   const agents = (room.agents ?? []).filter((a) => a.ready);
   const [agent, setAgent] = useState(mine?.agent ?? room.agent ?? agents[0]?.name ?? "");
   const [text, setText] = useState("");
   const [keyFor, setKeyFor] = useState<string | null>(null);
   const [key, setKey] = useState("");
+  const [pictures, setPictures] = useState<Array<{ file: File; url: string }>>([]);
+  const [sharing, setSharing] = useState<Sharing>({ phase: "idle" });
+  const [refused, setRefused] = useState<string[]>([]);
+  const [dropping, setDropping] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const busy = sharing.phase === "uploading";
   const needsKey = (n: string) => agents.find((a) => a.name === n)?.needsKey && !mine?.keys?.includes(n);
+
+  // Previews are object URLs: give them back when they leave, and on unmount.
+  const latest = useRef(pictures);
+  latest.current = pictures;
+  useEffect(() => () => latest.current.forEach((p) => URL.revokeObjectURL(p.url)), []);
+  useEffect(() => {
+    if (sharing.phase !== "done") return;
+    const t = setTimeout(() => setSharing({ phase: "idle" }), 2500);
+    return () => clearTimeout(t);
+  }, [sharing]);
+
+  const attach = (files: File[]) => {
+    if (busy) return;
+    const { ok, errors } = checkPictures(pictures.length, files);
+    setPictures((p) => [...p, ...ok.map((file) => ({ file, url: URL.createObjectURL(file) }))]);
+    setRefused(errors);
+    setSharing({ phase: "idle" });
+    box.current?.focus();
+  };
+  // The desktop app catches files dropped from the OS before the page does and
+  // hands over paths, as the terminal does; read the ones dropped on this composer.
+  const zone = useRef<HTMLDivElement>(null);
+  const attachRef = useRef(attach);
+  attachRef.current = attach;
+  useEffect(() => {
+    let off: (() => void) | undefined;
+    let alive = true;
+    const inside = (p: { x: number; y: number }) => {
+      const r = zone.current?.getBoundingClientRect();
+      const x = p.x / window.devicePixelRatio;
+      const y = p.y / window.devicePixelRatio;
+      return !!r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom;
+    };
+    void import("@tauri-apps/api/webview")
+      .then(({ getCurrentWebview }) =>
+        getCurrentWebview().onDragDropEvent(async (ev) => {
+          const p = ev.payload;
+          if (p.type === "leave") return setDropping(false);
+          if (p.type !== "drop") return setDropping(inside(p.position));
+          setDropping(false);
+          if (!inside(p.position) || !p.paths.length) return;
+          const { readFile } = await import("@tauri-apps/plugin-fs");
+          const files = await Promise.all(
+            p.paths.map(async (path) => {
+              const name = path.split(/[\\/]/).pop() ?? path;
+              const type = pictureType(path);
+              // Only read what could be a picture; the rest is refused by name.
+              return type ? new File([await readFile(path)], name, { type }) : new File([], name);
+            }),
+          ).catch(() => null);
+          if (files) attachRef.current(files);
+          else setRefused(["That file could not be read."]);
+        }),
+      )
+      .then((fn) => (alive ? (off = fn) : fn()))
+      .catch(() => {});
+    return () => {
+      alive = false;
+      off?.();
+    };
+  }, []);
+
+  const unattach = (i: number) => {
+    URL.revokeObjectURL(pictures[i].url);
+    setPictures((p) => p.filter((_, j) => j !== i));
+    setRefused([]);
+  };
 
   const send = async (asNote: boolean) => {
     const body = text.trim();
-    if (!body) return;
-    if (!asNote && needsKey(agent)) return setKeyFor(agent);
+    if (busy || (!body && !pictures.length)) return;
+    if (!asNote && body && needsKey(agent)) return setKeyFor(agent);
+    // Pictures always travel as a note, so everyone sees them; any ask follows.
+    if (pictures.length) {
+      setRefused([]);
+      try {
+        const ids: string[] = [];
+        for (const [i, p] of pictures.entries()) {
+          setSharing({ phase: "uploading", done: i, total: pictures.length });
+          ids.push(await uploadPicture(seat, p.file));
+        }
+        await api("/say", { method: "POST", body: sayBody(asNote ? body : "", ids) });
+      } catch (e) {
+        // Keep the pictures and words attached, so sending again is one click.
+        return setSharing({ phase: "failed", error: e instanceof Error ? e.message : String(e) });
+      }
+      pictures.forEach((p) => URL.revokeObjectURL(p.url));
+      setPictures([]);
+      setSharing({ phase: "done", total: pictures.length });
+      if (asNote || !body) return setText("");
+    }
     setText("");
     try {
-      await api(asNote ? "/say" : "/ask", { method: "POST", body: asNote ? { text: body } : { prompt: body, agent } });
+      await api(asNote ? "/say" : "/ask", { method: "POST", body: asNote ? sayBody(body) : { prompt: body, agent } });
     } catch (e) {
       setText(body);
       onError(e instanceof Error ? e.message : String(e));
@@ -290,7 +435,22 @@ function Composer({ room, me, api, onError }: { room: RoomView; me: string; api:
   };
 
   return (
-    <div className="border-t border-fahh-surface p-2 space-y-1.5 shrink-0">
+    <div
+      ref={zone}
+      className={`border-t border-fahh-surface p-2 space-y-1.5 shrink-0 ${dropping ? "outline-dashed outline-1 -outline-offset-4 outline-fahh-accent bg-fahh-accent/5" : ""}`}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes("Files")) return;
+        e.preventDefault();
+        setDropping(true);
+      }}
+      onDragLeave={(e) => e.currentTarget.contains(e.relatedTarget as Node) || setDropping(false)}
+      onDrop={(e) => {
+        if (!e.dataTransfer.files.length) return;
+        e.preventDefault();
+        setDropping(false);
+        attach([...e.dataTransfer.files]);
+      }}
+    >
       {keyFor && (
         <div className="space-y-1 rounded border border-fahh-surface p-1.5">
           <div className="text-fahh-muted">Your {keyFor} key. Held in the table's memory while you're seated, never saved or shown.</div>
@@ -311,12 +471,39 @@ function Composer({ room, me, api, onError }: { room: RoomView; me: string; api:
         </select>
         <IconBtn title="Use my own key" onClick={() => setKeyFor(agents.find((a) => a.name === agent)?.needsKey ? agent : agents.find((a) => a.needsKey)?.name ?? null)}><KeyRound size={12} /></IconBtn>
       </div>
+      {pictures.length > 0 && (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {pictures.map((p, i) => (
+            <span key={p.url} className="relative">
+              <img src={p.url} alt={p.file.name} className={`block w-11 h-11 object-cover rounded border border-fahh-surface ${busy ? "opacity-40" : ""}`} />
+              {!busy && (
+                <button
+                  title="Remove"
+                  aria-label={`Remove ${p.file.name || "picture"}`}
+                  onClick={() => unattach(i)}
+                  className="absolute -top-1.5 -right-1.5 w-4 h-4 flex items-center justify-center rounded-full bg-fahh-surface text-fahh-text hover:bg-fahh-error hover:text-white"
+                >
+                  <X size={9} />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
+      )}
       <textarea
+        ref={box}
         className={`${input} resize-none`}
         rows={2}
         value={text}
-        placeholder="Ask for a change… (Enter to ask, Shift+Enter for a line)"
+        aria-label="Message"
+        placeholder="Ask for a change… (Enter to ask, Shift+Enter for a line, paste a picture)"
         onChange={(e) => setText(e.target.value)}
+        onPaste={(e) => {
+          const files = [...e.clipboardData.files].filter((f) => f.type.startsWith("image/"));
+          if (!files.length) return;
+          e.preventDefault();
+          attach(files);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
@@ -324,9 +511,40 @@ function Composer({ room, me, api, onError }: { room: RoomView; me: string; api:
           }
         }}
       />
+      {sharing.phase === "uploading" ? (
+        <div role="status" className="flex items-center gap-1.5 text-fahh-muted">
+          <Loader2 size={11} className="animate-spin motion-reduce:animate-none" /> Sharing picture {Math.min(sharing.done + 1, sharing.total)} of {sharing.total}…
+        </div>
+      ) : sharing.phase === "failed" ? (
+        <div role="alert" className="text-fahh-error">Couldn't share: {sharing.error} Your pictures are still attached; send again or remove them.</div>
+      ) : refused.length ? (
+        <div role="alert" className="text-fahh-error">{refused.join(" ")}</div>
+      ) : sharing.phase === "done" ? (
+        <div role="status" className="flex items-center gap-1 text-fahh-success"><Check size={11} /> Shared {sharing.total} picture{sharing.total > 1 ? "s" : ""}.</div>
+      ) : null}
       <div className="flex gap-1">
-        <button className={`${quiet} flex-1 justify-center`} onClick={() => void send(true)} title="Say it to the table. Runs nothing."><Hand size={11} /> Note</button>
-        <button className={`${primary} flex-1 flex items-center justify-center gap-1`} onClick={() => void send(false)}><Send size={11} /> Ask</button>
+        <button
+          className={quiet}
+          disabled={busy}
+          onClick={() => fileInput.current?.click()}
+          title="Attach pictures: PNG, JPEG, WebP or GIF, up to 4, 5 MB each. You can also paste or drop them here."
+          aria-label="Attach pictures"
+        >
+          <ImagePlus size={12} />
+        </button>
+        <input
+          ref={fileInput}
+          type="file"
+          accept={PICTURE_TYPES.join(",")}
+          multiple
+          hidden
+          onChange={(e) => {
+            attach([...(e.target.files ?? [])]);
+            e.target.value = "";
+          }}
+        />
+        <button className={`${quiet} flex-1 justify-center`} disabled={busy} onClick={() => void send(true)} title="Say it to the table. Runs nothing."><Hand size={11} /> Note</button>
+        <button className={`${primary} flex-1 flex items-center justify-center gap-1`} disabled={busy} onClick={() => void send(false)}><Send size={11} /> Ask</button>
       </div>
     </div>
   );

@@ -135,6 +135,63 @@ export function browserLink(seat: Seat): string {
   return `${seat.base}/${seat.code}#seat=${b64}`;
 }
 
+/* ---------- pictures ---------- */
+// The server's own rules (raster formats sniffed by bytes, 5 MB, 4 per note),
+// checked first so a person hears why at once.
+
+export const PICTURE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+export const MAX_PICTURES = 4;
+export const MAX_PICTURE_BYTES = 5 * 1024 * 1024;
+
+/** Which of `files` can join the `have` already attached, and one plain sentence per kind of refusal. */
+export function checkPictures<F extends { name: string; type: string; size: number }>(have: number, files: F[]): { ok: F[]; errors: string[] } {
+  const ok: F[] = [];
+  const errors: string[] = [];
+  for (const f of files) {
+    if (!PICTURE_TYPES.includes(f.type)) errors.push(`${f.name || "That file"} is not a PNG, JPEG, WebP or GIF picture.`);
+    else if (f.size > MAX_PICTURE_BYTES) errors.push(`${f.name || "That picture"} is over 5 MB.`);
+    else if (have + ok.length >= MAX_PICTURES) errors.push(`Share up to ${MAX_PICTURES} pictures at a time.`);
+    else ok.push(f);
+  }
+  return { ok, errors: [...new Set(errors)] };
+}
+
+/** A dropped file's picture type from its name ("" if not one): the desktop hands over paths, not files. */
+export function pictureType(path: string): string {
+  const ext = /\.([a-z0-9]+)$/i.exec(path)?.[1].toLowerCase();
+  return ext === "jpg" || ext === "jpeg" ? "image/jpeg" : ext === "png" || ext === "webp" || ext === "gif" ? `image/${ext}` : "";
+}
+
+/** Where the table serves one picture, from the table's server base. */
+export function mediaUrl(base: string, code: string, id: string): string {
+  return `${base.replace(/\/+$/, "")}/api/rooms/${encodeURIComponent(code)}/media/${encodeURIComponent(id)}`;
+}
+
+/** The body of a note. Text is optional once there are pictures. */
+export function sayBody(text: string, images: string[] = []): { text: string; images?: string[] } {
+  const body: { text: string; images?: string[] } = { text: String(text ?? "").trim() };
+  if (images.length) body.images = images;
+  if (!body.text && !images.length) throw new Error("Write something to send.");
+  return body;
+}
+
+/** Upload one picture's bytes to the table. Returns its id, or throws the server's own words. */
+export async function uploadPicture(seat: Seat, file: Blob, fetchImpl: typeof fetch = fetch): Promise<string> {
+  let res: Response;
+  try {
+    res = await fetchImpl(`${seat.base}/api/rooms/${seat.code}/media`, {
+      method: "POST",
+      headers: { "content-type": file.type || "application/octet-stream", "x-member": seat.member.token },
+      body: file,
+    });
+  } catch {
+    throw new Error(`Couldn't reach the table at ${seat.base}.`);
+  }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error((data as any).error || "That picture could not be shared.");
+  return (data as { id: string }).id;
+}
+
 /* ---------- remembering ---------- */
 
 export function loadSeat(store: Pick<Storage, "getItem"> = localStorage): Seat | null {
