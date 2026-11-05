@@ -18,6 +18,7 @@ Every change applies at once (all open editors update without reopening) and is 
 | Fahh | Error sound | The default fahh or your own mp3, wav, ogg or m4a (up to 5 MB): Change sound…, preview either one, Reset to default. Fahh keeps a copy in its data folder (`FAHH_DATA_DIR`, or the OS data dir + `fahh/sounds`), so the original can move. It plays everywhere the fahh does, at the volume above, and mute silences it. |
 | Fahh | Lifetime fahhs | How many fahhs this editor has ever let out (also in the status bar tooltip). |
 | Terminal | Font size | 8 to 32 px. |
+| Terminal | PowerShell script policy for Fahh terminals | **RemoteSigned** (default) or **System default**. See [Terminal > PowerShell script policy](VS-Code-Multi-Terminal#powershell-script-policy). New terminals only. |
 | Session | Restore session on launch | Reopen the last folder or workspace with its tabs back in their dock groups. A tab whose file is gone comes back as a Welcome placeholder. |
 | Updates | Check for updates at launch | On by default. At most once a day; when a newer release is out you get one toast per version, never a popup. Help > About checks on demand. |
 

@@ -106,8 +106,16 @@ fn detect_profiles() -> Vec<TerminalProfile> {
 /// Program, arguments and working directory for `profile` opened in `cwd`.
 /// cmd and PowerShell cannot start in a `\\wsl.localhost\...` folder, so they start at home;
 /// the WSL profile opens the same folder inside the distro instead.
-fn plan(profile: &TerminalProfile, cwd: &str, home: &str) -> (String, Vec<String>, String) {
+///
+/// `remote_signed`: PowerShell gets `-ExecutionPolicy RemoteSigned` for this process only, so
+/// the user's profile script and `.venv\Scripts\Activate.ps1` load on a machine left at the
+/// Windows default (Restricted). Machine and user policy are untouched; Group Policy still wins.
+fn plan(profile: &TerminalProfile, cwd: &str, home: &str, remote_signed: bool) -> (String, Vec<String>, String) {
     let mut args = profile.args.clone();
+    if remote_signed && (profile.id == "pwsh" || profile.id == "powershell") {
+        // before any -Command: everything after it is the command
+        args.splice(0..0, ["-ExecutionPolicy".to_string(), "RemoteSigned".to_string()]);
+    }
     if let Some(w) = crate::core::wsl::parse(cwd) {
         if profile.id == "wsl" {
             args.extend(["-d".to_string(), w.distro, "--cd".to_string(), w.linux]);
@@ -161,11 +169,12 @@ fn spawn_raw(
     cwd: &str,
     cols: u16,
     rows: u16,
+    remote_signed: bool,
     on_data: impl Fn(u32, String) + Send + 'static,
     on_exit: impl FnOnce(u32, Option<u32>) + Send + 'static,
 ) -> Result<u32, String> {
     let home = dirs::home_dir().map(|h| h.to_string_lossy().into_owned()).unwrap_or_else(|| ".".into());
-    let (program, args, dir) = plan(profile, cwd, &home);
+    let (program, args, dir) = plan(profile, cwd, &home, remote_signed);
     let pair = native_pty_system()
         .openpty(PtySize { rows: rows.max(2), cols: cols.max(10), pixel_width: 0, pixel_height: 0 })
         .map_err(|e| format!("Could not open a terminal: {e}"))?;
@@ -220,8 +229,16 @@ pub fn terminal_profiles() -> Vec<TerminalProfile> {
 }
 
 /// Start a shell for a terminal tab. `profile` is a profile id ("" or unknown: the first one).
+/// `ps_remote_signed` (default true): see `plan`; false leaves PowerShell on the system policy.
 #[tauri::command]
-pub async fn pty_spawn(app: AppHandle, profile: String, cwd: String, cols: u16, rows: u16) -> Result<u32, String> {
+pub async fn pty_spawn(
+    app: AppHandle,
+    profile: String,
+    cwd: String,
+    cols: u16,
+    rows: u16,
+    ps_remote_signed: Option<bool>,
+) -> Result<u32, String> {
     let profiles = detect_profiles();
     let chosen = profiles
         .iter()
@@ -235,6 +252,7 @@ pub async fn pty_spawn(app: AppHandle, profile: String, cwd: String, cols: u16, 
         &cwd,
         cols,
         rows,
+        ps_remote_signed.unwrap_or(true),
         move |id, data| {
             let _ = data_app.emit("pty://data", serde_json::json!({ "id": id, "data": data }));
         },
@@ -283,21 +301,39 @@ mod tests {
 
     #[test]
     fn a_folder_inside_wsl_opens_there_only_in_the_wsl_profile() {
-        let (_, args, dir) = plan(&p("wsl"), r"\\wsl.localhost\Ubuntu\home\me\proj", "C:\\Users\\me");
+        let (_, args, dir) = plan(&p("wsl"), r"\\wsl.localhost\Ubuntu\home\me\proj", "C:\\Users\\me", true);
         assert_eq!(args, ["-i", "-d", "Ubuntu", "--cd", "/home/me/proj"]);
         assert_eq!(dir, "C:\\Users\\me");
-        let (_, args, dir) = plan(&p("cmd"), r"\\wsl.localhost\Ubuntu\home\me\proj", "C:\\Users\\me");
+        let (_, args, dir) = plan(&p("cmd"), r"\\wsl.localhost\Ubuntu\home\me\proj", "C:\\Users\\me", true);
         assert_eq!(args, ["-i"]);
         assert_eq!(dir, "C:\\Users\\me");
     }
 
     #[test]
     fn a_missing_folder_falls_back_to_home() {
-        let (_, _, dir) = plan(&p("bash"), "/definitely/not/here", "/home/me");
+        let (_, _, dir) = plan(&p("bash"), "/definitely/not/here", "/home/me", true);
         assert_eq!(dir, "/home/me");
         let tmp = std::env::temp_dir();
-        let (_, _, dir) = plan(&p("bash"), tmp.to_str().unwrap(), "/home/me");
+        let (_, _, dir) = plan(&p("bash"), tmp.to_str().unwrap(), "/home/me", true);
         assert_eq!(dir, tmp.to_str().unwrap());
+    }
+
+    #[test]
+    fn powershell_gets_remote_signed_for_its_own_process_only_when_asked() {
+        let ps = profile("powershell", "PowerShell", "powershell.exe", &["-NoLogo", "-NoExit", "-Command", "x"]);
+        let (_, args, _) = plan(&ps, "", "/home/me", true);
+        assert_eq!(args, ["-ExecutionPolicy", "RemoteSigned", "-NoLogo", "-NoExit", "-Command", "x"]);
+        let pwsh = profile("pwsh", "PowerShell", "pwsh.exe", &["-NoLogo"]);
+        let (_, args, _) = plan(&pwsh, "", "/home/me", true);
+        assert_eq!(args, ["-ExecutionPolicy", "RemoteSigned", "-NoLogo"]);
+        // "System default": untouched
+        let (_, args, _) = plan(&pwsh, "", "/home/me", false);
+        assert_eq!(args, ["-NoLogo"]);
+        // never Bypass, and other shells never get the flag
+        for id in ["cmd", "gitbash", "wsl", "bash"] {
+            let (_, args, _) = plan(&p(id), "", "/home/me", true);
+            assert_eq!(args, ["-i"], "{id}");
+        }
     }
 
     #[test]
@@ -325,7 +361,7 @@ mod tests {
         let sh = profile("sh", "sh", "/bin/sh", &[]);
         let (tx, rx) = mpsc::channel::<String>();
         let (etx, erx) = mpsc::channel::<Option<u32>>();
-        let id = spawn_raw(&sh, "", 80, 24, move |_, d| { let _ = tx.send(d); }, move |_, c| { let _ = etx.send(c); }).unwrap();
+        let id = spawn_raw(&sh, "", 80, 24, true, move |_, d| { let _ = tx.send(d); }, move |_, c| { let _ = etx.send(c); }).unwrap();
         pty_write(id, "echo fahh-$((40+2))\nexit 3\n".into()).unwrap();
         let mut seen = String::new();
         let deadline = std::time::Instant::now() + Duration::from_secs(10);
