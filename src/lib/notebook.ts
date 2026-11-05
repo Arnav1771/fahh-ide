@@ -46,7 +46,7 @@ function fromBundle(data: Record<string, unknown>): NotebookOutput | null {
   return null;
 }
 
-function parseOutput(raw: unknown): NotebookOutput | null {
+export function parseOutput(raw: unknown): NotebookOutput | null {
   const o = obj(raw);
   switch (o.output_type) {
     case "stream":

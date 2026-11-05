@@ -38,6 +38,9 @@ pub struct DapConfig {
     /// Working directory. If empty, falls back to the program's parent dir.
     #[serde(default)]
     pub cwd: String,
+    /// The workspace Python (from `python_interpreter`) for debugpy; PATH when empty.
+    #[serde(default)]
+    pub python: String,
 }
 
 impl DapConfig {
@@ -125,13 +128,14 @@ fn install_hint(adapter: &str) -> &'static str {
 }
 
 /// The program and arguments that start `adapter` as a DAP server on `port`.
-fn adapter_command(adapter: &str, port: u16) -> Result<(String, Vec<String>), String> {
+fn adapter_command(adapter: &str, port: u16, python: &str) -> Result<(String, Vec<String>), String> {
     let addr = format!("127.0.0.1:{port}");
     match adapter {
         "python" | "debugpy" => {
-            // The runner's pick: never the Microsoft Store alias in WindowsApps, which does not run Python.
+            // The workspace interpreter, else the runner's pick (never the Microsoft Store alias).
+            let python = if python.trim().is_empty() { crate::core::runner::resolve_python() } else { python.to_string() };
             Ok((
-                crate::core::runner::resolve_python(),
+                python,
                 vec!["-m".into(), "debugpy.adapter".into(), "--host".into(), "127.0.0.1".into(), "--port".into(), port.to_string()],
             ))
         }
@@ -241,7 +245,9 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
     info!("debug_start: session={session_id}, adapter={}, program={}", config.adapter, config.program);
 
     let port = free_port()?;
-    let (program, args) = adapter_command(&config.adapter, port)?;
+    let (program, args) = adapter_command(&config.adapter, port, &config.python)?;
+    // The install hint names the interpreter that is missing debugpy (a venv's, usually).
+    let for_program = |e: String| e.replace("python -m pip", &format!("{program} -m pip"));
     let child = crate::core::proc::cmd(&program)
         .args(&args)
         .current_dir(config.working_dir())
@@ -249,12 +255,12 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .spawn()
-        .map_err(|e| format!("Failed to start {program}: {e}. {}", install_hint(&config.adapter)))?;
+        .map_err(|e| for_program(format!("Failed to start {program}: {e}. {}", install_hint(&config.adapter))))?;
     let mut child = Some(child);
 
     // Wait for the adapter to open its port (up to 10 seconds), failing fast
     // if it exits first (e.g. `python -m debugpy.adapter` without debugpy installed).
-    let stream = wait_for_adapter(&mut child, &config.adapter, port, 10_000)?;
+    let stream = wait_for_adapter(&mut child, &config.adapter, port, 10_000).map_err(for_program)?;
     let reader_stream = stream.try_clone().map_err(|e| format!("Failed to clone TCP stream: {e}"))?;
 
     spawn_dap_reader(session_id, reader_stream, app);
@@ -370,21 +376,22 @@ mod tests {
 
     #[test]
     fn adapters_start_as_dap_servers_on_the_port() {
-        let (_, args) = adapter_command("debugpy", 4242).unwrap();
+        let (_, args) = adapter_command("debugpy", 4242, "").unwrap();
+        assert_eq!(adapter_command("debugpy", 1, "/w/.venv/bin/python").unwrap().0, "/w/.venv/bin/python");
         assert_eq!(args[..2], ["-m".to_string(), "debugpy.adapter".to_string()]);
         assert!(args.contains(&"4242".to_string()));
-        let (prog, args) = adapter_command("dlv-dap", 4242).unwrap();
+        let (prog, args) = adapter_command("dlv-dap", 4242, "").unwrap();
         assert_eq!((prog.as_str(), args), ("dlv", vec!["dap".to_string(), "--listen=127.0.0.1:4242".to_string()]));
-        let (prog, args) = adapter_command("lldb", 4242).unwrap();
+        let (prog, args) = adapter_command("lldb", 4242, "").unwrap();
         assert_eq!(prog, "lldb-dap");
         assert_eq!(args[1], "listen://127.0.0.1:4242");
     }
 
     #[test]
     fn node_says_why_it_is_not_supported() {
-        let err = adapter_command("js-debug", 1).unwrap_err();
+        let err = adapter_command("js-debug", 1, "").unwrap_err();
         assert!(err.contains("js-debug"), "{err}");
-        assert!(adapter_command("cobol", 1).unwrap_err().contains("Unsupported"));
+        assert!(adapter_command("cobol", 1, "").unwrap_err().contains("Unsupported"));
     }
 
     #[test]

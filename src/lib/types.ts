@@ -66,6 +66,8 @@ export interface RunConfig {
   cwd?: string;
   /** Environment variable overrides */
   env?: Record<string, string>;
+  /** Python for python/notebook runs (from pythonInterpreter); PATH when absent */
+  interpreter?: string;
 }
 
 export interface RunResult {
@@ -88,6 +90,8 @@ export interface DapConfig {
   /** The file or binary being debugged; picks the adapter's working directory. */
   program: string;
   cwd?: string;
+  /** The workspace Python debugpy runs with; PATH when absent. */
+  python?: string;
 }
 
 export interface StackFrame {

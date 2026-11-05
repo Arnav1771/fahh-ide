@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { AppWindow, Code, ExternalLink, FileText, RotateCw, ShieldAlert, X } from "lucide-react";
+import { AppWindow, Code, ExternalLink, FileText, Play, RotateCw, ShieldAlert, X } from "lucide-react";
 import { renderMarkdown, SAFE_URL } from "../../lib/markdown";
 import { dirOf, extOf, formatBytes, nextZoom, normalizeUrl, parseCsv, resolvePath, syncTarget, type PreviewKind } from "../../lib/preview";
 import { openExternal, openInWindow } from "../../lib/browser";
@@ -11,6 +11,8 @@ import { usePreviewStore } from "../../store/previewStore";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { parseNotebook, type NotebookCell, type NotebookOutput } from "../../lib/notebook";
 import * as monaco from "monaco-editor";
+import type { CellRun } from "../../lib/python";
+import { KernelToolbar, kernelLabel, useNotebookKernel } from "./NotebookKernel";
 
 /** Turn a local path into a URL the webview may load (asset protocol). */
 function assetUrl(path: string): string {
@@ -517,7 +519,7 @@ function CodeSource({ source, language }: { source: string; language: string }) 
   return html === null ? <pre className={`${cls} text-fahh-text`}>{source}</pre> : <pre className={cls} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-function NotebookCellView({ cell, language, path }: { cell: NotebookCell; language: string; path: string }) {
+function NotebookCellView({ cell, language, path, run, onRun }: { cell: NotebookCell; language: string; path: string; run?: CellRun; onRun?: () => void }) {
   const prompt = "w-16 shrink-0 select-none pt-2 text-right font-mono text-[11px] text-fahh-muted";
   if (cell.type === "markdown") {
     return (
@@ -535,15 +537,33 @@ function NotebookCellView({ cell, language, path }: { cell: NotebookCell; langua
       </div>
     );
   }
+  // This session's run of the cell (live outputs, [*]) wins over what the file holds.
+  const busy = run?.status === "busy" || run?.status === "queued";
+  const count = run ? run.count : cell.executionCount;
+  const outputs = run ? run.outputs : cell.outputs;
   return (
-    <div className="fahh-nb-cell flex flex-col gap-1" data-cell="code">
+    <div className={`fahh-nb-cell group flex flex-col gap-1 ${busy ? "fahh-nb-busy" : ""}`} data-cell="code" data-status={run?.status}>
       <div className="flex gap-3">
-        <div className={`${prompt} text-fahh-accent`}>In [{cell.executionCount ?? " "}]:</div>
+        <div className={`${prompt} flex items-start justify-end gap-1 text-fahh-accent`}>
+          {onRun && (
+            <button
+              type="button"
+              onClick={onRun}
+              disabled={busy}
+              title="Run cell"
+              aria-label="Run cell"
+              className="mt-[-2px] rounded p-0.5 text-fahh-success opacity-0 transition-opacity hover:bg-fahh-surface focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-0"
+            >
+              <Play size={11} fill="currentColor" aria-hidden="true" />
+            </button>
+          )}
+          <span className={busy ? (run?.status === "queued" ? "text-fahh-muted" : "animate-pulse") : ""}>In [{busy ? "*" : count ?? " "}]:</span>
+        </div>
         <CodeSource source={cell.source} language={language} />
       </div>
-      {cell.outputs.map((out, i) => (
+      {outputs.map((out, i) => (
         <div key={i} className="fahh-nb-output flex gap-3">
-          <div className={prompt}>{out.type !== "stream" && out.type !== "error" && cell.executionCount !== null ? `Out[${cell.executionCount}]:` : ""}</div>
+          <div className={prompt}>{out.type !== "stream" && out.type !== "error" && count !== null ? `Out[${count}]:` : ""}</div>
           <div className="min-w-0 flex-1 overflow-x-auto"><NotebookOutputView out={out} path={path} /></div>
         </div>
       ))}
@@ -554,15 +574,31 @@ function NotebookCellView({ cell, language, path }: { cell: NotebookCell; langua
 function NotebookPreview({ path, content }: { path: string; content: string }) {
   const source = useDebounced(content, 300);
   const nb = useMemo(() => parseNotebook(source), [source]);
+  const k = useNotebookKernel(path);
   if ("error" in nb) return <p className="fahh-nb-invalid p-4 text-xs text-fahh-error">{nb.error}</p>;
   if (nb.cells.length === 0) return <p className="p-4 text-xs text-fahh-muted">Empty notebook.</p>;
+  // ponytail: Python kernels only; other notebook languages stay a read-only view.
+  const python = nb.language === "python";
+  const code = nb.cells.flatMap((c, index) => (c.type === "code" && c.source.trim() ? [{ index, code: c.source }] : []));
   return (
-    <div className="fahh-notebook absolute inset-0 overflow-auto">
-      <div className="flex flex-col gap-4 p-4 pr-6">
-        {nb.cells.map((cell, i) => (
-          <NotebookCellView key={i} cell={cell} language={nb.language} path={path} />
-        ))}
-        <p className="pl-[76px] text-[11px] text-fahh-muted">Read-only view · {nb.cells.length} cells · {nb.language}. Use Source to edit.</p>
+    <div className="fahh-notebook absolute inset-0 flex flex-col">
+      {python && <KernelToolbar k={k} cells={code} />}
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="flex flex-col gap-4 p-4 pr-6">
+          {nb.cells.map((cell, i) => (
+            <NotebookCellView
+              key={i}
+              cell={cell}
+              language={nb.language}
+              path={path}
+              run={k.runs[i]}
+              onRun={python && cell.type === "code" ? () => void k.runCells([{ index: i, code: cell.source }]) : undefined}
+            />
+          ))}
+          <p className="pl-[76px] text-[11px] text-fahh-muted">
+            {nb.cells.length} cells · {python ? kernelLabel(k.kernel) : nb.language}. Outputs are saved into the notebook; use Source to edit cells.
+          </p>
+        </div>
       </div>
     </div>
   );

@@ -71,6 +71,9 @@ pub struct RunConfig {
     /// Working directory; defaults to parent directory of the file.
     #[serde(default)]
     pub cwd: Option<String>,
+    /// Python to use for `python` / `kernel` runs (from `python_interpreter`); PATH when absent.
+    #[serde(default)]
+    pub interpreter: Option<String>,
 }
 
 /// Result returned once a run completes.
@@ -99,17 +102,29 @@ struct RunCommand {
 /// Determine the run command for a given language and file.
 /// `wsl` builds the command for a Linux shell inside WSL (file_path is then a Linux path),
 /// whatever the host OS is.
-fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl: bool) -> Result<RunCommand, String> {
+/// `interpreter` is the Python the frontend resolved (see `pick_python`); ignored inside WSL.
+fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl: bool, interpreter: Option<&str>) -> Result<RunCommand, String> {
     let path = std::path::Path::new(file_path);
     let windows = cfg!(target_os = "windows") && !wsl;
     let file_str = file_path.to_string();
+    // ponytail: a venv inside a WSL folder is not looked up yet; WSL runs use python3 from PATH.
+    let python = || match interpreter {
+        _ if wsl => "python3".to_string(),
+        Some(p) if !p.trim().is_empty() => p.to_string(),
+        _ => resolve_python(),
+    };
 
-    let mut cmd = match language {
+    let cmd = match language {
         "python" => {
-            let python = if wsl { "python3".to_string() } else { resolve_python() };
             let mut args = vec!["-u".to_string(), file_str];
             args.extend_from_slice(user_args);
-            RunCommand { program: python, args }
+            RunCommand { program: python(), args }
+        }
+        "kernel" => {
+            if wsl {
+                return Err("Running notebooks inside WSL is not supported yet. Open the folder from Windows or run it in a WSL terminal.".into());
+            }
+            RunCommand { program: python(), args: vec!["-u".into(), kernel_script()?, file_str] }
         }
         "javascript" => {
             let mut args = vec![file_str];
@@ -277,6 +292,183 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
     Ok(cmd)
 }
 
+/// The notebook kernel runner (see assets/fahh_kernel.py), written next to the temp dir once per version.
+fn kernel_script() -> Result<String, String> {
+    const SCRIPT: &str = include_str!("../../assets/fahh_kernel.py");
+    let path = std::env::temp_dir().join(format!("fahh_kernel_{}.py", env!("CARGO_PKG_VERSION")));
+    if std::fs::read_to_string(&path).ok().as_deref() != Some(SCRIPT) {
+        std::fs::write(&path, SCRIPT).map_err(|e| format!("Could not write the notebook runner to {}: {e}", path.display()))?;
+    }
+    Ok(path.to_string_lossy().into_owned())
+}
+
+lazy_static::lazy_static! {
+    /// stdin of `kernel` runs, by pid: the notebook sends its commands there.
+    static ref KERNEL_STDIN: Mutex<HashMap<u32, std::process::ChildStdin>> = Mutex::new(HashMap::new());
+}
+
+/// Send one line to a running notebook kernel (see assets/fahh_kernel.py for the commands).
+#[tauri::command]
+pub fn run_stdin(pid: u32, line: String) -> Result<(), String> {
+    use std::io::Write;
+    let mut map = KERNEL_STDIN.lock().map_err(|e| e.to_string())?;
+    let stdin = map.get_mut(&pid).ok_or("The notebook kernel is not running.")?;
+    writeln!(stdin, "{}", line.trim_end()).and_then(|_| stdin.flush()).map_err(|e| format!("The notebook kernel stopped: {e}"))
+}
+
+/// The Python a run, a debug session or a notebook uses, and its short label for the UI.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PythonInterpreter {
+    pub program: String,
+    /// "setting", ".venv", "venv", or the PATH program name.
+    pub label: String,
+}
+
+/// VS Code's order: the user's setting, then `<root>/.venv` or `<root>/venv`
+/// (`Scripts\python.exe` on Windows, `bin/python` elsewhere), then Python on PATH.
+/// Pure: the file check and the PATH lookup are passed in, so both layouts are tested anywhere.
+pub(crate) fn pick_python(
+    setting: &str,
+    root: Option<&str>,
+    windows: bool,
+    exists: impl Fn(&str) -> bool,
+    on_path: impl FnOnce() -> String,
+) -> PythonInterpreter {
+    let setting = setting.trim();
+    if !setting.is_empty() {
+        return PythonInterpreter { program: setting.to_string(), label: "setting".into() };
+    }
+    if let Some(root) = root.map(|r| r.trim_end_matches(['/', '\\'])).filter(|r| !r.is_empty()) {
+        for venv in [".venv", "venv"] {
+            let p = if windows { format!("{root}\\{venv}\\Scripts\\python.exe") } else { format!("{root}/{venv}/bin/python") };
+            if exists(&p) {
+                return PythonInterpreter { program: p, label: venv.into() };
+            }
+        }
+    }
+    let program = on_path();
+    PythonInterpreter { label: program.clone(), program }
+}
+
+/// The workspace's Python (see `pick_python`).
+#[tauri::command]
+pub fn python_interpreter(root: Option<String>, setting: Option<String>) -> PythonInterpreter {
+    pick_python(
+        setting.as_deref().unwrap_or(""),
+        root.as_deref(),
+        cfg!(target_os = "windows"),
+        |p| std::path::Path::new(p).is_file(),
+        resolve_python,
+    )
+}
+
+/// One Python environment for the notebook kernel picker.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PythonEnv {
+    pub program: String,
+    /// "Python 3.11 · .venv (workspace)"
+    pub label: String,
+    /// "workspace", "conda" or "global"; the picker groups by it.
+    pub group: String,
+    pub version: String,
+    /// Without ipykernel the notebook offers the pip command instead of running.
+    pub ipykernel: bool,
+}
+
+/// Interpreter paths from `py -0p` (Windows launcher): ` -V:3.12 *   C:\Python312\python.exe`.
+fn parse_py_list(text: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(|l| l.find(":\\").map(|i| l[i.saturating_sub(1)..].trim().to_string()))
+        .filter(|p| p.to_ascii_lowercase().ends_with(".exe"))
+        .collect()
+}
+
+/// (python, env name) for each env of `conda env list --json`; the root prefix is "base".
+fn parse_conda_envs(json: &str, windows: bool) -> Vec<(String, String)> {
+    let envs = serde_json::from_str::<serde_json::Value>(json).ok().and_then(|v| v["envs"].as_array().cloned()).unwrap_or_default();
+    envs.iter()
+        .filter_map(|e| e.as_str())
+        .map(|prefix| {
+            let parts: Vec<&str> = prefix.split(['/', '\\']).filter(|s| !s.is_empty()).collect();
+            let name = match parts.as_slice() {
+                [.., "envs", n] => n.to_string(),
+                _ => "base".to_string(),
+            };
+            let sep = if windows { "\\" } else { "/" };
+            let py = if windows { format!("{prefix}{sep}python.exe") } else { format!("{prefix}{sep}bin{sep}python") };
+            (py, name)
+        })
+        .collect()
+}
+
+/// What the probe script prints: sys.executable, the version, and whether ipykernel imports.
+fn parse_probe(out: &str) -> Option<(String, String, bool)> {
+    let mut l = out.lines().map(str::trim);
+    Some((l.next()?.to_string(), l.next()?.to_string(), l.next()? == "True"))
+}
+
+fn env_label(version: &str, name: &str, group: &str) -> String {
+    let minor: String = version.split('.').take(2).collect::<Vec<_>>().join(".");
+    format!("Python {minor} · {name} ({group})")
+}
+
+const PROBE: &str = "import sys,importlib.util as u;print(sys.executable);print('%d.%d.%d'%sys.version_info[:3]);print(u.find_spec('ipykernel') is not None)";
+
+fn output_of(program: &str, args: &[&str]) -> Option<String> {
+    let out = crate::core::proc::cmd(program).args(args).stdin(Stdio::null()).output().ok()?;
+    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// Python environments for the notebook kernel picker: the folder's .venv / venv, conda envs,
+/// then `py -0p` and python / python3 on PATH. Each is probed once (version, ipykernel), in parallel.
+#[tauri::command]
+pub async fn python_kernels(root: Option<String>) -> Vec<PythonEnv> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let windows = cfg!(target_os = "windows");
+        let mut cands: Vec<(String, String, &'static str)> = Vec::new();
+        for venv in [".venv", "venv"] {
+            let ws = pick_python("", root.as_deref(), windows, |p| p.contains(venv) && std::path::Path::new(p).is_file(), String::new);
+            if ws.label == venv {
+                cands.push((ws.program, venv.into(), "workspace"));
+            }
+        }
+        if which_exists("conda") {
+            for (py, name) in parse_conda_envs(&output_of("conda", &["env", "list", "--json"]).unwrap_or_default(), windows) {
+                cands.push((py, name, "conda"));
+            }
+        }
+        if windows {
+            for py in parse_py_list(&output_of("py", &["-0p"]).unwrap_or_default()) {
+                let name = std::path::Path::new(&py).parent().and_then(|d| d.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "py".into());
+                cands.push((py, name, "global"));
+            }
+        }
+        for name in ["python", "python3"] {
+            if let Ok(p) = which::which(name) {
+                if !p.to_string_lossy().contains("WindowsApps") {
+                    cands.push((p.to_string_lossy().into_owned(), name.into(), "global"));
+                }
+            }
+        }
+        // ponytail: no per-probe timeout; a hung interpreter stalls only the picker's list.
+        let probes: Vec<_> = cands
+            .into_iter()
+            .map(|(py, name, group)| std::thread::spawn(move || (output_of(&py, &["-c", PROBE]).as_deref().and_then(parse_probe), py, name, group)))
+            .collect();
+        let mut seen = std::collections::HashSet::new();
+        probes
+            .into_iter()
+            .filter_map(|h| h.join().ok())
+            .filter_map(|(probe, py, name, group)| {
+                let (exe, version, ipykernel) = probe?;
+                seen.insert(exe.to_lowercase()).then(|| PythonEnv { label: env_label(&version, &name, group), program: py, group: group.into(), version, ipykernel })
+            })
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
+}
+
 /// Resolves the real Python executable, avoiding dummy WindowsApps stubs on Windows.
 pub(crate) fn resolve_python() -> String {
     #[cfg(target_os = "windows")]
@@ -377,13 +569,13 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
                 .filter(|c| c.distro == wp.distro)
                 .map(|c| c.linux)
                 .unwrap_or_else(|| wp.linux.rsplit_once('/').map(|(d, _)| if d.is_empty() { "/".to_string() } else { d.to_string() }).unwrap_or_else(|| "/".to_string()));
-            let run_cmd = build_run_command(&language, &wp.linux, &config.args, true)?;
+            let run_cmd = build_run_command(&language, &wp.linux, &config.args, true, None)?;
             let script = wsl_script(&run_cmd);
             debug!("Executing in WSL {}: {script}", wp.distro);
             (crate::core::wsl::command(Some(&wp.distro), &linux_cwd, &script), format!("{} (WSL {})", run_cmd.program, wp.distro))
         }
         None => {
-            let run_cmd = build_run_command(&language, &config.path, &config.args, false)?;
+            let run_cmd = build_run_command(&language, &config.path, &config.args, false, config.interpreter.as_deref())?;
             debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
             let mut c = crate::core::proc::cmd(&run_cmd.program);
             c.args(&run_cmd.args).current_dir(&cwd);
@@ -392,12 +584,16 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
     };
 
     let mut child = command
+        .stdin(if language == "kernel" { Stdio::piped() } else { Stdio::inherit() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn process `{program}`: {e}"))?;
 
     let pid = child.id();
+    if let Some(stdin) = child.stdin.take() {
+        KERNEL_STDIN.lock().map_err(|e| e.to_string())?.insert(pid, stdin);
+    }
     info!("Spawned child PID={pid}");
 
     let start = Instant::now();
@@ -463,6 +659,9 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
     std::thread::spawn(move || {
         let _stdout = stdout_handle.join().unwrap_or_default();
         let _stderr = stderr_handle.join().unwrap_or_default();
+        if let Ok(mut map) = KERNEL_STDIN.lock() {
+            map.remove(&pid);
+        }
         
         let status = child.wait().expect("Failed to wait on child");
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -541,6 +740,79 @@ mod tests {
         assert_eq!(cfg.language.as_deref(), Some("python"));
         assert!(cfg.args.is_empty());
         assert!(cfg.cwd.is_none());
+    }
+
+    fn pick(setting: &str, root: Option<&str>, windows: bool, present: &[&str]) -> PythonInterpreter {
+        pick_python(setting, root, windows, |p| present.contains(&p), || "python3".to_string())
+    }
+
+    #[test]
+    fn python_prefers_setting_then_venv_then_path() {
+        let all = ["/w/.venv/bin/python", "/w/venv/bin/python"];
+        assert_eq!(pick("/opt/py/bin/python", Some("/w"), false, &all), PythonInterpreter { program: "/opt/py/bin/python".into(), label: "setting".into() });
+        assert_eq!(pick("  ", Some("/w"), false, &all), PythonInterpreter { program: "/w/.venv/bin/python".into(), label: ".venv".into() });
+        assert_eq!(pick("", Some("/w/"), false, &all[1..]), PythonInterpreter { program: "/w/venv/bin/python".into(), label: "venv".into() });
+        assert_eq!(pick("", Some("/w"), false, &[]), PythonInterpreter { program: "python3".into(), label: "python3".into() });
+        assert_eq!(pick("", None, false, &all).label, "python3");
+    }
+
+    #[test]
+    fn python_venv_uses_windows_layout() {
+        let win = [r"C:\proj\.venv\Scripts\python.exe"];
+        assert_eq!(pick("", Some(r"C:\proj\"), true, &win).program, win[0]);
+        // A Unix-layout venv does not count on Windows, and vice versa.
+        assert_eq!(pick("", Some(r"C:\proj"), true, &["C:\\proj/.venv/bin/python"]).label, "python3");
+        assert_eq!(pick("", Some("/w"), false, &[r"/w\.venv\Scripts\python.exe"]).label, "python3");
+    }
+
+    #[test]
+    fn python_runs_use_the_resolved_interpreter() {
+        let venv = "/w/.venv/bin/python";
+        let cmd = build_run_command("python", "/w/a.py", &[], false, Some(venv)).unwrap();
+        assert_eq!((cmd.program.as_str(), cmd.args), (venv, vec!["-u".to_string(), "/w/a.py".into()]));
+        // Inside WSL the Windows-side pick does not apply.
+        assert_eq!(build_run_command("python", "/w/a.py", &[], true, Some(venv)).unwrap().program, "python3");
+    }
+
+    #[test]
+    fn kernel_runs_the_bundled_runner_with_the_interpreter() {
+        let cmd = build_run_command("kernel", "/w/n.ipynb", &[], false, Some("/w/.venv/bin/python")).unwrap();
+        assert_eq!(cmd.program, "/w/.venv/bin/python");
+        assert_eq!(cmd.args[0], "-u");
+        assert!(std::fs::read_to_string(&cmd.args[1]).unwrap().contains("jupyter_client"));
+        assert_eq!(cmd.args[2], "/w/n.ipynb");
+        assert!(build_run_command("kernel", "/w/n.ipynb", &[], true, None).is_err());
+    }
+
+    #[test]
+    fn parses_py_launcher_list() {
+        let text = " -V:3.12 *        C:\\Python312\\python.exe\r\n -V:3.11          C:\\Users\\A B\\AppData\\Local\\Programs\\Python\\Python311\\python.exe\r\n -3.9-64          D:\\py39\\python.exe\r\n";
+        assert_eq!(parse_py_list(text), vec![
+            r"C:\Python312\python.exe".to_string(),
+            r"C:\Users\A B\AppData\Local\Programs\Python\Python311\python.exe".into(),
+            r"D:\py39\python.exe".into(),
+        ]);
+        assert!(parse_py_list("No installed Pythons found!").is_empty());
+    }
+
+    #[test]
+    fn parses_conda_envs_for_both_layouts() {
+        let unix = r#"{"envs": ["/opt/conda", "/opt/conda/envs/ds"]}"#;
+        assert_eq!(parse_conda_envs(unix, false), vec![
+            ("/opt/conda/bin/python".to_string(), "base".to_string()),
+            ("/opt/conda/envs/ds/bin/python".into(), "ds".into()),
+        ]);
+        let win = r#"{"envs": ["C:\\miniconda3\\envs\\ml"]}"#;
+        assert_eq!(parse_conda_envs(win, true), vec![(r"C:\miniconda3\envs\ml\python.exe".to_string(), "ml".to_string())]);
+        assert!(parse_conda_envs("not json", true).is_empty());
+    }
+
+    #[test]
+    fn probe_output_and_labels() {
+        assert_eq!(parse_probe("/w/.venv/bin/python\n3.11.4\nFalse\n"), Some(("/w/.venv/bin/python".into(), "3.11.4".into(), false)));
+        assert_eq!(parse_probe("C:\\p\\python.exe\r\n3.12.1\r\nTrue\r\n").unwrap().2, true);
+        assert_eq!(parse_probe("garbage"), None);
+        assert_eq!(env_label("3.11.4", ".venv", "workspace"), "Python 3.11 · .venv (workspace)");
     }
 
     #[test]

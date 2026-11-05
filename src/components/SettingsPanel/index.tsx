@@ -223,6 +223,12 @@ export function SettingsPanel() {
           </Row>
         </Section>
 
+        <Section title="Python" keywords="interpreter venv virtualenv jupyter notebook debugpy">
+          <Row label="Interpreter path" hint="Used by Run, Debug and notebooks. Empty: the folder's .venv or venv, else python on PATH." htmlFor="set-python">
+            <input id="set-python" value={s.pythonPath} onChange={(e) => s.set("pythonPath", e.target.value)} placeholder="Automatic" spellCheck={false} className={`${input} w-72 max-w-full font-mono`} />
+          </Row>
+        </Section>
+
         <Section title="Terminal" keywords="shell powershell bash cmd wsl console">
           <Row label="Font size" htmlFor="set-term">
             <NumberField id="set-term" k="terminalFontSize" min={8} max={32} />
