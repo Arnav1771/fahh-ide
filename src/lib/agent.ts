@@ -143,6 +143,43 @@ export function modelsError(e: unknown): string {
   return m.slice(0, 200) || "Could not load models.";
 }
 
+/** The provider's model list, live: waiting for setup, loading, failed, or loaded (possibly empty). */
+export type ModelList = { state: "wait"; hint: string } | { state: "loading" } | { state: "error"; msg: string } | { state: "ok"; ids: string[] };
+
+/** The option value that switches a model picker to a free-text field. */
+export const TYPE_MODEL = "__type";
+
+/**
+ * Every model picker's options, in order: the empty choice ("Same as main model" for
+ * the optional Fast model, a disabled prompt otherwise), the live list, the current
+ * value when the list lacks it, and the "Type a model name…" escape hatch.
+ */
+export function modelOptions(list: ModelList, value: string, optional = false): { value: string; label: string; disabled?: boolean }[] {
+  const ids = list.state === "ok" ? list.ids : [];
+  const head = optional ? [{ value: "", label: "Same as main model" }] : value ? [] : [{ value: "", label: "Choose a model", disabled: true }];
+  const typed = value && !ids.includes(value) ? [{ value, label: `${value} (typed)` }] : [];
+  return [...head, ...ids.map((m) => ({ value: m, label: m })), ...typed, { value: TYPE_MODEL, label: "Type a model name…" }];
+}
+
+/** The provider's name in sentences: a saved endpoint's name, "your endpoint", or the preset label. */
+export function providerNameOf(s: AgentSettings): string {
+  return endpointOf(s)?.name ?? (s.provider === "custom" ? "your endpoint" : presetOf(s.provider)?.label) ?? "the provider";
+}
+
+/** The one line under a model picker: what state the live list is in. */
+export function modelListStatus(list: ModelList, providerName: string): string {
+  switch (list.state) {
+    case "loading":
+      return "Loading models…";
+    case "wait":
+      return list.hint;
+    case "error":
+      return list.msg;
+    case "ok":
+      return list.ids.length ? `${list.ids.length} chat models from ${providerName}` : `${providerName} listed no chat models. Choose “Type a model name…”.`;
+  }
+}
+
 /** An AI endpoint the user added (Fahh Local settings > Save a named endpoint). */
 export interface CustomEndpoint {
   id: string;

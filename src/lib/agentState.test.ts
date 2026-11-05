@@ -6,8 +6,10 @@ import {
   itemsFromHistory,
   joinRoot,
   lastReply,
+  pendingFiles,
   pendingReview,
   relToRoot,
+  reviewDoneText,
   samePath,
   type AgentAction,
   type AgentState,
@@ -109,6 +111,26 @@ describe("agentReducer", () => {
     expect(reverted.turns[1].files).toEqual([]);
     expect(reverted.turns[1].reverted).toEqual(["a.ts", "b.ts"]);
     expect(pendingReview(reverted)).toHaveLength(0);
+  });
+
+  it("accept all keeps every pending file of that turn only", () => {
+    const base = run([
+      ev({ type: "file_changed", turn: 1, path: "a.ts" }),
+      ev({ type: "file_changed", turn: 1, path: "b.ts" }),
+      ev({ type: "file_changed", turn: 2, path: "c.ts" }),
+      { type: "file_accepted", turn: 1, path: "a.ts" },
+    ]);
+    expect(pendingFiles(base.turns[1])).toEqual(["b.ts"]);
+    const s = agentReducer(base, { type: "turn_accepted", turn: 1 });
+    expect(s.turns[1].accepted).toEqual(["a.ts", "b.ts"]);
+    expect(pendingFiles(s.turns[1])).toEqual([]);
+    expect(pendingReview(s).map((t) => t.turn)).toEqual([2]);
+    expect(agentReducer(s, { type: "turn_accepted", turn: 1 }).turns[1].accepted).toEqual(["a.ts", "b.ts"]);
+  });
+
+  it("words the bulk confirmation", () => {
+    expect(reviewDoneText("Accepted", 2)).toBe("Accepted 2 files");
+    expect(reviewDoneText("Rejected", 1)).toBe("Rejected 1 file");
   });
 
   it("keeps a plan and marks it implementing", () => {

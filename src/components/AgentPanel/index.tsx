@@ -12,25 +12,24 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ensureEditorMode } from "../../store/layoutModeStore";
-import { Bot, Compass, History, ListPlus, Plus, RefreshCw, Send, Settings2, ShieldAlert, Square, Trash2, X } from "lucide-react";
+import { Bot, Compass, History, ListPlus, Plus, Send, Settings2, ShieldAlert, Square, Trash2, X } from "lucide-react";
 
 import {
   agentListModels,
   baseUrlProblem,
   chatModels,
-  defaultModelFor,
   endpointOf,
   modelsError,
-  modelsWait,
   presetOf,
+  providerNameOf,
   PROVIDER_PRESETS,
   selectPreset,
   settingsProblem,
   showsBaseUrl,
-  toProviderConfig,
-  type AgentSettings,
   type CustomEndpoint,
+  type ModelList,
 } from "../../lib/agent";
+import { modelField, ModelPicker, useModelList } from "../ModelPicker";
 import { pendingReview } from "../../lib/agentState";
 import { calculateContextTokens } from "../../lib/tokenEstimator";
 import { filterSlash, groupSlash, insertion, menuQuery, MODE_LABEL, type SlashDef } from "../../lib/slash";
@@ -60,76 +59,9 @@ const QUICK_ACTIONS = [
   { label: "Explain Selection", prompt: "Explain the selected code and its purpose in the architecture." },
 ];
 
-const field = "mt-0.5 w-full bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent focus-visible:ring-1 focus-visible:ring-fahh-accent disabled:opacity-60";
+const field = modelField;
 const fieldBad = field.replace("border-fahh-surface", "border-fahh-error");
 const label = "block text-[11px] text-fahh-muted";
-
-/** The provider's model list, live: loading, error, empty or ok. */
-type ModelList = { state: "wait"; hint: string } | { state: "loading" } | { state: "error"; msg: string } | { state: "ok"; ids: string[] };
-
-/** Fetches the chat models for the current provider/endpoint/key (debounced while typing), and on reload. */
-function useModelList(settings: AgentSettings): [ModelList, () => void] {
-  const [list, setList] = useState<ModelList>({ state: "loading" });
-  const [nonce, setNonce] = useState(0);
-  useEffect(() => {
-    const hint = modelsWait(settings);
-    if (hint) return void setList({ state: "wait", hint });
-    setList({ state: "loading" });
-    let live = true;
-    const t = setTimeout(() => {
-      agentListModels(toProviderConfig(settings, "")).then(
-        (ids) => live && setList({ state: "ok", ids: chatModels(ids) }),
-        (e) => live && setList({ state: "error", msg: modelsError(e) }),
-      );
-    }, 350);
-    return () => {
-      live = false;
-      clearTimeout(t);
-    };
-  }, [settings.provider, settings.baseUrl, settings.apiKey, nonce]); // eslint-disable-line react-hooks/exhaustive-deps
-  return [list, () => setNonce((n) => n + 1)];
-}
-
-const TYPE = "__type";
-
-/** A model dropdown over the live list, with a "Type a model name…" escape hatch. */
-function ModelPicker({ id, value, onChange, list, optional }: { id: string; value: string; onChange: (v: string) => void; list: ModelList; optional?: boolean }) {
-  const ids = list.state === "ok" ? list.ids : [];
-  const [typing, setTyping] = useState(false);
-  if (list.state === "loading") return <div className="mt-0.5 h-[26px] rounded bg-fahh-surface animate-pulse motion-reduce:animate-none" aria-hidden data-testid={`${id}-skeleton`} />;
-  const offList = !!value && !ids.includes(value);
-  return (
-    <>
-      <select
-        id={id}
-        value={typing ? TYPE : value}
-        onChange={(e) => (e.target.value === TYPE ? setTyping(true) : (setTyping(false), onChange(e.target.value)))}
-        className={field}
-        data-testid={id}
-      >
-        {optional ? <option value="">Same as main model</option> : !value && <option value="" disabled>Choose a model</option>}
-        {ids.map((m) => (
-          <option key={m} value={m}>{m}</option>
-        ))}
-        {offList && <option value={value}>{value} (typed)</option>}
-        <option value={TYPE}>Type a model name…</option>
-      </select>
-      {typing && (
-        <input
-          autoFocus
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onBlur={() => setTyping(false)}
-          onKeyDown={(e) => (e.key === "Enter" || e.key === "Escape") && setTyping(false)}
-          placeholder="e.g. llama-3.3-70b-versatile"
-          aria-label={optional ? "Fast model name" : "Model name"}
-          spellCheck={false}
-          className={field}
-        />
-      )}
-    </>
-  );
-}
 
 function Settings({ models, reload, onDone }: { models: ModelList; reload: () => void; onDone: () => void }) {
   const { settings, updateSettings } = useAgentStore();
@@ -138,7 +70,7 @@ function Settings({ models, reload, onDone }: { models: ModelList; reload: () =>
   const [urlTouched, setUrlTouched] = useState(false);
   const saved = endpointOf(settings);
   const preset = presetOf(settings.provider);
-  const providerName = saved?.name ?? (settings.provider === "custom" ? "your endpoint" : preset?.label) ?? "the provider";
+  const providerName = providerNameOf(settings);
   const urlError = baseUrlProblem(settings.baseUrl);
 
   /** Settings edits on a saved endpoint update the endpoint too. */
@@ -186,18 +118,6 @@ function Settings({ models, reload, onDone }: { models: ModelList; reload: () =>
     const p = selectPreset(id);
     if (p) updateSettings(p);
   };
-
-  const status =
-    models.state === "loading" ? <span>Loading models…</span>
-    : models.state === "wait" ? <span>{models.hint}</span>
-    : models.state === "error" ? (
-      <span className="flex items-start gap-2 text-fahh-error">
-        <span className="flex-1 break-words" data-testid="models-error">{models.msg}</span>
-        <button type="button" onClick={reload} className="shrink-0 underline hover:text-fahh-text focus-visible:outline focus-visible:outline-1 focus-visible:outline-fahh-accent">Retry</button>
-      </span>
-    )
-    : models.ids.length ? <span>{models.ids.length} chat models from {providerName}</span>
-    : <span>{providerName} listed no chat models. Choose “Type a model name…”.</span>;
 
   return (
     <div className="p-2 space-y-2.5 border-b border-fahh-surface text-xs" data-testid="agent-settings">
@@ -276,21 +196,8 @@ function Settings({ models, reload, onDone }: { models: ModelList; reload: () =>
         />
       </label>
       <div>
-        <div className="flex items-center justify-between">
-          <label htmlFor="agent-model" className={label}>Model</label>
-          <button
-            type="button"
-            onClick={reload}
-            disabled={models.state === "loading" || models.state === "wait"}
-            aria-label="Refresh models"
-            title="Refresh models"
-            className="p-0.5 rounded text-fahh-muted hover:text-fahh-text disabled:opacity-40 focus-visible:outline focus-visible:outline-1 focus-visible:outline-fahh-accent"
-          >
-            <RefreshCw size={12} className={models.state === "loading" ? "animate-spin motion-reduce:animate-none" : ""} />
-          </button>
-        </div>
-        <ModelPicker id="agent-model" value={settings.model} onChange={(model) => updateSettings({ model })} list={models} />
-        <p className="mt-1 text-[11px] text-fahh-muted" aria-live="polite" data-testid="models-msg">{status}</p>
+        <label htmlFor="agent-model" className={label}>Model</label>
+        <ModelPicker id="agent-model" value={settings.model} onChange={(model) => updateSettings({ model })} list={models} status={{ providerName, reload }} />
       </div>
       <div>
         <label htmlFor="agent-fast-model" className={label}>
@@ -326,11 +233,8 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
   const { openFileInEditor } = useWorkspace();
   const problem = settingsProblem(settings);
   const [showSettings, setShowSettings] = useState(!!problem);
-  const [models, reloadModels] = useModelList(settings);
   // a fresh provider (or a model the user cleared) takes the provider's preferred live model
-  useEffect(() => {
-    if (models.state === "ok" && models.ids.length && !settings.model) store.updateSettings({ model: defaultModelFor(models.ids, settings.provider) });
-  }, [models]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [models, reloadModels] = useModelList();
   const [input, setInput] = useState("");
   const [historyIdx, setHistoryIdx] = useState<number | null>(null);
   const [menuIndex, setMenuIndex] = useState(0);
@@ -499,18 +403,7 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
           {status === "running" ? "working…" : status === "needs_input" ? "needs your OK" : status === "done" ? "done" : status === "error" ? "error" : store.title}
         </span>
         <div className="flex-1" />
-        <select
-          value={settings.model}
-          onChange={(e) => store.updateSettings({ model: e.target.value })}
-          className="text-[10px] bg-fahh-bg border border-fahh-surface rounded px-1.5 py-0.5 text-fahh-accent shrink-0 w-[88px] truncate focus:outline-none"
-          title={`Active model: ${settings.model} (${settings.provider})`}
-        >
-          {!settings.model && <option value="">No model</option>}
-          {(models.state === "ok" ? models.ids : []).map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-          {settings.model && !(models.state === "ok" && models.ids.includes(settings.model)) && <option value={settings.model}>{settings.model}</option>}
-        </select>
+        <ModelPicker id="agent-header-model" value={settings.model} onChange={(model) => store.updateSettings({ model })} list={models} compact />
         <button onClick={store.newChat} title="New session (/clear)" aria-label="New session" className="shrink-0 text-fahh-muted hover:text-fahh-text"><Plus size={14} /></button>
         <button onClick={() => void store.handleInput("/ls")} title="Saved sessions (/ls)" aria-label="Saved sessions" className="shrink-0 text-fahh-muted hover:text-fahh-text"><History size={13} /></button>
         <button onClick={() => setShowSettings((s) => !s)} title="Provider and model" aria-label="Provider and model" className={`shrink-0 ${showSettings ? "text-fahh-accent" : "text-fahh-muted hover:text-fahh-text"}`}>
