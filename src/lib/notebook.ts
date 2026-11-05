@@ -25,7 +25,15 @@ export interface Notebook {
   cells: NotebookCell[];
 }
 
-export type ParsedNotebook = Notebook | { error: string };
+/** `line` (1-based) is where JSON parsing failed, when it did. */
+export type ParsedNotebook = Notebook | { error: string; line?: number };
+
+/** The 1-based line of a JSON.parse error: its "position N", else the end (truncated input). */
+export function jsonErrorLine(json: string, message: string): number {
+  const m = /position (\d+)/.exec(message);
+  const at = m ? Math.min(Number(m[1]), json.length) : json.length;
+  return json.slice(0, at).split("\n").length;
+}
 
 /** nbformat stores multiline text as a string or an array of lines. */
 const text = (v: unknown): string => (Array.isArray(v) ? v.join("") : typeof v === "string" ? v : "");
@@ -68,10 +76,12 @@ export function parseOutput(raw: unknown): NotebookOutput | null {
 
 export function parseNotebook(json: string): ParsedNotebook {
   let nb: Record<string, unknown>;
+  const src = json.replace(/^\uFEFF/, "");
   try {
-    nb = obj(JSON.parse(json.replace(/^\uFEFF/, "")));
+    nb = obj(JSON.parse(src));
   } catch (e) {
-    return { error: `Not valid notebook JSON: ${(e as Error).message}` };
+    const message = (e as Error).message;
+    return { error: `Not valid notebook JSON: ${message}`, line: jsonErrorLine(src, message) };
   }
   if (!Array.isArray(nb.cells)) {
     // ponytail: nbformat 3 (worksheets) not rendered; Jupyter itself upgrades those on open.

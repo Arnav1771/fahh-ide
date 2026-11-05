@@ -62,6 +62,9 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The agent's `get_diagnostics`, the "fahh when the agent adds errors" check and the selection context were always empty: `window.monaco` was never set. `monaco-setup.ts` sets it now.
 - Steer (`Ctrl+Enter` while running) waited a fixed 150 ms after Stop and could hit "the agent is already working on a turn"; it now sends once the turn has really ended.
 - `core::debugger::tests::free_port_is_actually_free` was flaky: a parallel test could take the released port before the rebind. It now retries.
+- **Fahh Local wrote cut-off files and marked them done.** When a model hit its output-token limit in the middle of a `write_file` (OpenAI-compatible `finish_reason: "length"`, Anthropic `stop_reason: "max_tokens"`), the stream ending was ignored; some servers close the cut-off call into valid JSON themselves, so a 497-byte half notebook was written with a ✓. A call that was still open when the output was cut off, or whose arguments are not a complete JSON object, is now never run: it shows as a failed step and the model is told to write the file in smaller parts. Nothing repairs truncated arguments.
+- `write_file` / `edit_file` check `.json` and `.ipynb` before writing: the result must be valid JSON, and a notebook needs a `cells` array and `nbformat`. On failure nothing is written and the parse error goes back to the model. (An edit to a file that is already broken is allowed, so it can be fixed step by step.)
+- The notebook preview's "Not valid notebook JSON" error now says why that happens and has **Open source at line N**, which opens the source at the line where parsing failed.
 
 ### Removed (simulated)
 

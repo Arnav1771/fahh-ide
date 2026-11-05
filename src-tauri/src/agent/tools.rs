@@ -203,7 +203,26 @@ pub fn plan_edit(ws: &Workspace, tool: &str, args: &Value) -> Result<EditPlan, S
         let Some(b) = &before else { return Err("file does not exist; use write_file to create it".into()) };
         apply_edit(b, str_arg(args, "old_str")?, str_arg(args, "new_str")?, args.get("replace_all").and_then(Value::as_bool).unwrap_or(false))?
     };
+    // an edit may step through a file that is already broken (fixing it); it may not break a valid one
+    if tool == "write_file" || before.as_deref().map_or(true, |b| check_structured(&rel, b).is_ok()) {
+        check_structured(&rel, &after)?;
+    }
     Ok(EditPlan { abs, rel, before, after })
+}
+
+/// `.json` must parse; `.ipynb` must also look like nbformat 4 (`cells` array, `nbformat`).
+/// Other files pass. The error goes back to the model so it can retry.
+pub fn check_structured(path: &str, content: &str) -> Result<(), String> {
+    let ext = path.rsplit_once('.').map(|(_, e)| e.to_ascii_lowercase()).unwrap_or_default();
+    if ext != "json" && ext != "ipynb" {
+        return Ok(());
+    }
+    let v: Value = serde_json::from_str(content.trim_start_matches('\u{feff}'))
+        .map_err(|e| format!("not written: {path} would not be valid JSON ({e}). Send the complete file; for a large notebook, write a small valid one first and add cells with edit_file"))?;
+    if ext == "ipynb" && !(v.get("cells").is_some_and(Value::is_array) && v.get("nbformat").is_some()) {
+        return Err(format!("not written: {path} is not a Jupyter notebook: it needs a `cells` array and `nbformat` (4)"));
+    }
+    Ok(())
 }
 
 pub fn commit_edit(plan: &EditPlan) -> Result<(), String> {
@@ -404,6 +423,30 @@ mod tests {
         let d = tempfile::tempdir().unwrap();
         let w = Workspace::new(d.path().to_str().unwrap()).unwrap();
         (d, w)
+    }
+
+    #[test]
+    fn structured_files_are_checked_before_writing() {
+        // the 497-byte notebook from the bug report
+        let cut = "{\n \"cells\": [\n  {\"cell_type\": \"markdown\", \"metadata\": {}, \"source\": [\"## 1. Load the data\"]},\n  {\n   \"cell";
+        assert!(check_structured("analysis.ipynb", cut).unwrap_err().contains("not be valid JSON"));
+        assert!(check_structured("a.ipynb", r#"{"cells": [], "metadata": {}, "nbformat": 4, "nbformat_minor": 5}"#).is_ok());
+        assert!(check_structured("a.ipynb", r#"{"cells": {}}"#).unwrap_err().contains("not a Jupyter notebook"));
+        assert!(check_structured("conf/A.JSON", "{\"a\": 1,}").is_err());
+        assert!(check_structured("a.json", "[1, 2]").is_ok());
+        assert!(check_structured("data.csv", "{not json").is_ok());
+        assert!(check_structured("Makefile", "{").is_ok());
+    }
+
+    #[test]
+    fn plan_edit_refuses_to_break_json_but_can_fix_broken_json() {
+        let (d, w) = ws();
+        let bad = plan_edit(&w, "write_file", &json!({"path": "a.json", "content": "{\"a\":"}));
+        assert!(bad.is_err());
+        std::fs::write(d.path().join("a.json"), "{\"a\": 1}").unwrap();
+        assert!(plan_edit(&w, "edit_file", &json!({"path": "a.json", "old_str": "1}", "new_str": "1"})).is_err());
+        std::fs::write(d.path().join("b.json"), "{\"a\": [1}").unwrap();
+        assert!(plan_edit(&w, "edit_file", &json!({"path": "b.json", "old_str": "[1", "new_str": "[1,"})).is_ok(), "already broken: step-by-step fixes allowed");
     }
 
     #[test]

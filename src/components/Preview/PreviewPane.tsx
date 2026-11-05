@@ -77,7 +77,7 @@ export function PreviewPane({ path, content, kind, onClose, onShowSource }: Prop
         {kind === "svg" && <ImagePreview src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(content)}`} path={path} bytes={new Blob([content]).size} />}
         {kind === "csv" && <CsvPreview content={content} delimiter={extOf(path) === "tsv" ? "\t" : ","} />}
         {kind === "pdf" && <PdfPreview path={path} />}
-        {kind === "notebook" && <NotebookPreview path={path} content={content} />}
+        {kind === "notebook" && <NotebookPreview path={path} content={content} onShowSource={onShowSource} />}
       </div>
     </div>
   );
@@ -571,11 +571,31 @@ function NotebookCellView({ cell, language, path, run, onRun }: { cell: Notebook
   );
 }
 
-function NotebookPreview({ path, content }: { path: string; content: string }) {
+function NotebookPreview({ path, content, onShowSource }: { path: string; content: string; onShowSource?: () => void }) {
   const source = useDebounced(content, 300);
   const nb = useMemo(() => parseNotebook(source), [source]);
   const k = useNotebookKernel(path);
-  if ("error" in nb) return <p className="fahh-nb-invalid p-4 text-xs text-fahh-error">{nb.error}</p>;
+  if ("error" in nb) {
+    const { line } = nb;
+    // Preview-only mode hides the editor: show it first, then jump once it has laid out.
+    const openAt = () => {
+      onShowSource?.();
+      if (line) setTimeout(() => revealLine(line), 50);
+    };
+    return (
+      <div className="fahh-nb-invalid flex flex-col items-start gap-2 p-4 text-xs">
+        <p role="alert" className="text-fahh-error">{nb.error}</p>
+        {line && (
+          <>
+            <p className="text-fahh-muted">This file is not valid JSON (it may have been cut off while it was written). Fix it in the source, or ask for it to be regenerated.</p>
+            <button type="button" onClick={openAt} className="flex items-center gap-1 rounded border border-fahh-surface px-2 py-1 text-fahh-text hover:bg-fahh-surface">
+              <Code size={13} aria-hidden="true" /> Open source at line {line}
+            </button>
+          </>
+        )}
+      </div>
+    );
+  }
   if (nb.cells.length === 0) return <p className="p-4 text-xs text-fahh-muted">Empty notebook.</p>;
   // ponytail: Python kernels only; other notebook languages stay a read-only view.
   const python = nb.language === "python";
