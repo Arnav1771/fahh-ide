@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+  <head><meta charset="UTF-8" /><title>terminal check</title><style>.fahh-xterm { height: 100%; }</style></head>
+  <body style="margin:0;background:#1e1e2e">
+    <div id="box" style="width:900px;height:300px;display:flex"><div id="root" style="flex:1;min-width:0"></div></div>
+    <script>
+      // Fake Tauri: pty_spawn starts "shell" 1, which prints 500 lines; every call is recorded.
+      const callbacks = {};
+      let next = 1;
+      window.calls = [];
+      window.__TAURI_INTERNALS__ = {
+        metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main", windowLabel: "main" } },
+        transformCallback(cb) { const id = next++; callbacks[id] = cb; return id; },
+        unregisterCallback(id) { delete callbacks[id]; },
+        async invoke(cmd, args) {
+          window.calls.push([cmd, args]);
+          if (cmd === "plugin:event|listen") {
+            (window.handlers ??= {})[args.event] = args.handler;
+            return next++;
+          }
+          if (cmd === "pty_spawn") {
+            setTimeout(() => {
+              let text = "";
+              for (let i = 1; i <= 500; i++) text += `line ${i}\r\n`;
+              callbacks[window.handlers["pty://data"]]({ event: "pty://data", id: 0, payload: { id: 1, data: text } });
+            }, 50);
+            return 1;
+          }
+          return null;
+        },
+      };
+    </script>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

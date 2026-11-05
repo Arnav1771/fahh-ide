@@ -11,6 +11,22 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      // A failure before React mounts (a module that throws, a denied IPC call at boot) used to
+      // leave a blank white window. Say so instead; once the app has rendered this stays quiet.
+      (function () {
+        function fail(msg) {
+          var root = document.getElementById("root");
+          if (!root || root.childElementCount) return;
+          document.body.style.cssText = "margin:0;background:#1e1e2e;color:#cdd6f4;font:14px system-ui,sans-serif";
+          root.innerHTML = '<div role="alert" style="padding:32px"><b>Fahh Editor could not start this window.</b><pre style="white-space:pre-wrap;opacity:.75"></pre><button onclick="location.reload()">Reload</button></div>';
+          root.querySelector("pre").textContent = String(msg);
+        }
+        window.addEventListener("error", function (e) { fail(e.message || e.error); });
+        window.addEventListener("unhandledrejection", function (e) { fail(e.reason && e.reason.message || e.reason); });
+        setTimeout(function () { fail("Nothing loaded after 20 seconds."); }, 20000);
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

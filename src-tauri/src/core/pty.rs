@@ -5,9 +5,9 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Mutex;
+use std::sync::{mpsc, Mutex};
 
-use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, MasterPty, PtySize};
+use portable_pty::{native_pty_system, ChildKiller, CommandBuilder, PtySize};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter};
 
@@ -20,9 +20,16 @@ pub struct TerminalProfile {
     pub args: Vec<String>,
 }
 
+/// Work for a session's own I/O thread. Writes and resizes on a ConPTY block while conhost is
+/// busy (a TUI streaming output), so they never run under the `PTYS` lock or on the UI thread:
+/// one stuck session used to freeze every other terminal, including spawning new ones.
+enum Cmd {
+    Write(Vec<u8>),
+    Resize(PtySize),
+}
+
 struct Pty {
-    master: Box<dyn MasterPty + Send>,
-    writer: Box<dyn Write + Send>,
+    tx: mpsc::Sender<Cmd>,
     killer: Box<dyn ChildKiller + Send + Sync>,
 }
 
@@ -189,10 +196,26 @@ fn spawn_raw(
     drop(pair.slave);
 
     let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
-    let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
+    let mut writer = pair.master.take_writer().map_err(|e| e.to_string())?;
+    let master = pair.master;
     let killer = child.clone_killer();
     let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-    PTYS.lock().map_err(|e| e.to_string())?.insert(id, Pty { master: pair.master, writer, killer });
+    let (tx, rx) = mpsc::channel::<Cmd>();
+    // This session's writes and resizes, in order. Ends when the session leaves `PTYS` (its
+    // sender is dropped); dropping `master` here, off the lock, closes the pseudo-console.
+    std::thread::spawn(move || {
+        for cmd in rx {
+            match cmd {
+                Cmd::Write(bytes) => {
+                    let _ = writer.write_all(&bytes).and_then(|_| writer.flush());
+                }
+                Cmd::Resize(size) => {
+                    let _ = master.resize(size);
+                }
+            }
+        }
+    });
+    PTYS.lock().map_err(|e| e.to_string())?.insert(id, Pty { tx, killer });
 
     std::thread::spawn(move || {
         let mut buf = [0u8; 16 * 1024];
@@ -214,9 +237,8 @@ fn spawn_raw(
     // console is closed: wait for the shell here, then drop the PTY so the reader ends too.
     std::thread::spawn(move || {
         let code = child.wait().ok().map(|s| s.exit_code());
-        if let Ok(mut map) = PTYS.lock() {
-            map.remove(&id);
-        }
+        let gone = PTYS.lock().ok().and_then(|mut map| map.remove(&id));
+        drop(gone); // outside the lock
         on_exit(id, code);
     });
     Ok(id)
@@ -247,36 +269,43 @@ pub async fn pty_spawn(
         .ok_or("No shell was found on this machine")?
         .clone();
     let data_app = app.clone();
-    spawn_raw(
-        &chosen,
-        &cwd,
-        cols,
-        rows,
-        ps_remote_signed.unwrap_or(true),
-        move |id, data| {
-            let _ = data_app.emit("pty://data", serde_json::json!({ "id": id, "data": data }));
-        },
-        move |id, code| {
-            let _ = app.emit("pty://exit", serde_json::json!({ "id": id, "code": code }));
-        },
-    )
+    // Opening a ConPTY and starting the shell block: keep them off the async workers.
+    tauri::async_runtime::spawn_blocking(move || {
+        spawn_raw(
+            &chosen,
+            &cwd,
+            cols,
+            rows,
+            ps_remote_signed.unwrap_or(true),
+            move |id, data| {
+                let _ = data_app.emit("pty://data", serde_json::json!({ "id": id, "data": data }));
+            },
+            move |id, code| {
+                let _ = app.emit("pty://exit", serde_json::json!({ "id": id, "code": code }));
+            },
+        )
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// Queue work for a session's I/O thread; never blocks.
+fn send(id: u32, cmd: Cmd) -> Result<(), String> {
+    let map = PTYS.lock().map_err(|e| e.to_string())?;
+    let pty = map.get(&id).ok_or("This terminal has exited")?;
+    pty.tx.send(cmd).map_err(|_| "This terminal has exited".to_string())
 }
 
 /// Keystrokes (or pasted text) for the shell.
 #[tauri::command]
 pub fn pty_write(id: u32, data: String) -> Result<(), String> {
-    let mut map = PTYS.lock().map_err(|e| e.to_string())?;
-    let pty = map.get_mut(&id).ok_or("This terminal has exited")?;
-    pty.writer.write_all(data.as_bytes()).and_then(|_| pty.writer.flush()).map_err(|e| e.to_string())
+    send(id, Cmd::Write(data.into_bytes()))
 }
 
 #[tauri::command]
 pub fn pty_resize(id: u32, cols: u16, rows: u16) -> Result<(), String> {
-    let map = PTYS.lock().map_err(|e| e.to_string())?;
-    let Some(pty) = map.get(&id) else { return Ok(()) };
-    pty.master
-        .resize(PtySize { rows: rows.max(2), cols: cols.max(10), pixel_width: 0, pixel_height: 0 })
-        .map_err(|e| e.to_string())
+    let _ = send(id, Cmd::Resize(PtySize { rows: rows.max(2), cols: cols.max(10), pixel_width: 0, pixel_height: 0 }));
+    Ok(())
 }
 
 /// Kill the shell (closing its tab). Its exit still arrives as `pty://exit`.
@@ -373,5 +402,45 @@ mod tests {
         assert!(seen.contains("fahh-42"), "output was: {seen:?}");
         assert_eq!(erx.recv_timeout(Duration::from_secs(10)).unwrap(), Some(3));
         assert!(pty_write(id, "x".into()).is_err(), "an exited terminal refuses input");
+    }
+
+    /// A shell that never reads its input (a TUI busy streaming) used to block `pty_write`
+    /// while it held the lock over every session, so no new terminal could start.
+    #[cfg(unix)]
+    #[test]
+    fn a_stuck_session_does_not_block_input_or_new_terminals() {
+        let busy = profile("sh", "sh", "/bin/sh", &["-c", "stty raw -echo; sleep 30"]);
+        let stuck = spawn_raw(&busy, "", 80, 24, true, |_, _| {}, |_, _| {}).unwrap();
+        std::thread::sleep(Duration::from_millis(300)); // let stty run
+        let (done_tx, done_rx) = mpsc::channel::<()>();
+        std::thread::spawn(move || {
+            // far more than the tty input buffer holds: the session's writer blocks on it
+            for _ in 0..64 {
+                let _ = pty_write(stuck, "x".repeat(16 * 1024));
+            }
+            let _ = pty_resize(stuck, 100, 30);
+            let _ = done_tx.send(());
+        });
+        done_rx.recv_timeout(Duration::from_secs(5)).expect("pty_write/pty_resize blocked on a stuck shell");
+
+        let sh = profile("sh", "sh", "/bin/sh", &[]);
+        let (tx, rx) = mpsc::channel::<String>();
+        let (stx, srx) = mpsc::channel();
+        std::thread::spawn(move || {
+            let id = spawn_raw(&sh, "", 80, 24, true, move |_, d| { let _ = tx.send(d); }, |_, _| {}).unwrap();
+            pty_write(id, "echo second-$((1+1))\n".into()).unwrap();
+            let _ = stx.send(id);
+        });
+        let second = srx.recv_timeout(Duration::from_secs(5)).expect("spawning waited on the stuck session");
+        let mut seen = String::new();
+        let deadline = std::time::Instant::now() + Duration::from_secs(10);
+        while !seen.contains("second-2") && std::time::Instant::now() < deadline {
+            if let Ok(d) = rx.recv_timeout(Duration::from_millis(200)) {
+                seen.push_str(&d);
+            }
+        }
+        assert!(seen.contains("second-2"), "output was: {seen:?}");
+        pty_kill(second).unwrap();
+        pty_kill(stuck).unwrap();
     }
 }

@@ -57,11 +57,7 @@ pub fn on_second_launch(app: &tauri::AppHandle, argv: Vec<String>, cwd: String) 
             }
         }
         cli::Launch::Open(req) => {
-            let timestamp = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .map(|d| d.as_millis())
-                .unwrap_or(0);
-            let label = format!("fahh-win-{}", timestamp);
+            let label = new_window_label();
 
             // Park the open request for the newly spawned window
             app.state::<cli::PendingOpen>().set_for_window(&label, req.clone());
@@ -134,17 +130,25 @@ pub fn take_pending_open(
     state.take_for_window(window.label())
 }
 
-/// Explicit command to open a fresh Fahh window from menus or shortcuts.
-#[tauri::command]
-pub fn open_new_window(
-    app: tauri::AppHandle,
-    path: Option<String>,
-) -> Result<String, String> {
-    let timestamp = std::time::SystemTime::now()
+/// Label for an extra window. Must match a `windows` glob in capabilities/default.json, or
+/// every IPC call from that window is denied (see the test below).
+fn new_window_label() -> String {
+    let ms = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis())
         .unwrap_or(0);
-    let label = format!("fahh-win-{}", timestamp);
+    format!("fahh-win-{ms}")
+}
+
+/// Explicit command to open a fresh Fahh window from menus or shortcuts.
+/// `async` on purpose: on Windows, building a webview inside a synchronous command (which
+/// runs on the UI thread) deadlocks WebView2, and the new window stays blank white forever.
+#[tauri::command]
+pub async fn open_new_window(
+    app: tauri::AppHandle,
+    path: Option<String>,
+) -> Result<String, String> {
+    let label = new_window_label();
 
     let title = if let Some(ref p) = path {
         let name = std::path::Path::new(p)
@@ -183,7 +187,28 @@ pub fn open_new_window(
 
 #[cfg(test)]
 mod tests {
-    use super::{cli, opens_as_tab};
+    use super::{cli, new_window_label, opens_as_tab};
+
+    /// Every label this code gives a window is covered by the capability, so its IPC works.
+    #[test]
+    fn window_labels_are_covered_by_the_capability() {
+        let cap: serde_json::Value = serde_json::from_str(include_str!("../../capabilities/default.json")).unwrap();
+        let globs: Vec<&str> = cap["windows"].as_array().unwrap().iter().map(|g| g.as_str().unwrap()).collect();
+        let covered = |label: &str| {
+            globs.iter().any(|g| match g.strip_suffix('*') {
+                Some(prefix) => label.starts_with(prefix),
+                None => label == *g,
+            })
+        };
+        assert!(covered("main"));
+        assert!(covered(&new_window_label()), "{} not in {globs:?}", new_window_label());
+    }
+
+    /// A synchronous command runs on the UI thread, where building a WebView2 deadlocks.
+    #[test]
+    fn new_window_command_is_async() {
+        assert!(include_str!("mod.rs").contains("pub async fn open_new_window("));
+    }
 
     fn req(path: &str, kind: cli::Kind) -> cli::OpenRequest {
         cli::OpenRequest { path: path.into(), line: None, kind }

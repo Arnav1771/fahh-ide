@@ -13,7 +13,11 @@ pub fn run() {
 
     tauri::Builder::default()
         // First, so a second `fahh <path>` is forwarded to the running window instead of starting another.
-        .plugin(tauri_plugin_single_instance::init(app::on_second_launch))
+        // The callback runs on the UI thread, where building a window deadlocks WebView2 on Windows.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            let app = app.clone();
+            std::thread::spawn(move || app::on_second_launch(&app, argv, cwd));
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())

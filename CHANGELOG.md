@@ -29,6 +29,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Servers keep running while any tab of their language is open (switching between a .py and a .ts tab used to kill and restart them) and stop when none is.
 - On Windows the server binary is spawned by its resolved path, so npm's `.cmd` shims (typescript-language-server, pyright-langserver, the vscode-*-language-server family) start.
 
+### Fixed
+
+- **New Window opened a blank white window (Windows).** The `open_new_window` command was synchronous, so it ran on the UI thread, where building a WebView2 deadlocks; it is async now, and `fahh <folder>` from a shell builds its window off the UI thread too. A window that fails before the app mounts now shows the error and a Reload button instead of white.
+- **New terminal tabs stayed empty while another terminal was busy.** Writes and resizes to every shell ran on the UI thread under one lock, so a shell that stopped reading (a TUI streaming output) froze them all, and new shells never started. Each terminal now has its own I/O thread, spawning runs off the async workers, and a tab whose shell fails says "Couldn't start ..." (or "Still starting ..." after 10 s) instead of staying blank.
+- **The terminal could not scroll back and ignored resizes.** A shell started before the panel was laid out kept that size (a 12x7 ConPTY), and resizes made while it was starting were dropped, so a TUI drew into a corner with no scrollback. The terminal fits again before starting the shell, sends the latest size once it exists, and re-fits when its tab is shown. Shift+wheel always scrolls the scrollback, even while a program has mouse reporting on.
+
 ### Changed
 
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.

@@ -11,6 +11,7 @@ import { attach, clearBuffer, resize, write } from "../../lib/ptySessions";
 import { noteLocalUrls, openBrowser } from "../../lib/browser";
 import { useSettingsStore } from "../../store/settingsStore";
 import { unscaleForElement } from "../../lib/scaledPointer";
+import { scrollbackWheelLines } from "../../lib/termWheel";
 import {
   useTerminalStore,
   type TerminalSession,
@@ -168,6 +169,13 @@ export function XtermPane({
     });
     term.open(el);
     const offScale = followCssScale(term, el);
+    term.attachCustomWheelEventHandler((ev) => {
+      const lines = scrollbackWheelLines(ev);
+      if (lines === null) return true;
+      term.scrollLines(lines);
+      ev.preventDefault();
+      return false;
+    });
     try {
       fit.fit();
     } catch {
@@ -201,6 +209,13 @@ export function XtermPane({
     const profile = session.profile || settings.terminalDefaultProfile;
     void startFolder(session.cwd).then((cwd) => {
       if (!alive) return;
+      // Fit again now the panel is laid out: a shell started at the mount-time size (a
+      // ConPTY of 12x7) drew only into that corner, with no scrollback, until a resize.
+      try {
+        if (el.offsetWidth && el.offsetHeight) fit.fit();
+      } catch {
+        // disposed
+      }
       void attach(
         session.id,
         { profile, cwd, cols: term.cols, rows: term.rows, psRemoteSigned: settings.terminalPsPolicy !== "system" },
@@ -279,8 +294,18 @@ export function XtermPane({
   }, [fontSize, fontFamily, session.id]);
 
   useEffect(() => {
-    if (active) termRef.current?.focus();
-  }, [active]);
+    const term = termRef.current;
+    if (!active || !term) return;
+    term.focus();
+    const el = ref.current;
+    if (!el?.offsetWidth || !el.offsetHeight) return;
+    try {
+      fitRef.current?.fit();
+      resize(session.id, term.cols, term.rows);
+    } catch {
+      // hidden
+    }
+  }, [active, session.id]);
 
   return (
     <div

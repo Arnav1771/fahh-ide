@@ -6,6 +6,9 @@
 import { listen } from "@tauri-apps/api/event";
 import { ptyKill, ptyResize, ptySpawn, ptyWrite, terminalProfiles, type TerminalProfile } from "./tauri";
 
+/** How long a shell may take to start before the tab says so (it keeps waiting). */
+export const SLOW_SPAWN_MS = 10_000;
+
 /** Scrollback kept per shell for re-attaching, in characters. */
 const MAX_BUFFER = 256 * 1024;
 
@@ -20,6 +23,8 @@ interface Entry {
   pendingInput: string;
   exited: boolean;
   exitCode: number | null;
+  /** Last size the view asked for; a resize before the shell exists is applied once it does. */
+  size: { cols: number; rows: number } | null;
   onData: Set<DataFn>;
   onExit: Set<ExitFn>;
 }
@@ -34,7 +39,7 @@ let listening: Promise<void> | null = null;
 function entry(sessionId: string): Entry {
   let e = entries.get(sessionId);
   if (!e) {
-    e = { ptyId: null, spawning: null, buffer: "", pendingInput: "", exited: false, exitCode: null, onData: new Set(), onExit: new Set() };
+    e = { ptyId: null, spawning: null, buffer: "", pendingInput: "", exited: false, exitCode: null, size: null, onData: new Set(), onExit: new Set() };
     entries.set(sessionId, e);
   }
   return e;
@@ -90,11 +95,22 @@ export async function attach(sessionId: string, opts: SpawnOptions, onData: Data
   e.onExit.add(onExit);
   if (e.exited) onExit(e.exitCode);
   else if (e.ptyId === null && !e.spawning) {
-    e.spawning = ptySpawn(opts.profile, opts.cwd, opts.cols, opts.rows, opts.psRemoteSigned ?? true);
+    const size = (e.size = { cols: opts.cols, rows: opts.rows });
+    const name = opts.profile || "the shell";
+    e.spawning = ptySpawn(opts.profile, opts.cwd, size.cols, size.rows, opts.psRemoteSigned ?? true);
+    // A hung spawn used to leave a blank tab with a cursor: say so.
+    const slow = setTimeout(
+      () => deliver(e, `\x1b[33mStill starting ${name}... (no response after ${SLOW_SPAWN_MS / 1000} s)\x1b[0m\r\n`),
+      SLOW_SPAWN_MS,
+    );
     try {
       const id = await e.spawning;
+      clearTimeout(slow);
       e.ptyId = id;
       sessionOfPty.set(id, sessionId);
+      // The panel was laid out (or resized) while the shell started: give it the real size.
+      const now = e.size ?? size;
+      if (now.cols !== size.cols || now.rows !== size.rows) void ptyResize(id, now.cols, now.rows).catch(() => {});
       for (const chunk of early.get(id) ?? []) deliver(e, chunk);
       early.delete(id);
       if (earlyExit.has(id)) {
@@ -106,8 +122,9 @@ export async function attach(sessionId: string, opts: SpawnOptions, onData: Data
         await ptyWrite(id, input);
       }
     } catch (err) {
+      clearTimeout(slow);
       e.spawning = null;
-      deliver(e, `\x1b[31m${err instanceof Error ? err.message : String(err)}\x1b[0m\r\n`);
+      deliver(e, `\x1b[31mCouldn't start ${name}: ${err instanceof Error ? err.message : String(err)}\x1b[0m\r\n`);
       finish(e, null);
     }
   }
@@ -129,8 +146,10 @@ export async function write(sessionId: string, data: string): Promise<void> {
 }
 
 export function resize(sessionId: string, cols: number, rows: number): void {
-  const id = entries.get(sessionId)?.ptyId;
-  if (id != null) void ptyResize(id, cols, rows).catch(() => {});
+  const e = entry(sessionId); // may come before attach(): kept for the spawn
+  if (e.size?.cols === cols && e.size?.rows === rows) return;
+  e.size = { cols, rows };
+  if (e.ptyId != null) void ptyResize(e.ptyId, cols, rows).catch(() => {});
 }
 
 /** Close a session: kill its shell and forget it. */
