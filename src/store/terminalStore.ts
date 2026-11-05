@@ -56,8 +56,9 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   },
 
   splitTerminal: (profile) => {
-    const { activeSessionId, splitSessionIds, isSplitView } = get();
+    const { activeSessionId, splitSessionIds, isSplitView, sessions } = get();
     const id = get().createSession(profile);
+    if (!sessions.some((s) => s.id === activeSessionId)) return id; // nothing to split beside
     set({
       isSplitView: true,
       splitSessionIds: isSplitView && splitSessionIds.includes(activeSessionId) ? [...splitSessionIds, id] : [activeSessionId, id],
@@ -72,15 +73,17 @@ export const useTerminalStore = create<TerminalStore>((set, get) => ({
   closeSession: (id) => {
     kill(id);
     const st = get();
-    let sessions = st.sessions.filter((s) => s.id !== id);
-    // The panel always has a terminal: closing the last one starts a fresh shell.
-    if (sessions.length === 0) sessions = [newSession()];
-    const activeSessionId = sessions.some((s) => s.id === st.activeSessionId) ? st.activeSessionId : sessions[sessions.length - 1].id;
+    const sessions = st.sessions.filter((s) => s.id !== id);
+    // Closing the last one leaves the panel empty with "New Terminal" (VS Code). It used to start
+    // a fresh shell at once, so Kill looked like it did nothing.
     const split = st.splitSessionIds.filter((s) => s !== id && sessions.some((x) => x.id === s));
+    const activeSessionId = sessions.some((s) => s.id === st.activeSessionId)
+      ? st.activeSessionId
+      : (split[split.length - 1] ?? sessions[sessions.length - 1]?.id ?? "");
     set({
       sessions,
       activeSessionId,
-      splitSessionIds: split.length ? split : [activeSessionId],
+      splitSessionIds: split.length ? split : activeSessionId ? [activeSessionId] : [],
       isSplitView: st.isSplitView && split.length > 1,
     });
   },

@@ -85,6 +85,7 @@ pub fn run() {
             pty::pty_write,
             pty::pty_resize,
             pty::pty_kill,
+            pty::pty_reset,
             remote::remote_wsl_distros,
             remote::remote_wsl_home,
             remote::remote_ssh_hosts,
@@ -148,6 +149,12 @@ pub fn run() {
             agent::agent_generate,
             agent::agent_generate_stop,
         ])
+        // A closed window's terminals end with it (the job object covers Fahh exiting).
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                pty::kill_window(window.label());
+            }
+        })
         .setup(|app| {
             app::setup(app)?;
             Ok(())

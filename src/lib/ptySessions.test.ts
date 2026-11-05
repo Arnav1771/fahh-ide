@@ -25,6 +25,7 @@ vi.mock("./tauri", () => ({
   ptyWrite: vi.fn(async (id: number, data: string) => {
     writes.push([id, data]);
   }),
+  ptyReset: vi.fn(async () => {}),
   ptyResize: vi.fn(async (id: number, cols: number, rows: number) => {
     resizes.push([id, cols, rows]);
   }),

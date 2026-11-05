@@ -4,7 +4,7 @@
  * last output is kept and replayed when an xterm attaches again.
  */
 import { listen } from "@tauri-apps/api/event";
-import { ptyKill, ptyResize, ptySpawn, ptyWrite, terminalProfiles, type TerminalProfile } from "./tauri";
+import { ptyKill, ptyReset, ptyResize, ptySpawn, ptyWrite, terminalProfiles, type TerminalProfile } from "./tauri";
 
 /** How long a shell may take to start before the tab says so (it keeps waiting). */
 export const SLOW_SPAWN_MS = 10_000;
@@ -58,6 +58,8 @@ function finish(e: Entry, code: number | null): void {
 
 function ensureListening(): Promise<void> {
   listening ??= Promise.all([
+    // A reload starts with no tabs: end the shells the old page started before spawning new ones.
+    ptyReset().catch(() => {}),
     listen<{ id: number; data: string }>("pty://data", ({ payload }) => {
       const sid = sessionOfPty.get(payload.id);
       const e = sid ? entries.get(sid) : undefined;
