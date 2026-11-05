@@ -11,6 +11,8 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- Fahh Local provider settings: models load live from the provider's `/models` list (through the backend, so no CORS), filtered to chat models, with loading, error (e.g. "Key rejected (401)") and retry states. Hardcoded model lists are gone. Built-in providers no longer show their base URL (an "Edit endpoint" disclosure covers proxies); "Custom (OpenAI-compatible)" asks for a validated base URL and an optional key. Key placeholders say what each provider's key looks like.
+
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
 
 ### Added

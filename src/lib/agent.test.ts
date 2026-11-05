@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENT_SETTINGS, parseAgentSettings, settingsProblem, toJudgeConfig, toProviderConfig } from "./agent";
-import { endpointOf } from "./agent";
+import { baseUrlProblem, chatModels, defaultModelFor, endpointOf, modelsError, modelsWait, PROVIDER_PRESETS, selectPreset, showsBaseUrl } from "./agent";
 
 describe("agent settings", () => {
   it("falls back to defaults on garbage", () => {
@@ -64,5 +64,70 @@ describe("custom endpoints", () => {
     const s = parseAgentSettings(JSON.stringify({ provider: "ep:gone", baseUrl: "https://x/v1", model: "m", endpoints: [] }));
     expect(s.provider).toBe("custom");
     expect(toProviderConfig(s).kind).toBe("openai");
+  });
+});
+
+describe("live model lists", () => {
+  it("keeps chat models only, de-duplicated and naturally sorted", () => {
+    const groq = ["whisper-large-v3", "openai/gpt-oss-20b", "playai-tts", "llama-3.3-70b-versatile", "meta-llama/llama-guard-4-12b", "openai/gpt-oss-120b", "llama-3.1-8b-instant", " openai/gpt-oss-20b ", ""];
+    expect(chatModels(groq)).toEqual(["llama-3.1-8b-instant", "llama-3.3-70b-versatile", "openai/gpt-oss-20b", "openai/gpt-oss-120b"]);
+    expect(chatModels(["text-embedding-3-small", "gpt-4o-mini-tts", "dall-e-3", "omni-moderation-latest", "gpt-4o-transcribe", "gpt-4o"])).toEqual(["gpt-4o"]);
+    expect(chatModels(["nomic-embed-text:latest", "qwen2.5-coder:7b", "nvidia/llama-3.2-nv-rerankqa-1b-v2"])).toEqual(["qwen2.5-coder:7b"]);
+    expect(chatModels([])).toEqual([]);
+  });
+
+  it("selects the preset's preferred model only when the provider still lists it", () => {
+    expect(defaultModelFor(["a", "openai/gpt-oss-120b"], "groq")).toBe("openai/gpt-oss-120b");
+    expect(defaultModelFor(["b", "c"], "groq")).toBe("b");
+    expect(defaultModelFor([], "custom")).toBe("");
+  });
+
+  it("explains failed list requests in plain words", () => {
+    expect(modelsError('provider returned 401 Unauthorized: {"error":"Invalid API Key"}')).toBe("Key rejected (401). Check the API key.");
+    expect(modelsError(new Error("provider returned 404 Not Found: nope"))).toMatch(/404.*base URL/);
+    expect(modelsError("provider returned 503 Service Unavailable: busy")).toMatch(/\(503\)/);
+    expect(modelsError("could not reach the provider: error sending request")).toMatch(/Could not reach/);
+    expect(modelsError(new TypeError("Cannot read properties of undefined (reading 'invoke')"))).toMatch(/desktop app/);
+    expect(modelsError("")).toBe("Could not load models.");
+  });
+
+  it("waits for what the request needs: a key, or a usable URL", () => {
+    expect(modelsWait({ provider: "groq", baseUrl: "https://api.groq.com/openai/v1", apiKey: "" })).toMatch(/Groq key/);
+    expect(modelsWait({ provider: "groq", baseUrl: "https://api.groq.com/openai/v1", apiKey: "gsk_x" })).toBeNull();
+    expect(modelsWait({ provider: "ollama", baseUrl: "http://localhost:11434/v1", apiKey: "" })).toBeNull(); // no key needed
+    expect(modelsWait({ provider: "custom", baseUrl: "", apiKey: "" })).toMatch(/base URL/);
+    expect(modelsWait({ provider: "custom", baseUrl: "http://localhost:8000/v1", apiKey: "" })).toBeNull(); // key optional
+  });
+});
+
+describe("provider endpoints", () => {
+  it("maps each built-in provider to its endpoint and clears the model choice", () => {
+    expect(selectPreset("groq")).toEqual({ provider: "groq", baseUrl: "https://api.groq.com/openai/v1", model: "", fastModel: "" });
+    expect(selectPreset("ollama")?.baseUrl).toBe("http://localhost:11434/v1");
+    expect(selectPreset("custom")?.baseUrl).toBe("");
+    expect(selectPreset("nope")).toBeNull();
+    for (const p of PROVIDER_PRESETS.filter((x) => x.id !== "custom")) expect(baseUrlProblem(p.baseUrl)).toBeNull();
+  });
+
+  it("shows the base URL only for Custom and saved endpoints", () => {
+    expect(showsBaseUrl("groq")).toBe(false);
+    expect(showsBaseUrl("custom")).toBe(true);
+    expect(showsBaseUrl("ep:a1")).toBe(true);
+  });
+
+  it("every provider has a key placeholder", () => {
+    expect(PROVIDER_PRESETS.find((p) => p.id === "groq")?.keyHint).toMatch(/^gsk_.*console\.groq\.com/);
+    expect(PROVIDER_PRESETS.find((p) => p.id === "ollama")?.keyHint).toBe("Not needed");
+    expect(PROVIDER_PRESETS.find((p) => p.id === "custom")?.keyHint).toBe("Optional");
+    for (const p of PROVIDER_PRESETS) expect(p.keyHint).toBeTruthy();
+  });
+
+  it("validates base URLs inline", () => {
+    expect(baseUrlProblem("https://llm.example.com/v1")).toBeNull();
+    expect(baseUrlProblem(" http://localhost:8000/v1 ")).toBeNull();
+    expect(baseUrlProblem("")).toMatch(/Enter/);
+    expect(baseUrlProblem("localhost:8000")).toMatch(/http:\/\//);
+    expect(baseUrlProblem("ftp://files.example.com")).toMatch(/http:\/\//);
+    expect(baseUrlProblem("not a url")).toMatch(/Not a URL/);
   });
 });

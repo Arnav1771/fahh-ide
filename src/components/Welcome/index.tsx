@@ -6,7 +6,7 @@ import { useSettingsStore } from "../../store/settingsStore";
 import { useThemeStore } from "../../store/themeStore";
 import { useFileStore } from "../../store/fileStore";
 import { useAgentStore } from "../../store/agentStore";
-import { agentListModels, PROVIDER_PRESETS, toProviderConfig } from "../../lib/agent";
+import { agentListModels, chatModels, defaultModelFor, modelsError, presetOf, PROVIDER_PRESETS, selectPreset, toProviderConfig } from "../../lib/agent";
 import { runCommand } from "../../lib/commands";
 import { loadRecent } from "../../lib/recent";
 import { moveView, revealView } from "../../lib/workbench";
@@ -284,22 +284,23 @@ function LookStep({ onDone }: { onDone: () => void }) {
 function AgentStep({ onDone }: { onDone: () => void }) {
   const settings = useAgentStore((s) => s.settings);
   const update = useAgentStore((s) => s.updateSettings);
-  const preset = PROVIDER_PRESETS.find((p) => p.id === settings.provider);
+  const preset = presetOf(settings.provider);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [testing, setTesting] = useState(false);
   const pick = (id: string) => {
-    const p = PROVIDER_PRESETS.find((x) => x.id === id);
-    if (p) update({ provider: id, baseUrl: p.baseUrl || settings.baseUrl, model: p.defaultModel, fastModel: "" });
+    const p = selectPreset(id);
+    if (p) update(p);
     setResult(null);
   };
   const test = async () => {
     setTesting(true);
     try {
-      const models = await agentListModels(toProviderConfig(settings));
-      setResult({ ok: true, text: models.length ? `Connected: ${models.length} models (e.g. ${models.slice(0, 2).join(", ")}).` : "Connected, but the provider listed no models." });
+      const models = chatModels(await agentListModels(toProviderConfig(settings, "")));
+      if (!settings.model && models.length) update({ model: defaultModelFor(models, settings.provider) });
+      setResult({ ok: true, text: models.length ? `Connected: ${models.length} models (e.g. ${models.slice(0, 2).join(", ")}).` : "Connected, but the provider listed no chat models." });
       onDone();
     } catch (e) {
-      setResult({ ok: false, text: `Could not connect: ${e instanceof Error ? e.message : String(e)}` });
+      setResult({ ok: false, text: `Could not connect: ${modelsError(e)}` });
     }
     setTesting(false);
   };
@@ -315,7 +316,7 @@ function AgentStep({ onDone }: { onDone: () => void }) {
         </label>
         <label className="block text-[11px] text-fahh-muted">
           API key {preset && !preset.needsKey && "(not needed)"}
-          <input type="password" value={settings.apiKey} onChange={(e) => { update({ apiKey: e.target.value }); setResult(null); }} disabled={!!preset && !preset.needsKey} placeholder={preset?.needsKey ? "paste your key" : "none"} spellCheck={false} className={`${field} mt-0.5`} />
+          <input type="password" value={settings.apiKey} onChange={(e) => { update({ apiKey: e.target.value }); setResult(null); }} disabled={!!preset && !preset.needsKey} placeholder={preset?.keyHint ?? "Optional"} spellCheck={false} className={`${field} mt-0.5`} />
         </label>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
