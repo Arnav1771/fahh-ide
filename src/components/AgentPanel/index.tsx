@@ -12,9 +12,25 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ensureEditorMode } from "../../store/layoutModeStore";
-import { Bot, Compass, History, ListPlus, Plus, Send, Settings2, ShieldAlert, Square, Trash2, X } from "lucide-react";
+import { Bot, Compass, History, ListPlus, Plus, RefreshCw, Send, Settings2, ShieldAlert, Square, Trash2, X } from "lucide-react";
 
-import { agentListModels, endpointOf, PROVIDER_PRESETS, settingsProblem, toProviderConfig, type CustomEndpoint } from "../../lib/agent";
+import {
+  agentListModels,
+  baseUrlProblem,
+  chatModels,
+  defaultModelFor,
+  endpointOf,
+  modelsError,
+  modelsWait,
+  presetOf,
+  PROVIDER_PRESETS,
+  selectPreset,
+  settingsProblem,
+  showsBaseUrl,
+  toProviderConfig,
+  type AgentSettings,
+  type CustomEndpoint,
+} from "../../lib/agent";
 import { pendingReview } from "../../lib/agentState";
 import { calculateContextTokens } from "../../lib/tokenEstimator";
 import { filterSlash, groupSlash, insertion, menuQuery, MODE_LABEL, type SlashDef } from "../../lib/slash";
@@ -44,49 +60,86 @@ const QUICK_ACTIONS = [
   { label: "Explain Selection", prompt: "Explain the selected code and its purpose in the architecture." },
 ];
 
-const field = "mt-0.5 w-full bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent";
+const field = "mt-0.5 w-full bg-fahh-bg border border-fahh-surface rounded px-2 py-1 text-xs text-fahh-text placeholder:text-fahh-muted focus:outline-none focus:border-fahh-accent focus-visible:ring-1 focus-visible:ring-fahh-accent disabled:opacity-60";
+const fieldBad = field.replace("border-fahh-surface", "border-fahh-error");
+const label = "block text-[11px] text-fahh-muted";
 
-function Settings({ onDone }: { onDone: () => void }) {
+/** The provider's model list, live: loading, error, empty or ok. */
+type ModelList = { state: "wait"; hint: string } | { state: "loading" } | { state: "error"; msg: string } | { state: "ok"; ids: string[] };
+
+/** Fetches the chat models for the current provider/endpoint/key (debounced while typing), and on reload. */
+function useModelList(settings: AgentSettings): [ModelList, () => void] {
+  const [list, setList] = useState<ModelList>({ state: "loading" });
+  const [nonce, setNonce] = useState(0);
+  useEffect(() => {
+    const hint = modelsWait(settings);
+    if (hint) return void setList({ state: "wait", hint });
+    setList({ state: "loading" });
+    let live = true;
+    const t = setTimeout(() => {
+      agentListModels(toProviderConfig(settings, "")).then(
+        (ids) => live && setList({ state: "ok", ids: chatModels(ids) }),
+        (e) => live && setList({ state: "error", msg: modelsError(e) }),
+      );
+    }, 350);
+    return () => {
+      live = false;
+      clearTimeout(t);
+    };
+  }, [settings.provider, settings.baseUrl, settings.apiKey, nonce]); // eslint-disable-line react-hooks/exhaustive-deps
+  return [list, () => setNonce((n) => n + 1)];
+}
+
+const TYPE = "__type";
+
+/** A model dropdown over the live list, with a "Type a model name…" escape hatch. */
+function ModelPicker({ id, value, onChange, list, optional }: { id: string; value: string; onChange: (v: string) => void; list: ModelList; optional?: boolean }) {
+  const ids = list.state === "ok" ? list.ids : [];
+  const [typing, setTyping] = useState(false);
+  if (list.state === "loading") return <div className="mt-0.5 h-[26px] rounded bg-fahh-surface animate-pulse motion-reduce:animate-none" aria-hidden data-testid={`${id}-skeleton`} />;
+  const offList = !!value && !ids.includes(value);
+  return (
+    <>
+      <select
+        id={id}
+        value={typing ? TYPE : value}
+        onChange={(e) => (e.target.value === TYPE ? setTyping(true) : (setTyping(false), onChange(e.target.value)))}
+        className={field}
+        data-testid={id}
+      >
+        {optional ? <option value="">Same as main model</option> : !value && <option value="" disabled>Choose a model</option>}
+        {ids.map((m) => (
+          <option key={m} value={m}>{m}</option>
+        ))}
+        {offList && <option value={value}>{value} (typed)</option>}
+        <option value={TYPE}>Type a model name…</option>
+      </select>
+      {typing && (
+        <input
+          autoFocus
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={() => setTyping(false)}
+          onKeyDown={(e) => (e.key === "Enter" || e.key === "Escape") && setTyping(false)}
+          placeholder="e.g. llama-3.3-70b-versatile"
+          aria-label={optional ? "Fast model name" : "Model name"}
+          spellCheck={false}
+          className={field}
+        />
+      )}
+    </>
+  );
+}
+
+function Settings({ models, reload, onDone }: { models: ModelList; reload: () => void; onDone: () => void }) {
   const { settings, updateSettings } = useAgentStore();
-  const currentPreset = PROVIDER_PRESETS.find((x) => x.id === settings.provider) || PROVIDER_PRESETS[0];
-  const [models, setModels] = useState<string[]>(currentPreset.popularModels || []);
-  const [modelsMsg, setModelsMsg] = useState<string | null>(null);
   const [adding, setAdding] = useState<Omit<CustomEndpoint, "id"> | null>(null);
   const [addMsg, setAddMsg] = useState<{ text: string; ok?: boolean } | null>(null);
+  const [urlTouched, setUrlTouched] = useState(false);
   const saved = endpointOf(settings);
-
-  // Auto-detect local Ollama models when Ollama is selected
-  useEffect(() => {
-    if (settings.provider === "ollama") {
-      fetch("http://localhost:11434/api/tags")
-        .then((r) => r.json())
-        .then((data) => {
-          if (data && Array.isArray(data.models)) {
-            const names = data.models.map((m: any) => m.name);
-            if (names.length > 0) {
-              setModels(names);
-              setModelsMsg(`${names.length} local Ollama models detected`);
-            }
-          }
-        })
-        .catch(() => {
-          // Ollama not responding
-        });
-    }
-  }, [settings.provider]);
-
-  const fetchModels = async (cfg: Parameters<typeof agentListModels>[0]) => {
-    setModelsMsg("Loading models…");
-    try {
-      const ids = await agentListModels(cfg);
-      setModels(ids);
-      setModelsMsg(ids.length ? `${ids.length} models` : "The endpoint listed no models: type a model name.");
-      return ids;
-    } catch (e) {
-      setModelsMsg(String(e));
-      return null;
-    }
-  };
+  const preset = presetOf(settings.provider);
+  const providerName = saved?.name ?? (settings.provider === "custom" ? "your endpoint" : preset?.label) ?? "the provider";
+  const urlError = baseUrlProblem(settings.baseUrl);
 
   /** Settings edits on a saved endpoint update the endpoint too. */
   const patch = (p: Partial<typeof settings>) => {
@@ -99,58 +152,57 @@ function Settings({ onDone }: { onDone: () => void }) {
   const saveEndpoint = async (force = false) => {
     if (!adding) return;
     const ep = { ...adding, name: adding.name.trim() || "My endpoint", baseUrl: adding.baseUrl.trim() };
-    if (!/^https?:\/\//i.test(ep.baseUrl)) return setAddMsg({ text: "Enter a base URL starting with http:// or https:// (for example https://api.example.com/v1)." });
+    const bad = baseUrlProblem(ep.baseUrl);
+    if (bad) return setAddMsg({ text: bad });
     let ids: string[] = [];
     if (!force) {
       setAddMsg({ text: "Checking the endpoint…" });
       try {
-        ids = await agentListModels({ kind: ep.kind, base_url: ep.baseUrl, model: "", api_key: ep.apiKey.trim() || null });
+        ids = chatModels(await agentListModels({ kind: ep.kind, base_url: ep.baseUrl, model: "", api_key: ep.apiKey.trim() || null }));
       } catch (e) {
-        return setAddMsg({ text: `Could not list models: ${String(e)}` });
+        return setAddMsg({ text: `Could not list models: ${modelsError(e)}` });
       }
     }
     const id = Date.now().toString(36);
     updateSettings({ endpoints: [...settings.endpoints, { id, ...ep }], provider: `ep:${id}`, baseUrl: ep.baseUrl, apiKey: ep.apiKey, model: ids[0] ?? "", fastModel: "" });
-    setModels(ids);
-    setModelsMsg(ids.length ? `${ids.length} models from ${ep.name}` : "Saved. Type the model name to use.");
     setAdding(null);
     setAddMsg(null);
   };
 
   const removeEndpoint = () => {
     if (!saved) return;
-    const first = PROVIDER_PRESETS[0];
-    updateSettings({ endpoints: settings.endpoints.filter((e) => e.id !== saved.id), provider: first.id, baseUrl: first.baseUrl, model: first.defaultModel, apiKey: "", fastModel: "" });
-    setModels(first.popularModels || []);
-    setModelsMsg(null);
+    updateSettings({ endpoints: settings.endpoints.filter((e) => e.id !== saved.id), ...selectPreset(PROVIDER_PRESETS[0].id), apiKey: "" });
   };
 
   const pick = (id: string) => {
+    setUrlTouched(false);
     if (id === "__add") {
       setAdding({ name: "", baseUrl: "", apiKey: "", kind: "openai" });
       setAddMsg(null);
       return;
     }
     const ep = settings.endpoints.find((e) => `ep:${e.id}` === id);
-    if (ep) {
-      updateSettings({ provider: id, baseUrl: ep.baseUrl, apiKey: ep.apiKey, model: "", fastModel: "" });
-      void fetchModels({ kind: ep.kind, base_url: ep.baseUrl, model: "", api_key: ep.apiKey.trim() || null }).then((ids) => ids?.[0] && updateSettings({ model: ids[0] }));
-      return;
-    }
-    const p = PROVIDER_PRESETS.find((x) => x.id === id);
-    if (p) {
-      updateSettings({ provider: id, baseUrl: p.baseUrl || settings.baseUrl, model: p.defaultModel, fastModel: "" });
-      setModels(p.popularModels || []);
-    }
-    setModelsMsg(null);
+    if (ep) return updateSettings({ provider: id, baseUrl: ep.baseUrl, apiKey: ep.apiKey, model: "", fastModel: "" });
+    const p = selectPreset(id);
+    if (p) updateSettings(p);
   };
 
-  const loadModels = () => fetchModels(toProviderConfig(settings));
+  const status =
+    models.state === "loading" ? <span>Loading models…</span>
+    : models.state === "wait" ? <span>{models.hint}</span>
+    : models.state === "error" ? (
+      <span className="flex items-start gap-2 text-fahh-error">
+        <span className="flex-1 break-words" data-testid="models-error">{models.msg}</span>
+        <button type="button" onClick={reload} className="shrink-0 underline hover:text-fahh-text focus-visible:outline focus-visible:outline-1 focus-visible:outline-fahh-accent">Retry</button>
+      </span>
+    )
+    : models.ids.length ? <span>{models.ids.length} chat models from {providerName}</span>
+    : <span>{providerName} listed no chat models. Choose “Type a model name…”.</span>;
 
   return (
-    <div className="p-2 space-y-2 border-b border-fahh-surface text-xs" data-testid="agent-settings">
-      <label className="block">
-        <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Provider</span>
+    <div className="p-2 space-y-2.5 border-b border-fahh-surface text-xs" data-testid="agent-settings">
+      <label className={label}>
+        Provider
         <select value={adding ? "__add" : settings.provider} onChange={(e) => pick(e.target.value)} className={field} data-testid="agent-provider">
           {PROVIDER_PRESETS.map((p) => (
             <option key={p.id} value={p.id}>{p.label}</option>
@@ -162,22 +214,22 @@ function Settings({ onDone }: { onDone: () => void }) {
               ))}
             </optgroup>
           )}
-          <option value="__add">+ Add your own endpoint…</option>
+          <option value="__add">+ Save a named endpoint…</option>
         </select>
       </label>
       {adding && (
         <div className="space-y-1.5 rounded border border-fahh-accent/40 p-2" data-testid="add-endpoint">
-          <span className="block text-[10px] uppercase tracking-wider text-fahh-muted">Your own endpoint</span>
+          <span className="block text-[11px] font-medium text-fahh-text">New endpoint</span>
           <input value={adding.name} onChange={(e) => setAdding({ ...adding, name: e.target.value })} placeholder="Name, e.g. Work LLM" aria-label="Endpoint name" className={field} />
-          <input value={adding.baseUrl} onChange={(e) => setAdding({ ...adding, baseUrl: e.target.value })} placeholder="Base URL, e.g. https://llm.example.com/v1" aria-label="Endpoint base URL" spellCheck={false} className={field} />
-          <input type="password" value={adding.apiKey} onChange={(e) => setAdding({ ...adding, apiKey: e.target.value })} placeholder="API key (leave empty if none)" aria-label="Endpoint API key" spellCheck={false} className={field} />
+          <input type="url" value={adding.baseUrl} onChange={(e) => setAdding({ ...adding, baseUrl: e.target.value })} placeholder="Base URL, e.g. https://llm.example.com/v1" aria-label="Endpoint base URL" spellCheck={false} className={field} />
+          <input type="password" autoComplete="off" value={adding.apiKey} onChange={(e) => setAdding({ ...adding, apiKey: e.target.value })} placeholder="API key (optional)" aria-label="Endpoint API key" spellCheck={false} className={field} />
           <select value={adding.kind} onChange={(e) => setAdding({ ...adding, kind: e.target.value as CustomEndpoint["kind"] })} aria-label="Endpoint type" className={field}>
             <option value="openai">OpenAI-compatible (/v1/chat/completions, /v1/models)</option>
             <option value="anthropic">Anthropic Messages API</option>
           </select>
-          {addMsg && <span className="block text-[10px] text-fahh-muted break-words" role="status">{addMsg.text}</span>}
+          {addMsg && <span className="block text-[11px] text-fahh-muted break-words" role="status">{addMsg.text}</span>}
           <div className="flex gap-1">
-            <button type="button" onClick={() => void saveEndpoint()} className="flex-1 py-1 rounded bg-fahh-accent/90 text-white hover:bg-fahh-accent">Save and fetch models</button>
+            <button type="button" onClick={() => void saveEndpoint()} className="flex-1 py-1 rounded bg-fahh-accent/90 text-white hover:bg-fahh-accent">Save and load models</button>
             {addMsg?.text.startsWith("Could not") && (
               <button type="button" onClick={() => void saveEndpoint(true)} className="px-2 py-1 rounded bg-fahh-surface text-fahh-text">Save anyway</button>
             )}
@@ -185,59 +237,84 @@ function Settings({ onDone }: { onDone: () => void }) {
           </div>
         </div>
       )}
-      <label className="block">
-        <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Base URL</span>
-        <input value={settings.baseUrl} onChange={(e) => patch({ baseUrl: e.target.value })} spellCheck={false} className={field} />
-      </label>
-      {saved && (
-        <button type="button" onClick={removeEndpoint} className="text-[10px] text-fahh-muted hover:text-fahh-error underline">
-          Remove “{saved.name}”
-        </button>
+      {showsBaseUrl(settings.provider) && (
+        <div>
+          <label className={label}>
+            Base URL
+            <input
+              type="url"
+              value={settings.baseUrl}
+              onChange={(e) => patch({ baseUrl: e.target.value })}
+              onBlur={() => setUrlTouched(true)}
+              placeholder="https://llm.example.com/v1"
+              aria-invalid={!!urlError && (urlTouched || !!settings.baseUrl)}
+              aria-describedby="agent-url-msg"
+              spellCheck={false}
+              className={urlError && (urlTouched || settings.baseUrl) ? fieldBad : field}
+              data-testid="agent-base-url"
+            />
+          </label>
+          {urlError && (urlTouched || settings.baseUrl) && <span id="agent-url-msg" className="block mt-0.5 text-[11px] text-fahh-error">{urlError}</span>}
+          {saved && (
+            <button type="button" onClick={removeEndpoint} className="mt-1 text-[11px] text-fahh-muted hover:text-fahh-error underline">
+              Remove “{saved.name}”
+            </button>
+          )}
+        </div>
       )}
-      <div className="space-y-1">
-        <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Model Selection</span>
-        <select
-          value={models.includes(settings.model) ? settings.model : "custom"}
-          onChange={(e) => {
-            if (e.target.value !== "custom") {
-              updateSettings({ model: e.target.value });
-            }
-          }}
+      <label className={label}>
+        API key
+        <input
+          type="password"
+          autoComplete="off"
+          value={settings.apiKey}
+          onChange={(e) => patch({ apiKey: e.target.value })}
+          placeholder={saved ? "Optional" : preset?.keyHint ?? "Optional"}
+          spellCheck={false}
           className={field}
-        >
-          {models.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-          <option value="custom">Custom model name…</option>
-        </select>
-        <div className="flex gap-1">
-          <input
-            list="agent-models"
-            value={settings.model}
-            onChange={(e) => updateSettings({ model: e.target.value })}
-            placeholder="pick one above or type name"
-            spellCheck={false}
-            className={field}
-          />
-          <button type="button" onClick={() => void loadModels()} className="mt-0.5 px-2 rounded bg-fahh-surface text-fahh-text hover:bg-fahh-accent/30 shrink-0">
-            Refresh
+          data-testid="agent-api-key"
+        />
+      </label>
+      <div>
+        <div className="flex items-center justify-between">
+          <label htmlFor="agent-model" className={label}>Model</label>
+          <button
+            type="button"
+            onClick={reload}
+            disabled={models.state === "loading" || models.state === "wait"}
+            aria-label="Refresh models"
+            title="Refresh models"
+            className="p-0.5 rounded text-fahh-muted hover:text-fahh-text disabled:opacity-40 focus-visible:outline focus-visible:outline-1 focus-visible:outline-fahh-accent"
+          >
+            <RefreshCw size={12} className={models.state === "loading" ? "animate-spin motion-reduce:animate-none" : ""} />
           </button>
         </div>
-        <datalist id="agent-models">{models.map((m) => <option key={m} value={m} />)}</datalist>
-        {modelsMsg && <span className="block mt-0.5 text-[10px] text-fahh-muted break-words" data-testid="models-msg">{modelsMsg}</span>}
+        <ModelPicker id="agent-model" value={settings.model} onChange={(model) => updateSettings({ model })} list={models} />
+        <p className="mt-1 text-[11px] text-fahh-muted" aria-live="polite" data-testid="models-msg">{status}</p>
       </div>
-      <label className="block">
-        <span className="text-[10px] uppercase tracking-wider text-fahh-muted">Fast model (optional)</span>
-        <input list="agent-models" value={settings.fastModel} onChange={(e) => updateSettings({ fastModel: e.target.value })} placeholder="for /fast and Smart-mode judging" spellCheck={false} className={field} />
-      </label>
-      <label className="block">
-        <span className="text-[10px] uppercase tracking-wider text-fahh-muted">API key</span>
-        <input type="password" value={settings.apiKey} onChange={(e) => patch({ apiKey: e.target.value })} placeholder="not needed for local Ollama" spellCheck={false} className={field} />
-      </label>
-      <p className="text-[10px] text-fahh-muted opacity-70 leading-relaxed">
-        The key stays in this machine&apos;s localStorage (there is no OS keychain yet) and is sent only to the provider above. It is never written into your project.
-      </p>
-      <button onClick={onDone} className="w-full py-1 rounded text-xs bg-fahh-accent/90 text-white hover:bg-fahh-accent font-medium">Done</button>
+      <div>
+        <label htmlFor="agent-fast-model" className={label}>
+          Fast model <span className="opacity-70">· optional, for /fast and Smart-mode checks</span>
+        </label>
+        <ModelPicker id="agent-fast-model" value={settings.fastModel} onChange={(fastModel) => updateSettings({ fastModel })} list={models} optional />
+      </div>
+      {preset && !showsBaseUrl(settings.provider) && (
+        <details className="text-[11px] text-fahh-muted" data-testid="edit-endpoint">
+          <summary className="cursor-pointer select-none hover:text-fahh-text">
+            Edit endpoint{settings.baseUrl.trim() !== preset.baseUrl && " (changed)"}
+          </summary>
+          <div className="mt-1 space-y-1">
+            <input type="url" value={settings.baseUrl} onChange={(e) => patch({ baseUrl: e.target.value })} aria-label={`${preset.label} base URL`} spellCheck={false} className={urlError ? fieldBad : field} />
+            {urlError && <span className="block text-fahh-error">{urlError}</span>}
+            <span className="block">For a proxy in front of {preset.label}.</span>
+            {settings.baseUrl.trim() !== preset.baseUrl && (
+              <button type="button" onClick={() => patch({ baseUrl: preset.baseUrl })} className="underline hover:text-fahh-text">Reset to {preset.baseUrl}</button>
+            )}
+          </div>
+        </details>
+      )}
+      <p className="text-[11px] text-fahh-muted opacity-80">Your key stays in this machine&apos;s localStorage and goes only to {providerName}.</p>
+      <button onClick={onDone} className="w-full py-1 rounded text-xs bg-fahh-accent/90 text-white hover:bg-fahh-accent font-medium focus-visible:outline focus-visible:outline-1 focus-visible:outline-fahh-text">Done</button>
     </div>
   );
 }
@@ -249,6 +326,11 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
   const { openFileInEditor } = useWorkspace();
   const problem = settingsProblem(settings);
   const [showSettings, setShowSettings] = useState(!!problem);
+  const [models, reloadModels] = useModelList(settings);
+  // a fresh provider (or a model the user cleared) takes the provider's preferred live model
+  useEffect(() => {
+    if (models.state === "ok" && models.ids.length && !settings.model) store.updateSettings({ model: defaultModelFor(models.ids, settings.provider) });
+  }, [models]); // eslint-disable-line react-hooks/exhaustive-deps
   const [input, setInput] = useState("");
   const [historyIdx, setHistoryIdx] = useState<number | null>(null);
   const [menuIndex, setMenuIndex] = useState(0);
@@ -423,12 +505,11 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
           className="text-[10px] bg-fahh-bg border border-fahh-surface rounded px-1.5 py-0.5 text-fahh-accent shrink-0 w-[88px] truncate focus:outline-none"
           title={`Active model: ${settings.model} (${settings.provider})`}
         >
-          {(PROVIDER_PRESETS.find((p) => p.id === settings.provider)?.popularModels || [settings.model]).map((m) => (
+          {!settings.model && <option value="">No model</option>}
+          {(models.state === "ok" ? models.ids : []).map((m) => (
             <option key={m} value={m}>{m}</option>
           ))}
-          {settings.model && !PROVIDER_PRESETS.find((p) => p.id === settings.provider)?.popularModels?.includes(settings.model) && (
-            <option value={settings.model}>{settings.model}</option>
-          )}
+          {settings.model && !(models.state === "ok" && models.ids.includes(settings.model)) && <option value={settings.model}>{settings.model}</option>}
         </select>
         <button onClick={store.newChat} title="New session (/clear)" aria-label="New session" className="shrink-0 text-fahh-muted hover:text-fahh-text"><Plus size={14} /></button>
         <button onClick={() => void store.handleInput("/ls")} title="Saved sessions (/ls)" aria-label="Saved sessions" className="shrink-0 text-fahh-muted hover:text-fahh-text"><History size={13} /></button>
@@ -464,7 +545,7 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
         <div className="px-2.5 py-0.5 border-b border-fahh-surface text-[10px] text-fahh-muted shrink-0">Fast model on: {settings.fastModel} (/fast to switch back)</div>
       )}
 
-      {showSettings && <Settings onDone={() => setShowSettings(false)} />}
+      {showSettings && <Settings models={models} reload={reloadModels} onDone={() => setShowSettings(false)} />}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto min-h-0">
         {items.length === 0 && (

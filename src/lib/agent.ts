@@ -58,127 +58,92 @@ export interface ProviderPreset {
   id: string;
   label: string;
   kind: AgentProviderKind;
+  /** Implied by the provider: shown only under "Edit endpoint" (and always for Custom). */
   baseUrl: string;
   needsKey: boolean;
+  /** Preferred pick once the live model list loads, used only when the provider still lists it. */
   defaultModel: string;
-  popularModels: string[];
+  /** API key placeholder: what a key looks like and where to get one. */
+  keyHint: string;
 }
 
+/** Model names are never hardcoded here: the list comes live from the provider (`agent_list_models`). */
 export const PROVIDER_PRESETS: ProviderPreset[] = [
-  {
-    id: "groq",
-    label: "Groq",
-    kind: "openai",
-    baseUrl: "https://api.groq.com/openai/v1",
-    needsKey: true,
-    defaultModel: "openai/gpt-oss-120b",
-    popularModels: [
-      "openai/gpt-oss-120b",
-      "openai/gpt-oss-20b",
-      "qwen/qwen3.8-27b",
-      "mixtral-8x7b-32768",
-      "gemma2-9b-it",
-    ],
-  },
-  {
-    id: "openai",
-    label: "OpenAI",
-    kind: "openai",
-    baseUrl: "https://api.openai.com/v1",
-    needsKey: true,
-    defaultModel: "gpt-4o",
-    popularModels: [
-      "gpt-4o",
-      "gpt-4o-mini",
-      "o3-mini",
-      "o1",
-      "gpt-4-turbo",
-    ],
-  },
-  {
-    id: "anthropic",
-    label: "Anthropic",
-    kind: "anthropic",
-    baseUrl: "https://api.anthropic.com",
-    needsKey: true,
-    defaultModel: "claude-3-7-sonnet-latest",
-    popularModels: [
-      "claude-3-7-sonnet-latest",
-      "claude-3-5-sonnet-latest",
-      "claude-3-5-haiku-latest",
-      "claude-3-opus-latest",
-    ],
-  },
-  {
-    id: "ollama",
-    label: "Ollama (local)",
-    kind: "openai",
-    baseUrl: "http://localhost:11434/v1",
-    needsKey: false,
-    defaultModel: "llama3.2",
-    popularModels: [
-      "llama3.2",
-      "qwen2.5-coder:7b",
-      "deepseek-r1:8b",
-      "codellama",
-      "mistral",
-      "phi3",
-    ],
-  },
-  {
-    id: "openrouter",
-    label: "OpenRouter",
-    kind: "openai",
-    baseUrl: "https://openrouter.ai/api/v1",
-    needsKey: true,
-    defaultModel: "anthropic/claude-3.7-sonnet",
-    popularModels: [
-      "anthropic/claude-3.7-sonnet",
-      "deepseek/deepseek-r1",
-      "openai/gpt-4o",
-      "google/gemini-2.0-flash-exp:free",
-      "meta-llama/llama-3.3-70b-instruct",
-    ],
-  },
-  {
-    id: "gemini",
-    label: "Gemini",
-    kind: "openai",
-    baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai",
-    needsKey: true,
-    defaultModel: "gemini-2.0-flash",
-    popularModels: [
-      "gemini-2.0-flash",
-      "gemini-2.0-pro-exp-02-05",
-      "gemini-1.5-pro",
-      "gemini-1.5-flash",
-    ],
-  },
-  {
-    id: "nvidia",
-    label: "NVIDIA NIM",
-    kind: "openai",
-    baseUrl: "https://integrate.api.nvidia.com/v1",
-    needsKey: true,
-    defaultModel: "meta/llama-3.3-70b-instruct",
-    popularModels: [
-      "meta/llama-3.3-70b-instruct",
-      "deepseek-ai/deepseek-r1",
-      "mistralai/mistral-large-2-instruct",
-    ],
-  },
-  {
-    id: "custom",
-    label: "Custom (OpenAI-compatible)",
-    kind: "openai",
-    baseUrl: "http://localhost:8000/v1",
-    needsKey: false,
-    defaultModel: "default",
-    popularModels: ["default", "local-model"],
-  },
+  { id: "groq", label: "Groq", kind: "openai", baseUrl: "https://api.groq.com/openai/v1", needsKey: true, defaultModel: "openai/gpt-oss-120b", keyHint: "gsk_… from console.groq.com" },
+  { id: "openai", label: "OpenAI", kind: "openai", baseUrl: "https://api.openai.com/v1", needsKey: true, defaultModel: "gpt-4o", keyHint: "sk-… from platform.openai.com" },
+  { id: "anthropic", label: "Anthropic", kind: "anthropic", baseUrl: "https://api.anthropic.com", needsKey: true, defaultModel: "claude-3-7-sonnet-latest", keyHint: "sk-ant-… from console.anthropic.com" },
+  { id: "ollama", label: "Ollama (local)", kind: "openai", baseUrl: "http://localhost:11434/v1", needsKey: false, defaultModel: "llama3.2", keyHint: "Not needed" },
+  { id: "openrouter", label: "OpenRouter", kind: "openai", baseUrl: "https://openrouter.ai/api/v1", needsKey: true, defaultModel: "anthropic/claude-3.7-sonnet", keyHint: "sk-or-… from openrouter.ai/keys" },
+  { id: "gemini", label: "Gemini", kind: "openai", baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", needsKey: true, defaultModel: "gemini-2.0-flash", keyHint: "AIza… from aistudio.google.com" },
+  { id: "nvidia", label: "NVIDIA NIM", kind: "openai", baseUrl: "https://integrate.api.nvidia.com/v1", needsKey: true, defaultModel: "meta/llama-3.3-70b-instruct", keyHint: "nvapi-… from build.nvidia.com" },
+  { id: "custom", label: "Custom (OpenAI-compatible)", kind: "openai", baseUrl: "", needsKey: false, defaultModel: "", keyHint: "Optional" },
 ];
 
-/** An AI endpoint the user added (Settings > Fahh Local > Add your own endpoint). */
+export const presetOf = (id: string): ProviderPreset | undefined => PROVIDER_PRESETS.find((p) => p.id === id);
+
+/** Custom and saved endpoints show their base URL; built-in providers imply theirs. */
+export const showsBaseUrl = (provider: string) => provider === "custom" || provider.startsWith("ep:");
+
+/** What picking a built-in provider changes: its endpoint, and a fresh model choice. */
+export function selectPreset(id: string): Partial<AgentSettings> | null {
+  const p = presetOf(id);
+  return p ? { provider: p.id, baseUrl: p.baseUrl, model: "", fastModel: "" } : null;
+}
+
+/** Inline check for a base URL field: why it is not usable, or null. */
+export function baseUrlProblem(url: string): string | null {
+  const u = url.trim();
+  if (!u) return "Enter the endpoint's base URL.";
+  let parsed: URL;
+  try {
+    parsed = new URL(u);
+  } catch {
+    return "Not a URL. Example: https://llm.example.com/v1";
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "Start with http:// or https://, e.g. http://localhost:8000/v1";
+  if (!parsed.hostname) return "The URL needs a host name.";
+  return null;
+}
+
+/** Ids that are not chat models: speech, embeddings, safety classifiers, images, rerankers. */
+const NON_CHAT = /whisper|tts|embed|guard|moderation|dall-e|gpt-image|imagen|veo-|sora|transcribe|audio|realtime|rerank|babbage|davinci|search-preview|computer-use|lyria|\baqa\b/i;
+export const isChatModel = (id: string) => !NON_CHAT.test(id);
+
+/** A provider's model list, ready for a dropdown: chat models only, de-duplicated, natural sort. */
+export function chatModels(ids: readonly string[]): string[] {
+  const clean = [...new Set(ids.map((s) => s.trim()).filter(Boolean))].filter(isChatModel);
+  return clean.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" }));
+}
+
+/** The model to select once a list loads: the preset's preference if offered, else the first. */
+export const defaultModelFor = (ids: readonly string[], provider: string): string => {
+  const pref = presetOf(provider)?.defaultModel;
+  return pref && ids.includes(pref) ? pref : ids[0] ?? "";
+};
+
+/** Why the model list cannot be fetched yet (shown instead of a list), or null. */
+export function modelsWait(s: Pick<AgentSettings, "provider" | "baseUrl" | "apiKey">): string | null {
+  if (baseUrlProblem(s.baseUrl)) return s.baseUrl.trim() ? "Fix the base URL to load models." : "Enter a base URL to load its models.";
+  const p = presetOf(s.provider);
+  if (p?.needsKey && !s.apiKey.trim()) return `Add your ${p.label} key to load its models.`;
+  return null;
+}
+
+/** A failed model-list request in plain words (the backend passes the provider's status through). */
+export function modelsError(e: unknown): string {
+  const m = (e instanceof Error ? e.message : String(e)).trim();
+  const code = /provider returned (\d{3})/.exec(m)?.[1];
+  if (code === "401") return "Key rejected (401). Check the API key.";
+  if (code === "403") return "This key cannot list models (403).";
+  if (code === "404") return "No model list at this URL (404). Check the base URL.";
+  if (code === "429") return "Rate limited (429). Wait a moment, then retry.";
+  if (code) return `The provider returned an error (${code}). Retry in a moment.`;
+  if (/could not reach/i.test(m)) return "Could not reach the provider. Check the URL and your connection.";
+  if (/invoke|__TAURI|transformCallback/.test(m)) return "Model lists load in the desktop app.";
+  return m.slice(0, 200) || "Could not load models.";
+}
+
+/** An AI endpoint the user added (Fahh Local settings > Save a named endpoint). */
 export interface CustomEndpoint {
   id: string;
   name: string;
@@ -240,12 +205,10 @@ export function parseAgentSettings(raw: string | null, legacy: string | null = n
       .map((e) => ({ id: e.id as string, name: str(e.name, "My endpoint"), baseUrl: e.baseUrl as string, apiKey: str(e.apiKey, ""), kind: e.kind === "anthropic" ? "anthropic" : "openai" }));
     const known = PROVIDER_PRESETS.some((p) => p.id === cur.provider) || endpoints.some((e) => `ep:${e.id}` === cur.provider);
     const provider = known ? (cur.provider as string) : "custom";
-    const preset = PROVIDER_PRESETS.find((p) => p.id === provider);
-    const model = str(cur.model, "") || preset?.defaultModel || "";
     return {
       provider,
-      baseUrl: str(cur.baseUrl, "") || preset?.baseUrl || "",
-      model,
+      baseUrl: str(cur.baseUrl, "") || presetOf(provider)?.baseUrl || "",
+      model: str(cur.model, ""), // empty: picked from the live list
       apiKey: str(cur.apiKey, ""),
       mode: MODES.includes(cur.mode as AgentMode) ? (cur.mode as AgentMode) : "ask",
       fastModel: str(cur.fastModel, ""),
@@ -262,17 +225,16 @@ export function parseAgentSettings(raw: string | null, legacy: string | null = n
 
 /** Why a turn cannot start yet, or null. */
 export function settingsProblem(s: AgentSettings): string | null {
-  if (!/^https?:\/\//i.test(s.baseUrl.trim())) return "Set a provider base URL (http:// or https://).";
+  if (baseUrlProblem(s.baseUrl)) return "Set a provider base URL (http:// or https://).";
   if (!s.model.trim()) return "Set a model name.";
-  const preset = PROVIDER_PRESETS.find((p) => p.id === s.provider);
+  const preset = presetOf(s.provider);
   if (preset?.needsKey && !s.apiKey.trim()) return `${preset.label} needs an API key.`;
   return null;
 }
 
 export function toProviderConfig(s: AgentSettings, modelOverride?: string): AgentProviderConfig {
-  const preset = PROVIDER_PRESETS.find((p) => p.id === s.provider);
   return {
-    kind: endpointOf(s)?.kind ?? preset?.kind ?? "openai",
+    kind: endpointOf(s)?.kind ?? presetOf(s.provider)?.kind ?? "openai",
     base_url: s.baseUrl.trim(),
     model: (modelOverride ?? s.model).trim(),
     api_key: s.apiKey.trim() || null,
