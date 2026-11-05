@@ -82,6 +82,13 @@ fn server_command(language: &str, workspace: &str) -> Result<(String, Vec<String
         "dart" => Ok(("dart".to_string(), vec!["language-server".to_string(), "--protocol=lsp".to_string()])),
         "kotlin" => Ok(("kotlin-language-server".to_string(), vec![])),
         "bash" | "shell" => Ok(("bash-language-server".to_string(), vec!["start".to_string()])),
+        // Extra servers that run beside a language's main one (started only when installed).
+        "eslint" => Ok(("vscode-eslint-language-server".to_string(), vec!["--stdio".to_string()])),
+        "ruff" => Ok(("ruff".to_string(), vec!["server".to_string()])),
+        "tailwind" => Ok((
+            "tailwindcss-language-server".to_string(),
+            vec!["--stdio".to_string()],
+        )),
         other => Err(format!("No LSP server configured for language: {other}")),
     }
 }
@@ -152,14 +159,13 @@ pub async fn lsp_start(
 
     info!("lsp_start: spawning '{binary}' for language '{language}' in workspace '{workspace}'");
 
-    // Verify the binary exists before attempting to spawn.
-    if which::which(&binary).is_err() {
-        return Err(format!(
-            "LSP binary '{binary}' not found on PATH. Install it to enable {language} support."
-        ));
-    }
+    // Verify the binary exists before attempting to spawn, and spawn the resolved path:
+    // on Windows npm installs servers as `.cmd` shims, which a bare name never finds.
+    let resolved = which::which(&binary).map_err(|_| {
+        format!("LSP binary '{binary}' not found on PATH. Install it to enable {language} support.")
+    })?;
 
-    let mut child = crate::core::proc::cmd(&binary)
+    let mut child = crate::core::proc::cmd(&resolved)
         .args(&args)
         .current_dir(&workspace)
         .stdin(Stdio::piped())
@@ -336,6 +342,14 @@ mod tests {
         let err = exited_on_start(&mut child, &head, Duration::from_millis(1500)).unwrap_err();
         assert!(err.contains("exited as soon as it started"), "{err}");
         assert!(err.contains("Unknown binary 'rust-analyzer'"), "{err}");
+    }
+
+    #[test]
+    fn extra_servers_have_commands() {
+        assert_eq!(server_command("eslint", "/w").unwrap().0, "vscode-eslint-language-server");
+        assert_eq!(server_command("ruff", "/w").unwrap(), ("ruff".to_string(), vec!["server".to_string()]));
+        assert_eq!(server_command("tailwind", "/w").unwrap().0, "tailwindcss-language-server");
+        assert!(server_command("cobol", "/w").is_err());
     }
 
     #[test]

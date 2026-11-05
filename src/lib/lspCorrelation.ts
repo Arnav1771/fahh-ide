@@ -71,6 +71,16 @@ export class LspCorrelator {
     return true;
   }
 
+  /** Stop waiting for a reply (the caller gave up); the promise rejects with a "cancelled" error. */
+  cancel(id: number): boolean {
+    const req = this.pending.get(id);
+    if (!req) return false;
+    clearTimeout(req.timer);
+    this.pending.delete(id);
+    req.reject(new Error(`LSP request ${req.method} (id=${id}) cancelled`));
+    return true;
+  }
+
   getPendingCount(): number {
     return this.pending.size;
   }

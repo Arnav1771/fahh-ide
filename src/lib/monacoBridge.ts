@@ -70,9 +70,12 @@ let monacoApi: MonacoApiLike | null = null;
 let editorInstance: MonacoEditorLike | null = null;
 let activePath: string | null = null;
 
-/** path -> markers. Kept for every file we have heard about, so switching
- *  tabs back and forth does not lose diagnostics. */
-const markersByPath = new Map<string, FahhMarker[]>();
+/** path -> source (language server) -> markers. Kept for every file we have heard
+ *  about, so switching tabs back and forth does not lose diagnostics, and two servers
+ *  on one file (pyright + Ruff, tsserver + ESLint) never overwrite each other. */
+const markersByPath = new Map<string, Map<string, FahhMarker[]>>();
+
+const merged = (path: string): FahhMarker[] => [...(markersByPath.get(path)?.values() ?? [])].flat();
 
 function applyToModel(markers: FahhMarker[]): void {
   if (!monacoApi || !editorInstance) return;
@@ -84,8 +87,7 @@ function applyToModel(markers: FahhMarker[]): void {
 
 /** Push whatever the active document's markers currently are. */
 function flush(): void {
-  const markers = activePath ? markersByPath.get(activePath) ?? [] : [];
-  applyToModel(markers);
+  applyToModel(activePath ? merged(activePath) : []);
 }
 
 /** Called by `EditorPane` from Monaco's `onMount`. */
@@ -126,8 +128,10 @@ export function getActiveDocument(): string | null {
  * is clean now" — so it is stored rather than dropped, and it clears the
  * squiggles if the file is on screen.
  */
-export function publishDiagnostics(path: string, markers: FahhMarker[]): void {
-  markersByPath.set(path, markers);
+export function publishDiagnostics(path: string, markers: FahhMarker[], source = "lsp"): void {
+  const per = markersByPath.get(path) ?? new Map<string, FahhMarker[]>();
+  per.set(source, markers);
+  markersByPath.set(path, per);
   if (path === activePath) flush();
 }
 
@@ -139,13 +143,13 @@ export function clearDiagnostics(path: string): void {
 
 /** Read back what is stored for a path — used by tests and the status bar. */
 export function getDiagnostics(path: string): FahhMarker[] {
-  return markersByPath.get(path) ?? [];
+  return merged(path);
 }
 
 /** Total marker count across all known files. */
 export function totalDiagnosticCount(): number {
   let total = 0;
-  for (const markers of markersByPath.values()) total += markers.length;
+  for (const path of markersByPath.keys()) total += merged(path).length;
   return total;
 }
 

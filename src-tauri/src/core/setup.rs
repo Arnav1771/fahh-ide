@@ -41,6 +41,10 @@ const PROBES: &[Probe] = &[
     Probe { name: "rust-analyzer", kind: "language server", programs: &["rust-analyzer"], args: &["--version"], hint: "rustup component add rust-analyzer" },
     Probe { name: "typescript-language-server", kind: "language server", programs: &["typescript-language-server"], args: &["--version"], hint: "npm install -g typescript-language-server typescript" },
     Probe { name: "Python language server", kind: "language server", programs: &["pylsp", "pyright"], args: &["--version"], hint: "pip install python-lsp-server (or npm install -g pyright)" },
+    // Extra servers, started beside the main one when found (lsp_client.rs server_command).
+    Probe { name: "ESLint language server", kind: "language server", programs: &["vscode-eslint-language-server"], args: &["--version"], hint: "npm install -g vscode-langservers-extracted" },
+    Probe { name: "Ruff", kind: "language server", programs: &["ruff"], args: &["--version"], hint: "pip install ruff (0.4.5 or newer; Fahh runs `ruff server`)" },
+    Probe { name: "Tailwind CSS language server", kind: "language server", programs: &["tailwindcss-language-server"], args: &["--version"], hint: "npm install -g @tailwindcss/language-server" },
 ];
 
 /// The first version-looking token in a `--version` answer: "git version 2.43.0" -> "2.43.0",
