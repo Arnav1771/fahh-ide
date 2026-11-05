@@ -9,22 +9,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed
-
-- **Notebook Run all ran cells out of order** (cell 17 first, then 1, 7, 3…; or a later cell hit `NameError` and "stop at first error" dropped the rest). Each cell was its own concurrent `run_stdin` invoke, so lines reached the kernel in any order. Run all now sends every cell in one write, and every kernel write goes through one ordered queue; commands queued while the kernel starts are no longer lost when its "ready" arrives before the process id. Tested with random write delays.
-
-### Added
-
-- **Generate code in notebooks:** ✨ Generate in the notebook toolbar, or "Generate code below" between cells. Describe the cell (Enter to generate, Esc to cancel) and Fahh Local's provider and model types the code into a new cell below, live, with Stop. It sees the cells above (trimmed to fit) with their short text outputs and, when the kernel is running, its live state: variables with their types, DataFrame shapes, columns, dtypes and `head(3)`, array shapes and dtypes, and the imports in use. So it uses your names and does not re-import or reload data. Only code comes back (fences and `<think>` blocks are stripped). Nothing runs on its own: the new cell is selected with Run, Regenerate and Discard, and is saved into the `.ipynb`. No model set up yet? It says so and opens Fahh Local's settings. New Rust commands `agent_generate` / `agent_generate_stop` (one plain streamed completion, no tools) and a silent `inspect` op in the kernel runner (no execution count, no history, not saved).
-- **Notebook code cells are editable in place:** click a code cell to edit it; it saves into the `.ipynb` when you click away, Ctrl+Enter saves and runs, Esc cancels. While cells run, an edit stays open until they finish; it is written on top of the outputs the runner saved, so outputs are never clobbered.
-
 ### Changed
 
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
 
 ### Added
 
-- **Roundtable pictures:** notes show their pictures as thumbnails, loaded from the table's server; click one for a full-size lightbox (Esc or Close, plus Open in browser). A picture whose table emptied reads "picture removed", not a broken image. Share pictures by pasting into the message box (Ctrl+V), the picture button (file picker), or dropping files on the composer (the desktop's own drop event, read with the fs plugin, as the terminal does). Preview chips with a remove button; checked before upload (PNG, JPEG, WebP or GIF, 5 MB each, 4 at a time) with the reason for each refusal. While uploading: "Sharing picture 1 of 2…" and Send is locked; a failure shows the server's own message and keeps pictures and text attached; success says "Shared". Pictures go as a note (text optional); Ask with pictures shares them first, then asks. New tested helpers in `src/lib/roundtable.ts`: `checkPictures`, `pictureType`, `mediaUrl`, `sayBody`, `uploadPicture`.
 - **First run, rebuilt:** a five-step welcome where every step is something to do, with ticks as you go and Skip on every step plus Skip tour. 1 Sound: ring the bell, set the volume or mute, and pick your own error sound. 2 Code: Open Folder, Open Recent, open a VS Code `.code-workspace`, a WSL hint on Windows, and a one-line try-it box where breaking the JavaScript rings the real fahh. 3 Look: Fahh Gold, Fahh Dark or Fahh Light applied live behind the card, and a button that really moves Explorer to the right and back. 4 Fahh Local (optional): provider, key and a real Test connection (the models list). 5 Check Setup, live. Shown once; **Help > Welcome** (or "Show Welcome") brings it back. Focus trap, Esc, Left/Right between steps, fits a 480 px window.
 - **Custom error sound:** Settings > Fahh > Error sound (and the welcome tour): Change sound… takes an mp3, wav, ogg or m4a up to 5 MB, previews it, and every fahh plays it (diagnostics, failed runs, failed terminal commands, the bell), at the Settings volume and respecting mute. Fahh keeps its own copy in the app data folder, so moving the original changes nothing. Reset to default brings the fahh back. Files that are too big or not audio are refused with the reason. New Rust commands `set_custom_sound`, `load_custom_sound`, `clear_custom_sound`, with tests.
 - **Check Setup** (Help > Check Setup…, palette "Fahh: Check Setup"): git, Python, Node, cargo, WSL (Windows) and the language servers Fahh uses (rust-analyzer, typescript-language-server, pylsp or pyright), each with its version, or its one-line install command when missing. New Rust command `check_setup` (spawns through `core::proc::cmd`, 5 s timeout per tool), with version-parsing tests.
@@ -72,9 +62,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The agent's `get_diagnostics`, the "fahh when the agent adds errors" check and the selection context were always empty: `window.monaco` was never set. `monaco-setup.ts` sets it now.
 - Steer (`Ctrl+Enter` while running) waited a fixed 150 ms after Stop and could hit "the agent is already working on a turn"; it now sends once the turn has really ended.
 - `core::debugger::tests::free_port_is_actually_free` was flaky: a parallel test could take the released port before the rebind. It now retries.
-- **Fahh Local wrote cut-off files and marked them done.** When a model hit its output-token limit in the middle of a `write_file` (OpenAI-compatible `finish_reason: "length"`, Anthropic `stop_reason: "max_tokens"`), the stream ending was ignored; some servers close the cut-off call into valid JSON themselves, so a 497-byte half notebook was written with a ✓. A call that was still open when the output was cut off, or whose arguments are not a complete JSON object, is now never run: it shows as a failed step and the model is told to write the file in smaller parts. Nothing repairs truncated arguments.
-- `write_file` / `edit_file` check `.json` and `.ipynb` before writing: the result must be valid JSON, and a notebook needs a `cells` array and `nbformat`. On failure nothing is written and the parse error goes back to the model. (An edit to a file that is already broken is allowed, so it can be fixed step by step.)
-- The notebook preview's "Not valid notebook JSON" error now says why that happens and has **Open source at line N**, which opens the source at the line where parsing failed.
 
 ### Removed (simulated)
 
@@ -82,6 +69,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The fixed **"Devin Task Execution Loop / analyzing AST"** banner shown while the agent ran (replaced by the real run-status line).
 
 ---
+
+## [0.7.4] — 2026-11-05
+
+### Added
+
+- **Generate code in notebooks:** ✨ Generate in the notebook toolbar, or "Generate code below" between cells. Describe the cell (Enter to generate, Esc to cancel) and Fahh Local's provider and model types the code into a new cell below, live, with Stop. It sees the cells above (trimmed to fit) with their short text outputs and, when the kernel is running, its live state: variables with their types, DataFrame shapes, columns, dtypes and `head(3)`, array shapes and dtypes, and the imports in use. So it uses your names and does not re-import or reload data. Only code comes back (fences and `<think>` blocks are stripped). Nothing runs on its own: the new cell is selected with Run, Regenerate and Discard, and is saved into the `.ipynb`. No model set up yet? It says so and opens Fahh Local's settings. New Rust commands `agent_generate` / `agent_generate_stop` (one plain streamed completion, no tools) and a silent `inspect` op in the kernel runner (no execution count, no history, not saved).
+- **Notebook code cells are editable in place:** click a code cell to edit it; it saves into the `.ipynb` when you click away, Ctrl+Enter saves and runs, Esc cancels. While cells run, an edit stays open until they finish; it is written on top of the outputs the runner saved, so outputs are never clobbered.
+- **Roundtable pictures:** notes show their pictures as thumbnails, loaded from the table's server; click one for a full-size lightbox (Esc or Close, plus Open in browser). A picture whose table emptied reads "picture removed", not a broken image. Share pictures by pasting into the message box (Ctrl+V), the picture button (file picker), or dropping files on the composer (the desktop's own drop event, read with the fs plugin, as the terminal does). Preview chips with a remove button; checked before upload (PNG, JPEG, WebP or GIF, 5 MB each, 4 at a time) with the reason for each refusal. While uploading: "Sharing picture 1 of 2…" and Send is locked; a failure shows the server's own message and keeps pictures and text attached; success says "Shared". Pictures go as a note (text optional); Ask with pictures shares them first, then asks. New tested helpers in `src/lib/roundtable.ts`: `checkPictures`, `pictureType`, `mediaUrl`, `sayBody`, `uploadPicture`.
+
+### Fixed
+
+- **Notebook Run all ran cells out of order** (cell 17 first, then 1, 7, 3…; or a later cell hit `NameError` and "stop at first error" dropped the rest). Each cell was its own concurrent `run_stdin` invoke, so lines reached the kernel in any order. Run all now sends every cell in one write, and every kernel write goes through one ordered queue; commands queued while the kernel starts are no longer lost when its "ready" arrives before the process id. Tested with random write delays.
+- **Fahh Local wrote cut-off files and marked them done.** When a model hit its output-token limit in the middle of a `write_file` (OpenAI-compatible `finish_reason: "length"`, Anthropic `stop_reason: "max_tokens"`), the stream ending was ignored; some servers close the cut-off call into valid JSON themselves, so a 497-byte half notebook was written with a ✓. A call that was still open when the output was cut off, or whose arguments are not a complete JSON object, is now never run: it shows as a failed step and the model is told to write the file in smaller parts. Nothing repairs truncated arguments.
+- `write_file` / `edit_file` check `.json` and `.ipynb` before writing: the result must be valid JSON, and a notebook needs a `cells` array and `nbformat`. On failure nothing is written and the parse error goes back to the model. (An edit to a file that is already broken is allowed, so it can be fixed step by step.)
+- The notebook preview's "Not valid notebook JSON" error now says why that happens and has **Open source at line N**, which opens the source at the line where parsing failed.
 
 ## [0.7.3] — 2026-11-05
 
