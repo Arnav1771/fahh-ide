@@ -22,25 +22,37 @@
 
 ## Remaining Backlog & Future Enhancements
 
-### 1. LSP completion, hover and go-to-definition are parsed and dropped
+### 1. LSP language features — DONE on `feat/lsp-language-features` (v0.8.0), GUI check pending
 
-Diagnostics are wired end to end — `lsp_client.rs` emits, `src/lib/diagnostics.ts`
-translates, `monacoBridge.ts` calls `setModelMarkers`, an error-severity marker fires
-the sound. Nothing else is.
+Completion (+resolve), hover, definition (cross-file opens a tab), references (peek),
+rename (WorkspaceEdit across open and unopened files), signature help, code actions,
+inlay hints and document highlights are wired, in the shape this item asked for:
 
-Searching `src/lib/*.ts` and `src/components/*.tsx` for `completion`, `hover` or
-`definition` returns only the AI panel's `/chat/completions` URL handling. There is no
-consumer for a `textDocument/completion`, `hover` or `definition` response anywhere in
-the frontend: the client receives them and they go nowhere.
+- `src/lib/lsp/protocol.ts` — pure LSP→Monaco mappers (kinds, ranges, markdown hover,
+  locations, WorkspaceEdit flattening, `applyTextEdits`, URI→path). `protocol.test.ts`.
+- `src/lib/lsp/client.ts` — `LspClient`: the correlator, one send queue per server,
+  awaited `initialize`, answers to server requests, 3 s timeouts, `$/cancelRequest`,
+  document sync. `client.test.ts` drives it with a fake transport.
+- `src/lib/lsp/monacoLsp.ts` — `LspService`: model-driven didOpen/didChange/didClose,
+  providers registered per running server, Monaco built-in workers switched off for a
+  language while its server is up, the WorkspaceEdit applier and the editor opener.
+- `src/lib/lsp/integration.test.ts` — real pyright / typescript-language-server over
+  stdio (`FAHH_LSP_IT=1`, servers on PATH). Passed against pyright 1.1.x and
+  typescript-language-server with TypeScript 5 in WSL.
 
-**What it takes:** register Monaco providers (`registerCompletionItemProvider`,
-`registerHoverProvider`, `registerDefinitionProvider`) that issue an LSP request and
-resolve from the reply. The request plumbing (`lsp_send`) already exists; what is
-missing is request/response correlation — diagnostics are a *notification*, so the
-current path never needed to match a reply to a request id.
-
-**Do it in the same shape as `diagnostics.ts`:** a pure translator module with tests,
-then a thin wiring layer. That is the only way any of it is verifiable here.
+**Still open:**
+- Nothing here has been clicked through in the packaged Windows app (no GUI in this
+  environment): the editor opener for cross-file definition, the peek widget for
+  unopened files, the lightbulb, and Windows URI round-trips (`file:///c%3A/...`)
+  are covered by unit tests only.
+- typescript-language-server refuses TypeScript 7 (no `tsserver.js`): a project on
+  TS 7 falls back to Monaco's built-in worker. Check Setup asks for `typescript@5`.
+- Deletes in a WorkspaceEdit are not applied (no server Fahh starts sends them for a
+  rename or quick fix). `codeAction/resolve` and `workspace/executeCommand` are sent
+  but no server-side command has been exercised.
+- Semantic tokens, code lens, document symbols from the server (the Outline uses its
+  own parser), formatting through the server, and `workspace/didChangeWatchedFiles`
+  for edits made outside Fahh are not wired.
 
 ### 2. The debugger UI is a stub
 

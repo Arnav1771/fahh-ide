@@ -114,7 +114,7 @@ export function configurationFor(server: string, section: string | undefined, wo
 
 /** Install line shown when a server is missing (mirrors Check Setup). */
 export const INSTALL_HINT: Record<string, string> = {
-  typescript: "npm install -g typescript-language-server typescript",
+  typescript: "npm install -g typescript-language-server typescript@5",
   python: "npm install -g pyright (or pip install python-lsp-server)",
   rust: "rustup component add rust-analyzer",
   eslint: "npm install -g vscode-langservers-extracted",

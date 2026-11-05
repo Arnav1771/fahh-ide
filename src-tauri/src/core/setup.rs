@@ -39,7 +39,7 @@ const PROBES: &[Probe] = &[
     // Windows only (filtered in check_setup).
     Probe { name: "WSL", kind: "tool", programs: &["wsl.exe"], args: &["--version"], hint: "Run `wsl --install` in an administrator PowerShell, then restart" },
     Probe { name: "rust-analyzer", kind: "language server", programs: &["rust-analyzer"], args: &["--version"], hint: "rustup component add rust-analyzer" },
-    Probe { name: "typescript-language-server", kind: "language server", programs: &["typescript-language-server"], args: &["--version"], hint: "npm install -g typescript-language-server typescript" },
+    Probe { name: "typescript-language-server", kind: "language server", programs: &["typescript-language-server"], args: &["--version"], hint: "npm install -g typescript-language-server typescript@5" },
     Probe { name: "Python language server", kind: "language server", programs: &["pylsp", "pyright"], args: &["--version"], hint: "pip install python-lsp-server (or npm install -g pyright)" },
     // Extra servers, started beside the main one when found (lsp_client.rs server_command).
     Probe { name: "ESLint language server", kind: "language server", programs: &["vscode-eslint-language-server"], args: &["--version"], hint: "npm install -g vscode-langservers-extracted" },

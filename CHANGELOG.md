@@ -9,6 +9,26 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added — language features (planned v0.8.0)
+
+- **Language servers do more than squiggles.** Completion (with `completionItem/resolve` for docs and auto-imports), hover, go to definition (another file opens in a tab at the symbol), Find All References (Monaco's peek, unopened files included), rename across files (F2), signature help, quick fixes and refactors (Ctrl+. applies the server's edits), inlay hints and same-symbol highlights. Each provider is registered only while a server that offers it is running.
+- **One source per language, no doubled suggestions.** While typescript-language-server, vscode-css/html/json-language-server is up, Monaco's built-in TS/JS/CSS/HTML/JSON worker features for that language stand down; when no server runs (not installed, starting, crashed) the built-in workers answer as before.
+- **Rename and quick fixes stay undoable.** An open file takes the edit as one undo step (Ctrl+Z). A file that is not open is written to disk and its old text kept: palette **Language: Undo Rename in Closed Files** puts it back. Servers are told about those writes (`workspace/didChangeWatchedFiles`).
+- **ESLint, Ruff and Tailwind** run beside the main server when installed: `vscode-eslint-language-server` (when the project has an ESLint config or dependency), `ruff server` for Python, `tailwindcss-language-server` (when the project uses Tailwind). Their diagnostics merge with the main server's instead of replacing them. **Check Setup** lists all three with their install commands.
+- **Emmet** (`emmet-monaco-es`, MIT) in HTML, CSS/SCSS/Less and JSX/TSX, and **relative path completion** in import strings, `src`/`href`, `url()` and Markdown links (from the explorer's tree; skipped when a language server already does it). Settings > Editor gets **Inlay hints** and **Emmet** switches.
+- Editor: **linked editing** (rename an HTML/JSX tag pair together) and inlay hints on.
+- **TODOs view** (sidebar, palette "View: TODOs"): every TODO / FIXME / HACK in the folder through the workspace search, grouped by file, refreshed on save; click to jump to the line.
+- HTML and Markdown previews **reload on save**, so a saved stylesheet, script or image they use shows up.
+- Palette: Find All References, Rename Symbol, Quick Fix….
+
+### Fixed — language server plumbing
+
+- `initialize` is now awaited before `initialized` and the first `didOpen` (they used to be sent back to back), and requests the server sends (`workspace/configuration`, `window/workDoneProgress/create`, `client/registerCapability`, `workspace/applyEdit`…) are answered. pyright and ESLint wait for those answers.
+- Document sync follows the Monaco model, not React state: `didOpen` per model, incremental `didChange` with the model's version (full text for servers that ask for it), `didClose` when a tab's model goes, `didSave` after Save. Messages to a server go through one queue, so a change always arrives before the completion request typed after it.
+- Document URIs are proper file URIs (`file:///c%3A/...`, `file://wsl.localhost/...`); they were `file://C:\...`, which servers could not map back to the open tab on Windows.
+- Servers keep running while any tab of their language is open (switching between a .py and a .ts tab used to kill and restart them) and stop when none is.
+- On Windows the server binary is spawned by its resolved path, so npm's `.cmd` shims (typescript-language-server, pyright-langserver, the vscode-*-language-server family) start.
+
 ### Changed
 
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
