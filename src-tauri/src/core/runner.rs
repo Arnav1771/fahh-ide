@@ -362,6 +362,113 @@ pub fn python_interpreter(root: Option<String>, setting: Option<String>) -> Pyth
     )
 }
 
+/// One Python environment for the notebook kernel picker.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PythonEnv {
+    pub program: String,
+    /// "Python 3.11 · .venv (workspace)"
+    pub label: String,
+    /// "workspace", "conda" or "global"; the picker groups by it.
+    pub group: String,
+    pub version: String,
+    /// Without ipykernel the notebook offers the pip command instead of running.
+    pub ipykernel: bool,
+}
+
+/// Interpreter paths from `py -0p` (Windows launcher): ` -V:3.12 *   C:\Python312\python.exe`.
+fn parse_py_list(text: &str) -> Vec<String> {
+    text.lines()
+        .filter_map(|l| l.find(":\\").map(|i| l[i.saturating_sub(1)..].trim().to_string()))
+        .filter(|p| p.to_ascii_lowercase().ends_with(".exe"))
+        .collect()
+}
+
+/// (python, env name) for each env of `conda env list --json`; the root prefix is "base".
+fn parse_conda_envs(json: &str, windows: bool) -> Vec<(String, String)> {
+    let envs = serde_json::from_str::<serde_json::Value>(json).ok().and_then(|v| v["envs"].as_array().cloned()).unwrap_or_default();
+    envs.iter()
+        .filter_map(|e| e.as_str())
+        .map(|prefix| {
+            let parts: Vec<&str> = prefix.split(['/', '\\']).filter(|s| !s.is_empty()).collect();
+            let name = match parts.as_slice() {
+                [.., "envs", n] => n.to_string(),
+                _ => "base".to_string(),
+            };
+            let sep = if windows { "\\" } else { "/" };
+            let py = if windows { format!("{prefix}{sep}python.exe") } else { format!("{prefix}{sep}bin{sep}python") };
+            (py, name)
+        })
+        .collect()
+}
+
+/// What the probe script prints: sys.executable, the version, and whether ipykernel imports.
+fn parse_probe(out: &str) -> Option<(String, String, bool)> {
+    let mut l = out.lines().map(str::trim);
+    Some((l.next()?.to_string(), l.next()?.to_string(), l.next()? == "True"))
+}
+
+fn env_label(version: &str, name: &str, group: &str) -> String {
+    let minor: String = version.split('.').take(2).collect::<Vec<_>>().join(".");
+    format!("Python {minor} · {name} ({group})")
+}
+
+const PROBE: &str = "import sys,importlib.util as u;print(sys.executable);print('%d.%d.%d'%sys.version_info[:3]);print(u.find_spec('ipykernel') is not None)";
+
+fn output_of(program: &str, args: &[&str]) -> Option<String> {
+    let out = crate::core::proc::cmd(program).args(args).stdin(Stdio::null()).output().ok()?;
+    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// Python environments for the notebook kernel picker: the folder's .venv / venv, conda envs,
+/// then `py -0p` and python / python3 on PATH. Each is probed once (version, ipykernel), in parallel.
+#[tauri::command]
+pub async fn python_kernels(root: Option<String>) -> Vec<PythonEnv> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let windows = cfg!(target_os = "windows");
+        let mut cands: Vec<(String, String, &'static str)> = Vec::new();
+        for venv in [".venv", "venv"] {
+            let ws = pick_python("", root.as_deref(), windows, |p| p.contains(venv) && std::path::Path::new(p).is_file(), String::new);
+            if ws.label == venv {
+                cands.push((ws.program, venv.into(), "workspace"));
+            }
+        }
+        if which_exists("conda") {
+            for (py, name) in parse_conda_envs(&output_of("conda", &["env", "list", "--json"]).unwrap_or_default(), windows) {
+                cands.push((py, name, "conda"));
+            }
+        }
+        if windows {
+            for py in parse_py_list(&output_of("py", &["-0p"]).unwrap_or_default()) {
+                let name = std::path::Path::new(&py).parent().and_then(|d| d.file_name()).map(|n| n.to_string_lossy().into_owned()).unwrap_or_else(|| "py".into());
+                cands.push((py, name, "global"));
+            }
+        }
+        for name in ["python", "python3"] {
+            if let Ok(p) = which::which(name) {
+                if !p.to_string_lossy().contains("WindowsApps") {
+                    cands.push((p.to_string_lossy().into_owned(), name.into(), "global"));
+                }
+            }
+        }
+        // ponytail: no per-probe timeout; a hung interpreter stalls only the picker's list.
+        let probes: Vec<_> = cands
+            .into_iter()
+            .map(|(py, name, group)| std::thread::spawn(move || (output_of(&py, &["-c", PROBE]).as_deref().and_then(parse_probe), py, name, group)))
+            .collect();
+        let mut seen = std::collections::HashSet::new();
+        probes
+            .into_iter()
+            .filter_map(|h| h.join().ok())
+            .filter_map(|(probe, py, name, group)| {
+                let (exe, version, ipykernel) = probe?;
+                seen.insert(exe.to_lowercase()).then(|| PythonEnv { label: env_label(&version, &name, group), program: py, group: group.into(), version, ipykernel })
+            })
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
+}
+
 /// Resolves the real Python executable, avoiding dummy WindowsApps stubs on Windows.
 pub(crate) fn resolve_python() -> String {
     #[cfg(target_os = "windows")]
@@ -675,6 +782,37 @@ mod tests {
         assert!(std::fs::read_to_string(&cmd.args[1]).unwrap().contains("jupyter_client"));
         assert_eq!(cmd.args[2], "/w/n.ipynb");
         assert!(build_run_command("kernel", "/w/n.ipynb", &[], true, None).is_err());
+    }
+
+    #[test]
+    fn parses_py_launcher_list() {
+        let text = " -V:3.12 *        C:\\Python312\\python.exe\r\n -V:3.11          C:\\Users\\A B\\AppData\\Local\\Programs\\Python\\Python311\\python.exe\r\n -3.9-64          D:\\py39\\python.exe\r\n";
+        assert_eq!(parse_py_list(text), vec![
+            r"C:\Python312\python.exe".to_string(),
+            r"C:\Users\A B\AppData\Local\Programs\Python\Python311\python.exe".into(),
+            r"D:\py39\python.exe".into(),
+        ]);
+        assert!(parse_py_list("No installed Pythons found!").is_empty());
+    }
+
+    #[test]
+    fn parses_conda_envs_for_both_layouts() {
+        let unix = r#"{"envs": ["/opt/conda", "/opt/conda/envs/ds"]}"#;
+        assert_eq!(parse_conda_envs(unix, false), vec![
+            ("/opt/conda/bin/python".to_string(), "base".to_string()),
+            ("/opt/conda/envs/ds/bin/python".into(), "ds".into()),
+        ]);
+        let win = r#"{"envs": ["C:\\miniconda3\\envs\\ml"]}"#;
+        assert_eq!(parse_conda_envs(win, true), vec![(r"C:\miniconda3\envs\ml\python.exe".to_string(), "ml".to_string())]);
+        assert!(parse_conda_envs("not json", true).is_empty());
+    }
+
+    #[test]
+    fn probe_output_and_labels() {
+        assert_eq!(parse_probe("/w/.venv/bin/python\n3.11.4\nFalse\n"), Some(("/w/.venv/bin/python".into(), "3.11.4".into(), false)));
+        assert_eq!(parse_probe("C:\\p\\python.exe\r\n3.12.1\r\nTrue\r\n").unwrap().2, true);
+        assert_eq!(parse_probe("garbage"), None);
+        assert_eq!(env_label("3.11.4", ".venv", "workspace"), "Python 3.11 · .venv (workspace)");
     }
 
     #[test]

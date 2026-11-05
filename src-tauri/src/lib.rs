@@ -66,6 +66,8 @@ pub fn run() {
             runner::run_file,
             runner::stop_run,
             runner::python_interpreter,
+            runner::python_kernels,
+            runner::run_stdin,
             // LSP client (Phase 2)
             lsp_client::lsp_start,
             lsp_client::lsp_send,
