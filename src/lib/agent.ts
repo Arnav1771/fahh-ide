@@ -49,7 +49,14 @@ export const agentUsage = (session: string) => invoke<AgentUsage>("agent_usage",
 export const agentExport = (session: string, path?: string | null) => invoke<string>("agent_export", { session, path: path ?? null });
 export const agentAgents = (workspace: string) => invoke<AgentsReport>("agent_agents", { workspace });
 
-export const listenAgent = (cb: (e: AgentEnvelope) => void): Promise<UnlistenFn> =>
+/** One plain completion (no tools): text deltas arrive on `listenGenerate`; resolves to the whole reply. */
+export const agentGenerate = (id: string, provider: AgentProviderConfig, system: string, prompt: string) =>
+  invoke<string>("agent_generate", { id, provider, system, prompt });
+export const agentGenerateStop = (id: string) => invoke<void>("agent_generate_stop", { id });
+export const listenGenerate = (cb: (e: { id: string; text: string }) => void): Promise<UnlistenFn> =>
+  listen<{ id: string; text: string }>("agent://generate", (e) => cb(e.payload));
+
+export const listenAgent =(cb: (e: AgentEnvelope) => void): Promise<UnlistenFn> =>
   listen<AgentEnvelope>("agent://event", (e) => cb(e.payload));
 
 // ─── providers ────────────────────────────────────────────────────────────────

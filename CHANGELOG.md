@@ -9,6 +9,15 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Notebook Run all ran cells out of order** (cell 17 first, then 1, 7, 3…; or a later cell hit `NameError` and "stop at first error" dropped the rest). Each cell was its own concurrent `run_stdin` invoke, so lines reached the kernel in any order. Run all now sends every cell in one write, and every kernel write goes through one ordered queue; commands queued while the kernel starts are no longer lost when its "ready" arrives before the process id. Tested with random write delays.
+
+### Added
+
+- **Generate code in notebooks:** ✨ Generate in the notebook toolbar, or "Generate code below" between cells. Describe the cell (Enter to generate, Esc to cancel) and Fahh Local's provider and model types the code into a new cell below, live, with Stop. It sees the cells above (trimmed to fit) with their short text outputs and, when the kernel is running, its live state: variables with their types, DataFrame shapes, columns, dtypes and `head(3)`, array shapes and dtypes, and the imports in use. So it uses your names and does not re-import or reload data. Only code comes back (fences and `<think>` blocks are stripped). Nothing runs on its own: the new cell is selected with Run, Regenerate and Discard, and is saved into the `.ipynb`. No model set up yet? It says so and opens Fahh Local's settings. New Rust commands `agent_generate` / `agent_generate_stop` (one plain streamed completion, no tools) and a silent `inspect` op in the kernel runner (no execution count, no history, not saved).
+- **Notebook code cells are editable in place:** click a code cell to edit it; it saves into the `.ipynb` when you click away, Ctrl+Enter saves and runs, Esc cancels. While cells run, an edit stays open until they finish; it is written on top of the outputs the runner saved, so outputs are never clobbered.
+
 ### Changed
 
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.

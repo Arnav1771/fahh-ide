@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { AppWindow, Code, ExternalLink, FileText, Play, RotateCw, ShieldAlert, X } from "lucide-react";
@@ -9,10 +9,11 @@ import { allowPreview } from "../../lib/tauri";
 import { revealLine } from "../../lib/monacoBridge";
 import { usePreviewStore } from "../../store/previewStore";
 import { useWorkspace } from "../../hooks/useWorkspace";
-import { parseNotebook, type NotebookCell, type NotebookOutput } from "../../lib/notebook";
+import { parseNotebook, type Notebook, type NotebookCell, type NotebookOutput } from "../../lib/notebook";
 import * as monaco from "monaco-editor";
 import type { CellRun } from "../../lib/python";
-import { KernelToolbar, kernelLabel, useNotebookKernel } from "./NotebookKernel";
+import { KernelToolbar, kernelLabel, useNotebookKernel, type NotebookKernel } from "./NotebookKernel";
+import { EditableCode, GenerateButton, GenerateSlot, useNotebookGenerate } from "./NotebookGenerate";
 
 /** Turn a local path into a URL the webview may load (asset protocol). */
 function assetUrl(path: string): string {
@@ -519,7 +520,21 @@ function CodeSource({ source, language }: { source: string; language: string }) 
   return html === null ? <pre className={`${cls} text-fahh-text`}>{source}</pre> : <pre className={cls} dangerouslySetInnerHTML={{ __html: html }} />;
 }
 
-function NotebookCellView({ cell, language, path, run, onRun }: { cell: NotebookCell; language: string; path: string; run?: CellRun; onRun?: () => void }) {
+function NotebookCellView({
+  cell,
+  language,
+  path,
+  run,
+  onRun,
+  onEdit,
+}: {
+  cell: NotebookCell;
+  language: string;
+  path: string;
+  run?: CellRun;
+  onRun?: () => void;
+  onEdit?: (source: string, run: boolean) => Promise<void>;
+}) {
   const prompt = "w-16 shrink-0 select-none pt-2 text-right font-mono text-[11px] text-fahh-muted";
   if (cell.type === "markdown") {
     return (
@@ -559,7 +574,13 @@ function NotebookCellView({ cell, language, path, run, onRun }: { cell: Notebook
           )}
           <span className={busy ? (run?.status === "queued" ? "text-fahh-muted" : "animate-pulse") : ""}>In [{busy ? "*" : count ?? " "}]:</span>
         </div>
-        <CodeSource source={cell.source} language={language} />
+        {onEdit ? (
+          <EditableCode source={cell.source} onSave={onEdit}>
+            <CodeSource source={cell.source} language={language} />
+          </EditableCode>
+        ) : (
+          <CodeSource source={cell.source} language={language} />
+        )}
       </div>
       {outputs.map((out, i) => (
         <div key={i} className="fahh-nb-output flex gap-3">
@@ -597,26 +618,42 @@ function NotebookPreview({ path, content, onShowSource }: { path: string; conten
     );
   }
   if (nb.cells.length === 0) return <p className="p-4 text-xs text-fahh-muted">Empty notebook.</p>;
+  return <NotebookBody nb={nb} path={path} k={k} />;
+}
+
+function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: NotebookKernel }) {
+  const g = useNotebookGenerate(nb.cells, k);
   // ponytail: Python kernels only; other notebook languages stay a read-only view.
   const python = nb.language === "python";
   const code = nb.cells.flatMap((c, index) => (c.type === "code" && c.source.trim() ? [{ index, code: c.source }] : []));
+  const selected = g.gen.phase === "done" && nb.cells.length >= g.gen.len ? g.gen.at : -1;
   return (
     <div className="fahh-notebook absolute inset-0 flex flex-col">
-      {python && <KernelToolbar k={k} cells={code} />}
+      {python && (
+        <KernelToolbar k={k} cells={code}>
+          <GenerateButton g={g} at={nb.cells.length} />
+        </KernelToolbar>
+      )}
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="flex flex-col gap-4 p-4 pr-6">
           {nb.cells.map((cell, i) => (
-            <NotebookCellView
-              key={i}
-              cell={cell}
-              language={nb.language}
-              path={path}
-              run={k.runs[i]}
-              onRun={python && cell.type === "code" ? () => void k.runCells([{ index: i, code: cell.source }]) : undefined}
-            />
+            <Fragment key={i}>
+              {python && <GenerateSlot g={g} at={i} cellCount={nb.cells.length} />}
+              <div className={i === selected ? "fahh-nb-selected -m-1 rounded-md p-1 ring-1 ring-fahh-accent/70" : undefined}>
+                <NotebookCellView
+                  cell={cell}
+                  language={nb.language}
+                  path={path}
+                  run={k.runs[i]}
+                  onRun={python && cell.type === "code" ? () => void k.runCells([{ index: i, code: cell.source }]) : undefined}
+                  onEdit={cell.type === "code" ? (src, run) => g.saveCell(i, src, run && python) : undefined}
+                />
+              </div>
+            </Fragment>
           ))}
+          {python && <GenerateSlot g={g} at={nb.cells.length} cellCount={nb.cells.length} />}
           <p className="pl-[76px] text-[11px] text-fahh-muted">
-            {nb.cells.length} cells · {python ? kernelLabel(k.kernel) : nb.language}. Outputs are saved into the notebook; use Source to edit cells.
+            {nb.cells.length} cells · {python ? kernelLabel(k.kernel) : nb.language}. Click a code cell to edit it; edits and outputs are saved into the notebook.
           </p>
         </div>
       </div>

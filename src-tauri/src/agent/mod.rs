@@ -594,3 +594,29 @@ pub fn agents_report(root: &std::path::Path, user_dir: Option<&std::path::Path>)
         problems,
     }
 }
+
+// ─── one-shot generation (the notebook's Generate code) ──────────────────────
+
+static GENERATIONS: std::sync::LazyLock<Mutex<HashMap<String, Arc<AtomicBool>>>> = std::sync::LazyLock::new(|| Mutex::new(HashMap::new()));
+
+/// One plain completion, no tools and no session, streamed as `agent://generate` `{id, text}`
+/// deltas; resolves to the whole reply. `agent_generate_stop` ends it early (Err "stopped").
+#[tauri::command]
+pub async fn agent_generate(app: AppHandle, id: String, provider: ProviderConfig, system: String, prompt: String) -> Result<String, String> {
+    let cancel = Arc::new(AtomicBool::new(false));
+    GENERATIONS.lock().unwrap().insert(id.clone(), cancel.clone());
+    let tag = id.clone();
+    let mut on_text = move |t: &str| {
+        let _ = app.emit("agent://generate", json!({"id": tag, "text": t}));
+    };
+    let r = Provider::Http(provider).complete(&system, &[Msg::User { text: prompt }], &[], &cancel, &mut on_text).await;
+    GENERATIONS.lock().unwrap().remove(&id);
+    r.map(|turn| turn.text)
+}
+
+#[tauri::command]
+pub fn agent_generate_stop(id: String) {
+    if let Some(c) = GENERATIONS.lock().unwrap().get(&id) {
+        c.store(true, Ordering::Relaxed);
+    }
+}

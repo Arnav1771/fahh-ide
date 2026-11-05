@@ -3,12 +3,13 @@
  * or all of them, interrupt, restart. One fahh_kernel.py process per open notebook, started on
  * the first run and fed commands over stdin; outputs stream back and are saved into the .ipynb.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Copy, Loader2, Play, RotateCw, Square, SquareTerminal, X } from "lucide-react";
 import { createRunRouter, type RunRouter } from "../../lib/runEvents";
 import { pythonKernels, readFile, runFile, runStdin, stopRun, writeFile, type PythonEnv } from "../../lib/tauri";
 import type { RunOutputEvent } from "../../lib/types";
+import type { KernelState } from "../../lib/notebookGen";
 import {
   applyKernelEvent,
   ipykernelInstallCommand,
@@ -17,6 +18,7 @@ import {
   lastLines,
   parseKernelLine,
   queueCells,
+  serialQueue,
   settleRuns,
   workspacePython,
   type CellRuns,
@@ -86,6 +88,10 @@ export function useNotebookKernel(path: string) {
 
   const pidRef = useRef<number | null>(null);
   const pending = useRef<string[]>([]);
+  /** Every stdin write goes through here, so lines reach the runner in the order they were sent. */
+  const writeQueue = useRef(serialQueue());
+  const editQueue = useRef(serialQueue());
+  const inspects = useRef(new Map<string, (s: KernelState) => void>());
   const ready = useRef(false);
   const stderr = useRef<string[]>([]);
   const quitting = useRef(false);
@@ -132,7 +138,11 @@ export function useNotebookKernel(path: string) {
           ready.current = true;
           setPhase({ kind: "ready" });
           setKernel((k) => (k ? { ...k, version: ev.version, ipykernel: true } : k));
-          for (const line of pending.current.splice(0)) void runStdin(pidRef.current!, line);
+          flushPending(); // waits for the pid when "ready" beats run_file's reply
+          return;
+        case "inspect":
+          inspects.current.get(ev.id)?.(ev.state);
+          inspects.current.delete(ev.id);
           return;
         case "missing":
           setPhase({ kind: "missing" });
@@ -194,7 +204,7 @@ export function useNotebookKernel(path: string) {
     const pid = pidRef.current;
     if (pid === null) return;
     quitting.current = true;
-    void runStdin(pid, JSON.stringify({ op: "shutdown" })).catch(() => {});
+    void writeQueue.current(() => runStdin(pid, JSON.stringify({ op: "shutdown" }))).catch(() => {});
     // ponytail: fixed grace period; the runner normally exits well within it.
     window.setTimeout(() => {
       if (pidRef.current === pid) void stopRun(pid).catch(() => {});
@@ -214,10 +224,17 @@ export function useNotebookKernel(path: string) {
     }
   };
 
-  const send = (cmd: object) => {
-    const line = JSON.stringify(cmd);
-    if (pidRef.current !== null && ready.current) void runStdin(pidRef.current, line).catch((e) => setNotice(String(e)));
-    else pending.current.push(line);
+  /** Everything queued goes out in one write, through the ordered queue. */
+  const flushPending = () => {
+    const pid = pidRef.current;
+    if (pid === null || !ready.current || pending.current.length === 0) return;
+    const lines = pending.current.splice(0).join("\n");
+    void writeQueue.current(() => runStdin(pid, lines)).catch((e) => setNotice(String(e)));
+  };
+
+  const send = (...cmds: object[]) => {
+    pending.current.push(...cmds.map((c) => JSON.stringify(c)));
+    flushPending();
   };
 
   const start = async () => {
@@ -231,6 +248,7 @@ export function useNotebookKernel(path: string) {
       pidRef.current = r.pid;
       starting.current = false;
       router.current!.attach(r.pid);
+      flushPending();
     } catch (e) {
       starting.current = false;
       router.current!.cancel();
@@ -250,9 +268,36 @@ export function useNotebookKernel(path: string) {
       return;
     }
     setRuns((r) => queueCells(r, cells.map((c) => c.index)));
-    for (const c of cells) send({ op: "run", cell: c.index, code: c.code });
+    send(...cells.map((c) => ({ op: "run", cell: c.index, code: c.code }))); // one write: Run all keeps its order
     if (pidRef.current === null && !starting.current) await start();
   };
+
+  /** The live kernel's variables and imports, or null when no kernel is running (or it is slow to answer). */
+  const inspect = (timeoutMs = 8000): Promise<KernelState | null> => {
+    if (pidRef.current === null || !ready.current) return Promise.resolve(null);
+    const id = Math.random().toString(36).slice(2);
+    return new Promise((resolve) => {
+      inspects.current.set(id, resolve);
+      window.setTimeout(() => {
+        if (inspects.current.delete(id)) resolve(null);
+      }, timeoutMs);
+      send({ op: "inspect", id });
+    });
+  };
+
+  /**
+   * Change the .ipynb on disk: unsaved source edits first, then the file as the runner last
+   * saved it, so cell outputs are never overwritten. Only while no cell runs (the runner
+   * saves outputs by cell index). Settled run state is dropped: the file holds those outputs.
+   */
+  const editNotebook = (mutate: (json: string) => string) =>
+    editQueue.current(async () => {
+      await flush();
+      const text = mutate(await readFile(path));
+      await writeFile(path, text);
+      useEditorStore.getState().setContent(path, text);
+      setRuns((r) => (kernelBusy(r) ? r : {}));
+    });
 
   const interrupt = () => {
     if (!ready.current) {
@@ -294,6 +339,8 @@ export function useNotebookKernel(path: string) {
     root,
     clearNotice: () => setNotice(null),
     runCells,
+    inspect,
+    editNotebook,
     interrupt,
     restart,
     choose,
@@ -307,7 +354,7 @@ export type NotebookKernel = ReturnType<typeof useNotebookKernel>;
 const btn = "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-1 focus-visible:outline-fahh-accent";
 
 /** Run all / Interrupt / Restart, the status, and the kernel picker. */
-export function KernelToolbar({ k, cells }: { k: NotebookKernel; cells: { index: number; code: string }[] }) {
+export function KernelToolbar({ k, cells, children }: { k: NotebookKernel; cells: { index: number; code: string }[]; children?: ReactNode }) {
   const starting = k.phase.kind === "starting";
   const live = k.phase.kind === "ready" || starting;
   const status = k.restarting
@@ -337,6 +384,7 @@ export function KernelToolbar({ k, cells }: { k: NotebookKernel; cells: { index:
         <button type="button" onClick={k.restart} disabled={!live || k.restarting} title="Restart the kernel (variables are cleared)" className={`${btn} text-fahh-text hover:bg-fahh-surface`}>
           <RotateCw size={12} className={k.restarting ? "animate-spin" : ""} aria-hidden="true" /> Restart
         </button>
+        {children}
         <span className="ml-1 flex items-center gap-1.5 text-[11px] text-fahh-muted" aria-live="polite">
           {(k.busy || starting || k.restarting) && <Loader2 size={12} className="animate-spin text-fahh-accent" aria-hidden="true" />}
           {status}
