@@ -56,6 +56,7 @@ import { SpatialCanvas } from "./components/SpatialCanvas";
 import { useSpatialStore } from "./store/spatialStore";
 import { Workbench } from "./components/Workbench";
 import { getView, listViews } from "./lib/viewRegistry";
+import { getLspService } from "./lib/lsp/monacoLsp";
 import type { Zone } from "./lib/dockLayout";
 import {
   closeActiveEditor,
@@ -414,6 +415,13 @@ export default function App() {
       { id: "view.remote", group: "View", label: "Remote Explorer", keywords: "wsl ssh docker containers", run: () => revealView("remote") },
       { id: "view.runDebug", group: "View", label: "Run and Debug", keys: ["Ctrl", "Shift", "D"], keywords: "debugger breakpoints", run: () => revealView("runDebug") },
       { id: "problem.next", group: "Go", label: "Next Problem", keys: ["F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.next"); } },
+      { id: "lsp.references", group: "Go", label: "Find All References", keys: ["Shift", "F12"], keywords: "usages peek language server lsp", run: () => { runEditorAction("editor.action.referenceSearch.trigger"); } },
+      { id: "lsp.rename", group: "Language", label: "Rename Symbol", keys: ["F2"], keywords: "refactor language server lsp", run: () => { runEditorAction("editor.action.rename"); } },
+      { id: "lsp.quickFix", group: "Language", label: "Quick Fix…", keys: ["Ctrl", "."], keywords: "code action lightbulb fix eslint ruff", run: () => { runEditorAction("editor.action.quickFix"); } },
+      { id: "lsp.undoClosedRename", group: "Language", label: "Undo Rename in Closed Files", keywords: "revert rename refactor lsp workspace edit", run: async () => {
+        const n = (await getLspService()?.undoLastClosedEdit()) ?? 0;
+        useToastStore.getState().show(n ? `Restored ${n} file${n === 1 ? "" : "s"}.` : "Nothing to undo: the last rename changed no closed files.");
+      } },
       { id: "problem.prev", group: "Go", label: "Previous Problem", keys: ["Shift", "F8"], keywords: "error warning", run: () => { runEditorAction("editor.action.marker.prev"); } },
       ...allThemes(installedThemes).map((d) => ({ id: `theme.${d.id}`, group: "Theme", label: d.name, keywords: d.description, run: () => setTheme(d.id) })),
       { id: "preview.toggle", group: "Preview", label: "Toggle Preview (PDF, Markdown, HTML, SVG, CSV)", keys: ["Ctrl", "Shift", "V"], keywords: "markdown html image csv pdf document preview source", run: () => {

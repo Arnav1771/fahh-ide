@@ -8,7 +8,7 @@
  * Ids are saved in layouts: never rename a shipped one.
  */
 import { useMemo } from "react";
-import { AlertCircle, Blocks, BookOpenText, Bot, Bug, BugPlay, FolderTree, MonitorCloud, GitBranch, History, ListTree, Palette, Play, Search, Settings as SettingsIcon, SquareTerminal, UsersRound } from "lucide-react";
+import { AlertCircle, Blocks, BookOpenText, Bot, Bug, BugPlay, ListTodo, FolderTree, MonitorCloud, GitBranch, History, ListTree, Palette, Play, Search, Settings as SettingsIcon, SquareTerminal, UsersRound } from "lucide-react";
 import { SettingsPanel } from "../components/SettingsPanel";
 import { FileTree } from "../components/FileTree/FileTree";
 import { SearchSidebar } from "../components/SearchSidebar/SearchSidebar";
@@ -22,6 +22,7 @@ import { RemoteExplorer } from "../components/RemoteExplorer";
 import { DeepWiki } from "../components/DeepWiki";
 import { Roundtable } from "../components/Roundtable";
 import { Outline } from "../components/Outline";
+import { TodoView } from "../components/TodoView";
 import { Timeline } from "../components/Timeline";
 import { RunPanel } from "../components/RunPanel";
 import { ProblemsPanel } from "../components/ProblemsPanel";
@@ -45,6 +46,7 @@ registerView({ id: "explorer", title: "Explorer", icon: FolderTree, component: F
 registerView({ id: "search", title: "Search", icon: Search, component: () => <SearchSidebar />, defaultLocation: "sidebar", keys: "Ctrl+Shift+F", keywords: "find in files grep replace" });
 registerView({ id: "git", title: "Source Control", icon: GitBranch, component: GitSidebar, defaultLocation: "sidebar", keys: "Ctrl+Shift+G", keywords: "git branch commit diff" });
 registerView({ id: "outline", title: "Outline", icon: ListTree, component: Outline, defaultLocation: "sidebar", keywords: "symbols structure functions classes headings" });
+registerView({ id: "todos", title: "TODOs", icon: ListTodo, component: TodoView, defaultLocation: "sidebar", keywords: "todo fixme hack notes tasks comments" });
 registerView({ id: "timeline", title: "Timeline", icon: History, component: Timeline, defaultLocation: "sidebar", keywords: "history git log commits file" });
 registerView({ id: "deepwiki", title: "DeepWiki", icon: BookOpenText, component: DeepWiki, defaultLocation: "sidebar", keywords: "symbol wiki docs definition usages references explain" });
 registerView({ id: "roundtable", title: "Roundtable", icon: UsersRound, component: Roundtable, defaultLocation: "sidebar", keywords: "share pair collaborate multiplayer table invite room together" });

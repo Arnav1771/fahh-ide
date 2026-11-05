@@ -50,6 +50,10 @@ export interface Settings {
   uiZoom: number;
   /** Python for Run, Debug and notebooks; "" = the folder's .venv / venv, else PATH. */
   pythonPath: string;
+  /** Inline parameter names and types from the language server. */
+  inlayHints: boolean;
+  /** Emmet abbreviations (div.box>ul>li*3) in HTML, CSS and JSX/TSX. */
+  emmet: boolean;
 }
 
 export const SETTINGS_KEY = "fahh-settings";
@@ -79,6 +83,8 @@ export const DEFAULT_SETTINGS: Settings = {
   insertFinalNewline: false,
   uiZoom: 100,
   pythonPath: "",
+  inlayHints: true,
+  emmet: true,
 };
 
 const clamp = (v: unknown, lo: number, hi: number, d: number) =>
@@ -120,6 +126,8 @@ export function parseSettings(raw: string | null | undefined): Settings {
     insertFinalNewline: bool(o.insertFinalNewline, d.insertFinalNewline),
     uiZoom: clamp(o.uiZoom, 50, 200, d.uiZoom),
     pythonPath: typeof o.pythonPath === "string" ? o.pythonPath.trim().slice(0, 500) : d.pythonPath,
+    inlayHints: bool(o.inlayHints, d.inlayHints),
+    emmet: bool(o.emmet, d.emmet),
   };
 }
 

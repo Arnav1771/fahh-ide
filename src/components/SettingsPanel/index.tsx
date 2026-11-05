@@ -171,6 +171,12 @@ export function SettingsPanel() {
           <Row label="Bracket pair colours and guides" htmlFor="set-brackets">
             <Toggle id="set-brackets" value={s.bracketPairs} onChange={(v) => s.set("bracketPairs", v)} />
           </Row>
+          <Row label="Inlay hints" hint="Parameter names and types shown inline, from the language server." htmlFor="set-inlay">
+            <Toggle id="set-inlay" value={s.inlayHints} onChange={(v) => s.set("inlayHints", v)} />
+          </Row>
+          <Row label="Emmet" hint="Expand abbreviations like div.card>ul>li*3 in HTML, CSS and JSX/TSX (Tab or the suggestion list)." htmlFor="set-emmet">
+            <Toggle id="set-emmet" value={s.emmet} onChange={(v) => s.set("emmet", v)} />
+          </Row>
           <Row label="Font ligatures" hint="Show => != === as one glyph when the font has them." htmlFor="set-lig">
             <Toggle id="set-lig" value={s.fontLigatures} onChange={(v) => s.set("fontLigatures", v)} />
           </Row>

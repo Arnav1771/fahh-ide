@@ -47,6 +47,16 @@ beforeEach(() => {
 });
 
 describe("monacoBridge — LSP markers reaching the editor", () => {
+  it("keeps one set per server: Ruff never wipes pyright's markers", () => {
+    const warn = [{ ...errorMarker[0], message: "unused import", severity: 4 }];
+    publishDiagnostics("/a.py", errorMarker, "python");
+    publishDiagnostics("/a.py", warn, "ruff");
+    expect(getDiagnostics("/a.py").map((m) => m.message)).toEqual(["boom", "unused import"]);
+    publishDiagnostics("/a.py", [], "ruff");
+    expect(getDiagnostics("/a.py")).toEqual(errorMarker);
+    expect(totalDiagnosticCount()).toBe(1);
+  });
+
   it("does nothing (and does not throw) before Monaco has mounted", () => {
     expect(() => publishDiagnostics("/a.py", errorMarker)).not.toThrow();
     expect(getDiagnostics("/a.py")).toEqual(errorMarker);
