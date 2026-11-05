@@ -242,6 +242,21 @@ export const runFile = (config: RunConfig) =>
 export const pythonInterpreter = (root: string | null, setting: string) =>
   invoke<{ program: string; label: string }>("python_interpreter", { root, setting });
 
+export interface PythonEnv {
+  program: string;
+  /** "Python 3.11 · .venv (workspace)" */
+  label: string;
+  group: "workspace" | "conda" | "global";
+  version: string;
+  ipykernel: boolean;
+}
+
+/** Python environments for the notebook kernel picker (each probed for its version and ipykernel). */
+export const pythonKernels = (root: string | null) => invoke<PythonEnv[]>("python_kernels", { root });
+
+/** One command line to a notebook kernel run (language "kernel"). */
+export const runStdin = (pid: number, line: string) => invoke<void>("run_stdin", { pid, line });
+
 /** Send SIGTERM / TerminateProcess to the given pid. */
 export const stopRun = (pid: number) =>
   invoke<void>("stop_run", { pid });
