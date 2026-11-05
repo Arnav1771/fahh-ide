@@ -190,6 +190,8 @@ export const ptyWrite = (id: number, data: string) => invoke<void>("pty_write", 
 export const ptyResize = (id: number, cols: number, rows: number) => invoke<void>("pty_resize", { id, cols, rows });
 
 export const ptyKill = (id: number) => invoke<void>("pty_kill", { id });
+/** Kill the shells this window's previous page left (a reload loses its tabs). */
+export const ptyReset = () => invoke<void>("pty_reset");
 
 // ─── Remote Explorer ──────────────────────────────────────────────────────────
 

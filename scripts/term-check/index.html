@@ -1,0 +1,99 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>terminal check</title>
+  </head>
+  <body style="margin: 0">
+    <div id="box" style="width: 900px; height: 360px; display: flex; transform-origin: 0 0">
+      <div id="root" style="flex: 1; min-width: 0; display: flex; flex-direction: column"></div>
+    </div>
+    <script>
+      // A fake Tauri backend with a tiny fake shell per pty, recording every call.
+      const callbacks = {};
+      const handlers = {};
+      let next = 1;
+      let nextPty = 1;
+      const shells = {};
+      window.calls = [];
+      window.allCalls = [];
+      window.__TAURI_EVENT_PLUGIN_INTERNALS__ = { unregisterListener() {} };
+      const emit = (event, payload) => (handlers[event] || []).forEach((h) => callbacks[h]?.({ event, id: 0, payload }));
+      const out = (id, data) => emit("pty://data", { id, data });
+      const run = (id, line) => {
+        const [cmd, arg] = line.trim().split(/\s+/);
+        if (cmd === "seq") {
+          let t = "";
+          for (let i = 1; i <= Number(arg); i++) t += i + "\r\n";
+          out(id, t);
+        } else if (cmd === "echo") out(id, line.trim().slice(5) + "\r\n");
+        else if (cmd === "long") out(id, "x".repeat(Number(arg)) + "\r\n");
+        else if (cmd === "mouse") out(id, "\x1b[?1000h\x1b[?1006h");
+        else if (cmd === "nomouse") out(id, "\x1b[?1000l\x1b[?1006l");
+        else if (cmd === "alt") out(id, "\x1b[?1049h\x1b[HALT SCREEN");
+        else if (cmd === "noalt") out(id, "\x1b[?1049l");
+        else if (cmd === "exit") return emit("pty://exit", { id, code: Number(arg || 0) });
+        out(id, "$ ");
+      };
+      window.__TAURI_INTERNALS__ = {
+        metadata: { currentWindow: { label: "main" }, currentWebview: { label: "main", windowLabel: "main" } },
+        transformCallback(cb) {
+          const id = next++;
+          callbacks[id] = cb;
+          return id;
+        },
+        unregisterCallback(id) {
+          delete callbacks[id];
+        },
+        convertFileSrc: (p) => p,
+        async invoke(cmd, args) {
+          window.calls.push([cmd, args]);
+          window.allCalls.push([cmd, args]);
+          if (cmd === "plugin:event|listen") {
+            (handlers[args.event] ??= []).push(args.handler);
+            return next++;
+          }
+          if (cmd === "terminal_profiles")
+            return [
+              { id: "powershell", name: "PowerShell", program: "powershell.exe", args: [] },
+              { id: "cmd", name: "Command Prompt", program: "cmd.exe", args: [] },
+              { id: "broken", name: "Broken", program: "nope.exe", args: [] },
+            ];
+          if (cmd === "pty_spawn") {
+            if (args.profile === "broken") throw "Could not start nope.exe: not found";
+            const id = nextPty++;
+            shells[id] = { line: "" };
+            setTimeout(() => out(id, "$ "), 20);
+            return id;
+          }
+          if (cmd === "pty_write") {
+            const sh = shells[args.id];
+            if (!sh) throw "This terminal has exited";
+            if (args.data.startsWith("\x1b")) return null; // keys and mouse reports: recorded only
+            for (const ch of args.data) {
+              if (ch === "\r") {
+                out(args.id, "\r\n");
+                const line = sh.line;
+                sh.line = "";
+                run(args.id, line);
+              } else if (ch === "\x03") {
+                sh.line = "";
+                out(args.id, "^C\r\n$ ");
+              } else if (ch >= " ") {
+                sh.line += ch;
+                out(args.id, ch);
+              }
+            }
+            return null;
+          }
+          if (cmd === "pty_kill") {
+            delete shells[args.id];
+            return null;
+          }
+          return null;
+        },
+      };
+    </script>
+    <script type="module" src="./main.tsx"></script>
+  </body>
+</html>

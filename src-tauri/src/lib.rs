@@ -13,7 +13,11 @@ pub fn run() {
 
     tauri::Builder::default()
         // First, so a second `fahh <path>` is forwarded to the running window instead of starting another.
-        .plugin(tauri_plugin_single_instance::init(app::on_second_launch))
+        // The callback runs on the UI thread, where building a window deadlocks WebView2 on Windows.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+            let app = app.clone();
+            std::thread::spawn(move || app::on_second_launch(&app, argv, cwd));
+        }))
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
@@ -81,6 +85,7 @@ pub fn run() {
             pty::pty_write,
             pty::pty_resize,
             pty::pty_kill,
+            pty::pty_reset,
             remote::remote_wsl_distros,
             remote::remote_wsl_home,
             remote::remote_ssh_hosts,
@@ -144,6 +149,12 @@ pub fn run() {
             agent::agent_generate,
             agent::agent_generate_stop,
         ])
+        // A closed window's terminals end with it (the job object covers Fahh exiting).
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::Destroyed = event {
+                pty::kill_window(window.label());
+            }
+        })
         .setup(|app| {
             app::setup(app)?;
             Ok(())

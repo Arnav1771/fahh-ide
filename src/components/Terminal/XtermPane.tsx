@@ -11,6 +11,7 @@ import { attach, clearBuffer, resize, write } from "../../lib/ptySessions";
 import { noteLocalUrls, openBrowser } from "../../lib/browser";
 import { useSettingsStore } from "../../store/settingsStore";
 import { unscaleForElement } from "../../lib/scaledPointer";
+import { scrollbackWheelLines } from "../../lib/termWheel";
 import {
   useTerminalStore,
   type TerminalSession,
@@ -168,6 +169,13 @@ export function XtermPane({
     });
     term.open(el);
     const offScale = followCssScale(term, el);
+    term.attachCustomWheelEventHandler((ev) => {
+      const lines = scrollbackWheelLines(ev);
+      if (lines === null) return true;
+      term.scrollLines(lines);
+      ev.preventDefault();
+      return false;
+    });
     try {
       fit.fit();
     } catch {
@@ -188,7 +196,8 @@ export function XtermPane({
         e.preventDefault();
         return false;
       }
-      if (k === "v" && e.shiftKey) {
+      // Ctrl+V pastes on Windows too (VS Code does); elsewhere it stays the shell's literal-next.
+      if (k === "v" && (e.shiftKey || navigator.platform.startsWith("Win"))) {
         void navigator.clipboard?.readText().then((t) => term.paste(t));
         e.preventDefault();
         return false;
@@ -201,6 +210,13 @@ export function XtermPane({
     const profile = session.profile || settings.terminalDefaultProfile;
     void startFolder(session.cwd).then((cwd) => {
       if (!alive) return;
+      // Fit again now the panel is laid out: a shell started at the mount-time size (a
+      // ConPTY of 12x7) drew only into that corner, with no scrollback, until a resize.
+      try {
+        if (el.offsetWidth && el.offsetHeight) fit.fit();
+      } catch {
+        // disposed
+      }
       void attach(
         session.id,
         { profile, cwd, cols: term.cols, rows: term.rows, psRemoteSigned: settings.terminalPsPolicy !== "system" },
@@ -208,10 +224,11 @@ export function XtermPane({
           term.write(data);
           noteLocalUrls(data.replace(ANSI, "")); // offer "localhost:5173" in the status bar
         },
-        (code) =>
-          term.write(
-            `\r\n\x1b[2m[process exited${code === null ? "" : ` with code ${code}`}]\x1b[0m\r\n`,
-          ),
+        (code) => {
+          // A clean exit (`exit`, Ctrl+D) closes the tab, as in VS Code; otherwise say why it ended.
+          if (code === 0) return useTerminalStore.getState().closeSession(session.id);
+          term.write(`\r\n\x1b[2mProcess exited${code === null ? "" : ` (code ${code})`}\x1b[0m\r\n`);
+        },
       ).then((fn) => {
         if (alive) detach = fn;
         else fn();
@@ -235,14 +252,18 @@ export function XtermPane({
       .then((off) => (offDrop = off))
       .catch(() => {});
 
+    // Re-fit on every size change (panel drag, maximise, a tab shown, the panel moved); the
+    // shell hears the final size once the drag settles, so a TUI is not re-drawn per pixel.
+    let settle = 0;
     const ro = new ResizeObserver(() => {
       if (!el.offsetWidth || !el.offsetHeight) return;
       try {
         fit.fit();
-        resize(session.id, term.cols, term.rows);
       } catch {
-        // disposed mid-resize
+        return; // disposed mid-resize
       }
+      window.clearTimeout(settle);
+      settle = window.setTimeout(() => resize(session.id, term.cols, term.rows), 60);
     });
     ro.observe(el);
     const retheme = () =>
@@ -254,6 +275,7 @@ export function XtermPane({
       detach();
       input.dispose();
       ro.disconnect();
+      window.clearTimeout(settle);
       window.removeEventListener("fahh-theme-change", retheme);
       terms.delete(session.id);
       fileLinks.dispose();
@@ -279,8 +301,18 @@ export function XtermPane({
   }, [fontSize, fontFamily, session.id]);
 
   useEffect(() => {
-    if (active) termRef.current?.focus();
-  }, [active]);
+    const term = termRef.current;
+    if (!active || !term) return;
+    term.focus();
+    const el = ref.current;
+    if (!el?.offsetWidth || !el.offsetHeight) return;
+    try {
+      fitRef.current?.fit();
+      resize(session.id, term.cols, term.rows);
+    } catch {
+      // hidden
+    }
+  }, [active, session.id]);
 
   return (
     <div

@@ -11,8 +11,25 @@ describe("terminal tabs", () => {
     expect(useTerminalStore.getState()).toMatchObject({ isSplitView: false, activeSessionId: task, splitSessionIds: [task] });
   });
 
-  it("closing the last terminal starts a fresh one", () => {
-    for (const s of useTerminalStore.getState().sessions) useTerminalStore.getState().closeSession(s.id);
-    expect(useTerminalStore.getState().sessions).toHaveLength(1);
+  it("closing the last terminal leaves none (the panel offers New Terminal), and kills its shell", async () => {
+    const { kill } = await import("../lib/ptySessions");
+    const ids = useTerminalStore.getState().sessions.map((s) => s.id);
+    for (const id of ids) useTerminalStore.getState().closeSession(id);
+    expect(useTerminalStore.getState()).toMatchObject({ sessions: [], activeSessionId: "", splitSessionIds: [], isSplitView: false });
+    expect(vi.mocked(kill).mock.calls.map((c) => c[0])).toEqual(expect.arrayContaining(ids));
+    // split with nothing open just opens one
+    const one = useTerminalStore.getState().splitTerminal("bash");
+    expect(useTerminalStore.getState()).toMatchObject({ isSplitView: false, activeSessionId: one, splitSessionIds: [one] });
+  });
+
+  it("killing one pane of a split keeps the other, and the split ends", () => {
+    const a = useTerminalStore.getState().activeSessionId;
+    const b = useTerminalStore.getState().splitTerminal("bash");
+    const c = useTerminalStore.getState().splitTerminal("bash");
+    expect(useTerminalStore.getState().splitSessionIds).toEqual([a, b, c]);
+    useTerminalStore.getState().closeSession(c);
+    expect(useTerminalStore.getState()).toMatchObject({ isSplitView: true, splitSessionIds: [a, b] });
+    useTerminalStore.getState().closeSession(a);
+    expect(useTerminalStore.getState()).toMatchObject({ isSplitView: false, activeSessionId: b, splitSessionIds: [b] });
   });
 });

@@ -12,6 +12,7 @@ vi.mock("@tauri-apps/api/event", () => ({
 let nextId = 7;
 let releaseSpawn: (() => void) | null = null;
 const writes: Array<[number, string]> = [];
+const resizes: Array<[number, number, number]> = [];
 const killed: number[] = [];
 vi.mock("./tauri", () => ({
   ptySpawn: vi.fn(
@@ -24,14 +25,18 @@ vi.mock("./tauri", () => ({
   ptyWrite: vi.fn(async (id: number, data: string) => {
     writes.push([id, data]);
   }),
-  ptyResize: vi.fn(async () => {}),
+  ptyReset: vi.fn(async () => {}),
+  ptyResize: vi.fn(async (id: number, cols: number, rows: number) => {
+    resizes.push([id, cols, rows]);
+  }),
   ptyKill: vi.fn(async (id: number) => {
     killed.push(id);
   }),
   terminalProfiles: vi.fn(async () => [{ id: "bash", name: "bash", program: "/bin/bash", args: [] }]),
 }));
 
-import { attach, kill, write, resetPtySessions, getProfiles } from "./ptySessions";
+import { attach, kill, write, resize, resetPtySessions, getProfiles } from "./ptySessions";
+import { ptySpawn } from "./tauri";
 
 const data = (id: number, d: string) => listeners["pty://data"]({ payload: { id, data: d } });
 const exit = (id: number, code: number | null) => listeners["pty://exit"]({ payload: { id, code } });
@@ -45,6 +50,7 @@ describe("pty sessions", () => {
   beforeEach(() => {
     resetPtySessions();
     writes.length = 0;
+    resizes.length = 0;
     killed.length = 0;
     nextId = 7;
     releaseSpawn = null;
@@ -94,6 +100,29 @@ describe("pty sessions", () => {
     await b;
     kill("t4");
     expect(killed).toEqual([8]);
+  });
+
+  it("a resize while the shell starts reaches it once it exists (it used to stay 12x7)", async () => {
+    const a = attach("t5", { ...opts, cols: 12, rows: 7 }, () => {}, () => {});
+    await ticks();
+    expect(vi.mocked(ptySpawn)).toHaveBeenLastCalledWith("bash", "/w", 12, 7, true);
+    resize("t5", 120, 40); // the panel got laid out
+    expect(resizes).toEqual([]);
+    releaseSpawn!();
+    await a;
+    expect(resizes).toEqual([[7, 120, 40]]);
+    resize("t5", 120, 40); // same size: not sent again
+    resize("t5", 100, 30);
+    expect(resizes).toEqual([[7, 120, 40], [7, 100, 30]]);
+  });
+
+  it("a failed spawn says so in the tab", async () => {
+    vi.mocked(ptySpawn).mockRejectedValueOnce(new Error("boom"));
+    const got: string[] = [];
+    const codes: Array<number | null> = [];
+    await attach("t6", { ...opts, profile: "powershell" }, (d) => got.push(d), (c) => codes.push(c));
+    expect(got.join("")).toContain("Couldn't start powershell: boom");
+    expect(codes).toEqual([null]);
   });
 
   it("lists profiles once", async () => {

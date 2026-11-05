@@ -29,6 +29,16 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - Servers keep running while any tab of their language is open (switching between a .py and a .ts tab used to kill and restart them) and stop when none is.
 - On Windows the server binary is spawned by its resolved path, so npm's `.cmd` shims (typescript-language-server, pyright-langserver, the vscode-*-language-server family) start.
 
+### Fixed
+
+- **New Window opened a blank white window (Windows).** The `open_new_window` command was synchronous, so it ran on the UI thread, where building a WebView2 deadlocks; it is async now, and `fahh <folder>` from a shell builds its window off the UI thread too. A window that fails before the app mounts now shows the error and a Reload button instead of white.
+- **New terminal tabs stayed empty while another terminal was busy.** Writes and resizes to every shell ran on the UI thread under one lock, so a shell that stopped reading (a TUI streaming output) froze them all, and new shells never started. Each terminal now has its own I/O thread, spawning runs off the async workers, and a tab whose shell fails says "Couldn't start ..." (or "Still starting ..." after 10 s) instead of staying blank.
+- **The terminal could not scroll back and ignored resizes.** A shell started before the panel was laid out kept that size (a 12x7 ConPTY), and resizes made while it was starting were dropped, so a TUI drew into a corner with no scrollback. The terminal fits again before starting the shell, sends the latest size once it exists, and re-fits when its tab is shown. Shift+wheel always scrolls the scrollback, even while a program has mouse reporting on.
+- **Kill Terminal on the last tab did nothing visible.** It killed the shell and at once started a fresh, blank "terminal" tab. Now the panel is left empty with a **New Terminal** button, as in VS Code. Kill also ends everything the shell started (`claude.exe`, dev servers): on Windows each shell runs in a job object, which also ends every terminal's processes when Fahh exits. Closing a window ends its terminals, and reloading a window ends the shells its old page started. Before, those shells kept running unseen.
+- **Split panes had no identity.** Each pane of a split has a header with its shell and folder ("PowerShell — agent-proj"), its own kill button and right-click menu, and a clear outline on the focused pane. The split shows as one tab ("PowerShell, PowerShell"). Clicking another tab while split now shows that terminal instead of the split.
+- Terminal output goes only to the window that owns the terminal, not to every window.
+- `exit` or Ctrl+D (exit code 0) closes the tab. Any other exit leaves "Process exited (code N)" in it. Tabs can be renamed (double-click or right-click > Rename). On Windows, Ctrl+V pastes, as in VS Code. The shell gets the new size once a panel drag settles, not once per pixel.
+
 ### Changed
 
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
