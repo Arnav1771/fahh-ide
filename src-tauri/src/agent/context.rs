@@ -131,7 +131,7 @@ mod tests {
     fn convo() -> Vec<Msg> {
         vec![
             Msg::User { text: "first".into() },
-            Msg::Assistant { text: "".into(), calls: vec![ToolCall { id: "1".into(), name: "read_file".into(), args: serde_json::json!({"path": "a"}) }] },
+            Msg::Assistant { text: "".into(), calls: vec![ToolCall { id: "1".into(), name: "read_file".into(), args: serde_json::json!({"path": "a"}), ..Default::default() }] },
             Msg::ToolResult { id: "1".into(), name: "read_file".into(), content: "x".repeat(4000) },
             Msg::Assistant { text: "done one".into(), calls: vec![] },
             Msg::User { text: "second".into() },

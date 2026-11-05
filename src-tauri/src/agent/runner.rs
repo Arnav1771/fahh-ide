@@ -315,6 +315,9 @@ async fn run_call(ctx: &Arc<RunCtx>, ac: &Arc<AgentCtx>, call: &ToolCall, sink: 
     let Some(kind) = tools::kind_of(&call.name) else { return (false, format!("unknown tool `{}`", call.name)) };
     let turn = ctx.turn;
     sink(AgentEvent::ToolCall { turn, id: call.id.clone(), name: call.name.clone(), args: call.args.clone(), kind });
+    if let Some(why) = &call.incomplete {
+        return (false, incomplete_call_error(why));
+    }
     // a tool outside the mode's set is refused even if the model asks for it anyway
     if let Verdict::Deny(why) = ac.engine.decide(kind, "") {
         if kind != Kind::Edit && kind != Kind::Run {
@@ -355,6 +358,14 @@ async fn run_call(ctx: &Arc<RunCtx>, ac: &Arc<AgentCtx>, call: &ToolCall, sink: 
         Ok(o) => (true, o),
         Err(e) => (false, e),
     }
+}
+
+fn incomplete_call_error(why: &str) -> String {
+    format!(
+        "Not run: {why}. Nothing was changed. Your output was cut off before this call finished; \
+         write the file in smaller parts (create it with a short write_file, then add to it with edit_file), \
+         or make the call again with shorter arguments."
+    )
 }
 
 fn write_plan(ctx: &RunCtx, args: &Value, sink: &Sink) -> Result<String, String> {
@@ -753,7 +764,7 @@ mod tests {
     }
 
     fn call(id: &str, name: &str, args: Value) -> ToolCall {
-        ToolCall { id: id.into(), name: name.into(), args }
+        ToolCall { id: id.into(), name: name.into(), args, ..Default::default() }
     }
     fn turn(text: &str, calls: Vec<ToolCall>) -> ModelTurn {
         ModelTurn { text: text.into(), calls }
@@ -831,6 +842,19 @@ mod tests {
         assert!(matches!(events(&h).last().unwrap(), AgentEvent::Done { files, .. } if files == &vec!["a.txt".to_string()]));
         assert_eq!(h.s.checkpoints.lock().unwrap().revert_turn(1).unwrap(), vec!["a.txt".to_string()]);
         assert_eq!(std::fs::read_to_string(&f).unwrap(), "one");
+    }
+
+    #[tokio::test]
+    async fn an_incomplete_call_is_not_run_and_fails_visibly() {
+        let h = harness(|_| yes());
+        let mut c = call("1", "write_file", json!({"path": "a.ipynb", "content": "{\"cell"}));
+        c.incomplete = Some("cut off".into());
+        let p = mock(vec![turn("", vec![c]), turn("ok", vec![])]);
+        run(&h, p, Mode::AutoEdit, "x", 1).await;
+        assert!(!h.dir.path().join("a.ipynb").exists());
+        assert!(last_result(&h).contains("smaller parts"));
+        assert_eq!(count(&h, |e| matches!(e, AgentEvent::ToolResult { ok: false, .. })), 1);
+        assert_eq!(count(&h, |e| matches!(e, AgentEvent::FileChanged { .. })), 0);
     }
 
     #[tokio::test]

@@ -16,12 +16,16 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Mutex;
 use std::time::Duration;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct ToolCall {
     #[serde(default)]
     pub id: String,
     pub name: String,
     pub args: Value,
+    /// Set when the model's output for this call did not finish (cut off at the output-token
+    /// limit, or arguments that are not a complete JSON object). Such a call is never run.
+    #[serde(skip)]
+    pub incomplete: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -195,10 +199,29 @@ pub fn openai_body(model: &str, system: &str, history: &[Msg], tools: &[ToolSpec
     body
 }
 
+/// Parse streamed tool-call arguments strictly. A call is `incomplete` when the stream stopped at the
+/// output-token limit while it was the open (last) call, or when its arguments are not a complete
+/// JSON object. Servers may "repair" a cut-off call into valid JSON (vLLM-style partial parsers),
+/// so `cut_off` wins even when the text parses. Nothing here repairs truncated JSON, on purpose.
+fn tool_call(id: String, name: String, args: String, cut_off: bool) -> ToolCall {
+    let parsed: Result<Value, String> =
+        if args.trim().is_empty() { Ok(json!({})) } else { serde_json::from_str(&args).map_err(|e| e.to_string()) };
+    let incomplete = match &parsed {
+        _ if cut_off => Some("the model's output was cut off (it hit the output-token limit) before this call finished".to_string()),
+        Err(e) => Some(format!("the arguments were not complete JSON ({e})")),
+        Ok(v) if !v.is_object() => Some("the arguments were not a JSON object".to_string()),
+        Ok(_) => None,
+    };
+    // keep what parsed (the transcript shows the path); never resend unparseable text as arguments
+    let args = parsed.ok().filter(Value::is_object).unwrap_or_else(|| json!({}));
+    ToolCall { id, name, args, incomplete }
+}
+
 #[derive(Default)]
 pub struct OpenAiAcc {
     text: String,
     calls: BTreeMap<usize, (String, String, String)>, // index -> (id, name, args json text)
+    finish_reason: Option<String>,
 }
 
 impl OpenAiAcc {
@@ -208,6 +231,9 @@ impl OpenAiAcc {
             return None;
         }
         let v: Value = serde_json::from_str(data).ok()?;
+        if let Some(r) = v.pointer("/choices/0/finish_reason").and_then(Value::as_str) {
+            self.finish_reason = Some(r.to_string());
+        }
         let delta = v.pointer("/choices/0/delta")?;
         for tc in delta.get("tool_calls").and_then(Value::as_array).into_iter().flatten() {
             let mut idx = tc.get("index").and_then(Value::as_u64).unwrap_or(0) as usize;
@@ -241,16 +267,13 @@ impl OpenAiAcc {
     }
 
     pub fn finish(self) -> ModelTurn {
-        let calls = self
-            .calls
-            .into_values()
-            .filter(|(_, n, _)| !n.is_empty())
+        let cut_off = self.finish_reason.as_deref() == Some("length");
+        let raw: Vec<_> = self.calls.into_values().filter(|(_, n, _)| !n.is_empty()).collect();
+        let last = raw.len().saturating_sub(1);
+        let calls = raw
+            .into_iter()
             .enumerate()
-            .map(|(i, (id, name, args))| ToolCall {
-                id: if id.is_empty() { format!("call_{i}") } else { id },
-                name,
-                args: if args.trim().is_empty() { json!({}) } else { serde_json::from_str(&args).unwrap_or(Value::String(args)) },
-            })
+            .map(|(i, (id, name, args))| tool_call(if id.is_empty() { format!("call_{i}") } else { id }, name, args, cut_off && i == last))
             .collect();
         ModelTurn { text: self.text, calls }
     }
@@ -302,6 +325,7 @@ pub fn anthropic_body(model: &str, system: &str, history: &[Msg], tools: &[ToolS
 pub struct AnthropicAcc {
     text: String,
     blocks: BTreeMap<usize, (String, String, String)>, // index -> (id, name, partial json)
+    stop_reason: Option<String>,
 }
 
 impl AnthropicAcc {
@@ -329,20 +353,20 @@ impl AnthropicAcc {
                 }
                 _ => None,
             },
+            "message_delta" => {
+                if let Some(r) = v.pointer("/delta/stop_reason").and_then(Value::as_str) {
+                    self.stop_reason = Some(r.to_string());
+                }
+                None
+            }
             _ => None,
         }
     }
 
     pub fn finish(self) -> ModelTurn {
-        let calls = self
-            .blocks
-            .into_values()
-            .map(|(id, name, args)| ToolCall {
-                id,
-                name,
-                args: if args.trim().is_empty() { json!({}) } else { serde_json::from_str(&args).unwrap_or(Value::String(args)) },
-            })
-            .collect();
+        let cut_off = self.stop_reason.as_deref() == Some("max_tokens");
+        let last = self.blocks.len().saturating_sub(1);
+        let calls = self.blocks.into_values().enumerate().map(|(i, (id, name, args))| tool_call(id, name, args, cut_off && i == last)).collect();
         ModelTurn { text: self.text, calls }
     }
 }
@@ -579,7 +603,7 @@ mod tests {
         let t = a.finish();
         assert_eq!(t.text, "Looking");
         assert_eq!(t.calls.len(), 2);
-        assert_eq!(t.calls[0], ToolCall { id: "c1".into(), name: "read_file".into(), args: json!({"path": "a.rs"}) });
+        assert_eq!(t.calls[0], ToolCall { id: "c1".into(), name: "read_file".into(), args: json!({"path": "a.rs"}), ..Default::default() });
         assert_eq!(t.calls[1].name, "list_dir");
     }
 
@@ -605,13 +629,42 @@ mod tests {
         let text: Vec<_> = chunks.iter().filter_map(|c| a.feed(c)).collect();
         assert_eq!(text, vec!["Hi"]);
         let t = a.finish();
-        assert_eq!(t.calls, vec![ToolCall { id: "tu1".into(), name: "search".into(), args: json!({"pattern": "foo"}) }]);
+        assert_eq!(t.calls, vec![ToolCall { id: "tu1".into(), name: "search".into(), args: json!({"pattern": "foo"}), ..Default::default() }]);
+    }
+
+    #[test]
+    fn openai_cut_off_call_is_incomplete_even_if_server_repaired_it() {
+        // the notebook bug: the server closed the cut-off arguments itself, finish_reason says why
+        let mut a = OpenAiAcc::default();
+        a.feed(r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"a","function":{"name":"write_file","arguments":"{\"path\":\"data.csv\",\"content\":\"x\"}"}}]}}]}"#);
+        a.feed(r#"{"choices":[{"delta":{"tool_calls":[{"index":1,"id":"b","function":{"name":"write_file","arguments":"{\"path\":\"analysis.ipynb\",\"content\":\"{\\\"cell\"}"}}]}}]}"#);
+        a.feed(r#"{"choices":[{"delta":{},"finish_reason":"length"}]}"#);
+        let t = a.finish();
+        assert_eq!(t.calls[0].incomplete, None, "the call before the open one finished");
+        assert!(t.calls[1].incomplete.as_deref().unwrap().contains("cut off"));
+        assert_eq!(t.calls[1].args["path"], "analysis.ipynb", "parsed args kept for the transcript");
+    }
+
+    #[test]
+    fn truncated_arguments_are_never_parsed_leniently() {
+        let mut a = OpenAiAcc::default();
+        a.feed(r#"{"choices":[{"delta":{"tool_calls":[{"index":0,"id":"a","function":{"name":"write_file","arguments":"{\"path\":\"a.ipynb\",\"content\":\"{\\\"ce"}}]}}]}"#);
+        a.feed(r#"{"choices":[{"delta":{},"finish_reason":"tool_calls"}]}"#);
+        let c = &a.finish().calls[0];
+        assert!(c.incomplete.as_deref().unwrap().contains("not complete JSON"));
+        assert_eq!(c.args, json!({}), "unparseable text is not passed on as arguments");
+
+        let mut an = AnthropicAcc::default();
+        an.feed(r#"{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"t","name":"write_file","input":{}}}"#);
+        an.feed(r#"{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"path\":\"a\"}"}}"#);
+        an.feed(r#"{"type":"message_delta","delta":{"stop_reason":"max_tokens"}}"#);
+        assert!(an.finish().calls[0].incomplete.is_some(), "Anthropic max_tokens counts as cut off");
     }
 
     fn history() -> Vec<Msg> {
         vec![
             Msg::User { text: "go".into() },
-            Msg::Assistant { text: "ok".into(), calls: vec![ToolCall { id: "a".into(), name: "list_dir".into(), args: json!({"path": "."}) }, ToolCall { id: "b".into(), name: "get_diagnostics".into(), args: json!({}) }] },
+            Msg::Assistant { text: "ok".into(), calls: vec![ToolCall { id: "a".into(), name: "list_dir".into(), args: json!({"path": "."}), ..Default::default() }, ToolCall { id: "b".into(), name: "get_diagnostics".into(), args: json!({}), ..Default::default() }] },
             Msg::ToolResult { id: "a".into(), name: "list_dir".into(), content: "x".into() },
             Msg::ToolResult { id: "b".into(), name: "get_diagnostics".into(), content: "y".into() },
         ]

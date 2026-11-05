@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseNotebook, type Notebook } from "./notebook";
+import { jsonErrorLine, parseNotebook, type Notebook } from "./notebook";
 import { previewKindFor } from "./preview";
 import { modeOf } from "../store/previewStore";
 
@@ -60,6 +60,14 @@ describe("parseNotebook", () => {
   it("returns an error object for invalid JSON, never throws", () => {
     const r = parseNotebook("{ not json");
     expect("error" in r && r.error).toMatch(/Not valid notebook JSON/);
+  });
+
+  it("points at the line where a truncated notebook breaks", () => {
+    const cut = '{\n "cells": [\n  {"cell_type": "markdown", "source": ["## 1"]},\n  {\n   "cell';
+    const r = parseNotebook(cut);
+    expect("error" in r && r.line).toBe(5);
+    expect(jsonErrorLine("{\n\n  x", "Unexpected token 'x', ... is not valid JSON at position 5")).toBe(3);
+    expect(jsonErrorLine("a\nb", "Unexpected end of JSON input")).toBe(2);
   });
 
   it("degrades gracefully for nbformat 3 and missing fields", () => {
