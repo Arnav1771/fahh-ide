@@ -6,7 +6,8 @@ import { useSettingsStore } from "../../store/settingsStore";
 import { useThemeStore } from "../../store/themeStore";
 import { useFileStore } from "../../store/fileStore";
 import { useAgentStore } from "../../store/agentStore";
-import { agentListModels, chatModels, defaultModelFor, modelsError, presetOf, PROVIDER_PRESETS, selectPreset, toProviderConfig } from "../../lib/agent";
+import { agentListModels, chatModels, modelsError, presetOf, providerNameOf, PROVIDER_PRESETS, selectPreset, toProviderConfig } from "../../lib/agent";
+import { ModelPicker, useModelList } from "../ModelPicker";
 import { runCommand } from "../../lib/commands";
 import { loadRecent } from "../../lib/recent";
 import { moveView, revealView } from "../../lib/workbench";
@@ -287,6 +288,7 @@ function AgentStep({ onDone }: { onDone: () => void }) {
   const preset = presetOf(settings.provider);
   const [result, setResult] = useState<{ ok: boolean; text: string } | null>(null);
   const [testing, setTesting] = useState(false);
+  const [models, reload] = useModelList();
   const pick = (id: string) => {
     const p = selectPreset(id);
     if (p) update(p);
@@ -296,7 +298,7 @@ function AgentStep({ onDone }: { onDone: () => void }) {
     setTesting(true);
     try {
       const models = chatModels(await agentListModels(toProviderConfig(settings, "")));
-      if (!settings.model && models.length) update({ model: defaultModelFor(models, settings.provider) });
+      reload();
       setResult({ ok: true, text: models.length ? `Connected: ${models.length} models (e.g. ${models.slice(0, 2).join(", ")}).` : "Connected, but the provider listed no chat models." });
       onDone();
     } catch (e) {
@@ -318,6 +320,10 @@ function AgentStep({ onDone }: { onDone: () => void }) {
           API key {preset && !preset.needsKey && "(not needed)"}
           <input type="password" value={settings.apiKey} onChange={(e) => { update({ apiKey: e.target.value }); setResult(null); }} disabled={!!preset && !preset.needsKey} placeholder={preset?.keyHint ?? "Optional"} spellCheck={false} className={`${field} mt-0.5`} />
         </label>
+      </div>
+      <div className="mt-2 text-[11px] text-fahh-muted">
+        <label htmlFor="welcome-model">Model</label>
+        <ModelPicker id="welcome-model" value={settings.model} onChange={(model) => update({ model })} list={models} status={{ providerName: providerNameOf(settings), reload }} />
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
         <button type="button" className={primary} onClick={() => void test()} disabled={testing}>{testing ? "Testing…" : "Test connection"}</button>

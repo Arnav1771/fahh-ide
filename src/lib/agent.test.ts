@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_AGENT_SETTINGS, parseAgentSettings, settingsProblem, toJudgeConfig, toProviderConfig } from "./agent";
 import { baseUrlProblem, chatModels, defaultModelFor, endpointOf, modelsError, modelsWait, PROVIDER_PRESETS, selectPreset, showsBaseUrl } from "./agent";
+import { modelListStatus, modelOptions, providerNameOf, TYPE_MODEL, type ModelList } from "./agent";
 
 describe("agent settings", () => {
   it("falls back to defaults on garbage", () => {
@@ -97,6 +98,45 @@ describe("live model lists", () => {
     expect(modelsWait({ provider: "ollama", baseUrl: "http://localhost:11434/v1", apiKey: "" })).toBeNull(); // no key needed
     expect(modelsWait({ provider: "custom", baseUrl: "", apiKey: "" })).toMatch(/base URL/);
     expect(modelsWait({ provider: "custom", baseUrl: "http://localhost:8000/v1", apiKey: "" })).toBeNull(); // key optional
+  });
+});
+
+describe("the shared model picker", () => {
+  const ok: ModelList = { state: "ok", ids: ["m1", "m2"] };
+  const values = (l: ModelList, v: string, opt?: boolean) => modelOptions(l, v, opt).map((o) => o.value);
+
+  it("lists the live models, then the typed value, then the escape hatch", () => {
+    expect(values(ok, "m1")).toEqual(["m1", "m2", TYPE_MODEL]);
+    expect(values(ok, "mine")).toEqual(["m1", "m2", "mine", TYPE_MODEL]);
+    expect(modelOptions(ok, "mine").find((o) => o.value === "mine")?.label).toBe("mine (typed)");
+    expect(modelOptions(ok, "").at(-1)?.label).toBe("Type a model name…");
+  });
+
+  it("asks for a model when none is set; Fast model offers the main model instead", () => {
+    expect(modelOptions(ok, "")[0]).toEqual({ value: "", label: "Choose a model", disabled: true });
+    expect(modelOptions(ok, "", true)[0]).toEqual({ value: "", label: "Same as main model" });
+    expect(modelOptions(ok, "m2", true)[0].label).toBe("Same as main model");
+  });
+
+  it("keeps the escape hatch (and the current value) when the list fails or is empty", () => {
+    for (const l of [{ state: "error", msg: "x" }, { state: "wait", hint: "y" }, { state: "ok", ids: [] }] as ModelList[]) {
+      expect(values(l, "kept")).toEqual(["kept", TYPE_MODEL]);
+    }
+  });
+
+  it("states every list state in one line", () => {
+    expect(modelListStatus({ state: "loading" }, "Groq")).toBe("Loading models…");
+    expect(modelListStatus({ state: "wait", hint: "Add your Groq key to load its models." }, "Groq")).toMatch(/Groq key/);
+    expect(modelListStatus({ state: "error", msg: "Key rejected (401). Check the API key." }, "Groq")).toMatch(/401/);
+    expect(modelListStatus(ok, "Groq")).toBe("2 chat models from Groq");
+    expect(modelListStatus({ state: "ok", ids: [] }, "Groq")).toMatch(/listed no chat models.*Type a model name/);
+  });
+
+  it("names the provider in sentences", () => {
+    expect(providerNameOf({ ...DEFAULT_AGENT_SETTINGS, provider: "groq" })).toBe("Groq");
+    expect(providerNameOf({ ...DEFAULT_AGENT_SETTINGS, provider: "custom" })).toBe("your endpoint");
+    const ep = { id: "x", name: "Work LLM", baseUrl: "http://h/v1", apiKey: "", kind: "openai" as const };
+    expect(providerNameOf({ ...DEFAULT_AGENT_SETTINGS, provider: "ep:x", endpoints: [ep] })).toBe("Work LLM");
   });
 });
 

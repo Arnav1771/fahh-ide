@@ -3,7 +3,8 @@ import { DiffEditor } from "@monaco-editor/react";
 import { Bot, Check, CircleAlert, FileEdit, FileSearch, ListChecks, Loader2, ShieldQuestion, Square, Terminal, Undo2, X } from "lucide-react";
 
 import { agentTurnDiff } from "../../lib/agent";
-import type { Item, TurnInfo } from "../../lib/agentState";
+import { pendingFiles, reviewDoneText, type Item, type TurnInfo } from "../../lib/agentState";
+import { useToastStore } from "../../store/toastStore";
 import type { AgentFileDiff, AgentToolKind } from "../../lib/types";
 import { useAgentStore } from "../../store/agentStore";
 import { confirmDialog } from "../../store/dialogStore";
@@ -155,11 +156,22 @@ export function PlanCard({ item, onImplement }: { item: Extract<Item, { kind: "p
 
 /** Per-file review of what a turn changed: diff, accept, reject; or revert the whole turn. */
 export function ReviewCard({ turn, onOpen }: { turn: TurnInfo; onOpen: (rel: string) => void }) {
-  const { session, dispatch, rejectFile, revertTurn } = useAgentStore();
+  const { session, dispatch, rejectFile, rejectAll, revertTurn } = useAgentStore();
+  const toast = useToastStore((s) => s.show);
   const [diffs, setDiffs] = useState<Record<string, AgentFileDiff>>({});
   const [shown, setShown] = useState<string | null>(null);
-  const files = turn.files.filter((f) => !turn.accepted.includes(f));
+  const files = pendingFiles(turn);
   if (files.length === 0) return null;
+
+  const acceptAll = () => {
+    dispatch({ type: "turn_accepted", turn: turn.turn });
+    toast(reviewDoneText("Accepted", files.length));
+  };
+  const rejectEvery = async () => {
+    const n = await rejectAll(turn.turn);
+    if (n) toast(reviewDoneText("Rejected", n));
+  };
+  const bulk = "flex items-center gap-1 rounded px-1 focus-visible:outline focus-visible:outline-1 focus-visible:outline-fahh-accent";
 
   const toggle = async (path: string) => {
     if (shown === path) return setShown(null);
@@ -176,6 +188,17 @@ export function ReviewCard({ turn, onOpen }: { turn: TurnInfo; onOpen: (rel: str
         Review: {files.length} file{files.length > 1 ? "s" : ""} changed
         {turn.errorsAdded > 0 && <span className="text-fahh-error">+{turn.errorsAdded} error{turn.errorsAdded > 1 ? "s" : ""}</span>}
         <div className="flex-1" />
+        {/* one file: its own ✓ and ✗ already do this */}
+        {files.length > 1 && (
+          <>
+            <button type="button" onClick={acceptAll} title="Keep every change in this review" className={`${bulk} text-green-400 hover:text-green-300`} data-testid="review-accept-all">
+              <Check size={11} /> Accept all
+            </button>
+            <button type="button" onClick={() => void rejectEvery()} title="Restore every file still under review" className={`${bulk} text-fahh-error hover:opacity-80`} data-testid="review-reject-all">
+              <X size={11} /> Reject all
+            </button>
+          </>
+        )}
         <button onClick={() => void revertTurn(turn.turn)} title="Undo everything this turn changed" className="flex items-center gap-1 text-fahh-muted hover:text-fahh-error">
           <Undo2 size={11} /> Revert turn
         </button>

@@ -34,6 +34,7 @@ import {
   errorsAdded,
   initialAgentState,
   joinRoot,
+  pendingFiles,
   samePath,
   type AgentAction,
   type AgentState,
@@ -92,6 +93,8 @@ interface AgentStore extends AgentState {
   stop: () => Promise<void>;
   revertTurn: (turn: number) => Promise<void>;
   rejectFile: (turn: number, path: string) => Promise<void>;
+  /** Reject all: restores every file of the turn still under review; resolves to how many were restored. */
+  rejectAll: (turn: number) => Promise<number>;
   newChat: () => void;
 }
 
@@ -261,6 +264,17 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
     } catch (e) {
       dispatch({ type: "event", event: { type: "error", turn, message: String(e) } });
     }
+  },
+
+  rejectAll: async (turn) => {
+    const t = get().turns[turn];
+    if (!t) return 0;
+    const pending = pendingFiles(t);
+    // nothing kept yet: the whole-turn revert; otherwise only the pending files, so accepted ones stay
+    if (!t.accepted.length) await get().revertTurn(turn);
+    else for (const f of pending) await get().rejectFile(turn, f);
+    const left = get().turns[turn]?.files ?? [];
+    return pending.filter((f) => !left.includes(f)).length;
   },
 
   stopChild: async (child) => {

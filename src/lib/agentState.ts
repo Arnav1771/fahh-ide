@@ -82,6 +82,8 @@ export type AgentAction =
   | { type: "approval_answered"; id: string; allow: boolean }
   | { type: "plan_implementing"; id: string }
   | { type: "file_accepted"; turn: number; path: string }
+  /** Accept all: keeps every file of the turn still under review. */
+  | { type: "turn_accepted"; turn: number }
   | { type: "file_reverted"; turn: number; path: string }
   | { type: "turn_reverted"; turn: number }
   | { type: "errors_added"; turn: number; count: number }
@@ -144,6 +146,10 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
     case "file_accepted": {
       const t = turnOf(state, action.turn);
       return withTurn(state, { ...t, accepted: t.accepted.includes(action.path) ? t.accepted : [...t.accepted, action.path] });
+    }
+    case "turn_accepted": {
+      const t = turnOf(state, action.turn);
+      return withTurn(state, { ...t, accepted: [...t.accepted, ...pendingFiles(t)] });
     }
     case "file_reverted": {
       const t = turnOf(state, action.turn);
@@ -328,8 +334,16 @@ export function itemsFromHistory(history: AgentMsg[]): Item[] {
 
 /** Turns that still have changes the user has not accepted. */
 export function pendingReview(state: AgentState): TurnInfo[] {
-  return Object.values(state.turns).filter((t) => t.files.some((f) => !t.accepted.includes(f)));
+  return Object.values(state.turns).filter((t) => pendingFiles(t).length > 0);
 }
+
+/** A turn's files still waiting for accept or reject. */
+export function pendingFiles(t: TurnInfo): string[] {
+  return t.files.filter((f) => !t.accepted.includes(f));
+}
+
+/** "Accepted 2 files" / "Rejected 1 file": the confirmation after Accept all / Reject all. */
+export const reviewDoneText = (verb: "Accepted" | "Rejected", n: number) => `${verb} ${n} file${n === 1 ? "" : "s"}`;
 
 /** Errors added by an edit: only growth counts (fixing errors is not a fahh). */
 export function errorsAdded(before: number, after: number): number {
