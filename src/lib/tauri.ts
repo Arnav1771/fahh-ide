@@ -238,6 +238,10 @@ export const saveConfig = (config: FahhConfig) =>
 export const runFile = (config: RunConfig) =>
   invoke<RunResult>("run_file", { config });
 
+/** The workspace Python: the setting, else <root>/.venv or venv, else PATH. */
+export const pythonInterpreter = (root: string | null, setting: string) =>
+  invoke<{ program: string; label: string }>("python_interpreter", { root, setting });
+
 /** Send SIGTERM / TerminateProcess to the given pid. */
 export const stopRun = (pid: number) =>
   invoke<void>("stop_run", { pid });

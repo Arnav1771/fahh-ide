@@ -6,6 +6,7 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { debugRequest, debugStart, debugStop, readFile, writeFile } from "./tauri";
 import { DapClient } from "./dap";
+import { workspacePython } from "./python";
 import {
   adapterFor,
   basenameOf,
@@ -127,7 +128,9 @@ export async function startDebugging(chosen?: LaunchConfig): Promise<void> {
 
   let sid: number;
   try {
-    sid = await debugStart({ adapter, program: String(args.program ?? file), cwd: String(args.cwd ?? "") });
+    // debugpy runs (and launches the program) with the workspace interpreter, as Run does.
+    const python = adapter === "debugpy" || adapter === "python" ? (await workspacePython()).program : undefined;
+    sid = await debugStart({ adapter, program: String(args.program ?? file), cwd: String(args.cwd ?? ""), python });
   } catch (e) {
     store().patch({ starting: false, error: errorText(e) });
     return;

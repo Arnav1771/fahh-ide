@@ -42,6 +42,8 @@ export interface Settings {
   insertFinalNewline: boolean;
   /** Whole-window zoom in percent (Ctrl+= / Ctrl+- / Ctrl+0). */
   uiZoom: number;
+  /** Python for Run, Debug and notebooks; "" = the folder's .venv / venv, else PATH. */
+  pythonPath: string;
 }
 
 export const SETTINGS_KEY = "fahh-settings";
@@ -69,6 +71,7 @@ export const DEFAULT_SETTINGS: Settings = {
   trimTrailingWhitespace: false,
   insertFinalNewline: false,
   uiZoom: 100,
+  pythonPath: "",
 };
 
 const clamp = (v: unknown, lo: number, hi: number, d: number) =>
@@ -108,6 +111,7 @@ export function parseSettings(raw: string | null | undefined): Settings {
     trimTrailingWhitespace: bool(o.trimTrailingWhitespace, d.trimTrailingWhitespace),
     insertFinalNewline: bool(o.insertFinalNewline, d.insertFinalNewline),
     uiZoom: clamp(o.uiZoom, 50, 200, d.uiZoom),
+    pythonPath: typeof o.pythonPath === "string" ? o.pythonPath.trim().slice(0, 500) : d.pythonPath,
   };
 }
 

@@ -71,6 +71,9 @@ pub struct RunConfig {
     /// Working directory; defaults to parent directory of the file.
     #[serde(default)]
     pub cwd: Option<String>,
+    /// Python to use for `python` / `kernel` runs (from `python_interpreter`); PATH when absent.
+    #[serde(default)]
+    pub interpreter: Option<String>,
 }
 
 /// Result returned once a run completes.
@@ -99,17 +102,29 @@ struct RunCommand {
 /// Determine the run command for a given language and file.
 /// `wsl` builds the command for a Linux shell inside WSL (file_path is then a Linux path),
 /// whatever the host OS is.
-fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl: bool) -> Result<RunCommand, String> {
+/// `interpreter` is the Python the frontend resolved (see `pick_python`); ignored inside WSL.
+fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl: bool, interpreter: Option<&str>) -> Result<RunCommand, String> {
     let path = std::path::Path::new(file_path);
     let windows = cfg!(target_os = "windows") && !wsl;
     let file_str = file_path.to_string();
+    // ponytail: a venv inside a WSL folder is not looked up yet; WSL runs use python3 from PATH.
+    let python = || match interpreter {
+        _ if wsl => "python3".to_string(),
+        Some(p) if !p.trim().is_empty() => p.to_string(),
+        _ => resolve_python(),
+    };
 
-    let mut cmd = match language {
+    let cmd = match language {
         "python" => {
-            let python = if wsl { "python3".to_string() } else { resolve_python() };
             let mut args = vec!["-u".to_string(), file_str];
             args.extend_from_slice(user_args);
-            RunCommand { program: python, args }
+            RunCommand { program: python(), args }
+        }
+        "kernel" => {
+            if wsl {
+                return Err("Running notebooks inside WSL is not supported yet. Open the folder from Windows or run it in a WSL terminal.".into());
+            }
+            RunCommand { program: python(), args: vec!["-u".into(), kernel_script()?, file_str] }
         }
         "javascript" => {
             let mut args = vec![file_str];
@@ -277,6 +292,76 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
     Ok(cmd)
 }
 
+/// The notebook kernel runner (see assets/fahh_kernel.py), written next to the temp dir once per version.
+fn kernel_script() -> Result<String, String> {
+    const SCRIPT: &str = include_str!("../../assets/fahh_kernel.py");
+    let path = std::env::temp_dir().join(format!("fahh_kernel_{}.py", env!("CARGO_PKG_VERSION")));
+    if std::fs::read_to_string(&path).ok().as_deref() != Some(SCRIPT) {
+        std::fs::write(&path, SCRIPT).map_err(|e| format!("Could not write the notebook runner to {}: {e}", path.display()))?;
+    }
+    Ok(path.to_string_lossy().into_owned())
+}
+
+lazy_static::lazy_static! {
+    /// stdin of `kernel` runs, by pid: the notebook sends its commands there.
+    static ref KERNEL_STDIN: Mutex<HashMap<u32, std::process::ChildStdin>> = Mutex::new(HashMap::new());
+}
+
+/// Send one line to a running notebook kernel (see assets/fahh_kernel.py for the commands).
+#[tauri::command]
+pub fn run_stdin(pid: u32, line: String) -> Result<(), String> {
+    use std::io::Write;
+    let mut map = KERNEL_STDIN.lock().map_err(|e| e.to_string())?;
+    let stdin = map.get_mut(&pid).ok_or("The notebook kernel is not running.")?;
+    writeln!(stdin, "{}", line.trim_end()).and_then(|_| stdin.flush()).map_err(|e| format!("The notebook kernel stopped: {e}"))
+}
+
+/// The Python a run, a debug session or a notebook uses, and its short label for the UI.
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct PythonInterpreter {
+    pub program: String,
+    /// "setting", ".venv", "venv", or the PATH program name.
+    pub label: String,
+}
+
+/// VS Code's order: the user's setting, then `<root>/.venv` or `<root>/venv`
+/// (`Scripts\python.exe` on Windows, `bin/python` elsewhere), then Python on PATH.
+/// Pure: the file check and the PATH lookup are passed in, so both layouts are tested anywhere.
+pub(crate) fn pick_python(
+    setting: &str,
+    root: Option<&str>,
+    windows: bool,
+    exists: impl Fn(&str) -> bool,
+    on_path: impl FnOnce() -> String,
+) -> PythonInterpreter {
+    let setting = setting.trim();
+    if !setting.is_empty() {
+        return PythonInterpreter { program: setting.to_string(), label: "setting".into() };
+    }
+    if let Some(root) = root.map(|r| r.trim_end_matches(['/', '\\'])).filter(|r| !r.is_empty()) {
+        for venv in [".venv", "venv"] {
+            let p = if windows { format!("{root}\\{venv}\\Scripts\\python.exe") } else { format!("{root}/{venv}/bin/python") };
+            if exists(&p) {
+                return PythonInterpreter { program: p, label: venv.into() };
+            }
+        }
+    }
+    let program = on_path();
+    PythonInterpreter { label: program.clone(), program }
+}
+
+/// The workspace's Python (see `pick_python`).
+#[tauri::command]
+pub fn python_interpreter(root: Option<String>, setting: Option<String>) -> PythonInterpreter {
+    pick_python(
+        setting.as_deref().unwrap_or(""),
+        root.as_deref(),
+        cfg!(target_os = "windows"),
+        |p| std::path::Path::new(p).is_file(),
+        resolve_python,
+    )
+}
+
 /// Resolves the real Python executable, avoiding dummy WindowsApps stubs on Windows.
 pub(crate) fn resolve_python() -> String {
     #[cfg(target_os = "windows")]
@@ -377,13 +462,13 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
                 .filter(|c| c.distro == wp.distro)
                 .map(|c| c.linux)
                 .unwrap_or_else(|| wp.linux.rsplit_once('/').map(|(d, _)| if d.is_empty() { "/".to_string() } else { d.to_string() }).unwrap_or_else(|| "/".to_string()));
-            let run_cmd = build_run_command(&language, &wp.linux, &config.args, true)?;
+            let run_cmd = build_run_command(&language, &wp.linux, &config.args, true, None)?;
             let script = wsl_script(&run_cmd);
             debug!("Executing in WSL {}: {script}", wp.distro);
             (crate::core::wsl::command(Some(&wp.distro), &linux_cwd, &script), format!("{} (WSL {})", run_cmd.program, wp.distro))
         }
         None => {
-            let run_cmd = build_run_command(&language, &config.path, &config.args, false)?;
+            let run_cmd = build_run_command(&language, &config.path, &config.args, false, config.interpreter.as_deref())?;
             debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
             let mut c = crate::core::proc::cmd(&run_cmd.program);
             c.args(&run_cmd.args).current_dir(&cwd);
@@ -392,12 +477,16 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
     };
 
     let mut child = command
+        .stdin(if language == "kernel" { Stdio::piped() } else { Stdio::inherit() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn process `{program}`: {e}"))?;
 
     let pid = child.id();
+    if let Some(stdin) = child.stdin.take() {
+        KERNEL_STDIN.lock().map_err(|e| e.to_string())?.insert(pid, stdin);
+    }
     info!("Spawned child PID={pid}");
 
     let start = Instant::now();
@@ -463,6 +552,9 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
     std::thread::spawn(move || {
         let _stdout = stdout_handle.join().unwrap_or_default();
         let _stderr = stderr_handle.join().unwrap_or_default();
+        if let Ok(mut map) = KERNEL_STDIN.lock() {
+            map.remove(&pid);
+        }
         
         let status = child.wait().expect("Failed to wait on child");
         let duration_ms = start.elapsed().as_millis() as u64;
@@ -541,6 +633,48 @@ mod tests {
         assert_eq!(cfg.language.as_deref(), Some("python"));
         assert!(cfg.args.is_empty());
         assert!(cfg.cwd.is_none());
+    }
+
+    fn pick(setting: &str, root: Option<&str>, windows: bool, present: &[&str]) -> PythonInterpreter {
+        pick_python(setting, root, windows, |p| present.contains(&p), || "python3".to_string())
+    }
+
+    #[test]
+    fn python_prefers_setting_then_venv_then_path() {
+        let all = ["/w/.venv/bin/python", "/w/venv/bin/python"];
+        assert_eq!(pick("/opt/py/bin/python", Some("/w"), false, &all), PythonInterpreter { program: "/opt/py/bin/python".into(), label: "setting".into() });
+        assert_eq!(pick("  ", Some("/w"), false, &all), PythonInterpreter { program: "/w/.venv/bin/python".into(), label: ".venv".into() });
+        assert_eq!(pick("", Some("/w/"), false, &all[1..]), PythonInterpreter { program: "/w/venv/bin/python".into(), label: "venv".into() });
+        assert_eq!(pick("", Some("/w"), false, &[]), PythonInterpreter { program: "python3".into(), label: "python3".into() });
+        assert_eq!(pick("", None, false, &all).label, "python3");
+    }
+
+    #[test]
+    fn python_venv_uses_windows_layout() {
+        let win = [r"C:\proj\.venv\Scripts\python.exe"];
+        assert_eq!(pick("", Some(r"C:\proj\"), true, &win).program, win[0]);
+        // A Unix-layout venv does not count on Windows, and vice versa.
+        assert_eq!(pick("", Some(r"C:\proj"), true, &["C:\\proj/.venv/bin/python"]).label, "python3");
+        assert_eq!(pick("", Some("/w"), false, &[r"/w\.venv\Scripts\python.exe"]).label, "python3");
+    }
+
+    #[test]
+    fn python_runs_use_the_resolved_interpreter() {
+        let venv = "/w/.venv/bin/python";
+        let cmd = build_run_command("python", "/w/a.py", &[], false, Some(venv)).unwrap();
+        assert_eq!((cmd.program.as_str(), cmd.args), (venv, vec!["-u".to_string(), "/w/a.py".into()]));
+        // Inside WSL the Windows-side pick does not apply.
+        assert_eq!(build_run_command("python", "/w/a.py", &[], true, Some(venv)).unwrap().program, "python3");
+    }
+
+    #[test]
+    fn kernel_runs_the_bundled_runner_with_the_interpreter() {
+        let cmd = build_run_command("kernel", "/w/n.ipynb", &[], false, Some("/w/.venv/bin/python")).unwrap();
+        assert_eq!(cmd.program, "/w/.venv/bin/python");
+        assert_eq!(cmd.args[0], "-u");
+        assert!(std::fs::read_to_string(&cmd.args[1]).unwrap().contains("jupyter_client"));
+        assert_eq!(cmd.args[2], "/w/n.ipynb");
+        assert!(build_run_command("kernel", "/w/n.ipynb", &[], true, None).is_err());
     }
 
     #[test]

@@ -8,6 +8,7 @@ import { useFahhStore } from "../../store/fahhStore";
 import { runFile, stopRun as stopRunCmd, writeFile } from "../../lib/tauri";
 import type { RunOutputEvent } from "../../lib/types";
 import { noteLocalUrls } from "../../lib/browser";
+import { workspacePython } from "../../lib/python";
 
 // ─── Language metadata ────────────────────────────────────────────────────────
 
@@ -165,7 +166,9 @@ export function RunPanel() {
     clearOutput();
     setLanguage(effectiveLanguage);
 
-    const info = `Running ${activeDoc.path} [${effectiveLanguage}]…`;
+    // Python runs with the workspace interpreter (.venv first), like VS Code.
+    const py = effectiveLanguage === "python" ? await workspacePython() : null;
+    const info = `Running ${activeDoc.path} [${effectiveLanguage}${py ? ` · ${py.label}` : ""}]…`;
     addOutput(info, "info");
 
     try {
@@ -181,6 +184,7 @@ export function RunPanel() {
       const result = await runFile({
         path: activeDoc.path,
         language: effectiveLanguage,
+        interpreter: py?.program,
       });
       startRun(result.pid, effectiveLanguage);
       // Replays anything the process already printed (and its exit, if it has
