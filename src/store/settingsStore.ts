@@ -18,6 +18,12 @@ export interface Settings {
   terminalFontSize: number;
   /** Terminal profile "+" starts (PowerShell, cmd, Git Bash, WSL, bash…); "" = the first found. */
   terminalDefaultProfile: string;
+  /**
+   * Execution policy for PowerShell started in Fahh terminals: "remoteSigned" passes
+   * `-ExecutionPolicy RemoteSigned` for that process only (profile and venv scripts load);
+   * "system" leaves the machine's policy as it is.
+   */
+  terminalPsPolicy: "remoteSigned" | "system";
   /** Reopen the last folder and its tabs at launch. */
   restoreSession: boolean;
   /** The custom error sound's file name; "" plays the bundled fahh. */
@@ -59,6 +65,7 @@ export const DEFAULT_SETTINGS: Settings = {
   fahhVolume: 80,
   terminalFontSize: 12,
   terminalDefaultProfile: "",
+  terminalPsPolicy: "remoteSigned",
   restoreSession: true,
   fahhSound: "",
   checkUpdatesOnLaunch: true,
@@ -99,6 +106,7 @@ export function parseSettings(raw: string | null | undefined): Settings {
     fahhVolume: clamp(o.fahhVolume, 0, 100, d.fahhVolume),
     terminalFontSize: clamp(o.terminalFontSize, 8, 32, d.terminalFontSize),
     terminalDefaultProfile: typeof o.terminalDefaultProfile === "string" ? o.terminalDefaultProfile.slice(0, 40) : d.terminalDefaultProfile,
+    terminalPsPolicy: o.terminalPsPolicy === "system" ? "system" : "remoteSigned",
     restoreSession: bool(o.restoreSession, d.restoreSession),
     fahhSound: typeof o.fahhSound === "string" ? o.fahhSound.slice(0, 200) : d.fahhSound,
     checkUpdatesOnLaunch: bool(o.checkUpdatesOnLaunch, d.checkUpdatesOnLaunch),

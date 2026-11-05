@@ -74,6 +74,8 @@ export interface SpawnOptions {
   cwd: string;
   cols: number;
   rows: number;
+  /** Settings > Terminal > PowerShell script policy is RemoteSigned (the default). */
+  psRemoteSigned?: boolean;
 }
 
 /**
@@ -88,7 +90,7 @@ export async function attach(sessionId: string, opts: SpawnOptions, onData: Data
   e.onExit.add(onExit);
   if (e.exited) onExit(e.exitCode);
   else if (e.ptyId === null && !e.spawning) {
-    e.spawning = ptySpawn(opts.profile, opts.cwd, opts.cols, opts.rows);
+    e.spawning = ptySpawn(opts.profile, opts.cwd, opts.cols, opts.rows, opts.psRemoteSigned ?? true);
     try {
       const id = await e.spawning;
       e.ptyId = id;

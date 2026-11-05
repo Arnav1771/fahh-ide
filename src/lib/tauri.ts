@@ -178,9 +178,12 @@ export interface TerminalProfile {
 
 export const terminalProfiles = () => invoke<TerminalProfile[]>("terminal_profiles");
 
-/** Start a shell on a pseudo-terminal; output arrives as `pty://data`, the end as `pty://exit`. */
-export const ptySpawn = (profile: string, cwd: string, cols: number, rows: number) =>
-  invoke<number>("pty_spawn", { profile, cwd, cols, rows });
+/**
+ * Start a shell on a pseudo-terminal; output arrives as `pty://data`, the end as `pty://exit`.
+ * `psRemoteSigned`: PowerShell runs with `-ExecutionPolicy RemoteSigned` for that process only.
+ */
+export const ptySpawn = (profile: string, cwd: string, cols: number, rows: number, psRemoteSigned = true) =>
+  invoke<number>("pty_spawn", { profile, cwd, cols, rows, psRemoteSigned });
 
 export const ptyWrite = (id: number, data: string) => invoke<void>("pty_write", { id, data });
 

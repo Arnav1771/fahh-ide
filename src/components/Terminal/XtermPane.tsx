@@ -10,6 +10,7 @@ import "@xterm/xterm/css/xterm.css";
 import { attach, clearBuffer, resize, write } from "../../lib/ptySessions";
 import { noteLocalUrls, openBrowser } from "../../lib/browser";
 import { useSettingsStore } from "../../store/settingsStore";
+import { unscaleForElement } from "../../lib/scaledPointer";
 import {
   useTerminalStore,
   type TerminalSession,
@@ -64,6 +65,60 @@ function themeFromCss() {
   };
 }
 
+type Point = { clientX: number; clientY: number };
+interface MouseService {
+  getCoords(ev: Point, el: HTMLElement, ...rest: unknown[]): unknown;
+  getMouseReportCoords(ev: MouseEvent, el: HTMLElement): unknown;
+}
+interface SelectionService {
+  _screenElement?: HTMLElement;
+  _getMouseEventScrollAmount?(ev: MouseEvent): number;
+}
+
+/**
+ * The Spatial Canvas draws this terminal inside `transform: scale(zoom)`, which xterm.js does
+ * not account for: it measures the scaled rect but divides by unscaled cell sizes, so
+ * selection, word select, links and app mouse reporting land rows/columns off at any zoom but
+ * 100%. Every one of those goes through the terminal's single MouseService, so map the point
+ * back into unscaled space there (see lib/scaledPointer). The right-click textarea (native
+ * Copy/Paste menu, middle-click paste) is placed by a separate helper; re-place it after xterm.
+ * ponytail: `_core._mouseService` is xterm 5.5 internals; if a later xterm renames it this
+ * silently does nothing (docked terminals stay right). Re-check on xterm upgrades.
+ */
+function followCssScale(term: Terminal, el: HTMLElement): () => void {
+  const core = (term as unknown as { _core?: { _mouseService?: MouseService; _selectionService?: SelectionService } })._core;
+  const ms = core?._mouseService;
+  if (ms?.getCoords && ms.getMouseReportCoords) {
+    const getCoords = ms.getCoords.bind(ms);
+    const report = ms.getMouseReportCoords.bind(ms);
+    ms.getCoords = (ev, target, ...rest) => getCoords(unscaleForElement(ev, target), target, ...rest);
+    ms.getMouseReportCoords = (ev, target) => report(unscaleForElement(ev, target) as MouseEvent, target);
+  }
+  // Drag-selecting past the top/bottom edge scrolls; that check measures the event itself.
+  const ss = core?._selectionService;
+  if (ss?._getMouseEventScrollAmount && ss._screenElement) {
+    const amount = ss._getMouseEventScrollAmount.bind(ss);
+    const screen = ss._screenElement;
+    ss._getMouseEventScrollAmount = (ev) => amount(unscaleForElement(ev, screen) as MouseEvent);
+  }
+  const placeTextarea = (ev: MouseEvent) => {
+    if (ev.type === "auxclick" && ev.button !== 1) return;
+    const screen = term.element?.querySelector<HTMLElement>(".xterm-screen");
+    const ta = term.textarea;
+    if (!screen || !ta) return;
+    const r = screen.getBoundingClientRect();
+    const p = unscaleForElement(ev, screen);
+    ta.style.left = `${p.clientX - r.left - 10}px`;
+    ta.style.top = `${p.clientY - r.top - 10}px`;
+  };
+  el.addEventListener("contextmenu", placeTextarea);
+  el.addEventListener("auxclick", placeTextarea);
+  return () => {
+    el.removeEventListener("contextmenu", placeTextarea);
+    el.removeEventListener("auxclick", placeTextarea);
+  };
+}
+
 /** One terminal tab: xterm.js drawing a real shell (see lib/ptySessions). */
 export function XtermPane({
   session,
@@ -112,6 +167,7 @@ export function XtermPane({
       },
     });
     term.open(el);
+    const offScale = followCssScale(term, el);
     try {
       fit.fit();
     } catch {
@@ -147,7 +203,7 @@ export function XtermPane({
       if (!alive) return;
       void attach(
         session.id,
-        { profile, cwd, cols: term.cols, rows: term.rows },
+        { profile, cwd, cols: term.cols, rows: term.rows, psRemoteSigned: settings.terminalPsPolicy !== "system" },
         (data) => {
           term.write(data);
           noteLocalUrls(data.replace(ANSI, "")); // offer "localhost:5173" in the status bar
@@ -201,6 +257,7 @@ export function XtermPane({
       window.removeEventListener("fahh-theme-change", retheme);
       terms.delete(session.id);
       fileLinks.dispose();
+      offScale();
       offDrop?.();
       term.dispose();
     };

@@ -9,6 +9,11 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Spatial Canvas terminal: selection landed on the wrong row/column.** The canvas zooms nodes with CSS `transform: scale()`, and xterm.js measured the scaled terminal but divided by unscaled cell sizes, so at any zoom but 100% a drag selected the line above (zoom < 100%) or below (zoom > 100%). Selection, double-click word select, link clicks, right-click (word select and the Copy/Paste textarea), middle-click paste, drag-to-scroll and app mouse reporting (vim, htop) now map the pointer back through the zoom. The docked terminal was never affected.
+- **PowerShell terminals load your profile and `.venv\Scripts\Activate.ps1`.** On a machine left at Windows' default execution policy (Restricted) every new Fahh PowerShell printed "running scripts is disabled on this system" and venvs could not be activated. Fahh now starts PowerShell / pwsh terminals with `-ExecutionPolicy RemoteSigned` for that process only; machine and user policy are untouched, Group Policy still wins, never Bypass. Settings > Terminal > **PowerShell script policy for Fahh terminals** (RemoteSigned / System default) switches it off. The Run panel runner is unaffected (it does not go through PowerShell).
+
 ### Changed
 
 - Fahh Local provider settings: models load live from the provider's `/models` list (through the backend, so no CORS), filtered to chat models, with loading, error (e.g. "Key rejected (401)") and retry states. Hardcoded model lists are gone. Built-in providers no longer show their base URL (an "Edit endpoint" disclosure covers proxies); "Custom (OpenAI-compatible)" asks for a validated base URL and an optional key. Key placeholders say what each provider's key looks like.

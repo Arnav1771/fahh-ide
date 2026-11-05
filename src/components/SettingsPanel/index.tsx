@@ -236,6 +236,21 @@ export function SettingsPanel() {
           <Row label="Default profile" hint="The shell a new terminal starts." htmlFor="set-term-profile">
             <ProfileSelect />
           </Row>
+          <Row
+            label="PowerShell script policy for Fahh terminals"
+            hint="RemoteSigned applies to Fahh's PowerShell processes only, so your profile and .venv\Scripts\Activate.ps1 load. Machine and user policy are never changed. Applies to new terminals."
+            htmlFor="set-term-pspolicy"
+          >
+            <select
+              id="set-term-pspolicy"
+              value={s.terminalPsPolicy}
+              onChange={(e) => s.set("terminalPsPolicy", e.target.value === "system" ? "system" : "remoteSigned")}
+              className="bg-fahh-surface rounded px-2 py-1 text-xs outline-none"
+            >
+              <option value="remoteSigned">RemoteSigned (default)</option>
+              <option value="system">System default</option>
+            </select>
+          </Row>
         </Section>
 
         <Section title="Session" keywords="restore reopen tabs startup">

@@ -48,7 +48,9 @@ describe("file-system wrappers", () => {
 describe("terminal wrappers", () => {
   it("spawns a profile in a folder at a size", async () => {
     await tauri.ptySpawn("pwsh", "C:\\proj", 120, 30);
-    expect(invoke).toHaveBeenCalledWith("pty_spawn", { profile: "pwsh", cwd: "C:\\proj", cols: 120, rows: 30 });
+    expect(invoke).toHaveBeenCalledWith("pty_spawn", { profile: "pwsh", cwd: "C:\\proj", cols: 120, rows: 30, psRemoteSigned: true });
+    await tauri.ptySpawn("pwsh", "C:\\proj", 120, 30, false);
+    expect(invoke).toHaveBeenLastCalledWith("pty_spawn", { profile: "pwsh", cwd: "C:\\proj", cols: 120, rows: 30, psRemoteSigned: false });
   });
 
   it("writes keystrokes to a pty", async () => {

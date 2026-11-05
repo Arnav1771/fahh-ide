@@ -13,6 +13,15 @@ Every terminal tab is a **real shell** on a pseudo-terminal, like VS Code's: int
 
 Open the `+` dropdown on the terminal bar to start a specific profile, or choose **Set Default Profile**. Settings > Terminal also sets the default.
 
+## PowerShell script policy
+
+Windows ships with PowerShell's execution policy at Restricted, so a stock PowerShell refuses to load your `Microsoft.PowerShell_profile.ps1` and `.venv\Scripts\Activate.ps1` ("running scripts is disabled on this system"). Fahh starts its PowerShell terminals (Windows PowerShell and `pwsh`) with `-ExecutionPolicy RemoteSigned`, which Microsoft recommends for developer machines: local scripts run, downloaded ones must be signed.
+
+- It is the **Process** scope: only that terminal's PowerShell (and what it starts) is affected. Machine and user policy are never changed, and a policy set by Group Policy still wins.
+- Never Bypass.
+- Settings > Terminal > **PowerShell script policy for Fahh terminals**: **System default** starts PowerShell without the flag, as before. Applies to terminals opened after the change.
+- The Run panel / Ctrl+F5 runner starts `python` (and the other runtimes) directly, not through PowerShell, so it is not affected either way.
+
 ## Tabs and splits
 
 | Action | Shortcut |
