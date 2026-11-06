@@ -9,47 +9,6 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-### Fixed — live Explorer, menus over the dock, every theme
-
-- **The Explorer follows the disk.** Files created, deleted or renamed by a terminal, git or another app appear within about 150 ms (`notify` + `notify-debouncer-full`). Only the changed folders are re-read, so expanded folders stay open. Each window watches its own folder (a second window used to stop the first one's watch), and the watch ends when the window closes. Dependency and build folders (`node_modules`, `.git`, `target`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `venv`) are ignored.
-- **WSL folders opened from Windows** (`\\wsl.localhost\...`) are polled every 1.5 s, because Windows sends no change events for them.
-- **Open tabs follow the disk too.** A file deleted on disk is struck through in its tab. A changed file reloads when the tab has no unsaved edits; when it does, a dialog asks: **Reload from disk** or **Keep my changes**.
-- **No line through the menus.** A dockview splitter (z-index 99) was drawn on top of the open Edit menu. The dock and the canvas now keep their layers to themselves, so menus, context menus, the palette and dialogs sit above them in every theme.
-- **The Spatial Canvas follows the theme.** The board, the node chrome, the HUD, the minimap and every node (editor, terminal, agent, browser, notes) use theme colours. Under Fahh Light the board was dark, the terminals blank, the browser node black and the notes brown. The canvas editor uses the app theme's colours instead of always using CATE dark.
-- **Readable terminals in every theme.** The xterm colours (text, cursor, selection and all 16 ANSI colours) come from the app theme, with a light palette for light themes; white, bright white and yellow output was invisible on Fahh Light.
-- **Contrast.** Muted text, error, warning, success and info colours now reach 4.5:1 on every surface in Fahh Gold, Fahh Dark, Fahh Light, GitHub Dark, Dracula and Solarized Dark. The title bar and menus follow each theme (they were near-black in every dark theme). Panels, the @-mention menu, slash menu, agent cards, code blocks, the PDF preview and the palette no longer hard-code dark colours.
-- **CATE Spatial** is kept after a restart (it was in the theme picker but missing from the saved-theme list).
-
-### Added — language features (planned v0.8.0)
-
-- **Language servers do more than squiggles.** Completion (with `completionItem/resolve` for docs and auto-imports), hover, go to definition (another file opens in a tab at the symbol), Find All References (Monaco's peek, unopened files included), rename across files (F2), signature help, quick fixes and refactors (Ctrl+. applies the server's edits), inlay hints and same-symbol highlights. Each provider is registered only while a server that offers it is running.
-- **One source per language, no doubled suggestions.** While typescript-language-server, vscode-css/html/json-language-server is up, Monaco's built-in TS/JS/CSS/HTML/JSON worker features for that language stand down; when no server runs (not installed, starting, crashed) the built-in workers answer as before.
-- **Rename and quick fixes stay undoable.** An open file takes the edit as one undo step (Ctrl+Z). A file that is not open is written to disk and its old text kept: palette **Language: Undo Rename in Closed Files** puts it back. Servers are told about those writes (`workspace/didChangeWatchedFiles`).
-- **ESLint, Ruff and Tailwind** run beside the main server when installed: `vscode-eslint-language-server` (when the project has an ESLint config or dependency), `ruff server` for Python, `tailwindcss-language-server` (when the project uses Tailwind). Their diagnostics merge with the main server's instead of replacing them. **Check Setup** lists all three with their install commands.
-- **Emmet** (`emmet-monaco-es`, MIT) in HTML, CSS/SCSS/Less and JSX/TSX, and **relative path completion** in import strings, `src`/`href`, `url()` and Markdown links (from the explorer's tree; skipped when a language server already does it). Settings > Editor gets **Inlay hints** and **Emmet** switches.
-- Editor: **linked editing** (rename an HTML/JSX tag pair together) and inlay hints on.
-- **TODOs view** (sidebar, palette "View: TODOs"): every TODO / FIXME / HACK in the folder through the workspace search, grouped by file, refreshed on save; click to jump to the line.
-- HTML and Markdown previews **reload on save**, so a saved stylesheet, script or image they use shows up.
-- Palette: Find All References, Rename Symbol, Quick Fix….
-
-### Fixed — language server plumbing
-
-- `initialize` is now awaited before `initialized` and the first `didOpen` (they used to be sent back to back), and requests the server sends (`workspace/configuration`, `window/workDoneProgress/create`, `client/registerCapability`, `workspace/applyEdit`…) are answered. pyright and ESLint wait for those answers.
-- Document sync follows the Monaco model, not React state: `didOpen` per model, incremental `didChange` with the model's version (full text for servers that ask for it), `didClose` when a tab's model goes, `didSave` after Save. Messages to a server go through one queue, so a change always arrives before the completion request typed after it.
-- Document URIs are proper file URIs (`file:///c%3A/...`, `file://wsl.localhost/...`); they were `file://C:\...`, which servers could not map back to the open tab on Windows.
-- Servers keep running while any tab of their language is open (switching between a .py and a .ts tab used to kill and restart them) and stop when none is.
-- On Windows the server binary is spawned by its resolved path, so npm's `.cmd` shims (typescript-language-server, pyright-langserver, the vscode-*-language-server family) start.
-
-### Fixed
-
-- **New Window opened a blank white window (Windows).** The `open_new_window` command was synchronous, so it ran on the UI thread, where building a WebView2 deadlocks; it is async now, and `fahh <folder>` from a shell builds its window off the UI thread too. A window that fails before the app mounts now shows the error and a Reload button instead of white.
-- **New terminal tabs stayed empty while another terminal was busy.** Writes and resizes to every shell ran on the UI thread under one lock, so a shell that stopped reading (a TUI streaming output) froze them all, and new shells never started. Each terminal now has its own I/O thread, spawning runs off the async workers, and a tab whose shell fails says "Couldn't start ..." (or "Still starting ..." after 10 s) instead of staying blank.
-- **The terminal could not scroll back and ignored resizes.** A shell started before the panel was laid out kept that size (a 12x7 ConPTY), and resizes made while it was starting were dropped, so a TUI drew into a corner with no scrollback. The terminal fits again before starting the shell, sends the latest size once it exists, and re-fits when its tab is shown. Shift+wheel always scrolls the scrollback, even while a program has mouse reporting on.
-- **Kill Terminal on the last tab did nothing visible.** It killed the shell and at once started a fresh, blank "terminal" tab. Now the panel is left empty with a **New Terminal** button, as in VS Code. Kill also ends everything the shell started (`claude.exe`, dev servers): on Windows each shell runs in a job object, which also ends every terminal's processes when Fahh exits. Closing a window ends its terminals, and reloading a window ends the shells its old page started. Before, those shells kept running unseen.
-- **Split panes had no identity.** Each pane of a split has a header with its shell and folder ("PowerShell — agent-proj"), its own kill button and right-click menu, and a clear outline on the focused pane. The split shows as one tab ("PowerShell, PowerShell"). Clicking another tab while split now shows that terminal instead of the split.
-- Terminal output goes only to the window that owns the terminal, not to every window.
-- `exit` or Ctrl+D (exit code 0) closes the tab. Any other exit leaves "Process exited (code N)" in it. Tabs can be renamed (double-click or right-click > Rename). On Windows, Ctrl+V pastes, as in VS Code. The shell gets the new size once a panel drag settles, not once per pixel.
-
 ### Changed
 
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
@@ -110,6 +69,43 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 - The fixed **"Devin Task Execution Loop / analyzing AST"** banner shown while the agent ran (replaced by the real run-status line).
 
 ---
+
+## [0.8.0] — 2026-11-06
+
+### Added
+
+- **Language servers do more than squiggles.** Completion (with `completionItem/resolve` for docs and auto-imports), hover, go to definition (another file opens in a tab at the symbol), Find All References (Monaco's peek, unopened files included), rename across files (F2), signature help, quick fixes and refactors (Ctrl+. applies the server's edits), inlay hints and same-symbol highlights. Each provider is registered only while a server that offers it is running.
+- **One source per language, no doubled suggestions.** While typescript-language-server, vscode-css/html/json-language-server is up, Monaco's built-in TS/JS/CSS/HTML/JSON worker features for that language stand down; when no server runs (not installed, starting, crashed) the built-in workers answer as before.
+- **Rename and quick fixes stay undoable.** An open file takes the edit as one undo step (Ctrl+Z). A file that is not open is written to disk and its old text kept: palette **Language: Undo Rename in Closed Files** puts it back. Servers are told about those writes (`workspace/didChangeWatchedFiles`).
+- **ESLint, Ruff and Tailwind** run beside the main server when installed: `vscode-eslint-language-server` (when the project has an ESLint config or dependency), `ruff server` for Python, `tailwindcss-language-server` (when the project uses Tailwind). Their diagnostics merge with the main server's instead of replacing them. **Check Setup** lists all three with their install commands.
+- **Emmet** (`emmet-monaco-es`, MIT) in HTML, CSS/SCSS/Less and JSX/TSX, and **relative path completion** in import strings, `src`/`href`, `url()` and Markdown links (from the explorer's tree; skipped when a language server already does it). Settings > Editor gets **Inlay hints** and **Emmet** switches.
+- Editor: **linked editing** (rename an HTML/JSX tag pair together) and inlay hints on.
+- **TODOs view** (sidebar, palette "View: TODOs"): every TODO / FIXME / HACK in the folder through the workspace search, grouped by file, refreshed on save; click to jump to the line.
+- HTML and Markdown previews **reload on save**, so a saved stylesheet, script or image they use shows up.
+- Palette: Find All References, Rename Symbol, Quick Fix….
+
+### Fixed
+
+- **The Explorer follows the disk.** Files created, deleted or renamed by a terminal, git or another app appear within about 150 ms (`notify` + `notify-debouncer-full`). Only the changed folders are re-read, so expanded folders stay open. Each window watches its own folder (a second window used to stop the first one's watch), and the watch ends when the window closes. Dependency and build folders (`node_modules`, `.git`, `target`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `venv`) are ignored.
+- **WSL folders opened from Windows** (`\\wsl.localhost\...`) are polled every 1.5 s, because Windows sends no change events for them.
+- **Open tabs follow the disk too.** A file deleted on disk is struck through in its tab. A changed file reloads when the tab has no unsaved edits; when it does, a dialog asks: **Reload from disk** or **Keep my changes**.
+- **No line through the menus.** A dockview splitter (z-index 99) was drawn on top of the open Edit menu. The dock and the canvas now keep their layers to themselves, so menus, context menus, the palette and dialogs sit above them in every theme.
+- **The Spatial Canvas follows the theme.** The board, the node chrome, the HUD, the minimap and every node (editor, terminal, agent, browser, notes) use theme colours. Under Fahh Light the board was dark, the terminals blank, the browser node black and the notes brown. The canvas editor uses the app theme's colours instead of always using CATE dark.
+- **Readable terminals in every theme.** The xterm colours (text, cursor, selection and all 16 ANSI colours) come from the app theme, with a light palette for light themes; white, bright white and yellow output was invisible on Fahh Light.
+- **Contrast.** Muted text, error, warning, success and info colours now reach 4.5:1 on every surface in Fahh Gold, Fahh Dark, Fahh Light, GitHub Dark, Dracula and Solarized Dark. The title bar and menus follow each theme (they were near-black in every dark theme). Panels, the @-mention menu, slash menu, agent cards, code blocks, the PDF preview and the palette no longer hard-code dark colours.
+- **CATE Spatial** is kept after a restart (it was in the theme picker but missing from the saved-theme list).
+- `initialize` is now awaited before `initialized` and the first `didOpen` (they used to be sent back to back), and requests the server sends (`workspace/configuration`, `window/workDoneProgress/create`, `client/registerCapability`, `workspace/applyEdit`…) are answered. pyright and ESLint wait for those answers.
+- Document sync follows the Monaco model, not React state: `didOpen` per model, incremental `didChange` with the model's version (full text for servers that ask for it), `didClose` when a tab's model goes, `didSave` after Save. Messages to a server go through one queue, so a change always arrives before the completion request typed after it.
+- Document URIs are proper file URIs (`file:///c%3A/...`, `file://wsl.localhost/...`); they were `file://C:\...`, which servers could not map back to the open tab on Windows.
+- Servers keep running while any tab of their language is open (switching between a .py and a .ts tab used to kill and restart them) and stop when none is.
+- On Windows the server binary is spawned by its resolved path, so npm's `.cmd` shims (typescript-language-server, pyright-langserver, the vscode-*-language-server family) start.
+- **New Window opened a blank white window (Windows).** The `open_new_window` command was synchronous, so it ran on the UI thread, where building a WebView2 deadlocks; it is async now, and `fahh <folder>` from a shell builds its window off the UI thread too. A window that fails before the app mounts now shows the error and a Reload button instead of white.
+- **New terminal tabs stayed empty while another terminal was busy.** Writes and resizes to every shell ran on the UI thread under one lock, so a shell that stopped reading (a TUI streaming output) froze them all, and new shells never started. Each terminal now has its own I/O thread, spawning runs off the async workers, and a tab whose shell fails says "Couldn't start ..." (or "Still starting ..." after 10 s) instead of staying blank.
+- **The terminal could not scroll back and ignored resizes.** A shell started before the panel was laid out kept that size (a 12x7 ConPTY), and resizes made while it was starting were dropped, so a TUI drew into a corner with no scrollback. The terminal fits again before starting the shell, sends the latest size once it exists, and re-fits when its tab is shown. Shift+wheel always scrolls the scrollback, even while a program has mouse reporting on.
+- **Kill Terminal on the last tab did nothing visible.** It killed the shell and at once started a fresh, blank "terminal" tab. Now the panel is left empty with a **New Terminal** button, as in VS Code. Kill also ends everything the shell started (`claude.exe`, dev servers): on Windows each shell runs in a job object, which also ends every terminal's processes when Fahh exits. Closing a window ends its terminals, and reloading a window ends the shells its old page started. Before, those shells kept running unseen.
+- **Split panes had no identity.** Each pane of a split has a header with its shell and folder ("PowerShell — agent-proj"), its own kill button and right-click menu, and a clear outline on the focused pane. The split shows as one tab ("PowerShell, PowerShell"). Clicking another tab while split now shows that terminal instead of the split.
+- Terminal output goes only to the window that owns the terminal, not to every window.
+- `exit` or Ctrl+D (exit code 0) closes the tab. Any other exit leaves "Process exited (code N)" in it. Tabs can be renamed (double-click or right-click > Rename). On Windows, Ctrl+V pastes, as in VS Code. The shell gets the new size once a panel drag settles, not once per pixel.
 
 ## [0.7.4] — 2026-11-05
 
