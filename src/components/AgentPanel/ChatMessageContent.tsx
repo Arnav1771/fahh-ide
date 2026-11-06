@@ -31,9 +31,9 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   const cleanLang = language.trim().toLowerCase() || "code";
 
   return (
-    <div className="my-2 rounded-lg border border-fahh-surface/80 bg-[#0d0e12] overflow-hidden shadow-md">
+    <div className="my-2 rounded-lg border border-fahh-surface/80 bg-fahh-bg overflow-hidden shadow-md">
       {/* Code Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#15171e] border-b border-fahh-surface/70 text-xs">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fahh-sidebar border-b border-fahh-surface/70 text-xs">
         <span className="font-mono text-[10.5px] uppercase font-semibold text-fahh-accent tracking-wider">
           {cleanLang}
         </span>
@@ -57,8 +57,8 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
           >
             {copied ? (
               <>
-                <Check size={11} className="text-emerald-400" />
-                <span className="text-emerald-400 font-medium">Copied!</span>
+                <Check size={11} className="text-fahh-success" />
+                <span className="text-fahh-success font-medium">Copied!</span>
               </>
             ) : (
               <>
@@ -71,7 +71,7 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
       </div>
 
       {/* Code Body */}
-      <pre className="p-3 text-[11.5px] font-mono leading-relaxed overflow-x-auto text-[#e6edf3] select-text cursor-text selection:bg-fahh-accent/30 no-scrollbar">
+      <pre className="p-3 text-[11.5px] font-mono leading-relaxed overflow-x-auto text-fahh-text select-text cursor-text selection:bg-fahh-accent/30 no-scrollbar">
         <code>{code}</code>
       </pre>
     </div>
@@ -80,9 +80,11 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
 
 interface ChatMessageContentProps {
   text: string;
+  /** Agent mode's reading size (14px) instead of the dock's 12px. */
+  large?: boolean;
 }
 
-export function ChatMessageContent({ text }: ChatMessageContentProps) {
+export function ChatMessageContent({ text, large }: ChatMessageContentProps) {
   // Parse code blocks vs regular markdown
   const parts = React.useMemo(() => {
     const segments: Array<{ type: "text" | "code"; content: string; language?: string }> = [];
@@ -116,7 +118,7 @@ export function ChatMessageContent({ text }: ChatMessageContentProps) {
   }, [text]);
 
   return (
-    <div className="select-text cursor-text leading-relaxed text-xs space-y-1.5 selection:bg-fahh-accent/30">
+    <div className={`select-text cursor-text space-y-1.5 selection:bg-fahh-accent/30 ${large ? "text-sm leading-6" : "text-xs leading-relaxed"}`}>
       {parts.map((part, index) => {
         if (part.type === "code") {
           return (
