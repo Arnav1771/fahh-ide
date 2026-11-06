@@ -369,6 +369,28 @@ export function relToRoot(root: string, uriPath: string): string | null {
   return null;
 }
 
+/** A transcript row in Agent mode: one item, or a run of consecutive tool calls shown as one timeline. */
+export type Block = { kind: "item"; item: Item; index: number } | { kind: "steps"; items: ToolItem[]; index: number };
+
+export function groupSteps(items: Item[]): Block[] {
+  const out: Block[] = [];
+  items.forEach((item, index) => {
+    const last = out[out.length - 1];
+    if (item.kind !== "tool") out.push({ kind: "item", item, index });
+    else if (last?.kind === "steps") last.items.push(item);
+    else out.push({ kind: "steps", items: [item], index });
+  });
+  return out;
+}
+
+/** "read 3, edited 2, ran 1": what a run of tool calls did, by kind. */
+export function stepsSummary(tools: { toolKind: AgentToolKind }[]): string {
+  const verbs: Record<AgentToolKind, string> = { read: "read", edit: "edited", run: "ran", plan: "planned", agent: "delegated" };
+  const counts = new Map<AgentToolKind, number>();
+  for (const t of tools) counts.set(t.toolKind, (counts.get(t.toolKind) ?? 0) + 1);
+  return [...counts].map(([k, n]) => `${verbs[k]} ${n}`).join(", ");
+}
+
 /** The last assistant message with text, for /copy. */
 export function lastReply(items: Item[]): string {
   for (let i = items.length - 1; i >= 0; i--) {

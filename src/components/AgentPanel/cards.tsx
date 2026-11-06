@@ -7,6 +7,7 @@ import { pendingFiles, reviewDoneText, type Item, type TurnInfo } from "../../li
 import { useToastStore } from "../../store/toastStore";
 import type { AgentFileDiff, AgentToolKind } from "../../lib/types";
 import { useAgentStore } from "../../store/agentStore";
+import { useThemeStore } from "../../store/themeStore";
 import { confirmDialog } from "../../store/dialogStore";
 
 const LANGS: Record<string, string> = {
@@ -18,6 +19,7 @@ const langOf = (path: string) => LANGS[path.split(".").pop() ?? ""] ?? "plaintex
 /** Monaco's diff editor, inline, read-only. */
 export function Diff({ path, before, after }: { path: string; before: string; after: string }) {
   const lines = Math.max(before.split("\n").length, after.split("\n").length);
+  const light = useThemeStore((s) => s.activeTheme === "fahh-light");
   return (
     <div className="border border-fahh-surface rounded overflow-hidden" data-testid="diff">
       <DiffEditor
@@ -26,7 +28,7 @@ export function Diff({ path, before, after }: { path: string; before: string; af
         language={langOf(path)}
         keepCurrentOriginalModel
         keepCurrentModifiedModel
-        theme="vs-dark"
+        theme={light ? "vs" : "vs-dark"}
         height={Math.min(220, 40 + lines * 19)}
         options={{
           readOnly: true,
@@ -45,7 +47,7 @@ export function Diff({ path, before, after }: { path: string; before: string; af
 
 const ICONS: Record<AgentToolKind, typeof Terminal> = { read: FileSearch, edit: FileEdit, run: Terminal, plan: ListChecks, agent: Bot };
 
-function brief(args: Record<string, unknown>): string {
+export function brief(args: Record<string, unknown>): string {
   const v = args.path ?? args.command ?? args.pattern ?? args.title ?? "";
   return typeof v === "string" ? v : JSON.stringify(v);
 }
@@ -54,7 +56,7 @@ export function ToolCard({ item }: { item: Extract<Item, { kind: "tool" }> }) {
   const [open, setOpen] = useState(false);
   const Icon = ICONS[item.toolKind];
   return (
-    <div className="mx-2 my-1 rounded border border-fahh-surface bg-[#111318] text-[11px]" data-testid="tool-card">
+    <div className="mx-2 my-1 rounded border border-fahh-surface bg-fahh-bg text-[11px]" data-testid="tool-card">
       <button onClick={() => setOpen((o) => !o)} className="w-full flex items-center gap-1.5 px-2 py-1 text-left">
         <Icon size={12} className="shrink-0 text-fahh-muted" />
         <span className="font-mono text-fahh-text">{item.name}</span>
@@ -69,11 +71,11 @@ export function ToolCard({ item }: { item: Extract<Item, { kind: "tool" }> }) {
           </span>
         )}
         {item.status === "running" && <Loader2 size={12} className="animate-spin text-fahh-muted" />}
-        {item.status === "ok" && <Check size={12} className="text-green-400" />}
+        {item.status === "ok" && <Check size={12} className="text-fahh-success" />}
         {item.status === "error" && <CircleAlert size={12} className="text-fahh-error" />}
       </button>
       {open && (
-        <pre className="px-2 pb-2 text-[10px] whitespace-pre-wrap break-words text-neutral-400 max-h-40 overflow-auto">
+        <pre className="px-2 pb-2 text-[10px] whitespace-pre-wrap break-words text-fahh-muted max-h-40 overflow-auto">
           {item.output ?? "(running)"}
         </pre>
       )}
@@ -89,7 +91,7 @@ export function ApprovalCard({ item }: { item: Extract<Item, { kind: "approval" 
   const [cmd, setCmd] = useState(item.command ?? "");
   const pending = item.state === "pending";
   return (
-    <div className={`mx-2 my-1.5 rounded border text-[11px] ${pending ? "border-fahh-accent bg-fahh-accent/10" : "border-fahh-surface bg-[#111318] opacity-70"}`} data-testid="approval">
+    <div className={`mx-2 my-1.5 rounded border text-[11px] ${pending ? "border-fahh-accent bg-fahh-accent/10" : "border-fahh-surface bg-fahh-bg opacity-70"}`} data-testid="approval">
       <div className="flex items-center gap-1.5 px-2 py-1 font-medium text-fahh-text">
         <ShieldQuestion size={12} className="text-fahh-accent shrink-0" />
         <span className="min-w-0 break-words">{item.summary}</span>
@@ -136,11 +138,11 @@ export function ApprovalCard({ item }: { item: Extract<Item, { kind: "approval" 
 
 export function PlanCard({ item, onImplement }: { item: Extract<Item, { kind: "plan" }>; onImplement: () => void }) {
   return (
-    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-[#111318] text-[11px]" data-testid="plan">
+    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-fahh-bg text-[11px]" data-testid="plan">
       <div className="flex items-center gap-1.5 px-2 py-1 text-fahh-text font-medium">
         <ListChecks size={12} className="text-fahh-accent" /> Plan <span className="font-mono text-fahh-muted truncate">{item.path}</span>
       </div>
-      <pre className="px-2 pb-1 whitespace-pre-wrap break-words text-neutral-300 max-h-52 overflow-auto font-sans">{item.markdown}</pre>
+      <pre className="px-2 pb-1 whitespace-pre-wrap break-words text-fahh-text max-h-52 overflow-auto font-sans">{item.markdown}</pre>
       <div className="px-2 pb-2">
         <button
           onClick={onImplement}
@@ -183,15 +185,15 @@ export function ReviewCard({ turn, onOpen }: { turn: TurnInfo; onOpen: (rel: str
   };
 
   return (
-    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-[#111318] text-[11px]" data-testid="review">
-      <div className="flex items-center gap-1.5 px-2 py-1 text-fahh-text font-medium">
+    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-fahh-bg text-[11px]" data-testid="review">
+      <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 px-2 py-1 text-fahh-text font-medium [&>button]:whitespace-nowrap">
         Review: {files.length} file{files.length > 1 ? "s" : ""} changed
         {turn.errorsAdded > 0 && <span className="text-fahh-error">+{turn.errorsAdded} error{turn.errorsAdded > 1 ? "s" : ""}</span>}
         <div className="flex-1" />
         {/* one file: its own ✓ and ✗ already do this */}
         {files.length > 1 && (
           <>
-            <button type="button" onClick={acceptAll} title="Keep every change in this review" className={`${bulk} text-green-400 hover:text-green-300`} data-testid="review-accept-all">
+            <button type="button" onClick={acceptAll} title="Keep every change in this review" className={`${bulk} text-fahh-success hover:opacity-80`} data-testid="review-accept-all">
               <Check size={11} /> Accept all
             </button>
             <button type="button" onClick={() => void rejectEvery()} title="Restore every file still under review" className={`${bulk} text-fahh-error hover:opacity-80`} data-testid="review-reject-all">
@@ -212,7 +214,7 @@ export function ReviewCard({ turn, onOpen }: { turn: TurnInfo; onOpen: (rel: str
             <button onClick={() => void toggle(f)} className="px-1 text-fahh-muted hover:text-fahh-text">
               {shown === f ? "Hide diff" : "Diff"}
             </button>
-            <button onClick={() => dispatch({ type: "file_accepted", turn: turn.turn, path: f })} title="Keep this change" className="text-green-400 hover:text-green-300">
+            <button onClick={() => dispatch({ type: "file_accepted", turn: turn.turn, path: f })} title="Keep this change" className="text-fahh-success hover:opacity-80">
               <Check size={13} />
             </button>
             <button onClick={() => void rejectFile(turn.turn, f)} title="Reject: restore the file" className="text-fahh-error hover:opacity-80">
@@ -232,9 +234,9 @@ type SessionsItem = Extract<Item, { kind: "sessions" }>;
 /** A subagent: status, model, mode, its tool lines and approvals, and its own Stop button. */
 export function SubCard({ item }: { item: SubItem }) {
   const stopChild = useAgentStore((s) => s.stopChild);
-  const tone = item.status === "running" ? "text-fahh-accent" : item.status === "done" ? "text-green-400" : "text-fahh-error";
+  const tone = item.status === "running" ? "text-fahh-accent" : item.status === "done" ? "text-fahh-success" : "text-fahh-error";
   return (
-    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-[#0d0f14] text-[11px]" data-testid="sub-card" data-status={item.status}>
+    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-fahh-bg text-[11px]" data-testid="sub-card" data-status={item.status}>
       <div className="flex items-center gap-1.5 px-2 py-1">
         {item.status === "running" ? <Loader2 size={12} className="animate-spin text-fahh-accent shrink-0" /> : <Bot size={12} className={`${tone} shrink-0`} />}
         <span className="font-medium text-fahh-text">{item.name}</span>
@@ -253,7 +255,7 @@ export function SubCard({ item }: { item: SubItem }) {
       {item.items.map((c, i) =>
         c.kind === "tool" ? <ToolCard key={i} item={c} /> : c.kind === "approval" ? <ApprovalCard key={c.id} item={c} /> : c.kind === "notice" ? <div key={i} className="px-2 pb-1 text-[10px] text-fahh-muted break-words">{c.text}</div> : null
       )}
-      {item.status !== "running" && item.summary && <div className="px-2 pb-1.5 text-neutral-300 whitespace-pre-wrap break-words">{item.summary}</div>}
+      {item.status !== "running" && item.summary && <div className="px-2 pb-1.5 text-fahh-text whitespace-pre-wrap break-words">{item.summary}</div>}
     </div>
   );
 }
@@ -264,7 +266,7 @@ export function SessionsCard({ item }: { item: SessionsItem }) {
   const handleInput = useAgentStore((s) => s.handleInput);
   const [removed, setRemoved] = useState<string[]>([]);
   return (
-    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-[#111318] text-[11px]" data-testid="sessions">
+    <div className="mx-2 my-1.5 rounded border border-fahh-surface bg-fahh-bg text-[11px]" data-testid="sessions">
       <div className="px-2 py-1 text-fahh-text font-medium">Saved sessions</div>
       {item.sessions.filter((s) => !removed.includes(s.id)).map((s) => (
         <div key={s.id} className="flex items-center gap-1.5 px-2 pb-1">
