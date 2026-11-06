@@ -186,7 +186,7 @@ function PaletteBody({
                     {highlightMatch(cmd.label, query).map((part, pIdx) => (
                       <span
                         key={pIdx}
-                        className={part.match ? "text-[#4a9eff] font-bold underline underline-offset-2" : ""}
+                        className={part.match ? "text-fahh-accent font-bold underline underline-offset-2" : ""}
                       >
                         {part.text}
                       </span>
@@ -198,7 +198,7 @@ function PaletteBody({
                 <>
                   <span className={`px-2 py-0.5 rounded text-[10px] font-mono border shrink-0 ${
                     cmd.group.toLowerCase().includes("ai")
-                      ? "bg-[#4a9eff]/15 text-[#4a9eff] border-[#4a9eff]/30"
+                      ? "bg-fahh-accent/15 text-fahh-accent border-fahh-accent/30"
                       : cmd.group.toLowerCase().includes("file")
                       ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
                       : cmd.group.toLowerCase().includes("view") || cmd.group.toLowerCase().includes("theme")
@@ -215,7 +215,7 @@ function PaletteBody({
                     {highlightMatch(cmd.label, query).map((part, pIdx) => (
                       <span
                         key={pIdx}
-                        className={part.match ? "text-[#4a9eff] font-bold underline underline-offset-2" : ""}
+                        className={part.match ? "text-fahh-accent font-bold underline underline-offset-2" : ""}
                       >
                         {part.text}
                       </span>

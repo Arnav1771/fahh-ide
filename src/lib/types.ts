@@ -9,6 +9,8 @@ export interface Document {
   path: string;
   language: string;
   dirty: boolean;
+  /** The file was deleted on disk while open (fsWatch). */
+  deleted?: boolean;
 }
 
 export interface CommandOutput {

@@ -21,14 +21,14 @@ export function SlashMenu({ items, index, onPick, onHover }: { items: SlashDef[]
   }, [index]);
 
   if (items.length === 0) {
-    return <div className="mb-1 px-2 py-1.5 text-[11px] text-fahh-muted rounded border border-fahh-surface bg-[#111318]">No command matches. Esc to close.</div>;
+    return <div className="mb-1 px-2 py-1.5 text-[11px] text-fahh-muted rounded border border-fahh-surface bg-fahh-sidebar">No command matches. Esc to close.</div>;
   }
   let n = -1;
   return (
-    <div role="listbox" aria-label="Slash commands" data-testid="slash-menu" className="mb-1 max-h-56 overflow-y-auto rounded border border-fahh-surface bg-[#111318] text-[11px]">
+    <div role="listbox" aria-label="Slash commands" data-testid="slash-menu" className="mb-1 max-h-56 overflow-y-auto rounded border border-fahh-surface bg-fahh-sidebar text-[11px]">
       {groupSlash(items).map((g) => (
         <div key={g.group}>
-          <div className="px-2 pt-1 pb-0.5 text-[10px] uppercase tracking-wider text-fahh-muted sticky top-0 bg-[#111318]">{g.group}</div>
+          <div className="px-2 pt-1 pb-0.5 text-[10px] uppercase tracking-wider text-fahh-muted sticky top-0 bg-fahh-sidebar">{g.group}</div>
           {g.items.map((d) => {
             n += 1;
             const i = n;

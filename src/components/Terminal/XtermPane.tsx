@@ -12,6 +12,7 @@ import { noteLocalUrls, openBrowser } from "../../lib/browser";
 import { useSettingsStore } from "../../store/settingsStore";
 import { unscaleForElement } from "../../lib/scaledPointer";
 import { scrollbackWheelLines } from "../../lib/termWheel";
+import { xtermThemeFromCss } from "../../lib/termTheme";
 import {
   useTerminalStore,
   type TerminalSession,
@@ -53,18 +54,7 @@ export function clearTerminal(sessionId: string): void {
   clearBuffer(sessionId);
 }
 
-function themeFromCss() {
-  const css = getComputedStyle(document.documentElement);
-  const v = (name: string, fallback: string) =>
-    css.getPropertyValue(name).trim() || fallback;
-  return {
-    background: v("--fahh-bg", "#1e1e2e"),
-    foreground: v("--fahh-text", "#cdd6f4"),
-    cursor: v("--fahh-accent", "#89b4fa"),
-    cursorAccent: v("--fahh-bg", "#1e1e2e"),
-    selectionBackground: "rgba(137, 180, 250, 0.35)",
-  };
-}
+const themeFromCss = xtermThemeFromCss;
 
 type Point = { clientX: number; clientY: number };
 interface MouseService {

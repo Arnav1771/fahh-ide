@@ -258,7 +258,7 @@ export function MenuBar({
         },
         {
           label: "Save Workspace As…",
-          icon: <Save size={13} className="text-[#a0c4ff]" />,
+          icon: <Save size={13} className="text-fahh-info" />,
           action: () => void saveWorkspaceAs(),
         },
         { separator: true, label: "", action: () => {} },
@@ -271,7 +271,7 @@ export function MenuBar({
         {
           label: "Save All",
           keys: ["Ctrl", "K", "S"],
-          icon: <Save size={13} className="text-[#e0a96d]" />,
+          icon: <Save size={13} className="text-fahh-accent" />,
           action: onSaveActive,
         },
         {
@@ -485,19 +485,19 @@ export function MenuBar({
         {
           label: isSpatial ? "Exit Spatial Canvas Mode" : "Spatial Canvas Mode (CATE)",
           keys: ["Ctrl", "Shift", "C"],
-          icon: <Sparkles size={13} className="text-[#4a9eff]" />,
+          icon: <Sparkles size={13} className="text-fahh-accent" />,
           action: () => useSpatialStore.getState().toggleSpatialMode(),
         },
         {
           label: "Extensions Store (Marketplace)",
           keys: ["Ctrl", "Shift", "X"],
-          icon: <Blocks size={13} className="text-[#c084fc]" />,
+          icon: <Blocks size={13} className="text-fahh-accent" />,
           action: () => onSetSidebarTab("extensions"),
         },
         {
           label: "Fahh Local Agent",
           keys: ["Ctrl", "L"],
-          icon: <Bot size={13} className="text-[#e0a96d]" />,
+          icon: <Bot size={13} className="text-fahh-accent" />,
           action: () => onSetSidebarTab("ai"),
         },
         { separator: true, label: "", action: () => {} },
@@ -925,12 +925,12 @@ export function MenuBar({
           onClick={() => useSpatialStore.getState().toggleSpatialMode()}
           className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-medium transition-all mr-1.5 ${
             isSpatial
-              ? "bg-[#4a9eff] text-[#0a0907] font-semibold shadow-[0_0_12px_rgba(74,158,255,0.5)]"
+              ? "bg-fahh-accent text-fahh-bg font-semibold shadow-[0_0_12px_color-mix(in_srgb,var(--fahh-accent)_50%,transparent)]"
               : "bg-fahh-surface/60 hover:bg-fahh-surface text-fahh-text border border-fahh-surface"
           }`}
           title="Toggle CATE Spatial Canvas Mode (Ctrl+Shift+C)"
         >
-          <Sparkles size={11} className={isSpatial ? "text-[#0a0907]" : "text-[#4a9eff]"} />
+          <Sparkles size={11} className={isSpatial ? "text-fahh-bg" : "text-fahh-accent"} />
           <span className="max-lg:hidden">{isSpatial ? "Spatial Canvas" : "Canvas"}</span>
         </button>
 

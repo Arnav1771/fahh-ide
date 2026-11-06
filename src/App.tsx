@@ -698,7 +698,7 @@ export default function App() {
 
       {/* ── Spatial Canvas Mode (CATE) vs Docked Workspace Area ── */}
       {isSpatialMode ? (
-        <div className="flex-1 min-h-0 relative overflow-hidden">
+        <div className="fahh-canvas-host flex-1 min-h-0 relative overflow-hidden">
           <LspBridge />
           <SpatialCanvas />
         </div>

@@ -9,7 +9,7 @@ import {
 } from "../../lib/roundtable";
 
 const input = "w-full rounded border border-fahh-surface bg-fahh-sidebar px-2 py-1 text-xs text-fahh-text outline-none focus:border-fahh-accent";
-const primary = "px-3 py-1.5 rounded bg-fahh-accent text-[#0a0907] font-semibold text-xs hover:brightness-110 disabled:opacity-40 transition-all";
+const primary = "px-3 py-1.5 rounded bg-fahh-accent text-fahh-bg font-semibold text-xs hover:brightness-110 disabled:opacity-40 transition-all";
 const quiet = "flex items-center gap-1 px-2 py-1 rounded bg-fahh-accent/20 text-fahh-accent text-xs hover:bg-fahh-accent/30 disabled:opacity-40";
 const STATE: Record<string, string> = { running: "working", queued: "waiting", done: "done", failed: "failed", cancelled: "stopped" };
 

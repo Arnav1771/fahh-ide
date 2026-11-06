@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { allowPreview, getFileTree, readFile } from "../lib/tauri";
 import { isPreviewOnly } from "../lib/preview";
+import { rememberDiskText } from "../lib/fsWatch";
 import { languageFor } from "../lib/tabs";
 import { addRecent } from "../lib/recent";
 import { useFileStore } from "../store/fileStore";
@@ -54,7 +55,9 @@ export async function openFilePath(path: string): Promise<void> {
   if (isPreviewOnly(path)) return openFile({ path, language: "image", dirty: false }, "");
   const language = languageFor(path);
   try {
-    openFile({ path, language, dirty: false }, (await readFile(path)) ?? "");
+    const text = (await readFile(path)) ?? "";
+    rememberDiskText(path, text); // fsWatch: a later event with the same text is not a change
+    openFile({ path, language, dirty: false }, text);
   } catch (err) {
     console.warn("Failed reading file content:", path, err);
     openFile({ path, language, dirty: false }, "");

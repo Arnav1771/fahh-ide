@@ -3,27 +3,31 @@ import { useSpatialStore, type SpatialNodeData } from "../../../store/spatialSto
 
 const NOTE_COLORS = {
   amber: {
-    bg: "bg-[#241d13]/90",
-    border: "border-[#d4a03c]/40",
-    text: "text-[#fed7aa]",
+    // tinted from the theme surface, so a note reads in light and dark themes alike
+    bg: "bg-[color-mix(in_srgb,#d4a03c_16%,var(--fahh-sidebar))]",
+    border: "border-[#d4a03c]/50",
+    text: "text-fahh-text",
     indicator: "bg-[#d4a03c]",
   },
   cyan: {
-    bg: "bg-[#11242d]/90",
-    border: "border-[#38bdf8]/40",
-    text: "text-[#bae6fd]",
+    // tinted from the theme surface, so a note reads in light and dark themes alike
+    bg: "bg-[color-mix(in_srgb,#38bdf8_16%,var(--fahh-sidebar))]",
+    border: "border-[#38bdf8]/50",
+    text: "text-fahh-text",
     indicator: "bg-[#38bdf8]",
   },
   pink: {
-    bg: "bg-[#281320]/90",
-    border: "border-[#f472b6]/40",
-    text: "text-[#fbcfe8]",
+    // tinted from the theme surface, so a note reads in light and dark themes alike
+    bg: "bg-[color-mix(in_srgb,#f472b6_16%,var(--fahh-sidebar))]",
+    border: "border-[#f472b6]/50",
+    text: "text-fahh-text",
     indicator: "bg-[#f472b6]",
   },
   green: {
-    bg: "bg-[#142619]/90",
-    border: "border-[#4ade80]/40",
-    text: "text-[#bbf7d0]",
+    // tinted from the theme surface, so a note reads in light and dark themes alike
+    bg: "bg-[color-mix(in_srgb,#4ade80_16%,var(--fahh-sidebar))]",
+    border: "border-[#4ade80]/50",
+    text: "text-fahh-text",
     indicator: "bg-[#4ade80]",
   },
 };
@@ -50,8 +54,8 @@ export function StickyNoteNodeView({ node }: { node: SpatialNodeData }) {
   return (
     <div className={`flex-1 min-h-0 flex flex-col p-4 ${color.bg} transition-colors duration-200 overflow-hidden`}>
       {/* Color switcher header */}
-      <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/[0.08] shrink-0">
-        <span className="text-[11px] uppercase tracking-wider text-white/50 font-mono">
+      <div className="flex items-center justify-between pb-2 mb-2 border-b border-fahh-surface shrink-0">
+        <span className="text-[11px] uppercase tracking-wider text-fahh-muted font-mono">
           Architectural Note
         </span>
         <div className="flex items-center gap-1.5">
@@ -62,7 +66,7 @@ export function StickyNoteNodeView({ node }: { node: SpatialNodeData }) {
               onClick={() => handleColorChange(c)}
               title={`${c} note`}
               className={`w-3.5 h-3.5 rounded-full ${NOTE_COLORS[c].indicator} transition-transform ${
-                colorKey === c ? "scale-125 ring-2 ring-white/50" : "opacity-60 hover:opacity-100"
+                colorKey === c ? "scale-125 ring-2 ring-fahh-text/50" : "opacity-60 hover:opacity-100"
               }`}
             />
           ))}
@@ -77,7 +81,7 @@ export function StickyNoteNodeView({ node }: { node: SpatialNodeData }) {
         style={{
           fontFamily: "'Architects Daughter', 'Caveat', 'Segoe Print', cursive",
         }}
-        className={`flex-1 w-full resize-none bg-transparent outline-none text-base leading-relaxed ${color.text} placeholder:text-white/30`}
+        className={`flex-1 w-full resize-none bg-transparent outline-none text-base leading-relaxed ${color.text} placeholder:text-fahh-muted`}
       />
     </div>
   );

@@ -105,8 +105,8 @@ export function MentionMenu({ query, onSelect, onClose }: MentionMenuProps) {
   if (filteredOptions.length === 0) return null;
 
   return (
-    <div className="absolute bottom-full mb-1 left-0 z-50 w-72 max-h-60 overflow-y-auto rounded-lg bg-[#141311] border border-[#4a9eff]/40 shadow-[0_15px_30px_rgba(0,0,0,0.8)] backdrop-blur-xl p-1 text-xs font-sans animate-in fade-in zoom-in-95 duration-100">
-      <div className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold text-[#8a8780] border-b border-white/5">
+    <div className="absolute bottom-full mb-1 left-0 z-50 w-72 max-h-60 overflow-y-auto rounded-lg bg-fahh-sidebar border border-fahh-accent/40 shadow-xl backdrop-blur-xl p-1 text-xs font-sans animate-in fade-in zoom-in-95 duration-100">
+      <div className="px-2 py-1 text-[10px] uppercase tracking-wider font-semibold text-fahh-muted border-b border-fahh-surface">
         Context Mentions (@)
       </div>
       <div className="flex flex-col gap-0.5 mt-1">
@@ -120,13 +120,13 @@ export function MentionMenu({ query, onSelect, onClose }: MentionMenuProps) {
               onClick={() => onSelect(opt.label)}
               onMouseEnter={() => setSelectedIndex(idx)}
               className={`flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors ${
-                isSelected ? "bg-[#4a9eff]/20 text-[#e8e6e3]" : "text-[#8a8780] hover:text-[#e8e6e3]"
+                isSelected ? "bg-fahh-accent/20 text-fahh-text" : "text-fahh-muted hover:text-fahh-text"
               }`}
             >
-              <Icon size={13} className={isSelected ? "text-[#4a9eff]" : "text-[#8a8780]"} />
+              <Icon size={13} className={isSelected ? "text-fahh-accent" : "text-fahh-muted"} />
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-xs truncate">{opt.label}</div>
-                <div className="text-[10px] text-[#8a8780] truncate">{opt.detail}</div>
+                <div className="text-[10px] text-fahh-muted truncate">{opt.detail}</div>
               </div>
             </button>
           );

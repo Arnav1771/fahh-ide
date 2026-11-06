@@ -120,21 +120,21 @@ export function CanvasNode({ node, children }: CanvasNodeProps) {
   const getNodeIcon = () => {
     switch (node.type) {
       case "editor":
-        return <FileCode size={13} className="text-[#4a9eff]" />;
+        return <FileCode size={13} className="text-fahh-accent" />;
       case "terminal":
-        return <TerminalIcon size={13} className="text-[#27c93f]" />;
+        return <TerminalIcon size={13} className="text-fahh-success" />;
       case "agent":
-        return <Bot size={13} className="text-[#e0a96d]" />;
+        return <Bot size={13} className="text-fahh-accent" />;
       case "browser":
-        return <Globe size={13} className="text-[#ff9f0a]" />;
+        return <Globe size={13} className="text-fahh-warn" />;
       case "diagnostics":
-        return <AlertCircle size={13} className="text-[#ff5f56]" />;
+        return <AlertCircle size={13} className="text-fahh-error" />;
       case "note":
-        return <StickyNote size={13} className="text-[#ffd666]" />;
+        return <StickyNote size={13} className="text-fahh-warn" />;
       case "files":
-        return <FolderTree size={13} className="text-[#38bdf8]" />;
+        return <FolderTree size={13} className="text-fahh-info" />;
       case "extensions":
-        return <Blocks size={13} className="text-[#c084fc]" />;
+        return <Blocks size={13} className="text-fahh-accent" />;
       default:
         return <Move size={13} className="text-fahh-muted" />;
     }
@@ -151,15 +151,15 @@ export function CanvasNode({ node, children }: CanvasNodeProps) {
       }}
       className={`absolute select-none flex flex-col rounded-xl overflow-hidden backdrop-blur-md transition-shadow duration-200 ${
         isFocused
-          ? "border border-[#4a9eff]/70 shadow-[0_0_0_1px_rgba(74,158,255,0.4),0_20px_50px_-10px_rgba(0,0,0,0.8),0_0_60px_-15px_rgba(74,158,255,0.2)] bg-[#1a1917]/95"
-          : "border border-white/10 shadow-[0_12px_36px_-10px_rgba(0,0,0,0.7)] bg-[#161513]/90 hover:border-white/20"
+          ? "border border-fahh-accent/70 ring-1 ring-fahh-accent/40 shadow-2xl bg-fahh-sidebar"
+          : "border border-fahh-surface shadow-xl bg-fahh-sidebar hover:border-fahh-muted/50"
       }`}
     >
       {/* ── macOS Window Chrome Title Bar ── */}
       <div
         onMouseDown={onMouseDownTitle}
         onDoubleClick={() => toggleMaximize(node.id)}
-        className="h-9 shrink-0 flex items-center justify-between px-3 bg-[#161513]/95 border-b border-white/[0.07] cursor-grab active:cursor-grabbing select-none"
+        className="h-9 shrink-0 flex items-center justify-between px-3 bg-fahh-sidebar border-b border-fahh-surface cursor-grab active:cursor-grabbing select-none"
       >
         {/* Left: Window Controls (Traffic Lights) */}
         <div className="flex items-center gap-1.5 group/controls">
@@ -201,14 +201,14 @@ export function CanvasNode({ node, children }: CanvasNodeProps) {
         {/* Center: Node Title & Icon */}
         <div className="flex items-center gap-1.5 min-w-0 max-w-[65%] px-2">
           {getNodeIcon()}
-          <span className="text-xs font-medium text-[#e8e6e3] truncate tracking-tight font-sans">
+          <span className="text-xs font-medium text-fahh-text truncate tracking-tight font-sans">
             {node.title}
           </span>
         </div>
 
         {/* Right: Badge / Type Pill */}
         <div className="flex items-center gap-1.5">
-          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/[0.05] border border-white/[0.08] text-[#a8a49e] font-mono capitalize">
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-fahh-surface border border-fahh-surface text-fahh-muted font-mono capitalize">
             {node.type}
           </span>
         </div>
@@ -216,7 +216,7 @@ export function CanvasNode({ node, children }: CanvasNodeProps) {
 
       {/* ── Node Body Content ── */}
       {!isMinimized && (
-        <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#141311]">
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-fahh-bg">
           {children}
         </div>
       )}
@@ -228,7 +228,7 @@ export function CanvasNode({ node, children }: CanvasNodeProps) {
           title="Drag to resize"
           className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize flex items-center justify-center opacity-40 hover:opacity-100 transition-opacity z-20"
         >
-          <svg width="8" height="8" viewBox="0 0 8 8" className="fill-white/60">
+          <svg width="8" height="8" viewBox="0 0 8 8" className="fill-current text-fahh-muted">
             <path d="M6 0L8 2L2 8L0 6Z M7 5L8 6L6 8L5 7Z" />
           </svg>
         </div>

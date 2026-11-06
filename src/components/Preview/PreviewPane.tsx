@@ -391,11 +391,11 @@ function PdfPreview({ path }: { path: string }) {
   const name = path.split(/[\\/]/).pop() ?? path;
 
   return (
-    <div className="relative w-full h-full flex flex-col bg-[#1c1b18] overflow-hidden select-none" data-testid="pdf-preview">
+    <div className="relative w-full h-full flex flex-col bg-fahh-sidebar overflow-hidden select-none" data-testid="pdf-preview">
       {/* PDF Action Bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#141311] border-b border-fahh-surface text-xs text-fahh-muted shrink-0">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-fahh-sidebar border-b border-fahh-surface text-xs text-fahh-muted shrink-0">
         <div className="flex items-center gap-2 min-w-0 truncate">
-          <FileText size={14} className="text-[#ff5f56] shrink-0" />
+          <FileText size={14} className="text-fahh-error shrink-0" />
           <span className="font-medium text-fahh-text truncate">{name}</span>
           <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 font-mono shrink-0">
             PDF Document
@@ -420,7 +420,7 @@ function PdfPreview({ path }: { path: string }) {
           <iframe
             src={`${url}#toolbar=1&navpanes=1`}
             title={`PDF: ${name}`}
-            className="w-full h-full border-0 bg-[#2b2b2b]"
+            className="w-full h-full border-0 bg-fahh-surface"
             onError={() => setLoadError(true)}
           />
         ) : (
@@ -431,7 +431,7 @@ function PdfPreview({ path }: { path: string }) {
             <button
               type="button"
               onClick={() => openExternal(url)}
-              className="px-3 py-1.5 rounded bg-fahh-accent text-[#0a0907] font-semibold text-xs hover:brightness-110 transition-all"
+              className="px-3 py-1.5 rounded bg-fahh-accent text-fahh-bg font-semibold text-xs hover:brightness-110 transition-all"
             >
               Open in External Viewer
             </button>

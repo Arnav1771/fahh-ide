@@ -139,7 +139,7 @@ function EditorTab({ api, containerApi, params }: IDockviewPanelHeaderProps<{ pa
   return (
     <div
       className="dv-default-tab"
-      title={path}
+      title={tab?.deleted ? `${path} (deleted on disk)` : path}
       onMouseDown={(e) => {
         if (e.button === 1) e.preventDefault(); // no autoscroll cursor
       }}
@@ -157,9 +157,10 @@ function EditorTab({ api, containerApi, params }: IDockviewPanelHeaderProps<{ pa
     >
       {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={() => setMenu(null)} />}
       <FileIcon name={name} language={tab?.language} />
-      <span className={`dv-default-tab-content ${tab?.dirty ? "text-fahh-warn" : ""}`}>
+      <span className={`dv-default-tab-content ${tab?.dirty ? "text-fahh-warn" : ""} ${tab?.deleted ? "line-through opacity-70" : ""}`}>
         {tab?.dirty ? "● " : ""}
         {name}
+        {tab?.deleted && <span className="sr-only"> (deleted)</span>}
       </span>
       <button
         type="button"

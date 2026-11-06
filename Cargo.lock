@@ -1035,7 +1035,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "notify",
- "notify-debouncer-mini",
+ "notify-debouncer-full",
  "portable-pty",
  "proc-macro2",
  "regex",
@@ -1082,6 +1082,15 @@ checksum = "38e2275cc4e4fc009b0669731a1e5ab7ebf11f469eaede2bab9309a5b4d6057f"
 dependencies = [
  "memoffset",
  "rustc_version",
+]
+
+[[package]]
+name = "file-id"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e1fc6a637b6dc58414714eddd9170ff187ecb0933d4c7024d1abbd23a3cc26e9"
+dependencies = [
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -2381,14 +2390,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "notify-debouncer-mini"
-version = "0.4.1"
+name = "notify-debouncer-full"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d40b221972a1fc5ef4d858a2f671fb34c75983eb385463dff3780eeff6a9d43"
+checksum = "fb7fd166739789c9ff169e654dc1501373db9d80a4c3f972817c8a4d7cf8f34e"
 dependencies = [
  "crossbeam-channel",
+ "file-id",
  "log",
  "notify",
+ "parking_lot",
+ "walkdir",
 ]
 
 [[package]]

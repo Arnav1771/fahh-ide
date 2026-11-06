@@ -60,19 +60,19 @@ export function SpatialMinimap() {
   const getNodeColor = (type: string) => {
     switch (type) {
       case "editor":
-        return "#4a9eff";
+        return "var(--fahh-info)";
       case "terminal":
-        return "#27c93f";
+        return "var(--fahh-success)";
       case "agent":
-        return "#e0a96d";
+        return "var(--fahh-accent)";
       case "browser":
-        return "#ff9f0a";
+        return "var(--fahh-warn)";
       case "diagnostics":
-        return "#ff5f56";
+        return "var(--fahh-error)";
       case "note":
-        return "#ffd666";
+        return "color-mix(in srgb, var(--fahh-warn) 70%, var(--fahh-bg))";
       default:
-        return "#ffffff";
+        return "var(--fahh-muted)";
     }
   };
 
@@ -81,7 +81,7 @@ export function SpatialMinimap() {
       onClick={handleClickMap}
       title="Click to pan camera"
       style={{ width: mapW, height: mapH }}
-      className="absolute bottom-6 right-6 z-40 rounded-lg overflow-hidden bg-[#161513]/90 border border-white/10 shadow-2xl backdrop-blur-md cursor-pointer select-none group"
+      className="absolute bottom-6 right-6 z-40 rounded-lg overflow-hidden bg-fahh-sidebar border border-fahh-surface shadow-2xl backdrop-blur-md cursor-pointer select-none group"
     >
       {/* Node rectangles on minimap */}
       {nodes.map((node) => {
@@ -112,11 +112,11 @@ export function SpatialMinimap() {
           width: `${vpWidth}px`,
           height: `${vpHeight}px`,
         }}
-        className="absolute border border-[#4a9eff] bg-[#4a9eff]/15 rounded-[2px] pointer-events-none"
+        className="absolute border border-fahh-accent bg-fahh-accent/15 rounded-[2px] pointer-events-none"
       />
 
       {/* Minimap label */}
-      <span className="absolute top-1 left-1.5 text-[8px] font-mono text-white/40 tracking-wider uppercase pointer-events-none">
+      <span className="absolute top-1 left-1.5 text-[8px] font-mono text-fahh-muted tracking-wider uppercase pointer-events-none">
         Radar
       </span>
     </div>

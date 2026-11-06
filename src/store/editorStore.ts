@@ -22,6 +22,8 @@ interface EditorStore {
   setActiveTab: (path: string) => void;
   setContent: (path: string, content: string) => void;
   markDirty: (path: string, dirty: boolean) => void;
+  /** The file was deleted on disk (or came back). */
+  markDeleted: (path: string, deleted: boolean) => void;
   /** A file or folder was renamed on disk: move every open tab under it. */
   renamePath: (from: string, to: string) => void;
 }
@@ -101,6 +103,11 @@ export const useEditorStore = create<EditorStore>((set) => ({
       openTabs: state.openTabs.map((t) =>
         t.path === path ? { ...t, dirty } : t
       ),
+    })),
+
+  markDeleted: (path, deleted) =>
+    set((state) => ({
+      openTabs: state.openTabs.map((t) => (t.path === path ? { ...t, deleted } : t)),
     })),
 
   renamePath: (from, to) =>

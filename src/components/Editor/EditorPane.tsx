@@ -18,7 +18,7 @@ import { PreviewPane } from "../Preview/PreviewPane";
 import { isPreviewOnly, previewKindFor } from "../../lib/preview";
 import { modeOf, usePreviewStore } from "../../store/previewStore";
 import { runCommand } from "../../lib/commands";
-import { ensureBaseline, isDirtyAt } from "../../lib/saveBaseline";
+import { ensureBaseline, isDirtyAt, setBaseline } from "../../lib/saveBaseline";
 import { saveActive } from "../../lib/tabActions";
 import { recordCursor } from "../../lib/navigation";
 import { useSettingsStore } from "../../store/settingsStore";
@@ -176,9 +176,15 @@ export function EditorPane({
     if (!editorRef.current || !activeTab || closed) return;
     const model = editorRef.current.getModel();
     if (model && !model.isDisposed?.()) {
+      const clean = !useEditorStore.getState().openTabs.find((t) => t.path === activeTab)?.dirty;
       const currentVal = model.getValue();
       if (currentVal !== content) {
         model.setValue(content);
+      }
+      // A clean tab whose text changed without typing was reloaded from disk (fsWatch): that text is the new saved state.
+      if (clean) {
+        setBaseline(activeTab, model.getAlternativeVersionId());
+        if (useEditorStore.getState().openTabs.find((t) => t.path === activeTab)?.dirty) markDirty(activeTab, false);
       }
     }
     editorRef.current.layout?.();
