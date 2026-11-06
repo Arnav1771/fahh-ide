@@ -130,13 +130,13 @@ export function SpatialCanvas() {
     <div
       ref={containerRef}
       onMouseDown={onMouseDownCanvas}
-      className="relative w-full h-full overflow-hidden bg-[#141311] select-none cursor-default"
+      className="relative w-full h-full overflow-hidden bg-fahh-bg select-none cursor-default"
       style={{
         // 80px grid lines + 22px dot grid matching cate.cero-ai.com
         backgroundImage: `
-          radial-gradient(rgba(255, 255, 255, 0.12) 1.2px, transparent 1.2px),
-          linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-          linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px)
+          radial-gradient(color-mix(in srgb, var(--fahh-text) 12%, transparent) 1.2px, transparent 1.2px),
+          linear-gradient(to right, color-mix(in srgb, var(--fahh-text) 4%, transparent) 1px, transparent 1px),
+          linear-gradient(to bottom, color-mix(in srgb, var(--fahh-text) 4%, transparent) 1px, transparent 1px)
         `,
         backgroundSize: `
           ${22 * zoom}px ${22 * zoom}px,
@@ -154,27 +154,27 @@ export function SpatialCanvas() {
       <div
         className="canvas-bg-layer absolute inset-0 pointer-events-none"
         style={{
-          background: "radial-gradient(60% 40% at 50% 0%, rgba(255,255,255,0.06) 0%, transparent 70%)",
+          background: "radial-gradient(60% 40% at 50% 0%, color-mix(in srgb, var(--fahh-text) 6%, transparent) 0%, transparent 70%)",
         }}
       />
 
       {/* ── Top Floating Navigation Pill ── */}
       <div className="absolute top-4 left-4 z-40 flex items-center gap-2 select-none">
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#181816]/90 border border-white/10 shadow-xl backdrop-blur-xl">
-          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#e8e6e3]">
-            <span className="w-2 h-2 rounded-full bg-[#4a9eff] animate-pulse" />
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-fahh-sidebar border border-fahh-surface shadow-xl backdrop-blur-xl">
+          <div className="flex items-center gap-1.5 text-xs font-semibold text-fahh-text">
+            <span className="w-2 h-2 rounded-full bg-fahh-accent animate-pulse" />
             <span>CATE · Canvas Spatial Mode</span>
           </div>
-          <span className="text-[10px] text-white/40 font-mono">v{__APP_VERSION__}</span>
+          <span className="text-[10px] text-fahh-muted font-mono">v{__APP_VERSION__}</span>
         </div>
 
         <button
           type="button"
           onClick={toggleSpatialMode}
           title="Switch to classic docked IDE layout (Ctrl+Shift+C)"
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#181816]/90 border border-white/10 shadow-xl backdrop-blur-xl text-xs text-[#a8a49e] hover:text-[#e8e6e3] hover:border-white/25 transition-all"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-fahh-sidebar border border-fahh-surface shadow-xl backdrop-blur-xl text-xs text-fahh-muted hover:text-fahh-text hover:border-fahh-surface transition-all"
         >
-          <LayoutGrid size={13} className="text-[#4a9eff]" />
+          <LayoutGrid size={13} className="text-fahh-accent" />
           <span>Exit to Docked IDE</span>
         </button>
       </div>

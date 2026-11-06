@@ -12,6 +12,7 @@ export const THEME_IDS: readonly ThemeId[] = [
   "github-dark",
   "dracula",
   "solarized-dark",
+  "cate-obsidian", // listed in the theme picker, but a stored choice was dropped on restart
 ];
 
 /** New installs start here. Anyone who already picked a theme keeps it. */

@@ -810,7 +810,7 @@ mod tests {
     #[test]
     fn probe_output_and_labels() {
         assert_eq!(parse_probe("/w/.venv/bin/python\n3.11.4\nFalse\n"), Some(("/w/.venv/bin/python".into(), "3.11.4".into(), false)));
-        assert_eq!(parse_probe("C:\\p\\python.exe\r\n3.12.1\r\nTrue\r\n").unwrap().2, true);
+        assert!(parse_probe("C:\\p\\python.exe\r\n3.12.1\r\nTrue\r\n").unwrap().2);
         assert_eq!(parse_probe("garbage"), None);
         assert_eq!(env_label("3.11.4", ".venv", "workspace"), "Python 3.11 · .venv (workspace)");
     }

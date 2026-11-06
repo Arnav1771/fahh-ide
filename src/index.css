@@ -28,12 +28,12 @@ body,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #313244;
+  background: color-mix(in srgb, var(--fahh-muted) 45%, transparent);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #45475a;
+  background: color-mix(in srgb, var(--fahh-muted) 70%, transparent);
 }
 
 /* Drop-downs. WebKitGTK (the Linux build) draws a native <select> with the
@@ -331,7 +331,7 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
 
 /* ─── Inline Error Lens (Zed / Cursor diagnostics) ─────────────────────── */
 .fahh-error-lens-error {
-  color: rgba(248, 113, 113, 0.75);
+  color: color-mix(in srgb, var(--fahh-error) 80%, transparent);
   font-style: italic;
   font-size: 11px;
   margin-left: 14px;
@@ -340,7 +340,7 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
 }
 
 .fahh-error-lens-warn {
-  color: rgba(251, 191, 36, 0.75);
+  color: color-mix(in srgb, var(--fahh-warn) 80%, transparent);
   font-style: italic;
   font-size: 11px;
   margin-left: 14px;
@@ -406,6 +406,11 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
 .dockview-theme-fahh .dv-tab:focus-visible { outline: 1px solid var(--fahh-accent); outline-offset: -1px; }
 /* The dock never scrolls: a stray scrollIntoView (from the terminal) must not shift the whole workbench. */
 .fahh-dock, .fahh-dock .dv-dockview { overflow: clip; }
+/* The dock and the canvas are their own stacking contexts: dockview's sashes (z-index 99), its
+   overlays (999+) and Monaco's widgets stay inside them. Without this a sash drew on top of the
+   title bar's open menus (it cut a line through the Edit menu). Menus, context menus, the palette
+   and dialogs live outside, above both. */
+.fahh-dock, .fahh-canvas-host { isolation: isolate; }
 
 /* Narrow side groups: the tab strip shows icons, and only the active tab keeps its name
    (every tab has the full name as a tooltip). Wide groups show every name. */
@@ -421,8 +426,8 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
    Their own tokens, so a light theme can lighten them (they were fixed near-black,
    which hid the folder name and the Canvas label under Fahh Light). */
 :root {
-  --fahh-titlebar: #12110f;
-  --fahh-menu-bg: #161513;
+  --fahh-titlebar: var(--fahh-sidebar); /* follows each theme (it was near-black in Solarized, Dracula and GitHub Dark too) */
+  --fahh-menu-bg: color-mix(in srgb, var(--fahh-surface) 45%, var(--fahh-sidebar));
 }
 .fahh-titlebar { background: var(--fahh-titlebar); }
 .fahh-menu { background: var(--fahh-menu-bg); }
@@ -453,13 +458,13 @@ html[data-fahh-theme="fahh-light"] ::-webkit-scrollbar-thumb:hover { background:
   height: 9px;
   margin: 5px auto 0;
   border-radius: 50%;
-  background: #e51400;
+  background: var(--fahh-error);
 }
 .monaco-editor .glyph-margin {
   cursor: pointer;
 }
 .monaco-editor .fahh-debug-line {
-  background: rgba(255, 204, 0, 0.18);
+  background: color-mix(in srgb, var(--fahh-warn) 20%, transparent);
 }
 .monaco-editor .fahh-debug-glyph::after {
   content: "";
@@ -469,13 +474,13 @@ html[data-fahh-theme="fahh-light"] ::-webkit-scrollbar-thumb:hover { background:
   height: 0;
   border-top: 6px solid transparent;
   border-bottom: 6px solid transparent;
-  border-left: 9px solid #ffcc00;
+  border-left: 9px solid var(--fahh-warn);
 }
 
 /* Settings search: say so when no row matches. */
 .settings-body:not(:has([data-row])) .settings-empty { display: block; }
 
 /* Git change bars in the editor gutter (useGitGutter). */
-.monaco-editor .fahh-git-added { border-left: 3px solid #3d9e5c; margin-left: 4px; }
+.monaco-editor .fahh-git-added { border-left: 3px solid var(--fahh-success); margin-left: 4px; }
 .monaco-editor .fahh-git-modified { border-left: 3px solid var(--fahh-accent, #d4a03c); margin-left: 4px; }
-.monaco-editor .fahh-git-deleted { border-left: 0; margin-left: 4px; width: 0 !important; height: 0 !important; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid #d0524d; }
+.monaco-editor .fahh-git-deleted { border-left: 0; margin-left: 4px; width: 0 !important; height: 0 !important; border-top: 5px solid transparent; border-bottom: 5px solid transparent; border-left: 6px solid var(--fahh-error); }

@@ -35,9 +35,10 @@ export function TabBar() {
               }`}
             >
               <FileIcon name={fileName} language={tab.language} />
-              <span className={tab.dirty ? "text-fahh-warn" : ""}>
+              <span className={`${tab.dirty ? "text-fahh-warn" : ""} ${tab.deleted ? "line-through opacity-70" : ""}`} title={tab.deleted ? "Deleted on disk" : undefined}>
                 {tab.dirty ? "● " : ""}
                 {fileName}
+                {tab.deleted && <span className="sr-only"> (deleted)</span>}
               </span>
               <button
                 onClick={(e) => {
@@ -93,7 +94,7 @@ export function TabBar() {
             }}
             title="Open Web / UI Live Preview (Ctrl+Shift+B)"
             aria-label="Open UI Preview"
-            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#4a9eff]/10 hover:bg-[#4a9eff]/20 border border-[#4a9eff]/30 text-xs font-medium text-[#4a9eff] hover:text-[#7bb7ff] transition-all"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-fahh-accent/10 hover:bg-fahh-accent/20 border border-fahh-accent/30 text-xs font-medium text-fahh-accent hover:text-fahh-text transition-all"
           >
             <Globe size={13} />
             <span>UI Preview</span>

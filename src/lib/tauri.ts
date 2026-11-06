@@ -419,5 +419,7 @@ export interface ExtensionThemeFile {
 export const extInstallTheme = (namespace: string, name: string, version: string) =>
   invoke<ExtensionThemeFile[]>("ext_install_theme", { namespace, name, version });
 
-/** Watch the open folder; changes made outside the Explorer arrive as `fs://changed`. */
+/** Watch this window's open folder; changes made outside the Explorer arrive as `fs://changed` (core/watch.rs). */
 export const watchWorkspace = (root: string) => invoke<void>("watch_workspace", { root });
+/** Stop watching this window's folder. */
+export const unwatchWorkspace = () => invoke<void>("unwatch_workspace");

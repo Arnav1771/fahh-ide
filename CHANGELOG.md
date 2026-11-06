@@ -9,6 +9,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Fixed — live Explorer, menus over the dock, every theme
+
+- **The Explorer follows the disk.** Files created, deleted or renamed by a terminal, git or another app appear within about 150 ms (`notify` + `notify-debouncer-full`). Only the changed folders are re-read, so expanded folders stay open. Each window watches its own folder (a second window used to stop the first one's watch), and the watch ends when the window closes. Dependency and build folders (`node_modules`, `.git`, `target`, `dist`, `build`, `.next`, `__pycache__`, `.venv`, `venv`) are ignored.
+- **WSL folders opened from Windows** (`\\wsl.localhost\...`) are polled every 1.5 s, because Windows sends no change events for them.
+- **Open tabs follow the disk too.** A file deleted on disk is struck through in its tab. A changed file reloads when the tab has no unsaved edits; when it does, a dialog asks: **Reload from disk** or **Keep my changes**.
+- **No line through the menus.** A dockview splitter (z-index 99) was drawn on top of the open Edit menu. The dock and the canvas now keep their layers to themselves, so menus, context menus, the palette and dialogs sit above them in every theme.
+- **The Spatial Canvas follows the theme.** The board, the node chrome, the HUD, the minimap and every node (editor, terminal, agent, browser, notes) use theme colours. Under Fahh Light the board was dark, the terminals blank, the browser node black and the notes brown. The canvas editor uses the app theme's colours instead of always using CATE dark.
+- **Readable terminals in every theme.** The xterm colours (text, cursor, selection and all 16 ANSI colours) come from the app theme, with a light palette for light themes; white, bright white and yellow output was invisible on Fahh Light.
+- **Contrast.** Muted text, error, warning, success and info colours now reach 4.5:1 on every surface in Fahh Gold, Fahh Dark, Fahh Light, GitHub Dark, Dracula and Solarized Dark. The title bar and menus follow each theme (they were near-black in every dark theme). Panels, the @-mention menu, slash menu, agent cards, code blocks, the PDF preview and the palette no longer hard-code dark colours.
+- **CATE Spatial** is kept after a restart (it was in the theme picker but missing from the saved-theme list).
+
 ### Added — language features (planned v0.8.0)
 
 - **Language servers do more than squiggles.** Completion (with `completionItem/resolve` for docs and auto-imports), hover, go to definition (another file opens in a tab at the symbol), Find All References (Monaco's peek, unopened files included), rename across files (F2), signature help, quick fixes and refactors (Ctrl+. applies the server's edits), inlay hints and same-symbol highlights. Each provider is registered only while a server that offers it is running.

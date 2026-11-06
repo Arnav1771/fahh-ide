@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_THEME, THEME_IDS, isThemeId, readPersistedTheme } from "./themeStore";
+import { THEME_DEFINITIONS } from "../components/ThemePanel";
 
 function fakeStorage(value: string | null) {
   return { getItem: vi.fn(() => value), setItem: vi.fn(), removeItem: vi.fn(), clear: vi.fn(), key: vi.fn(), length: 0 };
@@ -35,7 +36,7 @@ describe("theme persistence", () => {
 
   it("lists every theme exactly once", () => {
     expect(new Set(THEME_IDS).size).toBe(THEME_IDS.length);
-    expect(THEME_IDS.length).toBe(6);
+    expect(THEME_IDS.length).toBe(THEME_DEFINITIONS.length); // every theme in the picker can be saved
     expect(isThemeId("fahh-gold")).toBe(true);
     expect(isThemeId(42)).toBe(false);
   });

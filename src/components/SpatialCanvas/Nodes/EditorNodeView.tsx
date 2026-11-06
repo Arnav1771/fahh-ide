@@ -15,6 +15,8 @@ import {
 import { useEditorStore } from "../../../store/editorStore";
 import { useFileStore } from "../../../store/fileStore";
 import { useSpatialStore } from "../../../store/spatialStore";
+import { useThemeStore } from "../../../store/themeStore";
+import { allThemes } from "../../ThemePanel";
 import { useWorkspace } from "../../../hooks/useWorkspace";
 import type { FileEntry } from "../../../lib/types";
 
@@ -52,6 +54,9 @@ function findPrimaryCandidate(node: FileEntry): string | null {
 }
 
 export function EditorNodeView() {
+  // The app theme's editor colours (the canvas editor was always CATE dark, even under Fahh Light).
+  const activeTheme = useThemeStore((s) => s.activeTheme);
+  const monacoTheme = allThemes().find((d) => d.id === activeTheme)?.monacoTheme ?? "vs-dark";
   const [showExplorer, setShowExplorer] = useState(false);
   const [fontSize, setFontSize] = useState<number>(() => {
     if (typeof localStorage === "undefined") return 17;
@@ -128,17 +133,17 @@ export function EditorNodeView() {
   }, [storeFocusNode]);
 
   return (
-    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-[#141311] h-full w-full">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden bg-fahh-bg h-full w-full">
       {/* ── Top Bar: Explorer Toggle + TabBar + Readability Controls ── */}
-      <div className="flex items-center bg-[#161513] border-b border-white/[0.07] shrink-0">
+      <div className="flex items-center bg-fahh-sidebar border-b border-fahh-surface shrink-0">
         <button
           type="button"
           onClick={() => setShowExplorer((s) => !s)}
           title={showExplorer ? "Hide File Explorer" : "Show File Explorer"}
-          className={`px-2.5 py-1.5 flex items-center gap-1.5 text-xs transition-colors border-r border-white/[0.07] ${
+          className={`px-2.5 py-1.5 flex items-center gap-1.5 text-xs transition-colors border-r border-fahh-surface ${
             showExplorer
-              ? "text-[#60a5fa] bg-white/[0.06]"
-              : "text-[#8a8780] hover:text-[#e8e6e3] hover:bg-white/[0.03]"
+              ? "text-fahh-accent bg-fahh-surface"
+              : "text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface"
           }`}
         >
           <FolderTree size={13} />
@@ -150,28 +155,28 @@ export function EditorNodeView() {
         </div>
 
         {/* ── Canvas Readability Toolbar ── */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 border-l border-white/[0.07] shrink-0 text-xs">
+        <div className="flex items-center gap-1.5 px-2.5 py-1 border-l border-fahh-surface shrink-0 text-xs">
           {/* Font Size Stepper */}
           <div
-            className="flex items-center bg-white/[0.04] rounded-md border border-white/[0.08] px-1 py-0.5 gap-1"
+            className="flex items-center bg-fahh-surface rounded-md border border-fahh-surface px-1 py-0.5 gap-1"
             title="Adjust Monaco Font Size for Spatial Canvas Readability"
           >
             <button
               type="button"
               onClick={() => changeFontSize(-1)}
               title="Decrease Font Size (A-)"
-              className="p-1 text-[#8a8780] hover:text-[#e8e6e3] hover:bg-white/[0.08] rounded transition-colors"
+              className="p-1 text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface rounded transition-colors"
             >
               <Minus size={11} />
             </button>
-            <span className="font-mono text-[11px] font-semibold text-[#60a5fa] px-1 min-w-[28px] text-center select-none">
+            <span className="font-mono text-[11px] font-semibold text-fahh-accent px-1 min-w-[28px] text-center select-none">
               {fontSize}px
             </span>
             <button
               type="button"
               onClick={() => changeFontSize(1)}
               title="Increase Font Size (A+)"
-              className="p-1 text-[#8a8780] hover:text-[#e8e6e3] hover:bg-white/[0.08] rounded transition-colors"
+              className="p-1 text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface rounded transition-colors"
             >
               <Plus size={11} />
             </button>
@@ -184,8 +189,8 @@ export function EditorNodeView() {
             title={wordWrap ? "Word Wrap: ON (lines wrap cleanly)" : "Word Wrap: OFF"}
             className={`px-2 py-1 rounded flex items-center gap-1 text-[11px] font-medium transition-colors border ${
               wordWrap
-                ? "bg-[#60a5fa]/15 text-[#60a5fa] border-[#60a5fa]/30"
-                : "bg-white/[0.03] text-[#8a8780] border-white/[0.07] hover:text-[#e8e6e3]"
+                ? "bg-fahh-accent/15 text-fahh-accent border-fahh-accent/30"
+                : "bg-fahh-surface text-fahh-muted border-fahh-surface hover:text-fahh-text"
             }`}
           >
             <WrapText size={12} />
@@ -199,8 +204,8 @@ export function EditorNodeView() {
             title={minimap ? "Minimap: ON" : "Minimap: OFF (Extra reading space)"}
             className={`px-2 py-1 rounded flex items-center gap-1 text-[11px] font-medium transition-colors border ${
               minimap
-                ? "bg-[#60a5fa]/15 text-[#60a5fa] border-[#60a5fa]/30"
-                : "bg-white/[0.03] text-[#8a8780] border-white/[0.07] hover:text-[#e8e6e3]"
+                ? "bg-fahh-accent/15 text-fahh-accent border-fahh-accent/30"
+                : "bg-fahh-surface text-fahh-muted border-fahh-surface hover:text-fahh-text"
             }`}
           >
             <Map size={12} />
@@ -212,7 +217,7 @@ export function EditorNodeView() {
             type="button"
             onClick={focusNode}
             title="Focus 1:1 Sharp View (Center camera at 100% zoom)"
-            className="px-2 py-1 rounded flex items-center gap-1 text-[11px] font-medium bg-[#60a5fa]/10 hover:bg-[#60a5fa]/20 border border-[#60a5fa]/30 text-[#60a5fa] hover:text-[#93c5fd] transition-all"
+            className="px-2 py-1 rounded flex items-center gap-1 text-[11px] font-medium bg-fahh-accent/10 hover:bg-fahh-accent/20 border border-fahh-accent/30 text-fahh-accent hover:text-fahh-text transition-all"
           >
             <Crosshair size={12} />
             <span>1:1 Focus</span>
@@ -225,24 +230,24 @@ export function EditorNodeView() {
       {/* ── Editor Body with Optional Explorer Drawer ── */}
       <div className="flex-1 min-h-0 flex flex-row relative h-full w-full overflow-hidden">
         {showExplorer && (
-          <div className="w-56 shrink-0 border-r border-white/[0.08] bg-fahh-sidebar overflow-y-auto flex flex-col">
+          <div className="w-56 shrink-0 border-r border-fahh-surface bg-fahh-sidebar overflow-y-auto flex flex-col">
             <FileTree />
           </div>
         )}
 
         {!activeTab && openTabs.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none bg-[#141311]">
-            <div className="w-14 h-14 rounded-2xl bg-[#60a5fa]/10 border border-[#60a5fa]/20 flex items-center justify-center text-[#60a5fa] mb-4 shadow-lg shadow-[#60a5fa]/5">
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center select-none bg-fahh-bg">
+            <div className="w-14 h-14 rounded-2xl bg-fahh-accent/10 border border-fahh-accent/20 flex items-center justify-center text-fahh-accent mb-4 shadow-lg shadow-fahh-accent/5">
               <FileCode size={28} />
             </div>
-            <h3 className="text-sm font-semibold text-[#f8fafc] mb-1">Canvas Code Editor</h3>
-            <p className="text-xs text-[#9ca3af] max-w-sm mb-4 leading-relaxed">
+            <h3 className="text-sm font-semibold text-fahh-text mb-1">Canvas Code Editor</h3>
+            <p className="text-xs text-fahh-muted max-w-sm mb-4 leading-relaxed">
               Open files from your workspace or create new ones to inspect and edit code directly on the spatial canvas.
             </p>
             <button
               type="button"
               onClick={() => setShowExplorer(true)}
-              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-[#60a5fa] hover:bg-[#3b82f6] text-black font-semibold text-xs transition-colors shadow-md"
+              className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg bg-fahh-accent hover:bg-fahh-accent/90 text-fahh-bg font-semibold text-xs transition-colors shadow-md"
             >
               <FolderTree size={14} />
               <span>Browse Project Files</span>
@@ -251,7 +256,7 @@ export function EditorNodeView() {
         ) : (
           <div className="flex-1 min-h-0 min-w-0 relative flex flex-col h-full w-full">
             <EditorPane
-              monacoTheme="cate-obsidian"
+              monacoTheme={monacoTheme}
               fontSize={fontSize}
               wordWrap={wordWrap ? "on" : "off"}
               minimapEnabled={minimap}

@@ -33,7 +33,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
       "--fahh-accent": "#d4a03c",
       "--fahh-text": "#f0ebe0",
       "--fahh-muted": "#8a8070",
-      "--fahh-error": "#d0524d",
+      "--fahh-error": "#d35c58", // 4.5:1 on bg, sidebar and surface (was #d0524d)
       "--fahh-warn": "#e39a4b",
       "--fahh-success": "#3d9e5c",
       "--fahh-info": "#9fb3c8",
@@ -51,7 +51,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
       "--fahh-surface": "#1e1e2a",
       "--fahh-accent": "#a78bfa",
       "--fahh-text": "#e2e8f0",
-      "--fahh-muted": "#64748b",
+      "--fahh-muted": "#7a879b", // 4.5:1 on bg, sidebar and surface (was #64748b)
       "--fahh-error": "#f87171",
       "--fahh-warn": "#fbbf24",
       "--fahh-success": "#34d399",
@@ -71,10 +71,10 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
       "--fahh-accent": "#7c3aed",
       "--fahh-text": "#0f172a",
       "--fahh-muted": "#5b6779", // 5.6:1 on the page (was #94a3b8, 2.6:1)
-      "--fahh-error": "#dc2626",
-      "--fahh-warn": "#d97706",
-      "--fahh-success": "#059669",
-      "--fahh-info": "#2563eb",
+      "--fahh-error": "#ca2323", // 4.5:1 on bg, sidebar and surface (was #dc2626)
+      "--fahh-warn": "#9c5604", // 4.5:1 on bg, sidebar and surface (was #d97706)
+      "--fahh-success": "#047552", // 4.5:1 on bg, sidebar and surface (was #059669)
+      "--fahh-info": "#235ddd", // 4.5:1 on bg, sidebar and surface (was #2563eb)
     },
     swatches: ["#f8fafc", "#f1f5f9", "#e2e8f0", "#7c3aed"],
   },
@@ -89,7 +89,7 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
       "--fahh-surface": "#21262d",
       "--fahh-accent": "#58a6ff",
       "--fahh-text": "#c9d1d9",
-      "--fahh-muted": "#6e7681",
+      "--fahh-muted": "#888f98", // 4.5:1 on bg, sidebar and surface (was #6e7681)
       "--fahh-error": "#f85149",
       "--fahh-warn": "#e3b341",
       "--fahh-success": "#3fb950",
@@ -108,8 +108,8 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
       "--fahh-surface": "#343746",
       "--fahh-accent": "#bd93f9",
       "--fahh-text": "#f8f8f2",
-      "--fahh-muted": "#6272a4",
-      "--fahh-error": "#ff5555",
+      "--fahh-muted": "#97a2c3", // 4.5:1 on bg, sidebar and surface (was #6272a4)
+      "--fahh-error": "#ff7777", // 4.5:1 on bg, sidebar and surface (was #ff5555)
       "--fahh-warn": "#ffb86c",
       "--fahh-success": "#50fa7b",
       "--fahh-info": "#8be9fd",
@@ -126,12 +126,12 @@ export const THEME_DEFINITIONS: ThemeDef[] = [
       "--fahh-sidebar": "#073642",
       "--fahh-surface": "#073642",
       "--fahh-accent": "#268bd2",
-      "--fahh-text": "#839496",
-      "--fahh-muted": "#586e75",
-      "--fahh-error": "#dc322f",
-      "--fahh-warn": "#b58900",
-      "--fahh-success": "#859900",
-      "--fahh-info": "#2aa198",
+      "--fahh-text": "#a3b0b0", // 4.5:1 on bg, sidebar and surface (was #839496)
+      "--fahh-muted": "#8d9ca1", // 4.5:1 on bg, sidebar and surface (was #586e75)
+      "--fahh-error": "#e87876", // 4.5:1 on bg, sidebar and surface (was #dc322f)
+      "--fahh-warn": "#bc951a", // 4.5:1 on bg, sidebar and surface (was #b58900)
+      "--fahh-success": "#8fa114", // 4.5:1 on bg, sidebar and surface (was #859900)
+      "--fahh-info": "#3ba9a0", // 4.5:1 on bg, sidebar and surface (was #2aa198)
     },
     swatches: ["#002b36", "#073642", "#073642", "#268bd2"],
   },
