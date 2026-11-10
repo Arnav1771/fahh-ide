@@ -186,6 +186,33 @@ export interface GitStatus {
   behind: number;
 }
 
+/** A repository in the open folder (Repositories picker). */
+export interface GitRepoInfo {
+  /** Absolute work-tree root: the `path` for every other git command. */
+  root: string;
+  /** Folder name, or the path below the open folder for nested repos. */
+  name: string;
+  branch: string | null;
+  changes: number;
+}
+
+/** A branch for the branch picker. Remote ones are named `origin/x`. */
+export interface GitBranchInfo {
+  name: string;
+  remote: boolean;
+  current: boolean;
+  upstream: string | null;
+}
+
+/** One stash entry; index 0 is the newest. */
+export interface GitStashInfo {
+  index: number;
+  message: string;
+}
+
+/** Which side a conflicted file keeps. */
+export type GitConflictChoice = "current" | "incoming" | "both";
+
 /** One commit in a file's history (Timeline). `time` is in seconds. */
 export interface GitCommitInfo {
   oid: string;

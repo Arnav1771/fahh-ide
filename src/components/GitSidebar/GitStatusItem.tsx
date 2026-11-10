@@ -3,11 +3,12 @@ import { ArrowDown, ArrowUp, CloudUpload, GitBranch, RefreshCw } from "lucide-re
 import { useFileStore } from "../../store/fileStore";
 import { useGitStore } from "../../store/gitStore";
 import { revealView } from "../../lib/workbench";
+import { BranchPicker } from "./BranchPicker";
 
 /** Status bar: the branch (opens Source Control) and Sync Changes / Publish Branch. */
 export function GitStatusItem() {
   const root = useFileStore((s) => s.root);
-  const { status, syncing, setRoot, refresh, sync } = useGitStore();
+  const { status, syncing, setRoot, refresh, sync, setBranchPickerOpen } = useGitStore();
 
   useEffect(() => {
     setRoot(root);
@@ -22,9 +23,14 @@ export function GitStatusItem() {
   const detached = status.branch.startsWith("detached");
   return (
     <>
+      <BranchPicker />
       <button
-        onClick={() => revealView("git")}
-        title={`${status.branch}${status.upstream ? ` (tracking ${status.upstream})` : ""}: open Source Control`}
+        onClick={() => setBranchPickerOpen(true)}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          revealView("git");
+        }}
+        title={`${status.branch}${status.upstream ? ` (tracking ${status.upstream})` : ""}: switch, create or publish a branch`}
         className="flex items-center gap-1 hover:text-fahh-text transition-colors max-w-[180px]"
         data-testid="status-git-branch"
       >

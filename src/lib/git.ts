@@ -88,9 +88,14 @@ export function isClean(status: GitStatus): boolean {
   return status.is_repo && changeCount(status) === 0;
 }
 
-/** Committing is only meaningful when something is actually staged. */
-export function canCommit(status: GitStatus, message: string): boolean {
-  return status.is_repo && status.staged.length > 0 && message.trim().length > 0;
+/** Committing is only meaningful when something is staged (an amend may just reword). */
+export function canCommit(status: GitStatus, message: string, amend = false): boolean {
+  return status.is_repo && (amend ? !status.unborn : status.staged.length > 0) && message.trim().length > 0;
+}
+
+/** Files git stopped on during a merge, pull or stash pop. */
+export function conflicted(status: GitStatus): GitFileChange[] {
+  return status.unstaged.filter((c) => c.status === "conflicted");
 }
 
 /** What the branch chip shows. Covers unborn HEAD and the no-repo case. */
@@ -132,6 +137,33 @@ export function friendlyGitError(err: unknown): string {
   }
   if (lower.includes("nothing to commit")) {
     return "Nothing to commit — stage a file first.";
+  }
+  // Network operations shell out to the git CLI with prompts disabled.
+  if (
+    lower.includes("authentication failed") ||
+    lower.includes("could not read username") ||
+    lower.includes("terminal prompts disabled") ||
+    lower.includes("permission denied (publickey)")
+  ) {
+    return "Git couldn't sign in to the remote. Run git push once in a terminal to save your credentials (or set up an SSH key), then try again.";
+  }
+  if (lower.includes("non-fast-forward") || lower.includes("fetch first") || lower.includes("[rejected]")) {
+    return "The remote has commits you don't have yet. Pull (or Sync) first, then push.";
+  }
+  if (lower.includes("could not resolve host") || lower.includes("unable to access")) {
+    return "Couldn't reach the remote. Check your connection and the remote URL.";
+  }
+  if (lower.includes("automatic merge failed") || lower.includes("conflict (content)")) {
+    return "Pulling hit merge conflicts. Resolve them under Merge Changes, then commit.";
+  }
+  if (lower.includes("prevents checkout") || lower.includes("would be overwritten")) {
+    return "Your local changes would be overwritten. Commit or stash them, then switch branches.";
+  }
+  if (lower.includes("not owned by current user") || lower.includes("dubious ownership")) {
+    return "Git doesn't trust this folder's owner (common for \\\\wsl.localhost repos). Run: git config --global --add safe.directory '*' or add just this path.";
+  }
+  if (lower.includes("could not run git")) {
+    return "Pull, push and fetch need the git command. Install Git and restart Fahh.";
   }
   return raw;
 }

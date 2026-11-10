@@ -122,6 +122,27 @@ describe("canCommit", () => {
   it("is false outside a repository", () => {
     expect(canCommit(EMPTY_GIT_STATUS, "msg")).toBe(false);
   });
+
+  it("lets an amend reword with nothing staged, but not before the first commit", () => {
+    expect(canCommit(repo(), "reword", true)).toBe(true);
+    expect(canCommit(repo({ unborn: true }), "reword", true)).toBe(false);
+  });
+});
+
+describe("friendlyGitError for the network and branch cases", () => {
+  it.each([
+    ["fatal: Authentication failed for 'https://github.com/x/y.git/'", /couldn't sign in/],
+    ["fatal: could not read Username for 'https://github.com': terminal prompts disabled", /couldn't sign in/],
+    ["git@github.com: Permission denied (publickey).", /couldn't sign in/],
+    [" ! [rejected]        main -> main (non-fast-forward)", /Pull \(or Sync\) first/],
+    ["fatal: unable to access 'https://x/': Could not resolve host: x", /Couldn't reach the remote/],
+    ["CONFLICT (content): Merge conflict in a.ts\nAutomatic merge failed; fix conflicts", /Merge Changes/],
+    ["1 conflict prevents checkout", /Commit or stash them/],
+    ["repository path '//wsl.localhost/Ubuntu/x/' is not owned by current user", /safe\.directory/],
+    ["could not run git (No such file). Install Git to pull and push.", /Install Git/],
+  ])("%s", (raw, want) => {
+    expect(friendlyGitError(raw)).toMatch(want);
+  });
 });
 
 describe("branchLabel", () => {

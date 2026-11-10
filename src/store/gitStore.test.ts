@@ -7,13 +7,22 @@ const gitStatus = vi.fn();
 const gitStage = vi.fn();
 const gitUnstage = vi.fn();
 const gitCommit = vi.fn();
+const gitRepositories = vi.fn();
+const gitPush = vi.fn();
+const gitResolveConflict = vi.fn();
+const show = vi.fn();
 
 vi.mock("../lib/tauri", () => ({
   gitStatus: (...a: unknown[]) => gitStatus(...a),
   gitStage: (...a: unknown[]) => gitStage(...a),
   gitUnstage: (...a: unknown[]) => gitUnstage(...a),
   gitCommit: (...a: unknown[]) => gitCommit(...a),
+  gitRepositories: (...a: unknown[]) => gitRepositories(...a),
+  gitPush: (...a: unknown[]) => gitPush(...a),
+  gitResolveConflict: (...a: unknown[]) => gitResolveConflict(...a),
+  gitStashList: () => Promise.resolve([]),
 }));
+vi.mock("./toastStore", () => ({ useToastStore: { getState: () => ({ show }) } }));
 
 import { useGitStore } from "./gitStore";
 
@@ -39,9 +48,17 @@ beforeEach(() => {
   gitStage.mockReset().mockResolvedValue(undefined);
   gitUnstage.mockReset().mockResolvedValue(undefined);
   gitCommit.mockReset();
+  gitRepositories.mockReset().mockResolvedValue([]);
+  gitPush.mockReset();
+  gitResolveConflict.mockReset().mockResolvedValue(undefined);
+  show.mockReset();
 
   useGitStore.setState({
     root: null,
+    repos: [],
+    repo: null,
+    amend: false,
+    syncing: false,
     status: EMPTY_GIT_STATUS,
     loading: false,
     error: null,
@@ -137,7 +154,7 @@ describe("gitStore staging", () => {
 
   it("clears the busy flag even when staging fails", async () => {
     gitStage.mockRejectedValue("index is locked");
-    store().setRoot("/repo");
+    useGitStore.setState({ root: "/repo" });
 
     await store().stage("a.ts");
 
@@ -218,7 +235,7 @@ describe("gitStore.commit", () => {
 
     await store().commit();
 
-    expect(gitCommit).toHaveBeenCalledWith("/repo", "fix: thing");
+    expect(gitCommit).toHaveBeenCalledWith("/repo", "fix: thing", false);
     expect(store().commitMessage).toBe("");
     expect(store().lastCommit).toBe("9f1c0dd");
     expect(store().committing).toBe(false);
@@ -241,5 +258,82 @@ describe("gitStore.commit", () => {
     expect(store().error).toContain("git config --global");
     expect(store().commitMessage).toBe("fix: thing");
     expect(store().committing).toBe(false);
+  });
+
+  it("amends with nothing staged (reword) and resets the toggle", async () => {
+    gitCommit.mockResolvedValue("abcdef0123");
+    gitStatus.mockResolvedValue(status({ unstaged: [] }));
+    useGitStore.setState({ root: "/repo", status: status({ unstaged: [] }), commitMessage: "better words", amend: true });
+
+    await store().commit();
+
+    expect(gitCommit).toHaveBeenCalledWith("/repo", "better words", true);
+    expect(store().amend).toBe(false);
+  });
+});
+
+describe("gitStore repositories", () => {
+  const repos = [
+    { root: "/work/api", name: "api", branch: "main", changes: 2 },
+    { root: "/work/web", name: "web", branch: "dev", changes: 0 },
+  ];
+
+  it("picks the first repository in the folder and reports on it", async () => {
+    gitRepositories.mockResolvedValue(repos);
+    gitStatus.mockResolvedValue(status({ repo_root: "/work/api" }));
+    useGitStore.setState({ root: "/work" });
+
+    await store().loadRepos();
+
+    expect(store().repo).toBe("/work/api");
+    expect(gitStatus).toHaveBeenLastCalledWith("/work/api");
+  });
+
+  it("switches repository, and every action follows the selection", async () => {
+    gitStatus.mockResolvedValue(status({ branch: "dev", unstaged: [] }));
+    useGitStore.setState({ root: "/work", repos, repo: "/work/api" });
+
+    await store().selectRepo("/work/web");
+    await store().stage("x.ts");
+
+    expect(gitStatus).toHaveBeenCalledWith("/work/web");
+    expect(gitStage).toHaveBeenCalledWith("/work/web", "x.ts");
+    expect(store().repos[1]).toMatchObject({ branch: "dev", changes: 0 });
+  });
+
+  it("drops a status that arrives after the selection moved on", async () => {
+    let resolveOld: (s: GitStatus) => void = () => {};
+    gitStatus.mockReturnValueOnce(new Promise((r) => (resolveOld = r))).mockResolvedValue(status({ branch: "dev" }));
+    useGitStore.setState({ root: "/work", repos, repo: "/work/api" });
+
+    const stale = store().refresh();
+    await store().selectRepo("/work/web");
+    resolveOld(status({ branch: "OLD" }));
+    await stale;
+
+    expect(store().status.branch).toBe("dev");
+  });
+});
+
+describe("gitStore network and conflicts", () => {
+  it("explains a rejected push in plain words, in an error toast", async () => {
+    gitPush.mockRejectedValue(" ! [rejected]        main -> main (fetch first)\nerror: failed to push some refs");
+    gitStatus.mockResolvedValue(status({ upstream: "origin/main" }));
+    useGitStore.setState({ root: "/repo", status: status({ upstream: "origin/main" }) });
+
+    await store().push();
+
+    expect(show).toHaveBeenCalledWith(expect.stringMatching(/Push failed: The remote has commits you don't have yet/), "error");
+    expect(store().syncing).toBe(false);
+  });
+
+  it("resolves a conflict with the chosen side", async () => {
+    gitStatus.mockResolvedValue(status({ unstaged: [] }));
+    useGitStore.setState({ root: "/repo" });
+
+    await store().resolve("a.ts", "incoming");
+
+    expect(gitResolveConflict).toHaveBeenCalledWith("/repo", "a.ts", "incoming");
+    expect(show).toHaveBeenCalledWith("Resolved a.ts", undefined);
   });
 });
