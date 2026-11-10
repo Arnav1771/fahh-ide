@@ -210,6 +210,99 @@ export function saveSeat(seat: Seat | null, store: Pick<Storage, "setItem" | "re
     /* private mode: the seat just won't survive a restart */
   }
 }
+/* ---------- recent tables ---------- */
+// Kept where the seat is kept (this machine's local storage), so the token rides
+// along: rejoining tries it first. A seat given up loses its token.
+
+const RECENT_KEY = "fahh-roundtable-recent";
+export const RECENT_MAX = 5;
+
+export interface RecentTable {
+  base: string;
+  code: string;
+  name: string;
+  memberId: string;
+  token?: string;
+  at: number;
+  title?: string;
+}
+
+const sameTable = (a: { base: string; code: string }, b: { base: string; code: string }) => a.base === b.base && a.code === b.code;
+
+export function recentEntry(seat: Seat, at = Date.now(), title?: string): RecentTable {
+  return { base: seat.base, code: seat.code, name: seat.member.name, memberId: seat.member.id, token: seat.member.token, at, ...(title ? { title } : {}) };
+}
+
+/** Put `entry` first, newest first after it, at most `max`. */
+export function remember(list: RecentTable[], entry: RecentTable, max = RECENT_MAX): RecentTable[] {
+  return [entry, ...list.filter((e) => !sameTable(e, entry))].sort((a, b) => b.at - a.at).slice(0, max);
+}
+
+export function forgetTable(list: RecentTable[], t: { base: string; code: string }): RecentTable[] {
+  return list.filter((e) => !sameTable(e, t));
+}
+
+/** The seat was given up: keep the table, drop the now-worthless token. */
+export function gaveUp(list: RecentTable[], t: { base: string; code: string }, at = Date.now()): RecentTable[] {
+  const e = list.find((x) => sameTable(x, t));
+  if (!e) return list;
+  const { token: _, ...rest } = e;
+  return remember(list, { ...rest, at });
+}
+
+/** "just now", "5m ago", "2h ago", "3d ago". */
+export function ago(at: number, now = Date.now()): string {
+  const m = Math.floor(Math.max(0, now - at) / 60000);
+  if (m < 1) return "just now";
+  if (m < 60) return `${m}m ago`;
+  if (m < 60 * 24) return `${Math.floor(m / 60)}h ago`;
+  return `${Math.floor(m / 60 / 24)}d ago`;
+}
+
+export function loadRecent(store: Pick<Storage, "getItem"> = localStorage): RecentTable[] {
+  try {
+    const list = JSON.parse(store.getItem(RECENT_KEY) ?? "[]");
+    return Array.isArray(list) ? list.filter((e) => e?.base && e?.code && e?.name) : [];
+  } catch {
+    return [];
+  }
+}
+export function saveRecent(list: RecentTable[], store: Pick<Storage, "setItem"> = localStorage): void {
+  try {
+    store.setItem(RECENT_KEY, JSON.stringify(list));
+  } catch {}
+}
+
+export type Rejoin =
+  | { outcome: "seated" | "rejoined"; seat: Seat }
+  | { outcome: "ended" | "offline" | "error"; message: string };
+
+/**
+ * Back to a recent table. The saved seat first (the room still lists it: back at
+ * once, with history); else, if the table is there, sit down again under the
+ * same name; a missing table has ended; no answer is offline.
+ */
+export async function rejoinTable(e: RecentTable, fetchImpl: typeof fetch = fetch): Promise<Rejoin> {
+  let res: Response;
+  try {
+    res = await fetchImpl(`${e.base}/api/rooms/${encodeURIComponent(e.code)}`);
+  } catch {
+    return { outcome: "offline", message: `Can't reach the server at ${e.base}.` };
+  }
+  if (res.status === 404) return { outcome: "ended", message: `That table has ended (${e.code}).` };
+  if (!res.ok) return { outcome: "error", message: `The table answered ${res.status}.` };
+  const view = (await res.json().catch(() => null)) as RoomView | null;
+  if (e.token && view?.members?.some((m) => m.id === e.memberId)) {
+    return { outcome: "seated", seat: { base: e.base, code: e.code, member: { id: e.memberId, name: e.name, token: e.token } } };
+  }
+  try {
+    return { outcome: "rejoined", seat: await joinTable(e.base, e.code, e.name, fetchImpl) };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return /Couldn't reach/.test(message) ? { outcome: "offline", message } : { outcome: "error", message };
+  }
+}
+
 export function loadServer(store: Pick<Storage, "getItem"> = localStorage): string {
   try {
     return store.getItem(SERVER_KEY) || DEFAULT_SERVER;
