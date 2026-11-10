@@ -140,6 +140,7 @@ describe("git wrappers", () => {
     expect(invoke).toHaveBeenCalledWith("git_commit", {
       path: "/repo",
       message: "fix: thing",
+      amend: false,
     });
   });
 

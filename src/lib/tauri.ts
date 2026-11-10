@@ -4,6 +4,10 @@ import type {
   Document,
   FahhConfig,
   FileEntry,
+  GitBranchInfo,
+  GitConflictChoice,
+  GitRepoInfo,
+  GitStashInfo,
   GitStatus,
   OpenRequest,
   Plugin,
@@ -330,9 +334,9 @@ export const gitStage = (path: string, file: string) =>
 export const gitUnstage = (path: string, file: string) =>
   invoke<void>("git_unstage", { path, file });
 
-/** Commit whatever is staged. Resolves with the new commit's oid. */
-export const gitCommit = (path: string, message: string) =>
-  invoke<string>("git_commit", { path, message });
+/** Commit whatever is staged (`amend` rewrites the last commit). Resolves with the new oid. */
+export const gitCommit = (path: string, message: string, amend = false) =>
+  invoke<string>("git_commit", { path, message, amend });
 
 /**
  * Unified diff for one file. `staged: true` diffs HEAD against the index,
@@ -343,6 +347,30 @@ export const gitDiff = (path: string, file: string, staged: boolean) =>
 
 /** Pull then push (publishes a branch with no upstream). Resolves with git's output. */
 export const gitSync = (path: string) => invoke<string>("git_sync", { path });
+export const gitFetch = (path: string) => invoke<string>("git_fetch", { path });
+export const gitPull = (path: string) => invoke<string>("git_pull", { path });
+/** Push; publishes the branch when it has no upstream. */
+export const gitPush = (path: string) => invoke<string>("git_push", { path });
+
+/** The repo enclosing `path` plus the ones up to two levels below it. */
+export const gitRepositories = (path: string) => invoke<GitRepoInfo[]>("git_repositories", { path });
+export const gitInit = (path: string) => invoke<void>("git_init", { path });
+export const gitBranches = (path: string) => invoke<GitBranchInfo[]>("git_branches", { path });
+/** Switch branch; `create` makes it at HEAD first. A remote branch gets a tracking local one. */
+export const gitCheckout = (path: string, branch: string, create = false) =>
+  invoke<void>("git_checkout", { path, branch, create });
+export const gitDeleteBranch = (path: string, branch: string) => invoke<void>("git_delete_branch", { path, branch });
+/** Throw away work-tree changes to `file` (an untracked file is deleted). */
+export const gitDiscard = (path: string, file: string) => invoke<void>("git_discard", { path, file });
+/** Stage / unstage / discard the `hunk`-th `@@` block of the matching `gitDiff` text. */
+export const gitApplyHunk = (path: string, file: string, hunk: number, staged: boolean, discard: boolean) =>
+  invoke<void>("git_apply_hunk", { path, file, hunk, staged, discard });
+/** Keep one side of every conflict block in `file`, then stage it. */
+export const gitResolveConflict = (path: string, file: string, choice: GitConflictChoice) =>
+  invoke<void>("git_resolve_conflict", { path, file, choice });
+export const gitStashList = (path: string) => invoke<GitStashInfo[]>("git_stash_list", { path });
+export const gitStashPush = (path: string, message?: string) => invoke<void>("git_stash_push", { path, message });
+export const gitStashPop = (path: string, index: number) => invoke<void>("git_stash_pop", { path, index });
 
 /** Commits that changed `file`, newest first. */
 export const gitFileLog = (path: string, file: string, limit?: number) =>
