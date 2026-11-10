@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Copy, ExternalLink, FileText, Hand, LogOut, Plus, Send, Bot, Undo2, Square, KeyRound, X, MessageSquare, ImagePlus, Loader2, Check } from "lucide-react";
+import { Copy, ExternalLink, FileText, Hand, LogOut, Plus, Send, Bot, Undo2, Square, KeyRound, X, MessageSquare, ImagePlus, Loader2, Check, RotateCcw, Trash2 } from "lucide-react";
 import { openExternal } from "../../lib/browser";
 import { useFocusTrap } from "../../hooks/useFocusTrap";
 import {
   activity, agentLine, browserLink, call, checkPictures, elapsed, joinTable, loadSeat, loadServer, mediaUrl, parseInvite, PICTURE_TYPES, pictureType, saveSeat, saveServer, sayBody, startTable,
-  uploadPicture, watch,
-  type AgentEvent, type RoomView, type Seat, type Turn,
+  uploadPicture, watch, ago, forgetTable, gaveUp, loadRecent, recentEntry, rejoinTable, remember, saveRecent,
+  type AgentEvent, type RecentTable, type RoomView, type Seat, type Turn,
 } from "../../lib/roundtable";
 
 const input = "w-full rounded border border-fahh-surface bg-fahh-sidebar px-2 py-1 text-xs text-fahh-text outline-none focus:border-fahh-accent";
@@ -16,15 +16,46 @@ const STATE: Record<string, string> = { running: "working", queued: "waiting", d
 /** Roundtable: start or join a shared coding table without leaving Fahh. */
 export function Roundtable() {
   const [seat, setSeat] = useState<Seat | null>(() => loadSeat());
-  return seat ? <Table seat={seat} onLeave={() => (saveSeat(null), setSeat(null))} /> : <Lobby onSeated={(s) => (saveSeat(s), setSeat(s))} />;
+  const [recent, setRecent] = useState<RecentTable[]>(loadRecent);
+  const [said, setSaid] = useState<string | null>(null);
+  const keep = (list: RecentTable[]) => (saveRecent(list), setRecent(list));
+  // Whatever table you're at (a fresh seat, or one brought back after a restart) is the latest.
+  useEffect(() => {
+    if (seat) keep(remember(loadRecent(), recentEntry(seat)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seat]);
+  const leave = (why: "left" | "ended") => {
+    if (seat) keep(why === "ended" ? forgetTable(loadRecent(), seat) : gaveUp(loadRecent(), seat));
+    setSaid(why === "ended" ? `That table has ended (${seat?.code}).` : null);
+    saveSeat(null);
+    setSeat(null);
+  };
+  return seat ? (
+    <Table seat={seat} onLeave={leave} />
+  ) : (
+    <Lobby recent={recent} said={said} onForget={(t) => keep(forgetTable(loadRecent(), t))} onSeated={(s) => (setSaid(null), saveSeat(s), setSeat(s))} />
+  );
 }
 
-function Lobby({ onSeated }: { onSeated: (s: Seat) => void }) {
+function Lobby({ onSeated, recent, said, onForget }: { onSeated: (s: Seat) => void; recent: RecentTable[]; said: string | null; onForget: (t: RecentTable) => void }) {
   const [server, setServer] = useState(loadServer);
   const [link, setLink] = useState("");
   const [name, setName] = useState(() => localStorage.getItem("fahh-roundtable-name") ?? "");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(said);
+  const [retry, setRetry] = useState<RecentTable | null>(null);
+
+  const rejoin = async (t: RecentTable) => {
+    setBusy(true);
+    setError(null);
+    setRetry(null);
+    const r = await rejoinTable(t);
+    setBusy(false);
+    if ("seat" in r) return onSeated(r.seat);
+    if (r.outcome === "ended") onForget(t);
+    if (r.outcome === "offline") setRetry(t);
+    setError(r.message);
+  };
 
   const go = async (how: "start" | "join") => {
     setBusy(true);
@@ -50,6 +81,17 @@ function Lobby({ onSeated }: { onSeated: (s: Seat) => void }) {
   return (
     <div className="h-full overflow-y-auto p-3 text-xs space-y-4">
       <p className="text-fahh-muted">Sit at a shared coding table: everyone sees every turn, asks run one at a time, and each change is committed under the name of whoever asked.</p>
+      {recent[0] && (
+        <button className={`${primary} w-full flex items-center justify-center gap-1`} disabled={busy} onClick={() => void rejoin(recent[0])}>
+          <RotateCcw size={12} /> Rejoin {recent[0].code} (last used {ago(recent[0].at)})
+        </button>
+      )}
+      {error && (
+        <p role="alert" className="text-fahh-error flex items-center gap-2">
+          <span className="flex-1">{error}</span>
+          {retry && <button className={quiet} disabled={busy} onClick={() => void rejoin(retry)}>Retry</button>}
+        </p>
+      )}
       <label className="block space-y-1">
         <span className="text-fahh-muted">Your name at the table</span>
         <input className={input} value={name} onChange={(e) => setName(e.target.value)} placeholder="Ana" />
@@ -57,7 +99,7 @@ function Lobby({ onSeated }: { onSeated: (s: Seat) => void }) {
       <section className="space-y-1.5 rounded border border-fahh-surface p-2">
         <div className="font-semibold text-fahh-text">Start a new table</div>
         <input className={input} value={server} onChange={(e) => setServer(e.target.value)} aria-label="Roundtable server" />
-        <button className={`${primary} w-full flex items-center justify-center gap-1`} disabled={busy || !name.trim()} onClick={() => void go("start")}>
+        <button className={`${recent[0] ? quiet : primary} w-full flex items-center justify-center gap-1`} disabled={busy || !name.trim()} onClick={() => void go("start")}>
           <Plus size={12} /> Start a table
         </button>
         <p className="text-[10px] text-fahh-muted">The invite link is copied for you to send.</p>
@@ -69,16 +111,32 @@ function Lobby({ onSeated }: { onSeated: (s: Seat) => void }) {
           Join
         </button>
       </section>
-      {error && <p className="text-fahh-error">{error}</p>}
+      {recent.length > 0 && (
+        <section className="space-y-1">
+          <div className="font-semibold text-fahh-text">Recent tables</div>
+          {recent.map((t) => (
+            <div key={`${t.base}/${t.code}`} className="flex items-center gap-1.5 rounded px-1 py-0.5 hover:bg-fahh-surface/40">
+              <span className="min-w-0 flex-1" title={`${t.base}/${t.code}`}>
+                <span className="font-mono font-bold text-fahh-text tracking-widest">{t.code}</span>
+                {t.title && <span className="text-fahh-text"> · {t.title}</span>}
+                <span className="block text-[10px] text-fahh-muted truncate">{t.name} · {ago(t.at)}</span>
+              </span>
+              <button className={quiet} disabled={busy} onClick={() => void rejoin(t)}>Rejoin</button>
+              <IconBtn title={`Forget ${t.code}`} onClick={() => onForget(t)}><Trash2 size={11} /></IconBtn>
+            </div>
+          ))}
+        </section>
+      )}
     </div>
   );
 }
 
-function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
+function Table({ seat, onLeave }: { seat: Seat; onLeave: (why: "left" | "ended") => void }) {
   const [room, setRoom] = useState<RoomView | null>(null);
   const [live, setLive] = useState<Record<string, string>>({});
   const [last, setLast] = useState<AgentEvent | null>(null);
   const [connected, setConnected] = useState(false);
+  const [dropped, setDropped] = useState(false); // was live, lost it, coming back
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [tab, setTab] = useState<"table" | "files">("table");
@@ -97,10 +155,8 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
       seat,
       (type, data) => {
         if (type === "room.snapshot") setRoom(data);
-        else if (type === "room.gone") {
-          setError("This table no longer exists.");
-          onLeave();
-        } else if (type === "turn.started") {
+        else if (type === "room.gone") onLeave("ended");
+        else if (type === "turn.started") {
           setLast(null);
           setLive((l) => ({ ...l, [data.turn.id]: "" }));
           refresh();
@@ -117,7 +173,7 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
         } else refresh();
       },
       stop.signal,
-      setConnected,
+      (live) => (setConnected(live), setDropped(!live)),
     );
     const t = setInterval(() => tick((n) => n + 1), 1000);
     return () => (stop.abort(), clearInterval(t));
@@ -131,7 +187,7 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
   };
   const leave = async () => {
     await api("/leave", { method: "POST", body: {} }).catch(() => {});
-    onLeave();
+    onLeave("left");
   };
 
   return (
@@ -147,6 +203,11 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: () => void }) {
           <IconBtn title="Leave the table" onClick={() => void leave()}><LogOut size={12} /></IconBtn>
         </span>
       </div>
+      {dropped && (
+        <div role="status" className="px-3 py-1 border-b border-fahh-surface bg-fahh-accent/10 text-fahh-text flex items-center gap-1.5 shrink-0">
+          <Loader2 size={11} className="animate-spin motion-reduce:animate-none" /> Reconnecting…
+        </div>
+      )}
       {room && <People room={room} me={seat.member.id} />}
       <div className="flex border-b border-fahh-surface shrink-0">
         {(["table", "files"] as const).map((t) => (

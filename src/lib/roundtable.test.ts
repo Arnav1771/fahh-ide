@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   activity, agentLine, browserLink, checkPictures, elapsed, joinTable, loadSeat, mediaUrl, normalizeServer, parseInvite, pictureType, saveSeat, sayBody, sseParser, startTable, uploadPicture, watch,
-  type Seat,
+  ago, forgetTable, gaveUp, loadRecent, recentEntry, rejoinTable, remember, saveRecent,
+  type RecentTable, type Seat,
 } from "./roundtable";
 
 const memoryStore = () => {
@@ -129,5 +130,42 @@ describe("Roundtable client", () => {
     await expect(uploadPicture(seat, blob, refused)).rejects.toThrow("Only PNG, JPEG");
     const down = (async () => { throw new TypeError("fetch failed"); }) as unknown as typeof fetch;
     await expect(uploadPicture(seat, blob, down)).rejects.toThrow(/Couldn't reach/);
+  });
+
+  it("keeps the last five tables, newest first, one per table", () => {
+    const at = (code: string, t: number) => recentEntry({ ...seat, code }, t);
+    let list: RecentTable[] = [];
+    for (let i = 1; i <= 6; i++) list = remember(list, at(`T000${i}`, i));
+    expect(list.map((e) => e.code)).toEqual(["T0006", "T0005", "T0004", "T0003", "T0002"]);
+    list = remember(list, at("T0003", 99));
+    expect(list.map((e) => e.code)).toEqual(["T0003", "T0006", "T0005", "T0004", "T0002"]);
+    expect(forgetTable(list, { base: seat.base, code: "T0006" })).toHaveLength(4);
+    const left = gaveUp(list, { base: seat.base, code: "T0005" }, 200);
+    expect(left[0]).toEqual({ base: seat.base, code: "T0005", name: "Ana", memberId: "m1", at: 200 });
+    expect(gaveUp(list, { base: "x", code: "NOPE1" })).toBe(list);
+    const store = memoryStore();
+    saveRecent(left, store);
+    expect(loadRecent(store)).toEqual(left);
+    store.setItem("fahh-roundtable-recent", "{nope");
+    expect(loadRecent(store)).toEqual([]);
+    const now = 10 * 86_400_000;
+    expect([ago(now - 5_000, now), ago(now - 300_000, now), ago(now - 7_300_000, now), ago(now - 3 * 86_400_000, now)]).toEqual(["just now", "5m ago", "2h ago", "3d ago"]);
+  });
+
+  it("rejoins: the saved seat first, then by name, and says when a table ended or the server is away", async () => {
+    const entry = recentEntry(seat, 1);
+    const room = (members: Array<{ id: string }>) => (async (url: string) =>
+      url.endsWith("/join") ? new Response(JSON.stringify({ member: { id: "m9", name: "Ana", token: "new" } }), { status: 200 }) : new Response(JSON.stringify({ members }), { status: 200 })) as unknown as typeof fetch;
+    expect(await rejoinTable(entry, room([{ id: "m1" }]))).toEqual({ outcome: "seated", seat });
+    const again = await rejoinTable(entry, room([]));
+    expect(again).toEqual({ outcome: "rejoined", seat: { ...seat, member: { id: "m9", name: "Ana", token: "new" } } });
+    const { token: _, ...noToken } = entry;
+    expect((await rejoinTable(noToken, room([{ id: "m1" }]))).outcome).toBe("rejoined");
+    const gone = (async () => new Response(JSON.stringify({ error: "No such room" }), { status: 404 })) as unknown as typeof fetch;
+    expect(await rejoinTable(entry, gone)).toEqual({ outcome: "ended", message: "That table has ended (ABC12)." });
+    const down = (async () => { throw new TypeError("fetch failed"); }) as unknown as typeof fetch;
+    expect(await rejoinTable(entry, down)).toEqual({ outcome: "offline", message: "Can't reach the server at http://h:4173." });
+    const broken = (async () => new Response("{}", { status: 500 })) as unknown as typeof fetch;
+    expect((await rejoinTable(entry, broken)).outcome).toBe("error");
   });
 });
