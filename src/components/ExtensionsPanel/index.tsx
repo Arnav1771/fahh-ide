@@ -449,7 +449,7 @@ export function ExtensionsPanel() {
           <button
             type="button"
             onClick={() => setThemeToast(null)}
-            className="text-xs hover:text-white ml-2 text-fahh-muted"
+            className="text-xs hover:text-fahh-text ml-2 text-fahh-muted"
           >
             &times;
           </button>
@@ -593,12 +593,12 @@ export function ExtensionsPanel() {
 
             {/* Native PDF Notice */}
             {isPdfExtension(selectedExt) && (
-              <div className="p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 text-[11px] text-red-200 space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-red-400">
+              <div className="p-2.5 rounded-lg bg-fahh-error/10 border border-fahh-error/30 text-[11px] text-fahh-text space-y-1">
+                <div className="flex items-center gap-1.5 font-semibold text-fahh-error">
                   <FileText size={13} />
                   <span>Built-in Native PDF Viewer in Fahh Editor</span>
                 </div>
-                <p className="text-white/80 leading-relaxed text-[10.5px]">
+                <p className="text-fahh-text/80 leading-relaxed text-[10.5px]">
                   This extension was built for Microsoft VS Code&apos;s Node.js extension host. Fahh Editor already includes a native, hardware-accelerated PDF viewer built into the core. Opening any <code>.pdf</code> file in your project opens directly in the viewer with zero extensions needed.
                 </p>
               </div>

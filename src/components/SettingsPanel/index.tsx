@@ -1,5 +1,5 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { Bell, Search } from "lucide-react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Bell, Check, ChevronDown, Search } from "lucide-react";
 import { DEFAULT_SETTINGS, useSettingsStore, type Settings } from "../../store/settingsStore";
 import { useEditorStore } from "../../store/editorStore";
 import { useFahhStore } from "../../store/fahhStore";
@@ -7,6 +7,8 @@ import { SoundPicker } from "../Fahh/SoundPicker";
 import { AccountSection } from "./AccountSection";
 import { getProfiles } from "../../lib/ptySessions";
 import type { TerminalProfile } from "../../lib/tauri";
+import { ContextMenu, type MenuEntry } from "../ContextMenu";
+import { MONO_FONTS, firstFamily, fontStack, isFontInstalled, presetOf } from "../../lib/fonts";
 
 function ProfileSelect() {
   const value = useSettingsStore((s) => s.terminalDefaultProfile);
@@ -55,6 +57,63 @@ function Row({ label, hint, htmlFor, children }: { label: string; hint?: string;
 
 function Toggle({ id, value, onChange }: { id: string; value: boolean; onChange: (v: boolean) => void }) {
   return <input id={id} type="checkbox" checked={value} onChange={(e) => onChange(e.target.checked)} className="h-4 w-4 accent-[var(--fahh-accent)]" />;
+}
+
+/** Editor font: the common coding fonts, each drawn in itself and marked when installed, or a custom CSS list. */
+function FontPicker() {
+  const value = useSettingsStore((s) => s.fontFamily);
+  const set = useSettingsStore((s) => s.set);
+  const def = DEFAULT_SETTINGS.fontFamily;
+  const preset = value === def ? "Default" : presetOf(value);
+  const [custom, setCustom] = useState(preset === null);
+  const [menu, setMenu] = useState<{ x: number; y: number } | null>(null);
+  const installed = useMemo(() => new Map(MONO_FONTS.map((f) => [f, isFontInstalled(f)])), []);
+  const tick = (on: boolean) => (on ? <Check size={12} /> : undefined);
+  const pick = (v: string | null) => () => {
+    setCustom(v === null);
+    if (v !== null) set("fontFamily", v);
+  };
+  const items: MenuEntry[] = [
+    { label: "Default", font: def, keys: "JetBrains Mono, Fira Code, …", icon: tick(!custom && preset === "Default"), action: pick(def) },
+    "separator",
+    ...MONO_FONTS.map((f): MenuEntry => {
+      const ok = installed.get(f);
+      return { label: f, font: fontStack(f), keys: ok === true ? "Installed" : ok === false ? "Not installed" : undefined, icon: tick(!custom && preset === f), action: pick(fontStack(f)) };
+    }),
+    "separator",
+    { label: "Custom…", keys: "any CSS font list", icon: tick(custom), action: pick(null) },
+  ];
+  return (
+    <div className="flex flex-col items-end gap-1.5">
+      <button
+        id="set-font"
+        type="button"
+        data-testid="font-picker"
+        aria-haspopup="menu"
+        aria-expanded={!!menu}
+        onClick={(e) => {
+          const r = e.currentTarget.getBoundingClientRect();
+          setMenu({ x: r.left, y: r.bottom + 2 });
+        }}
+        style={{ fontFamily: value }}
+        className={`${input} flex w-72 max-w-full items-center justify-between gap-2 text-left`}
+      >
+        <span className="truncate">{custom ? `Custom: ${firstFamily(value)}` : preset}</span>
+        <ChevronDown size={12} className="shrink-0 text-fahh-muted" aria-hidden="true" />
+      </button>
+      {custom && (
+        <input
+          aria-label="Custom font list"
+          value={value}
+          onChange={(e) => set("fontFamily", e.target.value)}
+          placeholder="Iosevka, Consolas, monospace"
+          spellCheck={false}
+          className={`${input} w-72 max-w-full font-mono`}
+        />
+      )}
+      {menu && <ContextMenu x={menu.x} y={menu.y} items={items} onClose={() => setMenu(null)} />}
+    </div>
+  );
 }
 
 function NumberField<K extends keyof Settings>({ id, k, min, max }: { id: string; k: K; min: number; max: number }) {
@@ -147,8 +206,8 @@ export function SettingsPanel() {
         </Section>
 
         <Section title="Editor" keywords="font code monaco">
-          <Row label="Font family" hint="A CSS font list; the first one installed is used." htmlFor="set-font">
-            <input id="set-font" value={s.fontFamily} onChange={(e) => s.set("fontFamily", e.target.value)} spellCheck={false} className={`${input} w-72 max-w-full font-mono`} />
+          <Row label="Font family" hint="Each font is shown in itself; installed ones are marked. Custom… takes any CSS font list." htmlFor="set-font">
+            <FontPicker />
           </Row>
           <Row label="Font size" htmlFor="set-size">
             <NumberField id="set-size" k="fontSize" min={8} max={40} />
