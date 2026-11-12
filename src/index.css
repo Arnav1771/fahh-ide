@@ -51,8 +51,8 @@ select {
   background-position: right 0.45rem center;
 }
 select option {
-  color: #1b1916;
-  background-color: #ffffff;
+  color: var(--fahh-text);
+  background-color: var(--fahh-surface);
 }
 
 /* ─── Fahh Gold ─────────────────────────────────────────────────────────────
@@ -351,8 +351,13 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
 /* ─── Workbench (dockview) ──────────────────────────────────────────────────
    One theme for every Fahh theme: everything reads the same CSS variables the
    rest of the app uses, so Fahh Gold, Fahh Light and the dark themes all look
-   native with no per-theme rules (and no white dockview default chrome). */
-.dockview-theme-fahh {
+   native with no per-theme rules (and no white dockview default chrome).
+   The rules hang off .fahh-dock, not .dockview-theme-fahh: dockview puts its own theme
+   (abyss: navy, color-scheme dark) on the outer .dv-shell, and its popovers (the tab
+   overflow list, context menus) mount in that shell, outside .dockview-theme-fahh. That
+   painted the views dropdown navy under Fahh Light and drew native checkboxes dark. */
+.dockview-theme-fahh,
+.fahh-dock .dv-shell {
   --dv-paneview-active-outline-color: var(--fahh-accent);
   --dv-tabs-and-actions-container-font-size: 13px;
   --dv-tabs-and-actions-container-height: 35px;
@@ -390,20 +395,24 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
   --dv-inactivegroup-hiddenpanel-tab-color: var(--fahh-muted);
   --dv-separator-border: var(--fahh-surface);
   --dv-paneview-header-border-color: var(--fahh-surface);
+  --dv-context-menu-background-color: var(--fahh-menu-bg);
+  --dv-context-menu-color: var(--fahh-text);
+  color-scheme: inherit; /* the app sets light or dark on <html> per theme; abyss forced dark */
   color: var(--fahh-text);
   background-color: var(--fahh-bg);
 }
-.dockview-theme-fahh .dv-groupview { border: none; }
+.fahh-dock .dv-groupview { border: none; }
+.fahh-dock .dv-tabs-overflow-container { box-shadow: 0 6px 18px color-mix(in srgb, black 22%, transparent); }
 /* The sash is a 1px rule that widens to a grab area, like the old resize handle. */
-.dockview-theme-fahh .dv-split-view-container > .dv-sash-container > .dv-sash { background: var(--fahh-surface); }
-.dockview-theme-fahh .dv-split-view-container > .dv-sash-container > .dv-sash:hover,
-.dockview-theme-fahh .dv-split-view-container > .dv-sash-container > .dv-sash.dv-sash-active { background: var(--fahh-accent); }
-.dockview-theme-fahh .dv-default-tab { display: flex; align-items: center; gap: 0.4rem; padding: 0 0.7rem; height: 100%; }
-.dockview-theme-fahh .dv-default-tab .dv-default-tab-action { opacity: 0.5; display: inline-flex; align-items: center; }
-.dockview-theme-fahh .dv-default-tab .dv-default-tab-action:hover { opacity: 1; }
-.dockview-theme-fahh .dv-tab.dv-active-tab { box-shadow: inset 0 -2px 0 var(--fahh-accent); }
-.dockview-theme-fahh .dv-tabs-and-actions-container { border-bottom: 1px solid var(--fahh-surface); }
-.dockview-theme-fahh .dv-tab:focus-visible { outline: 1px solid var(--fahh-accent); outline-offset: -1px; }
+.fahh-dock .dv-split-view-container > .dv-sash-container > .dv-sash { background: var(--fahh-surface); }
+.fahh-dock .dv-split-view-container > .dv-sash-container > .dv-sash:hover,
+.fahh-dock .dv-split-view-container > .dv-sash-container > .dv-sash.dv-sash-active { background: var(--fahh-accent); }
+.fahh-dock .dv-default-tab { display: flex; align-items: center; gap: 0.4rem; padding: 0 0.7rem; height: 100%; }
+.fahh-dock .dv-default-tab .dv-default-tab-action { opacity: 0.5; display: inline-flex; align-items: center; }
+.fahh-dock .dv-default-tab .dv-default-tab-action:hover { opacity: 1; }
+.fahh-dock .dv-tab.dv-active-tab { box-shadow: inset 0 -2px 0 var(--fahh-accent); }
+.fahh-dock .dv-tabs-and-actions-container { border-bottom: 1px solid var(--fahh-surface); }
+.fahh-dock .dv-tab:focus-visible { outline: 1px solid var(--fahh-accent); outline-offset: -1px; }
 /* The dock never scrolls: a stray scrollIntoView (from the terminal) must not shift the whole workbench. */
 .fahh-dock, .fahh-dock .dv-dockview { overflow: clip; }
 /* The dock and the canvas are their own stacking contexts: dockview's sashes (z-index 99), its
@@ -414,12 +423,12 @@ html[data-fahh-theme] .fahh-palette input:focus-visible { outline: none; }
 
 /* Narrow side groups: the tab strip shows icons, and only the active tab keeps its name
    (every tab has the full name as a tooltip). Wide groups show every name. */
-.dockview-theme-fahh .dv-tabs-and-actions-container { container-type: inline-size; }
-.dockview-theme-fahh .fahh-view-tab { padding: 0 0.6rem; }
-.dockview-theme-fahh .fahh-view-tab-label { white-space: nowrap; }
+.fahh-dock .dv-tabs-and-actions-container { container-type: inline-size; }
+.fahh-dock .fahh-view-tab { padding: 0 0.6rem; }
+.fahh-dock .fahh-view-tab-label { white-space: nowrap; }
 @container (max-width: 380px) {
-  .dockview-theme-fahh .dv-tab:not(.dv-active-tab) .fahh-view-tab-label { display: none; }
-  .dockview-theme-fahh .fahh-view-tab { padding: 0 0.5rem; }
+  .fahh-dock .dv-tab:not(.dv-active-tab) .fahh-view-tab-label { display: none; }
+  .fahh-dock .fahh-view-tab { padding: 0 0.5rem; }
 }
 
 /* ─── Title bar and menus ───────────────────────────────────────────────────

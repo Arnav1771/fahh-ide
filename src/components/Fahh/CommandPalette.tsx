@@ -200,14 +200,14 @@ function PaletteBody({
                     cmd.group.toLowerCase().includes("ai")
                       ? "bg-fahh-accent/15 text-fahh-accent border-fahh-accent/30"
                       : cmd.group.toLowerCase().includes("file")
-                      ? "bg-blue-500/15 text-blue-400 border-blue-500/30"
+                      ? "bg-fahh-info/15 text-fahh-info border-fahh-info/30"
                       : cmd.group.toLowerCase().includes("view") || cmd.group.toLowerCase().includes("theme")
-                      ? "bg-purple-500/15 text-purple-400 border-purple-500/30"
+                      ? "bg-purple-500/15 text-purple-500 border-purple-500/30"
                       : cmd.group.toLowerCase().includes("edit")
-                      ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                      ? "bg-fahh-success/15 text-fahh-success border-fahh-success/30"
                       : cmd.group.toLowerCase().includes("run")
-                      ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                      : "bg-white/5 text-fahh-muted border-white/10"
+                      ? "bg-fahh-warn/15 text-fahh-warn border-fahh-warn/30"
+                      : "bg-fahh-surface text-fahh-muted border-fahh-surface"
                   }`}>
                     {cmd.group}
                   </span>
