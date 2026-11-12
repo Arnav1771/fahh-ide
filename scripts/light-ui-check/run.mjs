@@ -42,7 +42,7 @@ const check = (name, ok, detail = "") => {
 const bgOf = (page, sel) =>
   page.evaluate((s) => {
     const el = document.querySelector(s);
-    return el && { el: getComputedStyle(el).backgroundColor, page: getComputedStyle(document.body).backgroundColor, scheme: getComputedStyle(el).colorScheme };
+    return el && { el: getComputedStyle(el).backgroundColor, page: (() => { const p = document.body.appendChild(document.createElement("div")); p.style.background = "var(--fahh-bg)"; const c = getComputedStyle(p).backgroundColor; p.remove(); return c; })(), scheme: getComputedStyle(el).colorScheme };
   }, sel);
 
 try {
@@ -61,7 +61,7 @@ try {
     await page.waitForTimeout(200);
     await page.screenshot({ path: path.join(OUT, `${theme}-views-dropdown.png`) });
     const dd = await bgOf(page, ".dv-tabs-overflow-container");
-    check(`${theme}: views dropdown uses the theme background`, dd?.el === dd?.page, JSON.stringify(dd));
+    check(`${theme}: views dropdown uses the theme background token`, dd?.el === dd?.page, JSON.stringify(dd));
     const gap = await page.evaluate(() => getComputedStyle(document.querySelector(".dv-tabs-overflow-container .dv-default-tab")).columnGap);
     check(`${theme}: dropdown icons have a gap before the label`, gap !== "normal" && parseFloat(gap) > 0, gap);
     await page.keyboard.press("Escape");
