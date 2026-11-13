@@ -7,7 +7,7 @@ import { useEditorStore } from "../store/editorStore";
 import { useToastStore } from "../store/toastStore";
 import { writeFile } from "./tauri";
 import { clearBaseline, setBaseline } from "./saveBaseline";
-import { disposeModel, formatActiveBuiltin, getActiveText, getActiveVersionId, replaceActiveText } from "./monacoBridge";
+import { disposeModel, formatActiveBuiltin, getActiveText, getModelText, getActiveVersionId, replaceActiveText } from "./monacoBridge";
 import { useSettingsStore } from "../store/settingsStore";
 import { cleanText } from "./saveTransforms";
 import { formatFile } from "./tauri";
@@ -45,7 +45,7 @@ export async function savePath(path: string): Promise<boolean> {
   const { activeTab, fileContents, markDirty } = useEditorStore.getState();
   if (path === activeTab) return saveActive(true);
   try {
-    await writeFile(path, fileContents[path] ?? "");
+    await writeFile(path, getModelText(path) ?? fileContents[path] ?? "");
     markDirty(path, false);
     announceSaved(path);
     return true;
@@ -53,6 +53,13 @@ export async function savePath(path: string): Promise<boolean> {
     useToastStore.getState().show(`Could not save ${nameOf(path)}: ${String(err)}`, "error");
     return false;
   }
+}
+
+/** File > Save All: every unsaved tab that has a file to go to. */
+export async function saveAll(): Promise<boolean> {
+  let ok = true;
+  for (const p of dirtyPaths()) if (!isUntitled(p) && !isPreviewOnly(p)) ok = (await savePath(p)) && ok;
+  return ok;
 }
 
 /**

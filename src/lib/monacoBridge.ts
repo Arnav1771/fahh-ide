@@ -224,6 +224,13 @@ export function disposeModel(path: string): void {
   setTimeout(() => model?.dispose?.(), 0);
 }
 
+/** The live text of any open file's model (a cross-file rename edits only the model); null when it has none. */
+export function getModelText(path: string): string | null {
+  if (!monacoApi?.Uri || !monacoApi.editor.getModel) return null;
+  const model = monacoApi.editor.getModel(monacoApi.Uri.parse(modelPathFor(path)) as never) as { getValue?: () => string } | null;
+  return model?.getValue?.() ?? null;
+}
+
 /** Test-only: return the module to its initial state. */
 export function resetMonacoBridge(): void {
   monacoApi = null;

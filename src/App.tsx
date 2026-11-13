@@ -12,7 +12,7 @@ import { runDebugAction, runWithoutDebugging } from "./lib/debugActions";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
 import { Toasts } from "./components/Toasts";
-import { saveActive, unsavedMessage } from "./lib/tabActions";
+import { saveActive, saveAll, unsavedMessage } from "./lib/tabActions";
 import { handleOpenRequest } from "./lib/openRequest";
 import { installCli, openNewWindow, readFile, takePendingOpen } from "./lib/tauri";
 import { useToastStore } from "./store/toastStore";
@@ -329,7 +329,7 @@ export default function App() {
       { id: "view.zoomOut", group: "View", label: "Zoom Out", keys: ["Ctrl", "-"], keywords: "smaller font ui scale", run: () => useSettingsStore.getState().set("uiZoom", zoomFor("-")!) },
       { id: "view.zoomReset", group: "View", label: "Reset Zoom", keys: ["Ctrl", "0"], keywords: "actual size 100", run: () => useSettingsStore.getState().set("uiZoom", 100) },
       { id: "file.save", group: "File", label: "Save File", keys: ["Ctrl", "S"], keywords: "save write disk", run: () => void saveActive() },
-      { id: "file.saveAll", group: "File", label: "Save All Files", keys: ["Ctrl", "K", "S"], keywords: "save all write dirty", run: () => void saveActive() },
+      { id: "file.saveAll", group: "File", label: "Save All Files", keys: ["Ctrl", "K", "S"], keywords: "save all write dirty", run: () => void saveAll() },
       { id: "file.copyPath", group: "File", label: "Copy Active File Path", keywords: "copy full absolute path clipboard", run: () => {
         const tab = useEditorStore.getState().activeTab;
         if (tab) navigator.clipboard.writeText(tab);
