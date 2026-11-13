@@ -14,6 +14,8 @@
 import * as monaco from "monaco-editor";
 import { loader } from "@monaco-editor/react";
 import { initEditorExtras } from "./editorExtras";
+import { markersToDiagnostics, useDiagnosticsStore } from "../store/diagnosticsStore";
+import { useFileStore } from "../store/fileStore";
 
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
@@ -54,6 +56,15 @@ loader.config({ monaco });
 // agentMarkers.ts reads the editor's markers and selection through this global, so the
 // agent's get_diagnostics and context see them without importing Monaco (keeps it testable).
 (window as unknown as { monaco: typeof monaco }).monaco = monaco;
+
+// The Problems panel: every marker in the open folder, refreshed when markers change or
+// the folder does (so another folder's problems never linger).
+const syncProblems = () =>
+  useDiagnosticsStore.setState({ diagnostics: markersToDiagnostics(monaco.editor.getModelMarkers({}), useFileStore.getState().root) });
+monaco.editor.onDidChangeMarkers(syncProblems);
+useFileStore.subscribe((s, prev) => {
+  if (s.root !== prev.root) syncProblems();
+});
 
 // Monaco's built-in TypeScript checker sees one file at a time, with no
 // node_modules and no tsconfig. Left at its defaults it underlines every JSX
