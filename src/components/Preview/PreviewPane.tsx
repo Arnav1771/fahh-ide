@@ -732,7 +732,7 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
         <div className="flex flex-col gap-4 p-4 pr-6">
           {editError && <p role="alert" className="pl-[76px] text-[11px] text-fahh-error">{editError}</p>}
           {nb.cells.map((cell, i) => (
-            <Fragment key={i}>
+            <Fragment key={cell.id ?? `i${i}`}>
               {python && <GenerateSlot g={g} at={i} cellCount={nb.cells.length} />}
               {i > 0 && addBar(i)}
               <div
@@ -764,7 +764,7 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
                   cell={cell}
                   language={nb.language}
                   path={path}
-                  run={k.runs[i]}
+                  run={cell.id ? k.runs[cell.id] : undefined}
                   onRun={python && cell.type === "code" ? () => void k.runCells([{ index: i, code: cell.source }]) : undefined}
                   onEdit={cell.type === "code" ? (src, run) => g.saveCell(i, src, run && python) : cell.type === "markdown" ? (src) => g.saveCell(i, src, false) : undefined}
                 />

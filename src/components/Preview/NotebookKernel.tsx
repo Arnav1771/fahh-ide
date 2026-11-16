@@ -1,7 +1,9 @@
 /**
  * Live Python kernel for the notebook preview, as in VS Code: pick an environment, run a cell
  * or all of them, interrupt, restart. One fahh_kernel.py process per open notebook, started on
- * the first run and fed commands over stdin; outputs stream back and are saved into the .ipynb.
+ * the first run and fed commands over stdin; outputs stream back and this view saves them into
+ * the .ipynb by cell id. The view is the file's only writer: every change goes through
+ * `editNotebook` (one queue, fresh read, then write), so edits and outputs never race.
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
@@ -9,7 +11,8 @@ import { Copy, Loader2, Play, RotateCw, Square, SquareTerminal, X } from "lucide
 import { createRunRouter, type RunRouter } from "../../lib/runEvents";
 import { pythonKernels, readFile, runFile, runStdin, stopRun, writeFile, type PythonEnv } from "../../lib/tauri";
 import type { RunOutputEvent } from "../../lib/types";
-import type { KernelState } from "../../lib/notebookGen";
+import { ensureCellIds, setCellOutputs, type KernelState } from "../../lib/notebookGen";
+import { parseNotebook } from "../../lib/notebook";
 import {
   applyKernelEvent,
   ipykernelInstallCommand,
@@ -123,14 +126,6 @@ export function useNotebookKernel(path: string) {
     if (e && (kernel?.version !== e.version || kernel?.ipykernel !== e.ipykernel)) setKernel((k) => (k ? { ...k, version: e.version, ipykernel: e.ipykernel } : k));
   }, [envs, kernel]);
 
-  const reloadFile = useCallback(async () => {
-    try {
-      useEditorStore.getState().setContent(path, await readFile(path));
-    } catch {
-      // the outputs still show from this session
-    }
-  }, [path]);
-
   const onEvent = useCallback(
     (ev: KernelEvent) => {
       switch (ev.type) {
@@ -154,13 +149,18 @@ export function useNotebookKernel(path: string) {
         case "fatal":
           setNotice(ev.message);
           return;
-        case "done":
-          void reloadFile(); // the runner saved this cell into the file
-          break;
+        case "done": {
+          const { cell, outputs, count } = ev;
+          setRuns((r) => applyKernelEvent(r, ev));
+          void editNotebookRef.current((json) => setCellOutputs(json, cell, outputs, count)).catch((e) =>
+            setNotice(`Could not save outputs to the notebook: ${String(e)}`),
+          );
+          return;
+        }
       }
       setRuns((r) => applyKernelEvent(r, ev));
     },
-    [reloadFile],
+    [],
   );
 
   const onEventRef = useRef(onEvent);
@@ -213,7 +213,7 @@ export function useNotebookKernel(path: string) {
 
   useEffect(() => shutdown, [shutdown]); // closing the notebook stops its kernel
 
-  /** The runner saves outputs by cell index, so the file must match what is on screen. */
+  /** Unsaved source-view edits go to disk before the file is read and changed. */
   const flush = async () => {
     const ed = useEditorStore.getState();
     const tab = ed.openTabs.find((t) => t.path === path);
@@ -258,17 +258,31 @@ export function useNotebookKernel(path: string) {
     }
   };
 
+  /**
+   * `index` is the cell's position in the notebook on screen. It becomes the cell's stable id
+   * right away (older files get ids first), and only the id goes to the runner, so outputs
+   * land in the right cell even if cells move or the file changes meanwhile.
+   */
   const runCells = async (cells: { index: number; code: string }[]) => {
     if (cells.length === 0) return;
     setNotice(null);
+    let ids: string[];
     try {
+      const idsOf = (json: string) => {
+        const nb = parseNotebook(json);
+        return cells.map((c) => ("cells" in nb ? nb.cells[c.index]?.id : undefined));
+      };
+      let found = idsOf(useEditorStore.getState().fileContents[path] ?? "");
+      if (found.some((id) => !id)) found = idsOf(await editNotebook(ensureCellIds));
+      if (found.some((id) => !id)) throw new Error("the notebook changed on disk; run the cell again");
+      ids = found as string[];
       await flush();
     } catch (e) {
       setNotice(`Could not save the notebook before running: ${String(e)}`);
       return;
     }
-    setRuns((r) => queueCells(r, cells.map((c) => c.index)));
-    send(...cells.map((c) => ({ op: "run", cell: c.index, code: c.code }))); // one write: Run all keeps its order
+    setRuns((r) => queueCells(r, ids));
+    send(...cells.map((c, i) => ({ op: "run", cell: ids[i], code: c.code }))); // one write: Run all keeps its order
     if (pidRef.current === null && !starting.current) await start();
   };
 
@@ -286,18 +300,24 @@ export function useNotebookKernel(path: string) {
   };
 
   /**
-   * Change the .ipynb on disk: unsaved source edits first, then the file as the runner last
-   * saved it, so cell outputs are never overwritten. Only while no cell runs (the runner
-   * saves outputs by cell index). Settled run state is dropped: the file holds those outputs.
+   * Change the .ipynb on disk: unsaved source edits first, then the latest file, one change at
+   * a time. Settled run state is dropped once nothing runs: the file now holds those outputs.
+   * Resolves with the new text.
    */
   const editNotebook = (mutate: (json: string) => string) =>
     editQueue.current(async () => {
       await flush();
-      const text = mutate(await readFile(path));
-      await writeFile(path, text);
-      useEditorStore.getState().setContent(path, text);
+      const before = await readFile(path);
+      const text = mutate(before);
+      if (text !== before) {
+        await writeFile(path, text);
+        useEditorStore.getState().setContent(path, text);
+      }
       setRuns((r) => (kernelBusy(r) ? r : {}));
+      return text;
     });
+  const editNotebookRef = useRef(editNotebook);
+  editNotebookRef.current = editNotebook;
 
   const interrupt = () => {
     if (!ready.current) {

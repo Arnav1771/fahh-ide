@@ -27,13 +27,13 @@ describe("parseKernelLine", () => {
   it("reads the runner's events", () => {
     expect(parseKernelLine('{"type": "ready", "version": "3.11.4"}')).toEqual({ type: "ready", version: "3.11.4" });
     expect(parseKernelLine('{"type": "missing", "module": "ipykernel"}')).toEqual({ type: "missing", module: "ipykernel" });
-    expect(parseKernelLine('{"type": "done", "cell": 3, "count": 7, "status": "error"}')).toEqual({ type: "done", cell: 3, count: 7, status: "error" });
-    expect(parseKernelLine('{"type": "cancelled", "cells": [4, 5]}')).toEqual({ type: "cancelled", cells: [4, 5] });
+    expect(parseKernelLine('{"type": "done", "cell": "c3", "count": 7, "status": "error", "outputs": [{"output_type": "stream"}]}')).toEqual({ type: "done", cell: "c3", count: 7, status: "error", outputs: [{ output_type: "stream" }] });
+    expect(parseKernelLine('{"type": "cancelled", "cells": ["a", "b"]}')).toEqual({ type: "cancelled", cells: ["a", "b"] });
   });
 
   it("turns nbformat outputs into preview outputs (HTML table, PNG plot, error)", () => {
     const html = parseKernelLine(JSON.stringify({ type: "output", cell: 2, output: { output_type: "execute_result", data: { "text/plain": "df", "text/html": "<table></table>" }, execution_count: 2 } }));
-    expect(html).toEqual({ type: "output", cell: 2, output: { type: "html", html: "<table></table>" } });
+    expect(html).toEqual({ type: "output", cell: "2", output: { type: "html", html: "<table></table>" } });
     const png = parseKernelLine(JSON.stringify({ type: "output", cell: 5, output: { output_type: "display_data", data: { "image/png": "iVBOR\n" } } }));
     expect(png).toMatchObject({ output: { type: "image", src: "data:image/png;base64,iVBOR" } });
     const err = parseKernelLine(JSON.stringify({ type: "output", cell: 1, output: { output_type: "error", ename: "ZeroDivisionError", evalue: "division by zero", traceback: ["\u001b[31mboom\u001b[0m"] } }));
@@ -52,26 +52,26 @@ describe("applyKernelEvent", () => {
   const out = { type: "stream", name: "stdout", text: "hi\n" } as const;
 
   it("queues, runs, streams and finishes a cell", () => {
-    let r = queueCells({}, [1, 2]);
+    let r = queueCells({}, ["a", "b"]);
     expect(kernelBusy(r)).toBe(true);
-    r = run(r, { type: "busy", cell: 1 }, { type: "output", cell: 1, output: out }, { type: "done", cell: 1, count: 4, status: "ok" });
-    expect(r[1]).toEqual({ status: "ok", count: 4, outputs: [out] });
-    expect(r[2].status).toBe("queued");
-    r = run(r, { type: "cancelled", cells: [2] });
-    expect(r[2]).toBeUndefined();
+    r = run(r, { type: "busy", cell: "a" }, { type: "output", cell: "a", output: out }, { type: "done", cell: "a", count: 4, status: "ok", outputs: [] });
+    expect(r.a).toEqual({ status: "ok", count: 4, outputs: [out] });
+    expect(r.b.status).toBe("queued");
+    r = run(r, { type: "cancelled", cells: ["b"] });
+    expect(r.b).toBeUndefined();
     expect(kernelBusy(r)).toBe(false);
   });
 
   it("clear_output empties a running cell, a rerun drops old outputs", () => {
-    let r = run({}, { type: "busy", cell: 0 }, { type: "output", cell: 0, output: out }, { type: "clear", cell: 0 });
-    expect(r[0].outputs).toEqual([]);
-    r = run(r, { type: "output", cell: 0, output: out }, { type: "done", cell: 0, count: 1, status: "ok" }, { type: "busy", cell: 0 });
-    expect(r[0]).toEqual({ status: "busy", count: null, outputs: [] });
+    let r = run({}, { type: "busy", cell: "x" }, { type: "output", cell: "x", output: out }, { type: "clear", cell: "x" });
+    expect(r.x.outputs).toEqual([]);
+    r = run(r, { type: "output", cell: "x", output: out }, { type: "done", cell: "x", count: 1, status: "ok", outputs: [] }, { type: "busy", cell: "x" });
+    expect(r.x).toEqual({ status: "busy", count: null, outputs: [] });
   });
 
   it("settleRuns drops the queue and fails the running cell when the kernel goes away", () => {
-    const r = settleRuns(run(queueCells({}, [1, 2]), { type: "busy", cell: 1 }));
-    expect(r).toEqual({ 1: { status: "error", count: null, outputs: [] } });
+    const r = settleRuns(run(queueCells({}, ["a", "b"]), { type: "busy", cell: "a" }));
+    expect(r).toEqual({ a: { status: "error", count: null, outputs: [] } });
   });
 });
 
