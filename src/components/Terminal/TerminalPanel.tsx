@@ -10,6 +10,7 @@ import { readTasks, TASKS_TEMPLATE } from "../../lib/tasks";
 import { readFile, writeFile, type TerminalProfile } from "../../lib/tauri";
 import { openAt } from "../../lib/navigation";
 import { revealView, toggleMaximizePanel, toggleZone } from "../../lib/workbench";
+import { ensureTrusted } from "../../store/trustStore";
 
 function tasksJsonPath(): string | null {
   const root = useFileStore.getState().root;
@@ -77,7 +78,8 @@ export function TerminalPanel() {
     const items: MenuEntry[] = tasks.length
       ? tasks.map((t) => ({
           label: t.label,
-          action: () => {
+          action: async () => {
+            if (!(await ensureTrusted())) return;
             const prof = defaultProfile(profiles);
             const id = createSession(prof?.id ?? "", `Task - ${t.label}`);
             void write(id, `${t.commandLine}\r`);

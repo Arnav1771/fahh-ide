@@ -305,6 +305,10 @@ export const debugStop = (sessionId: number) =>
 // ─── Phase 2: Plugins ─────────────────────────────────────────────────────────
 
 /** List all registered plugins (themes, language packs, formatters, …). */
+/** Workspace trust (core/trust.rs): null until the user answers for this folder. */
+export const workspaceTrustGet = (root: string) => invoke<boolean | null>("workspace_trust_get", { root });
+export const workspaceTrustSet = (root: string, trusted: boolean) => invoke<void>("workspace_trust_set", { root, trusted });
+
 export const getPlugins = () => invoke<Plugin[]>("get_plugins");
 
 /** List only theme plugins. */

@@ -5,7 +5,7 @@
 Needs only ipykernel (which brings jupyter_client). Starts that interpreter's own
 ipykernel, then reads JSON commands on stdin, one per line:
 
-    {"op": "run", "cell": 3, "code": "df.head()"}
+    {"op": "run", "cell": "a1b2c3d4", "code": "df.head()"}   (cell: the nbformat 4.5 cell id)
     {"op": "inspect", "id": "k1"}                      (live variables, for Generate code)
     {"op": "interrupt"} | {"op": "restart"} | {"op": "shutdown"}
 
@@ -15,16 +15,18 @@ and answers with JSON lines on stdout:
 
     {"type": "ready", "version": "3.11.4"}
     {"type": "missing", "module": "ipykernel"}       (then exits 3)
-    {"type": "busy", "cell": 3}
-    {"type": "output", "cell": 3, "output": {...nbformat 4 output...}}
-    {"type": "clear", "cell": 3}
-    {"type": "done", "cell": 3, "count": 7, "status": "ok" | "error"}
-    {"type": "cancelled", "cells": [4, 5]}            (queued runs dropped after an error/interrupt)
+    {"type": "busy", "cell": "a1b2c3d4"}
+    {"type": "output", "cell": "a1b2c3d4", "output": {...nbformat 4 output...}}
+    {"type": "clear", "cell": "a1b2c3d4"}
+    {"type": "done", "cell": "a1b2c3d4", "count": 7, "status": "ok" | "error", "outputs": [...]}
+    {"type": "cancelled", "cells": ["e5f6", "a7b8"]}          (queued runs dropped after an error/interrupt)
     {"type": "inspect", "id": "k1", "vars": [...], "modules": ["import numpy as np"], "error"?: "..."}
     {"type": "restarted"} | {"type": "fatal", "message": "..."}
 
-After each cell its outputs and execution count are written into the .ipynb.
-`inspect` runs silently: no execution count, no history, nothing saved to the file.
+This runner never writes the .ipynb: the editor is the file's only writer and saves each
+`done` cell's outputs into the cell with that id. (The runner used to save by cell index
+while the editor saved edits, and the two overwrote each other.)
+`inspect` runs silently: no execution count, no history.
 
 Self-check (no ipykernel needed):  python fahh_kernel.py --self-check
 """

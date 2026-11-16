@@ -28,6 +28,7 @@ import {
   type KernelEvent,
 } from "../../lib/python";
 import { useEditorStore } from "../../store/editorStore";
+import { useTrustStore } from "../../store/trustStore";
 import { useFileStore } from "../../store/fileStore";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useTerminalStore } from "../../store/terminalStore";
@@ -69,8 +70,9 @@ const saveChoice = (path: string, c: KernelChoice) => {
 
 /** Probing every interpreter takes a moment: once per folder, shared by all notebooks. */
 const envCache = new Map<string, Promise<PythonEnv[]>>();
-const loadEnvs = (root: string | null, fresh = false) => {
-  const key = root ?? "";
+const loadEnvs = (root: string | null, fresh = false, trusted: boolean | null = null) => {
+  // The folder's own .venv is listed (probed) only once it is trusted: the key follows that.
+  const key = `${root ?? ""}|${trusted === true}`;
   if (fresh || !envCache.has(key)) envCache.set(key, pythonKernels(root).catch(() => []));
   return envCache.get(key)!;
 };
@@ -113,13 +115,14 @@ export function useNotebookKernel(path: string) {
     };
   }, [path, root, pythonPath]);
 
+  const trusted = useTrustStore((s) => s.trusted);
   useEffect(() => {
     let live = true;
-    void loadEnvs(root).then((e) => live && setEnvs(e));
+    void loadEnvs(root, false, trusted).then((e) => live && setEnvs(e));
     return () => {
       live = false;
     };
-  }, [root]);
+  }, [root, trusted]);
 
   // Fill in version / ipykernel for the chosen kernel once the picker's probe knows them.
   useEffect(() => {
@@ -347,7 +350,7 @@ export function useNotebookKernel(path: string) {
 
   const refreshEnvs = () => {
     setEnvs(null);
-    void loadEnvs(root, true).then(setEnvs);
+    void loadEnvs(root, true, useTrustStore.getState().trusted).then(setEnvs);
   };
 
   return {

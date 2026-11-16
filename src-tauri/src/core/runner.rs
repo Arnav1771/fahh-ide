@@ -429,7 +429,9 @@ pub async fn python_kernels(root: Option<String>) -> Vec<PythonEnv> {
     tauri::async_runtime::spawn_blocking(move || {
         let windows = cfg!(target_os = "windows");
         let mut cands: Vec<(String, String, &'static str)> = Vec::new();
-        for venv in [".venv", "venv"] {
+        // Probing runs the interpreter: a cloned repo's .venv/bin/python is the repo's code.
+        let trusted = root.as_deref().is_some_and(crate::core::trust::is_trusted);
+        for venv in [".venv", "venv"].into_iter().filter(|_| trusted) {
             let ws = pick_python("", root.as_deref(), windows, |p| p.contains(venv) && std::path::Path::new(p).is_file(), String::new);
             if ws.label == venv {
                 cands.push((ws.program, venv.into(), "workspace"));
@@ -634,6 +636,7 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
         .spawn()
         .map_err(|e| format!("Failed to spawn process `{program}`: {e}"))?;
 
+    crate::core::proc::own(&child);
     let pid = child.id();
     if let Ok(mut runs) = RUN_PIDS.lock() {
         runs.insert(pid);
@@ -754,14 +757,31 @@ pub fn stop_run(pid: u32) -> Result<(), String> {
         return Err(format!("No run with process id {pid} is running."));
     }
     info!("stop_run: killing PID={pid}");
-    kill_pid(pid)
+    kill_pid(pid)?;
+    // A program that ignores SIGTERM is killed for good after a grace period.
+    #[cfg(unix)]
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        if RUN_PIDS.lock().map(|r| r.contains(&pid)).unwrap_or(false) {
+            // SAFETY: signals our own run's process group.
+            unsafe { libc::kill(-(pid as libc::pid_t), libc::SIGKILL) };
+        }
+    });
+    Ok(())
 }
 
 /// Every process tree that should die with the app: called on exit.
 pub fn stop_all_runs() {
     let pids: Vec<u32> = RUN_PIDS.lock().map(|r| r.iter().copied().collect()).unwrap_or_default();
+    for pid in &pids {
+        let _ = kill_pid(*pid);
+    }
+    // App exit: no grace period to wait out; anything still there gets SIGKILL.
+    #[cfg(unix)]
     for pid in pids {
-        let _ = kill_pid(pid);
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        // SAFETY: signals our own run's process group.
+        unsafe { libc::kill(-(pid as libc::pid_t), libc::SIGKILL) };
     }
 }
 

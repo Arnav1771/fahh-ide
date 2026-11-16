@@ -60,3 +60,11 @@ describe("problemCounts", () => {
     expect(problemCounts(rows, null, "C:\\p")).toBeNull();
   });
 });
+
+describe("one row per problem", () => {
+  it("drops the built-in TS worker's copy while the TS language server reports the same file", () => {
+    const both = [m("/w/a.ts", 8, { owner: "typescript" }), m("/w/a.ts", 8, { owner: "fahh-lsp" })];
+    expect(markersToDiagnostics(both, "/w")).toHaveLength(2);
+    expect(markersToDiagnostics(both, "/w", ["typescript", "javascript"])).toHaveLength(1);
+  });
+});

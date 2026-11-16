@@ -390,7 +390,16 @@ async fn cancelled(flag: &std::sync::atomic::AtomicBool) {
 /// Run a shell command; stopping the agent (or its subagent) kills the process.
 pub async fn run_command(ws: &Workspace, command: &str, timeout_secs: u64, cancel: &std::sync::atomic::AtomicBool) -> (bool, String) {
     let mut cmd = shell(command, &ws.root);
-    let fut = cmd.output(); // dropped on cancel or timeout: kill_on_drop ends the process
+    let child = match cmd.stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped()).spawn() {
+        Ok(c) => c,
+        Err(e) => return (false, format!("could not start: {e}")),
+    };
+    // Windows: in Fahh's kill-on-close job, so it cannot outlive a crashed Fahh either.
+    #[cfg(windows)]
+    if let Some(h) = child.raw_handle() {
+        crate::core::proc::own_raw(h);
+    }
+    let fut = child.wait_with_output(); // dropped on cancel or timeout: kill_on_drop ends the process
     let outcome = tokio::select! {
         r = tokio::time::timeout(Duration::from_secs(timeout_secs.clamp(1, 600)), fut) => Some(r),
         _ = cancelled(cancel) => None,

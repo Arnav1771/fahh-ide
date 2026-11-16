@@ -155,6 +155,9 @@ pub async fn lsp_start(
         }
     }
 
+    if !crate::core::trust::is_trusted(&workspace) {
+        return Err("Restricted mode: language servers start once you trust this folder (they can run its build scripts and plugins).".into());
+    }
     let (binary, args) = server_command(&language, &workspace)?;
 
     info!("lsp_start: spawning '{binary}' for language '{language}' in workspace '{workspace}'");
@@ -173,6 +176,7 @@ pub async fn lsp_start(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn LSP server '{binary}': {e}"))?;
+    crate::core::proc::own(&child);
 
     // Keep the start of stderr (servers log there constantly, so the pipe must
     // always be drained) and fail now if the server dies on start. A rustup

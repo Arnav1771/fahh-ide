@@ -19,6 +19,8 @@ import { useToastStore } from "./store/toastStore";
 import type { OpenRequest } from "./lib/types";
 import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
 import { LspBridge } from "./components/LspBridge";
+import { RestrictedModeItem, WorkspaceTrustGate } from "./components/WorkspaceTrust";
+import { useTrustStore } from "./store/trustStore";
 import { initFahhSfx, teardownFahhSfx } from "./lib/fahh";
 import { useThemeStore } from "./store/themeStore";
 import { useFahhStore, type Intensity } from "./store/fahhStore";
@@ -320,6 +322,7 @@ export default function App() {
           );
         },
       },
+      { id: "workspace.trust", group: "Workspace", label: "Manage Workspace Trust", keywords: "restricted mode trust folder security", run: () => void useTrustStore.getState().ask() },
       { id: "window.new", group: "File", label: "New Window", keys: ["Ctrl", "Shift", "N"], keywords: "new window multi instance process", run: () => void openNewWindow() },
       { id: "file.open", group: "File", label: "Open File…", keys: ["Ctrl", "O"], keywords: "open file picker document", run: () => {
         window.dispatchEvent(new Event(OPEN_FILE_EVENT));
@@ -713,6 +716,7 @@ export default function App() {
       {isSpatialMode ? (
         <div className="fahh-canvas-host flex-1 min-h-0 relative overflow-hidden">
           <LspBridge />
+          <WorkspaceTrustGate />
           <SpatialCanvas />
         </div>
       ) : (
@@ -783,6 +787,7 @@ export default function App() {
 
           <span className="max-[850px]:hidden text-fahh-muted/60 font-mono text-[11px]">UTF-8</span>
 
+          <RestrictedModeItem />
           <LspStatusItem />
           <HudControls />
 

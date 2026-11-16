@@ -424,7 +424,8 @@ function Composer({ room, seat, api, onError }: { room: RoomView; seat: Seat; ap
           if (p.type !== "drop") return setDropping(inside(p.position));
           setDropping(false);
           if (!inside(p.position) || !p.paths.length) return;
-          const { readFile } = await import("@tauri-apps/plugin-fs");
+          const { invoke } = await import("@tauri-apps/api/core");
+          const readFile = (path: string) => invoke<ArrayBuffer>("read_picture", { path });
           const files = await Promise.all(
             p.paths.map(async (path) => {
               const name = path.split(/[\\/]/).pop() ?? path;

@@ -20,6 +20,51 @@ pub fn cmd<S: AsRef<std::ffi::OsStr>>(program: S) -> Command {
     c
 }
 
+/// Tie a child (and everything it starts afterwards) to Fahh's lifetime: on Windows it joins
+/// one kill-on-close job object, so a crash or a kill of Fahh ends runs, language servers,
+/// debug adapters, formatters and agent commands too. Elsewhere a no-op: Unix children are
+/// stopped on exit (RunEvent::Exit) and by process group.
+/// ponytail: PR_SET_PDEATHSIG is not used; it fires when the spawning *thread* exits, and
+/// spawns happen on short-lived worker threads.
+#[cfg(windows)]
+pub fn own(child: &impl std::os::windows::io::AsRawHandle) {
+    use std::sync::OnceLock;
+    use windows_sys::Win32::System::JobObjects::*;
+    static JOB: OnceLock<usize> = OnceLock::new();
+    let job = *JOB.get_or_init(|| {
+        // SAFETY: plain Win32 calls; the handle lives as long as Fahh (closed by the OS on exit,
+        // which is exactly what kills the job's processes).
+        unsafe {
+            let job = CreateJobObjectW(std::ptr::null(), std::ptr::null());
+            if job.is_null() {
+                return 0;
+            }
+            let mut info: JOBOBJECT_EXTENDED_LIMIT_INFORMATION = std::mem::zeroed();
+            info.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE;
+            SetInformationJobObject(job, JobObjectExtendedLimitInformation, &info as *const _ as *const std::ffi::c_void, std::mem::size_of::<JOBOBJECT_EXTENDED_LIMIT_INFORMATION>() as u32);
+            job as usize
+        }
+    });
+    if job != 0 {
+        // SAFETY: our job handle and the child's own process handle.
+        unsafe { AssignProcessToJobObject(job as _, child.as_raw_handle() as _) };
+    }
+}
+
+/// `own` for a tokio child (its handle comes as a raw handle).
+#[cfg(windows)]
+pub fn own_raw(handle: std::os::windows::io::RawHandle) {
+    struct H(std::os::windows::io::RawHandle);
+    impl std::os::windows::io::AsRawHandle for H {
+        fn as_raw_handle(&self) -> std::os::windows::io::RawHandle {
+            self.0
+        }
+    }
+    own(&H(handle));
+}
+#[cfg(not(windows))]
+pub fn own<T>(_child: &T) {}
+
 /// A bare program name resolved by `lookup` (PATH + PATHEXT); a path, or a name not found,
 /// is left alone so the spawn error still names what the user asked for.
 #[cfg_attr(not(windows), allow(dead_code))]
