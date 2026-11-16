@@ -979,7 +979,7 @@ export function MenuBar({
             type="button"
             onClick={() => void minimizeWindow()}
             title="Minimize"
-            className="h-full px-3.5 flex items-center justify-center text-fahh-muted hover:text-fahh-text hover:bg-white/10 transition-colors"
+            className="h-full px-3.5 flex items-center justify-center text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface transition-colors"
           >
             <Minus size={13} />
           </button>
@@ -990,7 +990,7 @@ export function MenuBar({
               setIsMaximized(await isWindowMaximized());
             }}
             title={isMaximized ? "Restore Down" : "Maximize"}
-            className="h-full px-3.5 flex items-center justify-center text-fahh-muted hover:text-fahh-text hover:bg-white/10 transition-colors"
+            className="h-full px-3.5 flex items-center justify-center text-fahh-muted hover:text-fahh-text hover:bg-fahh-surface transition-colors"
           >
             {isMaximized ? <Copy size={11} className="rotate-180" /> : <Square size={11} />}
           </button>

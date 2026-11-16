@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-export type MenuEntry = { label: string; icon?: ReactNode; keys?: string; action: () => void; disabled?: boolean } | "separator";
+/** `font` draws the label in that CSS font (the Settings font picker). */
+export type MenuEntry = { label: string; icon?: ReactNode; keys?: string; font?: string; action: () => void; disabled?: boolean } | "separator";
 
 /**
  * A right-click menu at (x, y), kept on screen. Closes on a click outside, Esc, or after an item runs.
@@ -67,7 +68,7 @@ export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; it
             className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs text-fahh-text hover:bg-fahh-surface focus:bg-fahh-surface focus:outline-none disabled:opacity-40"
           >
             <span className="flex w-4 shrink-0 items-center justify-center text-fahh-muted">{it.icon}</span>
-            <span className="flex-1">{it.label}</span>
+            <span className="flex-1" style={it.font ? { fontFamily: it.font } : undefined}>{it.label}</span>
             {it.keys && <span className="ml-4 text-[10px] text-fahh-muted">{it.keys}</span>}
           </button>
         )
