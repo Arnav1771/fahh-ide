@@ -60,14 +60,17 @@ pub fn sh_quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', r"'\''"))
 }
 
-/// `wsl.exe [-d distro] --cd <dir> -- bash -lc <script>`, started from the user's home
-/// so Windows never sees a UNC working directory.
+/// `wsl.exe [-d distro] --cd <dir> --exec bash -lc <script>`, started from the user's home
+/// so Windows never sees a UNC working directory. `--exec`, not `--`: with `--` wsl.exe hands
+/// the rest of the line to the distro's default shell, which expands `$(...)` and backticks
+/// before bash sees them, even inside the single quotes `sh_quote` adds (a file named
+/// `x$(cmd).py` ran `cmd`).
 pub fn command(distro: Option<&str>, linux_cwd: &str, script: &str) -> std::process::Command {
     let mut c = crate::core::proc::cmd("wsl.exe");
     if let Some(d) = distro {
         c.args(["-d", d]);
     }
-    c.args(["--cd", linux_cwd, "--", "bash", "-lc", script]);
+    c.args(["--cd", linux_cwd, "--exec", "bash", "-lc", script]);
     if let Some(home) = dirs::home_dir() {
         c.current_dir(home);
     }
@@ -122,6 +125,22 @@ mod tests {
         let c = command(Some("Ubuntu"), "/home/dell", "ls");
         let args: Vec<_> = c.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
         assert_eq!(c.get_program(), "wsl.exe");
-        assert_eq!(args, ["-d", "Ubuntu", "--cd", "/home/dell", "--", "bash", "-lc", "ls"]);
+        assert_eq!(args, ["-d", "Ubuntu", "--cd", "/home/dell", "--exec", "bash", "-lc", "ls"]);
+    }
+
+    #[test]
+    fn a_payload_file_name_reaches_bash_as_one_quoted_word() {
+        // The script is the last argv entry, untouched by any other shell (--exec).
+        let script = format!("python3 {}", sh_quote("/tmp/x$(touch pwned)`id`.py"));
+        let c = command(None, "/tmp", &script);
+        let args: Vec<_> = c.get_args().map(|a| a.to_string_lossy().into_owned()).collect();
+        assert!(!args.contains(&"--".to_string()));
+        assert_eq!(args.last().unwrap(), "python3 '/tmp/x$(touch pwned)`id`.py'");
+        // and bash itself leaves it alone
+        #[cfg(unix)]
+        {
+            let out = crate::core::proc::cmd("bash").args(["-c", &format!("printf %s {}", sh_quote("x$(echo INJECTED)y"))]).output().unwrap();
+            assert_eq!(out.stdout, b"x$(echo INJECTED)y");
+        }
     }
 }

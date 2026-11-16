@@ -116,11 +116,15 @@ pub async fn ext_install_theme(namespace: String, name: String, version: String)
     if res.content_length().unwrap_or(0) as usize > MAX_VSIX_BYTES {
         return Err("The extension is too large to be a colour theme.".into());
     }
-    let bytes = res.bytes().await.map_err(|e| format!("Download failed: {e}"))?;
-    if bytes.len() > MAX_VSIX_BYTES {
-        return Err("The extension is too large to be a colour theme.".into());
+    let mut res = res;
+    let mut bytes = Vec::new();
+    while let Some(chunk) = res.chunk().await.map_err(|e| format!("Download failed: {e}"))? {
+        if bytes.len() + chunk.len() > MAX_VSIX_BYTES {
+            return Err("The extension is too large to be a colour theme.".into());
+        }
+        bytes.extend_from_slice(&chunk);
     }
-    themes_in_vsix(bytes.to_vec())
+    themes_in_vsix(bytes)
 }
 
 #[cfg(test)]

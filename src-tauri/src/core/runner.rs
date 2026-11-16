@@ -175,7 +175,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
-                    args: vec!["/C".to_string(), shell_cmd],
+                    args: cmd_c_args(&shell_cmd),
                 }
             } else {
                 RunCommand {
@@ -198,7 +198,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
-                    args: vec!["/C".to_string(), shell_cmd],
+                    args: cmd_c_args(&shell_cmd),
                 }
             } else {
                 RunCommand {
@@ -258,7 +258,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
-                    args: vec!["/C".to_string(), shell_cmd],
+                    args: cmd_c_args(&shell_cmd),
                 }
             } else {
                 RunCommand {
@@ -298,7 +298,7 @@ fn kernel_script() -> Result<String, String> {
     std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
     let path = dir.join(format!("fahh_kernel_{}.py", env!("CARGO_PKG_VERSION")));
     if std::fs::read_to_string(&path).ok().as_deref() != Some(SCRIPT) {
-        std::fs::write(&path, SCRIPT).map_err(|e| format!("Could not write the notebook runner to {}: {e}", path.display()))?;
+        crate::core::fsutil::write_atomic(&path, SCRIPT.as_bytes()).map_err(|e| format!("Could not write the notebook runner to {}: {e}", path.display()))?;
     }
     Ok(path.to_string_lossy().into_owned())
 }
@@ -533,6 +533,17 @@ fn shell_arg(a: &str, windows: bool) -> Result<String, String> {
     Ok(format!("\"{a}\""))
 }
 
+/// `cmd /D /V:OFF /S /C "<line>"`. The last entry is passed raw (see `CMD_RAW`): through
+/// normal argv quoting Rust escapes the inner `"` as `\"`, which cmd keeps, so every quoted
+/// path split and carried literal quotes. /S strips exactly the outer pair; /V:OFF keeps `!`
+/// literal; /D skips AutoRun.
+fn cmd_c_args(line: &str) -> Vec<String> {
+    vec!["/D".into(), "/V:OFF".into(), "/S".into(), "/C".into(), format!("{CMD_RAW}\"{line}\"")]
+}
+
+/// Marks a `cmd_c_args` line that must reach cmd verbatim (`raw_arg`), not argv-quoted.
+const CMD_RAW: &str = "\u{0}raw:";
+
 fn shell_quote_args(args: &[String], windows: bool) -> Result<String, String> {
     Ok(args.iter().map(|a| shell_arg(a, windows)).collect::<Result<Vec<_>, _>>()?.join(" "))
 }
@@ -592,7 +603,22 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
             let run_cmd = build_run_command(&language, &config.path, &config.args, false, config.interpreter.as_deref())?;
             debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
             let mut c = crate::core::proc::cmd(&run_cmd.program);
-            c.args(&run_cmd.args).current_dir(&cwd);
+            for a in &run_cmd.args {
+                match a.strip_prefix(CMD_RAW) {
+                    #[cfg(windows)]
+                    Some(raw) => {
+                        std::os::windows::process::CommandExt::raw_arg(&mut c, raw);
+                    }
+                    #[cfg(not(windows))]
+                    Some(raw) => {
+                        c.arg(raw);
+                    }
+                    None => {
+                        c.arg(a);
+                    }
+                }
+            }
+            c.current_dir(&cwd);
             (c, run_cmd.program)
         }
     };
@@ -601,7 +627,8 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
     #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut command, 0);
     let mut child = command
-        .stdin(if language == "kernel" { Stdio::piped() } else { Stdio::inherit() })
+        // A run has no console to read from: EOF instead of the app's own stdin.
+        .stdin(if language == "kernel" { Stdio::piped() } else { Stdio::null() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -683,6 +710,11 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
             map.remove(&pid);
         }
         
+        // Out of the stoppable set before it is reaped: after wait() the pid may be reused,
+        // and stop_run must never signal whatever process gets it next.
+        if let Ok(mut runs) = RUN_PIDS.lock() {
+            runs.remove(&pid);
+        }
         let exit_code = match child.wait() {
             Ok(status) => status.code().unwrap_or(-1),
             Err(e) => {
@@ -690,9 +722,6 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
                 -1
             }
         };
-        if let Ok(mut runs) = RUN_PIDS.lock() {
-            runs.remove(&pid);
-        }
         let duration_ms = start.elapsed().as_millis() as u64;
 
         info!("run_file: PID={pid} exited with code={exit_code}, duration={duration_ms}ms");
@@ -762,6 +791,16 @@ fn kill_pid(pid: u32) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_compile_and_run_reaches_cmd_verbatim() {
+        let line = format!("javac {} && java -cp {} Main", shell_arg(r"C:\my files\a&b\Main.java", true).unwrap(), shell_arg(r"C:\my files\a&b", true).unwrap());
+        let args = cmd_c_args(&line);
+        assert_eq!(&args[..4], ["/D", "/V:OFF", "/S", "/C"]);
+        let raw = args[4].strip_prefix(CMD_RAW).expect("raw marker");
+        assert_eq!(raw, r#""javac "C:\my files\a&b\Main.java" && java -cp "C:\my files\a&b" Main""#);
+        assert!(!raw.contains(r#"\""#), "no argv escaping inside the cmd line");
+    }
+
     #[test]
     fn stop_run_refuses_pids_it_did_not_start() {
         assert!(super::stop_run(std::process::id()).is_err());

@@ -6,33 +6,93 @@ use std::sync::atomic::{AtomicU32, Ordering};
 
 const BOM: &[u8] = b"\xEF\xBB\xBF";
 
-/// Write `bytes` to `path` atomically: a temp file next to it, flushed to disk, then renamed
-/// over the target. A crash or a full disk mid-save leaves the old file intact (a plain
-/// `fs::write` truncates first). The existing file's permissions are kept, and a symlink is
-/// written through to its target rather than replaced by a regular file.
+/// Write `bytes` to `path`, atomically where that is safe: a temp file next to it, flushed to
+/// disk, then renamed over the target, so a crash or a full disk mid-save leaves the old file
+/// intact (a plain `fs::write` truncates first). The file's permissions (exec bit included) are
+/// kept and a symlink is written through to its target.
+///
+/// It writes in place instead (keeping the file's identity: owner, ACLs, hard links) when a
+/// rename would change more than the bytes or cannot work:
+/// - UNC paths, WSL included (`\\wsl.localhost\...`): a rename through the 9P/SMB share drops
+///   the Linux mode and owner;
+/// - a file with more than one hard link (a rename would split it from the others);
+/// - a folder you can write files in but not create files in (temp creation fails);
+/// - a rename Windows keeps refusing (antivirus or OneDrive holding the file without
+///   share-delete), after a few short retries.
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     static N: AtomicU32 = AtomicU32::new(0);
     let target: PathBuf = match std::fs::symlink_metadata(path) {
         Ok(m) if m.file_type().is_symlink() => std::fs::canonicalize(path)?,
         _ => path.to_path_buf(),
     };
+    let meta = std::fs::metadata(&target).ok();
+    if is_unc(&target) || meta.as_ref().is_some_and(|m| hard_links(m) > 1) {
+        return write_in_place(&target, bytes);
+    }
     let dir = target.parent().filter(|d| !d.as_os_str().is_empty()).unwrap_or(Path::new("."));
     let name = target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let tmp = dir.join(format!(".{name}.fahh-{}-{}.tmp", std::process::id(), N.fetch_add(1, Ordering::Relaxed)));
+    let mut f = match std::fs::File::create(&tmp) {
+        Ok(f) => f,
+        Err(_) if meta.is_some() => return write_in_place(&target, bytes),
+        Err(e) => return Err(e),
+    };
     let result = (|| {
-        let mut f = std::fs::File::create(&tmp)?;
         f.write_all(bytes)?;
         f.sync_all()?;
         drop(f);
-        if let Ok(meta) = std::fs::metadata(&target) {
-            std::fs::set_permissions(&tmp, meta.permissions())?;
+        if let Some(m) = &meta {
+            std::fs::set_permissions(&tmp, m.permissions())?;
         }
-        std::fs::rename(&tmp, &target)
+        rename_with_retry(&tmp, &target)
     })();
-    if result.is_err() {
-        let _ = std::fs::remove_file(&tmp);
+    match result {
+        Ok(()) => Ok(()),
+        Err(e) => {
+            let _ = std::fs::remove_file(&tmp);
+            if e.kind() == std::io::ErrorKind::PermissionDenied && meta.is_some() {
+                write_in_place(&target, bytes)
+            } else {
+                Err(e)
+            }
+        }
     }
-    result
+}
+
+fn is_unc(p: &Path) -> bool {
+    let s = p.to_string_lossy();
+    s.starts_with(r"\\") || s.starts_with("//")
+}
+
+#[cfg(unix)]
+fn hard_links(m: &std::fs::Metadata) -> u64 {
+    std::os::unix::fs::MetadataExt::nlink(m)
+}
+#[cfg(not(unix))]
+fn hard_links(_m: &std::fs::Metadata) -> u64 {
+    1 // ponytail: Windows link count needs GetFileInformationByHandle; NTFS hard links are rare in projects
+}
+
+/// Antivirus and sync clients briefly hold a file open without share-delete on Windows.
+fn rename_with_retry(from: &Path, to: &Path) -> std::io::Result<()> {
+    let mut last = None;
+    for attempt in 0..5 {
+        match std::fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                last = Some(e);
+                std::thread::sleep(std::time::Duration::from_millis(40 * (attempt + 1)));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Err(last.unwrap_or_else(|| std::io::Error::other("rename failed")))
+}
+
+fn write_in_place(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let mut f = std::fs::OpenOptions::new().write(true).truncate(true).create(true).open(path)?;
+    f.write_all(bytes)?;
+    f.sync_all()
 }
 
 /// What a save writes for `content` over the file now at `path`:
@@ -86,6 +146,44 @@ mod tests {
         assert!(std::fs::symlink_metadata(&link).unwrap().file_type().is_symlink());
         assert_eq!(std::fs::read_to_string(&real).unwrap(), "#!/bin/sh\necho hi\n");
         assert_eq!(std::fs::metadata(&real).unwrap().permissions().mode() & 0o777, 0o755);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn hard_links_stay_linked() {
+        let dir = tempfile::tempdir().unwrap();
+        let a = dir.path().join("a.txt");
+        let b = dir.path().join("b.txt");
+        std::fs::write(&a, "old").unwrap();
+        std::fs::hard_link(&a, &b).unwrap();
+        write_atomic(&a, b"new").unwrap();
+        assert_eq!(std::fs::read(&b).unwrap(), b"new", "the other link sees the save");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn saves_into_a_folder_where_no_new_file_can_be_created() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempfile::tempdir().unwrap();
+        let ro = dir.path().join("ro");
+        std::fs::create_dir(&ro).unwrap();
+        let f = ro.join("x.sh");
+        std::fs::write(&f, "old").unwrap();
+        std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755)).unwrap();
+        std::fs::set_permissions(&ro, std::fs::Permissions::from_mode(0o555)).unwrap();
+        let r = write_atomic(&f, b"new");
+        std::fs::set_permissions(&ro, std::fs::Permissions::from_mode(0o755)).unwrap();
+        r.unwrap();
+        assert_eq!(std::fs::read(&f).unwrap(), b"new");
+        assert_eq!(std::fs::metadata(&f).unwrap().permissions().mode() & 0o777, 0o755);
+    }
+
+    #[test]
+    fn unc_paths_are_detected() {
+        assert!(is_unc(Path::new(r"\\wsl.localhost\Ubuntu\home\x.sh")));
+        assert!(is_unc(Path::new("//wsl$/Ubuntu/x")));
+        assert!(!is_unc(Path::new("/home/x")));
+        assert!(!is_unc(Path::new(r"C:\x")));
     }
 
     #[test]
