@@ -203,3 +203,34 @@ export function removeCell(json: string, index: number): string {
   nb.cells.splice(index, 1);
   return dump(nb);
 }
+
+/** A new empty cell of either kind at `at` (the notebook toolbar, A/B in command mode). */
+export function insertCell(json: string, at: number, type: "code" | "markdown"): string {
+  const withCode = insertCodeCell(json, at, "");
+  if (type === "code") return withCode;
+  const nb = load(withCode);
+  const i = Math.max(0, Math.min(at, nb.cells.length - 1));
+  const { id, source } = nb.cells[i];
+  nb.cells[i] = { cell_type: "markdown", metadata: {}, source, ...(id ? { id } : {}) };
+  return dump(nb);
+}
+
+/** Move a cell up (-1) or down (+1); unchanged at either end. */
+export function moveCell(json: string, index: number, by: -1 | 1): string {
+  const nb = load(json);
+  const to = index + by;
+  if (!nb.cells[index] || to < 0 || to >= nb.cells.length) return json;
+  [nb.cells[index], nb.cells[to]] = [nb.cells[to], nb.cells[index]];
+  return dump(nb);
+}
+
+/** Turn a cell into code or markdown (M / Y), keeping its source and id; outputs go with code. */
+export function setCellType(json: string, index: number, type: "code" | "markdown"): string {
+  const nb = load(json);
+  const c = nb.cells[index];
+  if (!c) throw new Error("That cell is no longer in the notebook.");
+  if (c.cell_type === type) return json;
+  const keep = { metadata: c.metadata ?? {}, source: c.source, ...(c.id ? { id: c.id } : {}) };
+  nb.cells[index] = type === "code" ? { cell_type: "code", execution_count: null, outputs: [], ...keep } : { cell_type: "markdown", ...keep };
+  return dump(nb);
+}

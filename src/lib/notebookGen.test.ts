@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGeneratePrompt, describeKernel, insertCodeCell, parseInspect, removeCell, setCellSource, stripFences, toLines } from "./notebookGen";
+import { buildGeneratePrompt, describeKernel, insertCell, insertCodeCell, moveCell, parseInspect, removeCell, setCellSource, setCellType, stripFences, toLines } from "./notebookGen";
 import { parseNotebook, type NotebookCell } from "./notebook";
 import { parseKernelLine } from "./python";
 
@@ -116,5 +116,36 @@ describe(".ipynb edits", () => {
   it("splits source into nbformat lines", () => {
     expect(toLines("")).toEqual([]);
     expect(toLines("a\nb\n")).toEqual(["a\n", "b\n"]);
+  });
+});
+
+describe("notebook cell toolbar edits", () => {
+  const nb = JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [
+    { cell_type: "code", id: "a", execution_count: 1, metadata: {}, outputs: [{ output_type: "stream", name: "stdout", text: ["1\n"] }], source: ["x = 1"] },
+    { cell_type: "markdown", id: "b", metadata: {}, source: ["# hi"] },
+  ] });
+  const kinds = (j: string) => JSON.parse(j).cells.map((c: { cell_type: string; source: string[] }) => c.cell_type[0] + ":" + c.source.join(""));
+
+  it("adds empty code and markdown cells above, between and below", () => {
+    expect(kinds(insertCell(nb, 0, "markdown"))).toEqual(["m:", "c:x = 1", "m:# hi"]);
+    expect(kinds(insertCell(nb, 2, "code"))).toEqual(["c:x = 1", "m:# hi", "c:"]);
+    const md = JSON.parse(insertCell(nb, 1, "markdown")).cells[1];
+    expect(md.outputs).toBeUndefined();
+    expect(typeof md.id).toBe("string");
+  });
+
+  it("moves cells up and down, not past either end", () => {
+    expect(kinds(moveCell(nb, 0, 1))).toEqual(["m:# hi", "c:x = 1"]);
+    expect(kinds(moveCell(nb, 1, -1))).toEqual(["m:# hi", "c:x = 1"]);
+    expect(moveCell(nb, 0, -1)).toBe(nb);
+    expect(moveCell(nb, 1, 1)).toBe(nb);
+  });
+
+  it("switches a cell between code and markdown (M / Y), keeping source and id", () => {
+    const md = JSON.parse(setCellType(nb, 0, "markdown")).cells[0];
+    expect(md).toEqual({ cell_type: "markdown", metadata: {}, source: ["x = 1"], id: "a" });
+    const code = JSON.parse(setCellType(nb, 1, "code")).cells[1];
+    expect(code).toMatchObject({ cell_type: "code", execution_count: null, outputs: [], source: ["# hi"], id: "b" });
+    expect(() => setCellType(nb, 5, "code")).toThrow(/no longer/);
   });
 });
