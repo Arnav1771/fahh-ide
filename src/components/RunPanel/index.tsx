@@ -67,6 +67,11 @@ function detectLanguage(filePath: string, docLanguage: string): string {
     bash: "bash",
     rb: "ruby",
     php: "php",
+    kt: "kotlin",
+    r: "r",
+    lua: "lua",
+    pl: "perl",
+    dart: "dart",
   };
   return extMap[ext] ?? docLanguage;
 }
