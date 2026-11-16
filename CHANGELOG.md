@@ -70,6 +70,37 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.2] — 2026-11-17
+
+### Security
+
+- **Workspace trust.** The first time you open a folder, Fahh asks whether you trust it. Until you do, it won't run the folder's own Python (`.venv`), start language servers that execute project code, or run its tasks. The status bar shows "Restricted"; change it any time with "Manage Workspace Trust".
+- A project's `.fahh/permissions.json` can no longer pre-approve the agent's commands; "always allow" answers now live only in your own app data. Rules you saved in a project before will be asked once more.
+- Run can no longer be tricked by file names: names like `a$(cmd).py` are passed safely on Windows, macOS, Linux and in WSL folders.
+- Stop only stops runs Fahh started, and quitting Fahh (or a crash, on Windows) ends every program it launched: runs, language servers, debug adapters, formatters and agent commands.
+- Tighter app permissions and a content security policy; the clipboard no longer asks for permission inside Fahh's own window.
+- Updated dompurify and markdown-it, which had known vulnerabilities.
+
+### Added
+
+- Notebook cells: "+ Code" and "+ Markdown" between cells and at the end, and a toolbar on each cell to run, move up, move down and delete.
+
+### Fixed
+
+- With auto-save on, closing a tab or window saves instead of asking "discard the changes?".
+- Notebooks: edits are never lost and outputs land in the right cell (only the editor writes the file now).
+- The Problems panel and status bar show your real errors for the open folder (they used to start with two sample entries) and the counts agree.
+- TypeScript completion and hover work again when no TypeScript language server is installed.
+- Saving keeps a file's encoding, BOM and permissions (including the executable bit on WSL files), and never corrupts a file that isn't UTF-8.
+- Replace with `$1` inserts `$1` literally in plain-text mode.
+- Save All saves every open file.
+- Run for C, C++, Java and Kotlin works on Windows with spaces and `&` in the path; TypeScript Run and npm installs work on Windows.
+- New Window opens empty; opening Settings no longer hides the Explorer; theme names show correctly in the status bar; copy buttons say so when copying fails.
+
+### Removed
+
+- Made-up data in the Extensions panel (invented download counts and ratings) and in a few other places. Everything shown is now real, or an honest empty or offline state.
+
 ## [0.8.1] — 2026-11-10
 
 ### Added
