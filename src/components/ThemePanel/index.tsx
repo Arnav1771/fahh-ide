@@ -5,6 +5,7 @@ import type { ConvertedTheme } from "../../lib/vscodeTheme";
 import type { ThemeId } from "../../lib/types";
 import { useIconThemeStore, ICON_THEMES } from "../../store/iconThemeStore";
 import { renderFileIcon, renderFolderIcon } from "../../lib/iconTheme";
+import { isLightColour } from "../../lib/termTheme";
 
 // ─── Theme definitions ────────────────────────────────────────────────────────
 
@@ -318,6 +319,8 @@ export function applyThemeCssVars(def: ThemeDef): void {
   }
   // Lets a theme style more than colours (see the fahh-gold rules in index.css).
   root.dataset.fahhTheme = def.id;
+  // Native controls (checkboxes, selects, scrollbars) drawn to match: light themes, extension ones included.
+  root.style.colorScheme = isLightColour(def.cssVars["--fahh-bg"] ?? "") ? "light" : "dark";
   // Notify Monaco (and any other listener) that the theme changed so they can
   // update their own theme API — CSS variables alone don't reach Monaco's
   // internal renderer in the native Tauri build.
@@ -409,7 +412,7 @@ export function ThemePanel() {
               }`}
             >
               {/* Preview icon badges */}
-              <div className="flex items-center gap-1 shrink-0 px-1.5 py-1 rounded bg-black/30 border border-white/5">
+              <div className="flex items-center gap-1 shrink-0 px-1.5 py-1 rounded bg-fahh-bg border border-fahh-surface">
                 {renderFolderIcon("src", true, iconDef.id)}
                 {renderFileIcon("app.tsx", iconDef.id)}
                 {renderFileIcon("main.rs", iconDef.id)}
