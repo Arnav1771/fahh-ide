@@ -43,7 +43,8 @@ fn join_in_package(base_dir: &str, rel: &str) -> String {
 fn read_entry(zip: &mut zip::ZipArchive<Cursor<Vec<u8>>>, name: &str) -> Option<String> {
     let mut f = zip.by_name(name).ok()?;
     let mut s = String::new();
-    f.read_to_string(&mut s).ok()?;
+    // A theme or package.json is small; a crafted .vsix could inflate one entry to gigabytes.
+    f.take(8 << 20).read_to_string(&mut s).ok()?;
     Some(s.trim_start_matches('\u{feff}').to_string())
 }
 
