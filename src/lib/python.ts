@@ -51,11 +51,12 @@ export const lastLines = (lines: string[], n = 8) => lines.filter((l) => l.trim(
 export type KernelEvent =
   | { type: "ready"; version: string }
   | { type: "missing"; module: string }
-  | { type: "busy"; cell: number }
-  | { type: "output"; cell: number; output: NotebookOutput }
-  | { type: "clear"; cell: number }
-  | { type: "done"; cell: number; count: number | null; status: "ok" | "error" }
-  | { type: "cancelled"; cells: number[] }
+  | { type: "busy"; cell: string }
+  | { type: "output"; cell: string; output: NotebookOutput }
+  | { type: "clear"; cell: string }
+  /** `outputs`: the run's raw nbformat outputs, for the view to save into the cell. */
+  | { type: "done"; cell: string; count: number | null; status: "ok" | "error"; outputs: unknown[] }
+  | { type: "cancelled"; cells: string[] }
   | { type: "restarted" }
   | { type: "fatal"; message: string }
   | { type: "inspect"; id: string; state: KernelState };
@@ -69,7 +70,7 @@ export function parseKernelLine(line: string): KernelEvent | null {
     return null;
   }
   if (!o || typeof o !== "object") return null;
-  const cell = Number(o.cell);
+  const cell = String(o.cell ?? "");
   switch (o.type) {
     case "ready":
       return { type: "ready", version: String(o.version ?? "") };
@@ -83,9 +84,9 @@ export function parseKernelLine(line: string): KernelEvent | null {
       return output ? { type: "output", cell, output } : null;
     }
     case "done":
-      return { type: "done", cell, count: typeof o.count === "number" ? o.count : null, status: o.status === "error" ? "error" : "ok" };
+      return { type: "done", cell, count: typeof o.count === "number" ? o.count : null, status: o.status === "error" ? "error" : "ok", outputs: Array.isArray(o.outputs) ? o.outputs : [] };
     case "cancelled":
-      return { type: "cancelled", cells: Array.isArray(o.cells) ? o.cells.map(Number) : [] };
+      return { type: "cancelled", cells: Array.isArray(o.cells) ? o.cells.map(String) : [] };
     case "restarted":
       return { type: "restarted" };
     case "inspect":
@@ -104,10 +105,11 @@ export interface CellRun {
   outputs: NotebookOutput[];
 }
 
-export type CellRuns = Record<number, CellRun>;
+/** Keyed by cell id (nbformat 4.5), never by position. */
+export type CellRuns = Record<string, CellRun>;
 
 /** Mark cells queued (Run cell / Run all) before their commands go out. */
-export const queueCells = (runs: CellRuns, cells: number[]): CellRuns => {
+export const queueCells = (runs: CellRuns, cells: string[]): CellRuns => {
   const next = { ...runs };
   for (const c of cells) next[c] = { status: "queued", count: runs[c]?.count ?? null, outputs: runs[c]?.outputs ?? [] };
   return next;
