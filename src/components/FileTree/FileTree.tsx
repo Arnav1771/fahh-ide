@@ -14,6 +14,7 @@ import { runCommand } from "../../lib/commands";
 import { ChevronsDownUp, Copy, Edit2, ExternalLink, File, FilePlus, Folder, FolderOpen, FolderPlus, RefreshCw, Trash2 } from "lucide-react";
 import { FileIcon, FolderIcon } from "../../lib/iconTheme";
 import { ContextMenu, type MenuEntry } from "../ContextMenu";
+import { copyText } from "../../lib/clipboard";
 
 type NewKind = "file" | "folder";
 interface NewEntry {
@@ -342,10 +343,10 @@ export function FileTree() {
             { label: "Delete", icon: <Trash2 size={14} />, action: () => void handleDelete(entry) },
           ]
         : []),
-      { label: "Copy Path", icon: <Copy size={14} />, action: () => void navigator.clipboard.writeText(entry.path).catch(() => {}) },
+      { label: "Copy Path", icon: <Copy size={14} />, action: () => void copyText(entry.path) },
       {
         label: "Copy Relative Path",
-        action: () => void navigator.clipboard.writeText(root ? entry.path.slice(root.length).replace(/^[\\/]/, "") : entry.path).catch(() => {}),
+        action: () => void copyText(root ? entry.path.slice(root.length).replace(/^[\\/]/, "") : entry.path),
       },
       { label: "Reveal in File Explorer", icon: <ExternalLink size={14} />, action: () => revealPath(entry.path).catch((e) => toast(String(e), "error")) },
       "separator",

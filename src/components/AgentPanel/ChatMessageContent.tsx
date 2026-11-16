@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Check, Copy, FileInput } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
+import { copyText } from "../../lib/clipboard";
 
 interface CodeBlockProps {
   code: string;
@@ -12,13 +13,9 @@ export function CodeBlock({ code, language }: CodeBlockProps) {
   const activeTab = useEditorStore((s) => s.activeTab);
 
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy code:", err);
-    }
+    if (!(await copyText(code))) return;
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleInsert = () => {

@@ -17,6 +17,7 @@ import {
   useTerminalStore,
   type TerminalSession,
 } from "../../store/terminalStore";
+import { copyText } from "../../lib/clipboard";
 
 const ANSI = new RegExp(
   "\\u001b\\[[0-9;?]*[ -/]*[@-~]|\\u001b\\][^\\u0007]*\\u0007",
@@ -182,7 +183,7 @@ export function XtermPane({
       const k = e.key.toLowerCase();
       if (k === "c" && (e.shiftKey || term.hasSelection())) {
         if (term.hasSelection())
-          void navigator.clipboard?.writeText(term.getSelection());
+          void copyText(term.getSelection());
         e.preventDefault();
         return false;
       }

@@ -33,6 +33,7 @@ import { useSettingsStore } from "../../store/settingsStore";
 import { useTerminalStore } from "../../store/terminalStore";
 import { write } from "../../lib/ptySessions";
 import { revealView } from "../../lib/workbench";
+import { copyText } from "../../lib/clipboard";
 
 export interface KernelChoice {
   program: string;
@@ -483,7 +484,7 @@ function KernelBanner({ k }: { k: NotebookKernel }) {
           <button
             type="button"
             className={`${btn} text-fahh-muted hover:text-fahh-text`}
-            onClick={() => void navigator.clipboard?.writeText(command).then(() => setCopied(true), () => {})}
+            onClick={() => void copyText(command).then((ok) => ok && setCopied(true))}
           >
             <Copy size={12} aria-hidden="true" /> {copied ? "Copied" : "Copy"}
           </button>
