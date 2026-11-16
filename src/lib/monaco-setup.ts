@@ -16,6 +16,7 @@ import { loader } from "@monaco-editor/react";
 import { initEditorExtras } from "./editorExtras";
 import { markersToDiagnostics, useDiagnosticsStore } from "../store/diagnosticsStore";
 import { useFileStore } from "../store/fileStore";
+import { useLspStore } from "../store/lspStore";
 
 import editorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
@@ -59,8 +60,16 @@ loader.config({ monaco });
 
 // The Problems panel: every marker in the open folder, refreshed when markers change or
 // the folder does (so another folder's problems never linger).
+// While typescript-language-server is up, Monaco's own TS worker still checks every file
+// (its providers cannot be switched off at runtime), so each error would be listed twice.
+const shadowedOwners = () => (useLspStore.getState().servers.typescript?.state === "ready" ? ["typescript", "javascript"] : []);
 const syncProblems = () =>
-  useDiagnosticsStore.setState({ diagnostics: markersToDiagnostics(monaco.editor.getModelMarkers({}), useFileStore.getState().root) });
+  useDiagnosticsStore.setState({
+    diagnostics: markersToDiagnostics(monaco.editor.getModelMarkers({}), useFileStore.getState().root, shadowedOwners()),
+  });
+useLspStore.subscribe((s, prev) => {
+  if (s.servers.typescript?.state !== prev.servers.typescript?.state) syncProblems();
+});
 monaco.editor.onDidChangeMarkers(syncProblems);
 useFileStore.subscribe((s, prev) => {
   if (s.root !== prev.root) syncProblems();

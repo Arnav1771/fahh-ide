@@ -9,8 +9,10 @@ use tauri::{plugin::TauriPlugin, Runtime};
 /// The app's own origins: the bundled page and `vite dev`.
 pub fn is_app_origin(uri: &str) -> bool {
     let u = uri.to_ascii_lowercase();
-    ["http://tauri.localhost", "https://tauri.localhost", "tauri://localhost", "http://localhost:1420"]
+    let dev: &[&str] = if cfg!(debug_assertions) { &["http://localhost:1420"] } else { &[] };
+    ["http://tauri.localhost", "https://tauri.localhost", "tauri://localhost"]
         .iter()
+        .chain(dev)
         .any(|o| u == *o || u.starts_with(&format!("{o}/")))
 }
 

@@ -5,7 +5,7 @@
 Needs only ipykernel (which brings jupyter_client). Starts that interpreter's own
 ipykernel, then reads JSON commands on stdin, one per line:
 
-    {"op": "run", "cell": 3, "code": "df.head()"}
+    {"op": "run", "cell": "a1b2c3d4", "code": "df.head()"}   (cell: the nbformat 4.5 cell id)
     {"op": "inspect", "id": "k1"}                      (live variables, for Generate code)
     {"op": "interrupt"} | {"op": "restart"} | {"op": "shutdown"}
 
@@ -15,16 +15,18 @@ and answers with JSON lines on stdout:
 
     {"type": "ready", "version": "3.11.4"}
     {"type": "missing", "module": "ipykernel"}       (then exits 3)
-    {"type": "busy", "cell": 3}
-    {"type": "output", "cell": 3, "output": {...nbformat 4 output...}}
-    {"type": "clear", "cell": 3}
-    {"type": "done", "cell": 3, "count": 7, "status": "ok" | "error"}
-    {"type": "cancelled", "cells": [4, 5]}            (queued runs dropped after an error/interrupt)
+    {"type": "busy", "cell": "a1b2c3d4"}
+    {"type": "output", "cell": "a1b2c3d4", "output": {...nbformat 4 output...}}
+    {"type": "clear", "cell": "a1b2c3d4"}
+    {"type": "done", "cell": "a1b2c3d4", "count": 7, "status": "ok" | "error", "outputs": [...]}
+    {"type": "cancelled", "cells": ["e5f6", "a7b8"]}          (queued runs dropped after an error/interrupt)
     {"type": "inspect", "id": "k1", "vars": [...], "modules": ["import numpy as np"], "error"?: "..."}
     {"type": "restarted"} | {"type": "fatal", "message": "..."}
 
-After each cell its outputs and execution count are written into the .ipynb.
-`inspect` runs silently: no execution count, no history, nothing saved to the file.
+This runner never writes the .ipynb: the editor is the file's only writer and saves each
+`done` cell's outputs into the cell with that id. (The runner used to save by cell index
+while the editor saved edits, and the two overwrote each other.)
+`inspect` runs silently: no execution count, no history.
 
 Self-check (no ipykernel needed):  python fahh_kernel.py --self-check
 """
@@ -152,30 +154,8 @@ def to_output(msg_type, c):
     return None
 
 
-def save_cell(index, outputs, count):
-    """Write one cell's results into the notebook; skipped if the cell is gone or no longer code."""
-    try:
-        with open(NOTEBOOK, encoding="utf-8") as f:
-            nb = json.load(f)
-        cells = nb.get("cells", [])
-        if index >= len(cells) or cells[index].get("cell_type") != "code":
-            return
-        cells[index]["outputs"] = outputs
-        cells[index]["execution_count"] = count
-        for o in outputs:
-            if o["output_type"] == "execute_result":
-                o["execution_count"] = count
-        tmp = NOTEBOOK + ".fahh-tmp"
-        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
-            json.dump(nb, f, indent=1, ensure_ascii=False)
-            f.write("\n")
-        os.replace(tmp, NOTEBOOK)
-    except Exception as e:  # noqa: BLE001 - report, keep the kernel going
-        emit(type="fatal", message=f"Could not save outputs to the notebook: {e}")
-
-
-def execute(km, kc, index, code):
-    emit(type="busy", cell=index)
+def execute(km, kc, cell, code):
+    emit(type="busy", cell=cell)
     msg_id = kc.execute(code, store_history=True, allow_stdin=False)
     outputs, count, status = [], None, "ok"
     while True:
@@ -197,16 +177,17 @@ def execute(km, kc, index, code):
             count = c.get("execution_count")
         elif t == "clear_output":
             outputs = []
-            emit(type="clear", cell=index)
+            emit(type="clear", cell=cell)
         else:
             out = to_output(t, c)
             if out is not None:
                 if t == "error":
                     status = "error"
                 outputs.append(out)
-                emit(type="output", cell=index, output=out)
-    save_cell(index, outputs, count)
-    emit(type="done", cell=index, count=count, status=status)
+                emit(type="output", cell=cell, output=out)
+    # The editor owns the .ipynb: it saves these into the cell with this id. Two writers
+    # (this runner by cell index, the editor for edits) used to overwrite each other.
+    emit(type="done", cell=cell, count=count, status=status, outputs=outputs)
     return status
 
 
@@ -280,7 +261,7 @@ def main():
         cmd = work.get()
         op = cmd.get("op")
         if op == "run":
-            if execute(km, kc, int(cmd["cell"]), cmd.get("code", "")) == "error":
+            if execute(km, kc, str(cmd["cell"]), cmd.get("code", "")) == "error":
                 drop_queued()  # like Jupyter: Run all stops at the first error
         elif op == "inspect":
             inspect(kc, str(cmd.get("id", "")))

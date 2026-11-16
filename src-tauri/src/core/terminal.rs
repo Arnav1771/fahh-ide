@@ -288,7 +288,7 @@ mod shell_tests {
     fn wsl_runs_in_the_linux_folder() {
         let c = shell_command_for("ls -la", &[], WSL_DIR, Some("wsl"), true);
         assert_eq!(c.get_program(), "wsl.exe");
-        assert_eq!(argv(&c), ["-d", "Ubuntu", "--cd", "/home/dell/proj", "--", "bash", "-lc", "ls -la"]);
+        assert_eq!(argv(&c), ["-d", "Ubuntu", "--cd", "/home/dell/proj", "--exec", "bash", "-lc", "ls -la"]);
     }
 
     #[test]

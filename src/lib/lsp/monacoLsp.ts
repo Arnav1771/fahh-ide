@@ -3,8 +3,9 @@
  * workspace edits. One instance for the app (`getLspService`), created by `LspBridge`.
  *
  * Who answers what, per language (no doubled suggestions):
- *  - a primary server is ready  -> its providers are registered and Monaco's built-in
- *    TS/JS/CSS/HTML/JSON worker features for that language are switched off;
+ *  - a primary server is ready  -> its providers are registered; Monaco's built-in JSON
+ *    features stand down (the TS/CSS/HTML modes cannot be switched at runtime, see
+ *    `setBuiltins`, so their workers keep answering beside the server);
  *  - no server (missing, starting, failed) -> the built-in workers answer, as before.
  * Extra servers (ESLint, Ruff, Tailwind) only add to whatever the primary source says.
  */
@@ -51,6 +52,26 @@ export interface LspServiceDeps {
   onStatus?(server: string, status: string, detail?: string): void;
   onDiagnostics?(server: string, uri: string, diagnostics: LspDiagnostic[]): void;
   windows: boolean;
+}
+
+type BuiltinDefaults = { modeConfiguration?: Record<string, boolean>; setModeConfiguration?(c: Record<string, boolean>): void };
+
+const OVERLAPPING = ["completionItems", "hovers", "definitions", "references", "documentHighlights", "rename", "signatureHelp", "codeActions", "inlayHints", "diagnostics"];
+
+/** Set a mode's overlapping features to `on`; no call (and no worker restart) when nothing changes. */
+export function toggleBuiltins(d: BuiltinDefaults, on: boolean): boolean {
+  if (!d.setModeConfiguration) return false;
+  const current = d.modeConfiguration ?? {};
+  const next: Record<string, boolean> = { ...current };
+  let changed = false;
+  for (const k of OVERLAPPING) {
+    if (k in current && current[k] !== on) {
+      next[k] = on;
+      changed = true;
+    }
+  }
+  if (changed) d.setModeConfiguration(next);
+  return changed;
 }
 
 export const APPLY_CODE_ACTION = "fahh.lsp.applyCodeAction";
@@ -161,22 +182,20 @@ export class LspService {
     this.deps.onStatus?.(server, status, detail);
   }
 
-  /** Switch Monaco's own worker features for a server's languages on or off. */
+  /**
+   * Switch Monaco's own worker features for a server's languages on or off.
+   *
+   * Only the JSON mode re-registers its providers when `setModeConfiguration` is called
+   * (monaco-editor 0.52). The TypeScript, CSS and HTML modes read the configuration once
+   * and, on any change, just dispose their worker: requests already in flight on it never
+   * settle, which left completion on "Loading..." and hover blank every time a missing
+   * typescript-language-server failed to start again. So those modes are never touched,
+   * and the built-in worker keeps answering (beside a ready server, as it always did).
+   */
   private setBuiltins(server: string, on: boolean): void {
-    const L = this.monaco.languages as unknown as Record<string, Record<string, { modeConfiguration?: Record<string, boolean>; setModeConfiguration?(c: Record<string, boolean>): void }>>;
-    const targets: { modeConfiguration?: Record<string, boolean>; setModeConfiguration?(c: Record<string, boolean>): void }[] = [];
-    if (server === "typescript") targets.push(L.typescript?.typescriptDefaults, L.typescript?.javascriptDefaults);
-    if (server === "css") targets.push(L.css?.cssDefaults, L.css?.scssDefaults, L.css?.lessDefaults);
-    if (server === "html") targets.push(L.html?.htmlDefaults);
-    if (server === "json") targets.push(L.json?.jsonDefaults);
-    const overlapping = ["completionItems", "hovers", "definitions", "references", "documentHighlights", "rename", "signatureHelp", "codeActions", "inlayHints", "diagnostics"];
-    for (const d of targets) {
-      if (!d?.setModeConfiguration) continue;
-      const current = d.modeConfiguration ?? {};
-      const next: Record<string, boolean> = { ...current };
-      for (const k of overlapping) if (k in current) next[k] = on;
-      d.setModeConfiguration(next);
-    }
+    if (server !== "json") return;
+    const d = (this.monaco.languages as unknown as { json?: { jsonDefaults?: BuiltinDefaults } }).json?.jsonDefaults;
+    if (d) toggleBuiltins(d, on);
   }
 
   // ── Documents ──────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
-import { createRunRouter, type RunRouter } from "../../lib/runEvents";
+import { createRunRouter, type RunRouter, keepWhileMounted } from "../../lib/runEvents";
 import { Play, Square } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { useRunnerStore } from "../../store/runnerStore";
@@ -67,6 +67,11 @@ function detectLanguage(filePath: string, docLanguage: string): string {
     bash: "bash",
     rb: "ruby",
     php: "php",
+    kt: "kotlin",
+    r: "r",
+    lua: "lua",
+    pl: "perl",
+    dart: "dart",
   };
   return extMap[ext] ?? docLanguage;
 }
@@ -147,12 +152,13 @@ export function RunPanel() {
       noteLocalUrls(event.payload.line); // a dev server's "Local: http://localhost:5173"
       router.output(event.payload);
     }).then((fn) => {
+      if (!mounted) return fn(); // unmounted before listen() resolved: never leave it subscribed
       unlisteners.push(fn);
       unlistenRef.current = fn;
     });
     listen<{ pid: number; exit_code: number | null; duration_ms: number }>("runner://exit", (event) => {
       if (mounted) router.exit(event.payload);
-    }).then((fn) => unlisteners.push(fn));
+    }).then(keepWhileMounted(() => mounted, (fn) => unlisteners.push(fn)));
 
     return () => {
       mounted = false;

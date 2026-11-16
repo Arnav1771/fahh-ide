@@ -44,6 +44,7 @@ import {
 } from "../../lib/workbench";
 import { EDITOR_PREFIX, HOME_PREFIX } from "../../lib/dockLayout";
 import "../../views";
+import { copyText } from "../../lib/clipboard";
 
 /** Views whose shortcut App.tsx handles itself (it needs to know where focus is). */
 const APP_OWNED_KEYS = new Set(["agent", "settings"]);
@@ -124,11 +125,11 @@ function EditorTab({ api, containerApi, params }: IDockviewPanelHeaderProps<{ pa
     { label: "Close to the Right", action: run(closeEditorsToRight) },
     { label: "Close All", action: run((p) => closeEditorGroup(p.group)) },
     "separator",
-    { label: "Copy Path", action: () => void navigator.clipboard.writeText(path).catch(() => {}) },
+    { label: "Copy Path", action: () => void copyText(path) },
     {
       label: "Copy Relative Path",
       disabled: !root || !path.startsWith(root),
-      action: () => void navigator.clipboard.writeText(path.slice((root ?? "").length).replace(/^[\\/]/, "")).catch(() => {}),
+      action: () => void copyText(path.slice((root ?? "").length).replace(/^[\\/]/, "")),
     },
     {
       label: "Reveal in File Explorer",

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
-import { useDiagnosticsStore, type DiagnosticItem } from "../../store/diagnosticsStore";
+import { problemCounts, useDiagnosticsStore } from "../../store/diagnosticsStore";
 import { FileIcon, FolderIcon } from "../../lib/iconTheme";
 import { openFilePath } from "../../hooks/useWorkspace";
 import type { FileEntry } from "../../lib/types";
@@ -75,14 +75,9 @@ export function Breadcrumbs({ path }: { path?: string } = {}) {
   }, [activeTab, root]);
 
   const fileErrors = useMemo(() => {
-    if (!activeTab) return 0;
-    const norm = activeTab.replace(/\\/g, "/");
-    return diagnostics.filter(
-      (d: DiagnosticItem) =>
-        d.path.replace(/\\/g, "/") === norm ||
-        d.path.endsWith(norm.split("/").pop() ?? "")
-    ).length;
-  }, [activeTab, diagnostics]);
+    const c = problemCounts(diagnostics, activeTab ?? null, root);
+    return c ? c.errors + c.warnings : 0;
+  }, [activeTab, diagnostics, root]);
 
   if (!activeTab || crumbs.length === 0) return null;
 

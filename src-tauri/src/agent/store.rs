@@ -13,7 +13,13 @@ pub fn data_dir() -> PathBuf {
     std::env::var_os("FAHH_DATA_DIR")
         .map(PathBuf::from)
         .or_else(|| dirs::data_dir().map(|d| d.join("fahh")))
-        .unwrap_or_else(|| PathBuf::from(".fahh-data"))
+        // never a relative path (it would land in whatever folder Fahh was started from)
+        .or_else(|| dirs::home_dir().map(|h| h.join(".fahh").join("data")))
+        .unwrap_or_else(|| std::env::temp_dir().join(format!("fahh-data-{}", whoami_fallback())))
+}
+
+fn whoami_fallback() -> String {
+    std::env::var("USER").or_else(|_| std::env::var("USERNAME")).unwrap_or_else(|_| "user".into())
 }
 
 pub(crate) fn fnv(s: &str) -> String {

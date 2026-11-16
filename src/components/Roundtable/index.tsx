@@ -7,6 +7,7 @@ import {
   uploadPicture, watch, ago, forgetTable, gaveUp, loadRecent, recentEntry, rejoinTable, remember, saveRecent,
   type AgentEvent, type RecentTable, type RoomView, type Seat, type Turn,
 } from "../../lib/roundtable";
+import { copyText } from "../../lib/clipboard";
 
 const input = "w-full rounded border border-fahh-surface bg-fahh-sidebar px-2 py-1 text-xs text-fahh-text outline-none focus:border-fahh-accent";
 const primary = "px-3 py-1.5 rounded bg-fahh-accent text-fahh-bg font-semibold text-xs hover:brightness-110 disabled:opacity-40 transition-all";
@@ -69,7 +70,7 @@ function Lobby({ onSeated, recent, said, onForget }: { onSeated: (s: Seat) => vo
         saveServer(base);
       } else ({ base, code } = parseInvite(link));
       const seat = await joinTable(base, code, name);
-      if (how === "start") await navigator.clipboard?.writeText(`${base}/${code}`).catch(() => {});
+      if (how === "start") await copyText(`${base}/${code}`);
       onSeated(seat);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -182,8 +183,7 @@ function Table({ seat, onLeave }: { seat: Seat; onLeave: (why: "left" | "ended")
 
   const flash = (m: string) => (setNotice(m), setTimeout(() => setNotice(null), 2200));
   const copy = async (text: string, said: string) => {
-    await navigator.clipboard?.writeText(text).catch(() => {});
-    flash(said);
+    if (await copyText(text)) flash(said);
   };
   const leave = async () => {
     await api("/leave", { method: "POST", body: {} }).catch(() => {});
@@ -424,7 +424,8 @@ function Composer({ room, seat, api, onError }: { room: RoomView; seat: Seat; ap
           if (p.type !== "drop") return setDropping(inside(p.position));
           setDropping(false);
           if (!inside(p.position) || !p.paths.length) return;
-          const { readFile } = await import("@tauri-apps/plugin-fs");
+          const { invoke } = await import("@tauri-apps/api/core");
+          const readFile = (path: string) => invoke<ArrayBuffer>("read_picture", { path });
           const files = await Promise.all(
             p.paths.map(async (path) => {
               const name = path.split(/[\\/]/).pop() ?? path;

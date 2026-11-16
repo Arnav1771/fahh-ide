@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGeneratePrompt, cellKeyCommand, describeKernel, insertCell, insertCodeCell, moveCell, parseInspect, removeCell, setCellSource, setCellType, stripFences, toLines } from "./notebookGen";
+import { buildGeneratePrompt, cellKeyCommand, describeKernel, ensureCellIds, insertCell, insertCodeCell, moveCell, parseInspect, removeCell, setCellOutputs, setCellSource, setCellType, stripFences, toLines } from "./notebookGen";
 import { parseNotebook, type NotebookCell } from "./notebook";
 import { parseKernelLine } from "./python";
 
@@ -164,5 +164,39 @@ describe("notebook command-mode keys", () => {
     expect(cellKeyCommand("b", true, false)).toBeNull();
     expect(cellKeyCommand("x", false, false)).toBeNull();
     expect(cellKeyCommand("Enter", false, false)).toBeNull();
+  });
+});
+
+describe("one writer, stable ids (ensureCellIds, setCellOutputs)", () => {
+  const nb = (cells: object[], minor = 4) => JSON.stringify({ nbformat: 4, nbformat_minor: minor, metadata: {}, cells });
+  const code = (src: string, extra: object = {}) => ({ cell_type: "code", execution_count: null, metadata: {}, outputs: [], source: [src], ...extra });
+
+  it("gives every cell a unique id once, and upgrades to nbformat 4.5", () => {
+    const json = ensureCellIds(nb([code("a"), code("b", { id: "dup" }), code("c", { id: "dup" })]));
+    const out = JSON.parse(json);
+    const ids = out.cells.map((c: { id: string }) => c.id);
+    expect(new Set(ids).size).toBe(3);
+    expect(ids[1]).toBe("dup");
+    expect(out.nbformat_minor).toBe(5);
+    expect(ensureCellIds(json)).toBe(json);
+  });
+
+  it("saves outputs into the cell with that id, wherever it moved", () => {
+    let json = nb([code("first", { id: "one" }), code("!pip install numpy", { id: "two" })], 5);
+    // The user moves "two" above "one" while it runs: position 1 is now "one".
+    json = moveCell(json, 1, -1);
+    const outputs = [{ output_type: "stream", name: "stdout", text: ["ok\n"] }, { output_type: "execute_result", data: {}, metadata: {} }];
+    const saved = JSON.parse(setCellOutputs(json, "two", outputs, 3));
+    expect(saved.cells[0].source).toEqual(["!pip install numpy"]);
+    expect(saved.cells[0].outputs[0].text).toEqual(["ok\n"]);
+    expect(saved.cells[0].outputs[1].execution_count).toBe(3);
+    expect(saved.cells[0].execution_count).toBe(3);
+    expect(saved.cells[1].outputs).toEqual([]);
+  });
+
+  it("leaves the file alone when the cell is gone or became markdown", () => {
+    const json = nb([code("x", { id: "one" }), { cell_type: "markdown", id: "md", metadata: {}, source: ["# t"] }], 5);
+    expect(setCellOutputs(json, "gone", [{ output_type: "stream" }], 1)).toBe(json);
+    expect(setCellOutputs(json, "md", [{ output_type: "stream" }], 1)).toBe(json);
   });
 });

@@ -748,7 +748,17 @@ mod tests {
     }
 
     /// `answer` decides every approval the loop asks for (child approvals included).
+    /// Tests write sessions and always-allow rules: into a temp data dir, never the user's.
+    fn test_data_dir() {
+        static ONCE: std::sync::Once = std::sync::Once::new();
+        ONCE.call_once(|| {
+            let dir = std::env::temp_dir().join(format!("fahh-test-data-{}", std::process::id()));
+            std::env::set_var("FAHH_DATA_DIR", dir);
+        });
+    }
+
     fn harness(answer: impl Fn(&AgentEvent) -> Decision + Send + Sync + 'static) -> Harness {
+        test_data_dir();
         let dir = tempfile::tempdir().unwrap();
         let ws = Workspace::new(dir.path().to_str().unwrap()).unwrap();
         let s = Arc::new(Session::new("t".into(), ws, Default::default()));
@@ -924,6 +934,7 @@ mod tests {
         // Saved in the app data dir, never in the project (a repo must not be able to grant itself approval).
         let ws = Workspace::new(h.dir.path().to_str().unwrap()).unwrap();
         let saved = perm::user_rules_path(&super::super::store::data_dir(), &ws);
+        assert!(saved.starts_with(std::env::temp_dir()), "tests must not write the real data dir");
         assert!(std::fs::read_to_string(&saved).unwrap().contains("echo hi"));
         assert!(!h.dir.path().join(".fahh/permissions.json").exists());
         run(&h, mock(vec![turn("", vec![call("2", "run_command", json!({"command": "echo hi"}))]), turn("ok", vec![])]), Mode::Ask, "again", 2).await;

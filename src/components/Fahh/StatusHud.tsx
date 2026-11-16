@@ -3,12 +3,22 @@ import { Braces, CircleX, Sparkles, TriangleAlert, Volume2, VolumeX, Zap } from 
 import { useEditorStore } from "../../store/editorStore";
 import { useLspStore } from "../../store/lspStore";
 import { useFahhStore, INTENSITIES } from "../../store/fahhStore";
+import { problemCounts, useDiagnosticsStore } from "../../store/diagnosticsStore";
+import { useFileStore } from "../../store/fileStore";
 import { DEFAULT_COMBO_WINDOW_MS, formatStreak } from "../../lib/fahhEngine";
 import { runEditorAction } from "../../lib/monacoBridge";
 
 /** Left of the status bar: problems in this file, the clean streak, the combo. */
 export function StatusHud() {
-  const { errors, warnings, combo, lastFahhAt, cleanSince, impact } = useFahhStore();
+  const { errors: hudErrors, warnings: hudWarnings, combo, lastFahhAt, cleanSince, impact } = useFahhStore();
+  const activeTab = useEditorStore((s) => s.activeTab);
+  const root = useFileStore((s) => s.root);
+  const diagnostics = useDiagnosticsStore((s) => s.diagnostics);
+  // The same rows the Problems panel shows, for the file on screen; the HUD's own
+  // (debounced, per-editor) count only for a file outside the open folder.
+  const listed = problemCounts(diagnostics, activeTab, root);
+  const errors = !activeTab ? 0 : listed ? listed.errors : hudErrors;
+  const warnings = !activeTab ? 0 : listed ? listed.warnings : hudWarnings;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 1000);

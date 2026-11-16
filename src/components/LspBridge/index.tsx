@@ -30,6 +30,7 @@ import { openAt } from "../../lib/navigation";
 import { getLspService, LspService, setLspService } from "../../lib/lsp/monacoLsp";
 import { detectProjectTools, extraServersFor, isExtraServer, languagesOf, primaryServerFor } from "../../lib/lsp/servers";
 import { FILE_SAVED_EVENT } from "../../lib/tabActions";
+import { useTrustStore } from "../../store/trustStore";
 
 /**
  * One cooldown for the whole app lifetime, deliberately module-level: it must
@@ -110,6 +111,7 @@ export function LspBridge() {
   const root = useFileStore((s) => s.root);
   const tree = useFileStore((s) => s.tree);
   const toolsRef = useRef<{ eslint: boolean; tailwind: boolean }>({ eslint: false, tailwind: false });
+  const trusted = useTrustStore((s) => s.trusted);
 
   // ── What the project uses (decides ESLint / Tailwind) ──────────────────────
   useEffect(() => {
@@ -127,7 +129,8 @@ export function LspBridge() {
   useEffect(() => {
     const s = service();
     const active = openTabs.find((t) => t.path === activeTab);
-    if (active) {
+    // Restricted mode: no server (they run project code); Monaco's own workers still answer.
+    if (active && (trusted === true || !root)) {
       const primary = primaryServerFor(active.language);
       if (primary) {
         const ws = workspaceFor(active.path);
@@ -143,7 +146,7 @@ export function LspBridge() {
     for (const server of s.client.readyServers()) {
       if (!languagesOf(server).some((l) => languages.has(l))) void s.client.stopServer(server);
     }
-  }, [openTabs, activeTab]);
+  }, [openTabs, activeTab, trusted, root]);
 
   // ── Inbound LSP messages from Tauri ────────────────────────────────────────
   useEffect(() => {

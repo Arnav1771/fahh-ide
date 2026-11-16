@@ -175,7 +175,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
-                    args: vec!["/C".to_string(), shell_cmd],
+                    args: cmd_c_args(&shell_cmd),
                 }
             } else {
                 RunCommand {
@@ -198,7 +198,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
-                    args: vec!["/C".to_string(), shell_cmd],
+                    args: cmd_c_args(&shell_cmd),
                 }
             } else {
                 RunCommand {
@@ -258,7 +258,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
-                    args: vec!["/C".to_string(), shell_cmd],
+                    args: cmd_c_args(&shell_cmd),
                 }
             } else {
                 RunCommand {
@@ -289,12 +289,16 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
     Ok(cmd)
 }
 
-/// The notebook kernel runner (see assets/fahh_kernel.py), written next to the temp dir once per version.
+/// The notebook kernel runner (see assets/fahh_kernel.py), written to the app data dir once per version.
 fn kernel_script() -> Result<String, String> {
     const SCRIPT: &str = include_str!("../../assets/fahh_kernel.py");
-    let path = std::env::temp_dir().join(format!("fahh_kernel_{}.py", env!("CARGO_PKG_VERSION")));
+    // In the user's own data dir, not the shared temp dir: on a multi-user /tmp another user
+    // could plant a script at the predictable name and have it run as this user.
+    let dir = crate::agent::store::data_dir().join("runtime");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
+    let path = dir.join(format!("fahh_kernel_{}.py", env!("CARGO_PKG_VERSION")));
     if std::fs::read_to_string(&path).ok().as_deref() != Some(SCRIPT) {
-        std::fs::write(&path, SCRIPT).map_err(|e| format!("Could not write the notebook runner to {}: {e}", path.display()))?;
+        crate::core::fsutil::write_atomic(&path, SCRIPT.as_bytes()).map_err(|e| format!("Could not write the notebook runner to {}: {e}", path.display()))?;
     }
     Ok(path.to_string_lossy().into_owned())
 }
@@ -425,7 +429,9 @@ pub async fn python_kernels(root: Option<String>) -> Vec<PythonEnv> {
     tauri::async_runtime::spawn_blocking(move || {
         let windows = cfg!(target_os = "windows");
         let mut cands: Vec<(String, String, &'static str)> = Vec::new();
-        for venv in [".venv", "venv"] {
+        // Probing runs the interpreter: a cloned repo's .venv/bin/python is the repo's code.
+        let trusted = root.as_deref().is_some_and(crate::core::trust::is_trusted);
+        for venv in [".venv", "venv"].into_iter().filter(|_| trusted) {
             let ws = pick_python("", root.as_deref(), windows, |p| p.contains(venv) && std::path::Path::new(p).is_file(), String::new);
             if ws.label == venv {
                 cands.push((ws.program, venv.into(), "workspace"));
@@ -529,6 +535,17 @@ fn shell_arg(a: &str, windows: bool) -> Result<String, String> {
     Ok(format!("\"{a}\""))
 }
 
+/// `cmd /D /V:OFF /S /C "<line>"`. The last entry is passed raw (see `CMD_RAW`): through
+/// normal argv quoting Rust escapes the inner `"` as `\"`, which cmd keeps, so every quoted
+/// path split and carried literal quotes. /S strips exactly the outer pair; /V:OFF keeps `!`
+/// literal; /D skips AutoRun.
+fn cmd_c_args(line: &str) -> Vec<String> {
+    vec!["/D".into(), "/V:OFF".into(), "/S".into(), "/C".into(), format!("{CMD_RAW}\"{line}\"")]
+}
+
+/// Marks a `cmd_c_args` line that must reach cmd verbatim (`raw_arg`), not argv-quoted.
+const CMD_RAW: &str = "\u{0}raw:";
+
 fn shell_quote_args(args: &[String], windows: bool) -> Result<String, String> {
     Ok(args.iter().map(|a| shell_arg(a, windows)).collect::<Result<Vec<_>, _>>()?.join(" "))
 }
@@ -588,7 +605,22 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
             let run_cmd = build_run_command(&language, &config.path, &config.args, false, config.interpreter.as_deref())?;
             debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
             let mut c = crate::core::proc::cmd(&run_cmd.program);
-            c.args(&run_cmd.args).current_dir(&cwd);
+            for a in &run_cmd.args {
+                match a.strip_prefix(CMD_RAW) {
+                    #[cfg(windows)]
+                    Some(raw) => {
+                        std::os::windows::process::CommandExt::raw_arg(&mut c, raw);
+                    }
+                    #[cfg(not(windows))]
+                    Some(raw) => {
+                        c.arg(raw);
+                    }
+                    None => {
+                        c.arg(a);
+                    }
+                }
+            }
+            c.current_dir(&cwd);
             (c, run_cmd.program)
         }
     };
@@ -597,12 +629,14 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
     #[cfg(unix)]
     std::os::unix::process::CommandExt::process_group(&mut command, 0);
     let mut child = command
-        .stdin(if language == "kernel" { Stdio::piped() } else { Stdio::inherit() })
+        // A run has no console to read from: EOF instead of the app's own stdin.
+        .stdin(if language == "kernel" { Stdio::piped() } else { Stdio::null() })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn process `{program}`: {e}"))?;
 
+    crate::core::proc::own(&child);
     let pid = child.id();
     if let Ok(mut runs) = RUN_PIDS.lock() {
         runs.insert(pid);
@@ -679,6 +713,11 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
             map.remove(&pid);
         }
         
+        // Out of the stoppable set before it is reaped: after wait() the pid may be reused,
+        // and stop_run must never signal whatever process gets it next.
+        if let Ok(mut runs) = RUN_PIDS.lock() {
+            runs.remove(&pid);
+        }
         let exit_code = match child.wait() {
             Ok(status) => status.code().unwrap_or(-1),
             Err(e) => {
@@ -686,9 +725,6 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
                 -1
             }
         };
-        if let Ok(mut runs) = RUN_PIDS.lock() {
-            runs.remove(&pid);
-        }
         let duration_ms = start.elapsed().as_millis() as u64;
 
         info!("run_file: PID={pid} exited with code={exit_code}, duration={duration_ms}ms");
@@ -721,14 +757,31 @@ pub fn stop_run(pid: u32) -> Result<(), String> {
         return Err(format!("No run with process id {pid} is running."));
     }
     info!("stop_run: killing PID={pid}");
-    kill_pid(pid)
+    kill_pid(pid)?;
+    // A program that ignores SIGTERM is killed for good after a grace period.
+    #[cfg(unix)]
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(3));
+        if RUN_PIDS.lock().map(|r| r.contains(&pid)).unwrap_or(false) {
+            // SAFETY: signals our own run's process group.
+            unsafe { libc::kill(-(pid as libc::pid_t), libc::SIGKILL) };
+        }
+    });
+    Ok(())
 }
 
 /// Every process tree that should die with the app: called on exit.
 pub fn stop_all_runs() {
     let pids: Vec<u32> = RUN_PIDS.lock().map(|r| r.iter().copied().collect()).unwrap_or_default();
+    for pid in &pids {
+        let _ = kill_pid(*pid);
+    }
+    // App exit: no grace period to wait out; anything still there gets SIGKILL.
+    #[cfg(unix)]
     for pid in pids {
-        let _ = kill_pid(pid);
+        std::thread::sleep(std::time::Duration::from_millis(50));
+        // SAFETY: signals our own run's process group.
+        unsafe { libc::kill(-(pid as libc::pid_t), libc::SIGKILL) };
     }
 }
 
@@ -758,6 +811,16 @@ fn kill_pid(pid: u32) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn windows_compile_and_run_reaches_cmd_verbatim() {
+        let line = format!("javac {} && java -cp {} Main", shell_arg(r"C:\my files\a&b\Main.java", true).unwrap(), shell_arg(r"C:\my files\a&b", true).unwrap());
+        let args = cmd_c_args(&line);
+        assert_eq!(&args[..4], ["/D", "/V:OFF", "/S", "/C"]);
+        let raw = args[4].strip_prefix(CMD_RAW).expect("raw marker");
+        assert_eq!(raw, r#""javac "C:\my files\a&b\Main.java" && java -cp "C:\my files\a&b" Main""#);
+        assert!(!raw.contains(r#"\""#), "no argv escaping inside the cmd line");
+    }
+
     #[test]
     fn stop_run_refuses_pids_it_did_not_start() {
         assert!(super::stop_run(std::process::id()).is_err());

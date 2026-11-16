@@ -256,6 +256,7 @@ pub async fn debug_start(app: AppHandle, config: DapConfig) -> Result<u32, Strin
         .stderr(Stdio::null())
         .spawn()
         .map_err(|e| for_program(format!("Failed to start {program}: {e}. {}", install_hint(&config.adapter))))?;
+    crate::core::proc::own(&child);
     let mut child = Some(child);
 
     // Wait for the adapter to open its port (up to 10 seconds), failing fast

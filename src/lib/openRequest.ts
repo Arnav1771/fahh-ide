@@ -49,3 +49,9 @@ export async function handleOpenRequest(req: OpenRequest, d: OpenDeps): Promise<
     d.notify(`Could not open ${name}: ${String(err)}`, "error");
   }
 }
+
+/**
+ * Only the first window reopens the last folder. A New Window (label `fahh-win-*`, see
+ * `new_window_label` in app/mod.rs) starts empty, as in VS Code.
+ */
+export const restoresSession = (windowLabel: string | null | undefined): boolean => !windowLabel?.startsWith("fahh-win-");

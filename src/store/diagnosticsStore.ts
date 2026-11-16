@@ -25,6 +25,8 @@ export interface MarkerLike {
   startColumn: number;
   source?: string;
   code?: string | { value: string };
+  /** Who set it: "typescript" (Monaco's worker), "fahh-lsp" (language servers)... */
+  owner?: string;
 }
 
 const SEVERITY: Record<number, DiagnosticItem["severity"]> = { 8: "error", 4: "warning", 2: "info", 1: "hint" };
@@ -35,13 +37,13 @@ const norm = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCas
  * rows, keeping only files inside the open folder. Paths come back in the folder's own
  * spelling (root + separator), so clicking a row opens the same tab the Explorer would.
  */
-export function markersToDiagnostics(markers: readonly MarkerLike[], root: string | null): DiagnosticItem[] {
+export function markersToDiagnostics(markers: readonly MarkerLike[], root: string | null, skipOwners: readonly string[] = []): DiagnosticItem[] {
   if (!root) return [];
   const base = norm(root);
   const sep = root.includes("\\") ? "\\" : "/";
   const out: DiagnosticItem[] = [];
   markers.forEach((m, i) => {
-    if (m.resource.scheme !== "file") return;
+    if (m.resource.scheme !== "file" || (m.owner && skipOwners.includes(m.owner))) return;
     const p = norm(m.resource.fsPath);
     if (!p.startsWith(base + "/")) return;
     const rel = m.resource.fsPath.replace(/\\/g, "/").slice(base.length + 1).split("/").join(sep);
@@ -57,6 +59,25 @@ export function markersToDiagnostics(markers: readonly MarkerLike[], root: strin
     });
   });
   return out;
+}
+
+/**
+ * Errors and warnings the Problems panel lists for one file: the status bar and the
+ * breadcrumb count from here so all three always agree. `null` when the file is not
+ * inside the open folder (the Problems panel does not list it).
+ */
+export function problemCounts(diagnostics: readonly DiagnosticItem[], path: string | null, root: string | null): { errors: number; warnings: number } | null {
+  if (!path || !root) return null;
+  const p = norm(path);
+  if (!p.startsWith(norm(root) + "/")) return null;
+  let errors = 0;
+  let warnings = 0;
+  for (const d of diagnostics) {
+    if (norm(d.path) !== p) continue;
+    if (d.severity === "error") errors++;
+    else if (d.severity === "warning") warnings++;
+  }
+  return { errors, warnings };
 }
 
 export const useDiagnosticsStore = create<DiagnosticsStore>((set) => ({

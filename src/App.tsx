@@ -12,13 +12,15 @@ import { runDebugAction, runWithoutDebugging } from "./lib/debugActions";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
 import { Toasts } from "./components/Toasts";
-import { saveActive, saveAll, unsavedMessage } from "./lib/tabActions";
-import { handleOpenRequest } from "./lib/openRequest";
+import { flushAutoSave, saveActive, saveAll, unsavedMessage } from "./lib/tabActions";
+import { handleOpenRequest, restoresSession } from "./lib/openRequest";
 import { installCli, openNewWindow, readFile, takePendingOpen } from "./lib/tauri";
 import { useToastStore } from "./store/toastStore";
 import type { OpenRequest } from "./lib/types";
 import { markWelcomeSeen, shouldShowWelcome } from "./lib/welcome";
 import { LspBridge } from "./components/LspBridge";
+import { RestrictedModeItem, WorkspaceTrustGate } from "./components/WorkspaceTrust";
+import { useTrustStore } from "./store/trustStore";
 import { initFahhSfx, teardownFahhSfx } from "./lib/fahh";
 import { useThemeStore } from "./store/themeStore";
 import { useFahhStore, type Intensity } from "./store/fahhStore";
@@ -70,6 +72,7 @@ import {
   toggleZone,
   visibleViewIds,
 } from "./lib/workbench";
+import { copyText } from "./lib/clipboard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -169,7 +172,6 @@ export default function App() {
     [sessionSearch]
   );
   const [quickOpen, setQuickOpen] = useState(false);
-  const cursorPosition = useEditorStore((s) => s.cursorPosition);
   const activeTab = useEditorStore((s) => s.activeTab);
   const tree = useFileStore((s) => s.tree);
   const { openFileInEditor, openFolder } = useWorkspace();
@@ -190,8 +192,14 @@ export default function App() {
     let off: (() => void) | undefined;
     let gone = false;
     // Session restore: nothing asked for on the command line, so reopen the last folder (or workspace).
-    const restoreLast = () => {
+    const restoreLast = async () => {
       if (!useSettingsStore.getState().restoreSession || useFileStore.getState().root) return;
+      try {
+        const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+        if (!restoresSession(getCurrentWebviewWindow().label)) return;
+      } catch {
+        // not in Tauri (tests, browser preview): behave like the first window
+      }
       // "Reset session and reload" (ErrorBoundary): skip one restore so a crash can't loop.
       try {
         if (localStorage.getItem("fahh-skip-restore")) return void localStorage.removeItem("fahh-skip-restore");
@@ -201,7 +209,7 @@ export default function App() {
     };
     takePendingOpen()
       .then((req) => (req ? run(req) : restoreLast()))
-      .catch(restoreLast);
+      .catch(() => restoreLast());
     import("@tauri-apps/api/webviewWindow")
       .then(({ getCurrentWebviewWindow }) =>
         getCurrentWebviewWindow().listen<OpenRequest>("fahh://open", (e) => void run(e.payload))
@@ -249,10 +257,10 @@ export default function App() {
 
   // Apply theme CSS vars on mount and whenever the active theme changes
   const installedThemes = useExtensionThemes((s) => s.themes);
+  const activeThemeDef = useMemo(() => allThemes(installedThemes).find((d) => d.id === activeTheme), [activeTheme, installedThemes]);
   useEffect(() => {
-    const def = allThemes(installedThemes).find((d) => d.id === activeTheme);
-    if (def) applyThemeCssVars(def);
-  }, [activeTheme, installedThemes]);
+    if (activeThemeDef) applyThemeCssVars(activeThemeDef);
+  }, [activeThemeDef]);
 
   // Fahh SFX. Errors from the backend (builds, language servers) go through
   // the HUD store, which owns the cooldown, the combo and the mute.
@@ -314,6 +322,7 @@ export default function App() {
           );
         },
       },
+      { id: "workspace.trust", group: "Workspace", label: "Manage Workspace Trust", keywords: "restricted mode trust folder security", run: () => void useTrustStore.getState().ask() },
       { id: "window.new", group: "File", label: "New Window", keys: ["Ctrl", "Shift", "N"], keywords: "new window multi instance process", run: () => void openNewWindow() },
       { id: "file.open", group: "File", label: "Open File…", keys: ["Ctrl", "O"], keywords: "open file picker document", run: () => {
         window.dispatchEvent(new Event(OPEN_FILE_EVENT));
@@ -332,15 +341,15 @@ export default function App() {
       { id: "file.saveAll", group: "File", label: "Save All Files", keys: ["Ctrl", "K", "S"], keywords: "save all write dirty", run: () => void saveAll() },
       { id: "file.copyPath", group: "File", label: "Copy Active File Path", keywords: "copy full absolute path clipboard", run: () => {
         const tab = useEditorStore.getState().activeTab;
-        if (tab) navigator.clipboard.writeText(tab);
+        if (tab) void copyText(tab);
       } },
       { id: "file.copyRelativePath", group: "File", label: "Copy Relative File Path", keywords: "copy relative path clipboard", run: () => {
         const tab = useEditorStore.getState().activeTab;
         const rootPath = useFileStore.getState().root;
         if (tab && rootPath) {
-          navigator.clipboard.writeText(tab.replace(rootPath, "").replace(/^[\\/]/, ""));
+          void copyText(tab.replace(rootPath, "").replace(/^[\\/]/, ""));
         } else if (tab) {
-          navigator.clipboard.writeText(tab);
+          void copyText(tab);
         }
       } },
       { id: "file.closeTab", group: "File", label: "Close Active Tab", keys: ["Ctrl", "W"], keywords: "close tab window", run: () => void closeActiveEditor() },
@@ -648,6 +657,7 @@ export default function App() {
       .then(({ getCurrentWindow }) =>
         // Tauri waits for this handler before it closes the window, so the dialog can be awaited.
         getCurrentWindow().onCloseRequested(async (e) => {
+          await flushAutoSave(); // auto-save on: save now instead of asking
           const msg = unsavedMessage();
           if (msg && !(await confirmDialog({ title: "Close Fahh Editor?", message: msg, ok: "Close and discard", danger: true }))) e.preventDefault();
         })
@@ -771,21 +781,19 @@ export default function App() {
               title="Go to Line/Column (Ctrl+G)"
               className="hover:text-fahh-text transition-colors font-mono text-[11px] flex items-center gap-1"
             >
-              <span>Ln {cursorPosition.line}, Col {cursorPosition.column}</span>
-              {cursorPosition.totalLines && (
-                <span className="text-fahh-muted/50">({cursorPosition.totalLines} lines)</span>
-              )}
+              <CursorStatus />
             </button>
           )}
 
           <span className="max-[850px]:hidden text-fahh-muted/60 font-mono text-[11px]">UTF-8</span>
 
+          <RestrictedModeItem />
           <LspStatusItem />
           <HudControls />
 
           {/* Active theme indicator */}
-          <span className="text-fahh-muted capitalize max-[860px]:hidden">
-            {activeTheme.replace(/-/g, " ")}
+          <span className="text-fahh-muted max-[860px]:hidden">
+            {activeThemeDef?.name ?? activeTheme}
           </span>
 
           <span className="max-[680px]:hidden font-mono">v{__APP_VERSION__}</span>
@@ -804,6 +812,8 @@ export default function App() {
       {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
       {showSetup && <CheckSetupDialog onClose={() => setShowSetup(false)} />}
       <DialogHost />
+      {/* Always mounted (docked and canvas): asks about trust for each folder that opens. */}
+      <WorkspaceTrustGate />
       <Toasts />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
       <CommandPalette
@@ -870,5 +880,19 @@ function LocalServerItem() {
     >
       <Globe size={12} aria-hidden="true" /> {label}
     </button>
+  );
+}
+
+/**
+ * Ln/Col in the status bar. Its own component: the cursor moves on every keystroke, and
+ * subscribing the whole App shell to it re-rendered everything each time.
+ */
+function CursorStatus() {
+  const cursorPosition = useEditorStore((s) => s.cursorPosition);
+  return (
+    <>
+      <span>Ln {cursorPosition.line}, Col {cursorPosition.column}</span>
+      {cursorPosition.totalLines && <span className="text-fahh-muted/50">({cursorPosition.totalLines} lines)</span>}
+    </>
   );
 }

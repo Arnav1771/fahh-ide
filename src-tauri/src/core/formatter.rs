@@ -26,6 +26,7 @@ fn run_formatter_stdin(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn formatter '{program}': {e}"))?;
+    crate::core::proc::own(&child);
 
     // Write input to stdin.
     {

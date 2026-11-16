@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { createRunRouter } from "./runEvents";
+import { describe, expect, it, vi } from "vitest";
+import { createRunRouter, keepWhileMounted } from "./runEvents";
 
 function setup() {
   const log: string[] = [];
@@ -52,5 +52,22 @@ describe("run event router", () => {
     router.output({ pid: 6, line: "new", stream: "stdout" });
     router.attach(6);
     expect(log).toEqual(["stdout:new"]);
+  });
+});
+
+describe("keepWhileMounted", () => {
+  it("keeps the unlisten while mounted, and calls it at once after an unmount (no leaked handler)", () => {
+    const kept: Array<() => void> = [];
+    let mounted = true;
+    const then = keepWhileMounted(() => mounted, (f) => kept.push(f));
+    const a = vi.fn();
+    then(a);
+    expect(kept).toEqual([a]);
+    expect(a).not.toHaveBeenCalled();
+    mounted = false;
+    const b = vi.fn();
+    then(b);
+    expect(b).toHaveBeenCalledOnce();
+    expect(kept).toHaveLength(1);
   });
 });

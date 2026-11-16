@@ -132,7 +132,7 @@ export function SpatialHud() {
               </button>
               <button
                 type="button"
-                onClick={() => handleAdd("terminal", "Interactive Terminal")}
+                onClick={() => handleAdd("terminal", "Terminal")}
                 className="flex items-center gap-2 px-3 py-1.5 text-left text-xs text-fahh-text hover:bg-fahh-surface transition-colors"
               >
                 <Terminal size={13} className="text-fahh-success" />

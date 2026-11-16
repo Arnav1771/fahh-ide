@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { handleOpenRequest, parentDir, type OpenDeps } from "./openRequest";
+import { handleOpenRequest, parentDir, restoresSession, type OpenDeps } from "./openRequest";
 
 function deps(hasFolder = false): OpenDeps & { calls: string[] } {
   const calls: string[] = [];
@@ -50,5 +50,13 @@ describe("parentDir", () => {
     expect(parentDir("/a.ts")).toBe("/");
     expect(parentDir("C:\\p\\a.ts")).toBe("C:\\p");
     expect(parentDir("C:\\a.ts")).toBe("C:\\");
+  });
+});
+
+describe("restoresSession", () => {
+  it("restores the last folder only in the first window; New Window opens empty", () => {
+    expect(restoresSession("main")).toBe(true);
+    expect(restoresSession(null)).toBe(true);
+    expect(restoresSession("fahh-win-1731700000000")).toBe(false);
   });
 });

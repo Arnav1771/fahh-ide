@@ -43,7 +43,8 @@ fn join_in_package(base_dir: &str, rel: &str) -> String {
 fn read_entry(zip: &mut zip::ZipArchive<Cursor<Vec<u8>>>, name: &str) -> Option<String> {
     let mut f = zip.by_name(name).ok()?;
     let mut s = String::new();
-    f.read_to_string(&mut s).ok()?;
+    // A theme or package.json is small; a crafted .vsix could inflate one entry to gigabytes.
+    f.take(8 << 20).read_to_string(&mut s).ok()?;
     Some(s.trim_start_matches('\u{feff}').to_string())
 }
 
@@ -115,11 +116,15 @@ pub async fn ext_install_theme(namespace: String, name: String, version: String)
     if res.content_length().unwrap_or(0) as usize > MAX_VSIX_BYTES {
         return Err("The extension is too large to be a colour theme.".into());
     }
-    let bytes = res.bytes().await.map_err(|e| format!("Download failed: {e}"))?;
-    if bytes.len() > MAX_VSIX_BYTES {
-        return Err("The extension is too large to be a colour theme.".into());
+    let mut res = res;
+    let mut bytes = Vec::new();
+    while let Some(chunk) = res.chunk().await.map_err(|e| format!("Download failed: {e}"))? {
+        if bytes.len() + chunk.len() > MAX_VSIX_BYTES {
+            return Err("The extension is too large to be a colour theme.".into());
+        }
+        bytes.extend_from_slice(&chunk);
     }
-    themes_in_vsix(bytes.to_vec())
+    themes_in_vsix(bytes)
 }
 
 #[cfg(test)]

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { markersToDiagnostics, useDiagnosticsStore, type MarkerLike } from "./diagnosticsStore";
+import { markersToDiagnostics, problemCounts, useDiagnosticsStore, type DiagnosticItem, type MarkerLike } from "./diagnosticsStore";
 
 const m = (fsPath: string, severity = 8, extra: Partial<MarkerLike> = {}): MarkerLike => ({
   resource: { scheme: "file", fsPath },
@@ -40,5 +40,31 @@ describe("Problems panel diagnostics", () => {
 
   it("no folder open: nothing", () => {
     expect(markersToDiagnostics([m("c:\\x\\a.ts")], null)).toEqual([]);
+  });
+});
+
+describe("problemCounts", () => {
+  const d = (path: string, severity: DiagnosticItem["severity"]): DiagnosticItem => ({ id: path + severity, path, message: "m", severity });
+  const rows = [d("C:\\p\\bad.py", "error"), d("C:\\p\\bad.py", "warning"), d("C:\\p\\src\\bad.py", "error"), d("C:\\p\\domain.ts", "error")];
+
+  it("counts exactly the file on screen, like the Problems panel", () => {
+    expect(problemCounts(rows, "C:\\p\\bad.py", "C:\\p")).toEqual({ errors: 1, warnings: 1 });
+    // Same file name elsewhere, or a name ending the same way, is not this file.
+    expect(problemCounts(rows, "C:\\p\\main.ts", "C:\\p")).toEqual({ errors: 0, warnings: 0 });
+    expect(problemCounts(rows, "c:/p/src/bad.py", "C:\\p")).toEqual({ errors: 1, warnings: 0 });
+  });
+
+  it("is null for a file outside the open folder or with no folder", () => {
+    expect(problemCounts(rows, "C:\\other\\bad.py", "C:\\p")).toBeNull();
+    expect(problemCounts(rows, "C:\\p\\bad.py", null)).toBeNull();
+    expect(problemCounts(rows, null, "C:\\p")).toBeNull();
+  });
+});
+
+describe("one row per problem", () => {
+  it("drops the built-in TS worker's copy while the TS language server reports the same file", () => {
+    const both = [m("/w/a.ts", 8, { owner: "typescript" }), m("/w/a.ts", 8, { owner: "fahh-lsp" })];
+    expect(markersToDiagnostics(both, "/w")).toHaveLength(2);
+    expect(markersToDiagnostics(both, "/w", ["typescript", "javascript"])).toHaveLength(1);
   });
 });

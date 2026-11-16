@@ -45,6 +45,7 @@ import type { AgentDecision, AgentEnvelope, AgentMode } from "../lib/types";
 import { useEditorStore } from "./editorStore";
 import { useFahhStore } from "./fahhStore";
 import { useFileStore } from "./fileStore";
+import { copyText } from "../lib/clipboard";
 
 const KEY = "fahh-agent-settings";
 const LEGACY_KEY = "fahh-ai-settings"; // the pre-Fahh Local AI settings
@@ -331,7 +332,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
         },
         reloadTabs,
         copy: async (t) => {
-          await navigator.clipboard.writeText(t);
+          await copyText(t);
         },
         exit: () => get().onExit?.(),
         usingFast: () => get().usingFast,

@@ -63,10 +63,25 @@ export async function saveAll(): Promise<boolean> {
 }
 
 /**
+ * Auto-save is on: write every unsaved file among `paths` now (a debounced save may still be
+ * pending), as VS Code does on close. What is left unsaved afterwards is an untitled buffer, a
+ * preview, or a save that failed (its error was shown): only those are worth a question.
+ */
+export async function flushAutoSave(paths: string[] = dirtyPaths()): Promise<void> {
+  if (!useEditorStore.getState().autoSave) return;
+  const tabs = useEditorStore.getState().openTabs;
+  for (const p of new Set(paths)) {
+    if (tabs.find((t) => t.path === p)?.dirty && !isUntitled(p) && !isPreviewOnly(p)) await savePath(p);
+  }
+}
+
+/**
  * About to close these files: ask about the unsaved ones (Save, Don't Save, Cancel).
+ * With auto-save on they are saved first and only what could not be saved is asked about.
  * True when they may close; false when the user cancelled or a save failed.
  */
 export async function confirmClose(paths: string[]): Promise<boolean> {
+  await flushAutoSave(paths);
   const tabs = useEditorStore.getState().openTabs;
   const dirty = [...new Set(paths)].filter((p) => tabs.find((t) => t.path === p)?.dirty);
   if (dirty.length === 0) return true;

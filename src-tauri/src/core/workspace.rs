@@ -84,6 +84,22 @@ pub fn read_file(path: String) -> Result<String, String> {
     }
 }
 
+/// A dropped picture for Roundtable, as raw bytes (images only, at most 20 MB). It replaces the
+/// fs plugin, whose read-all + home-recursive grant let the page read any file.
+#[tauri::command]
+pub fn read_picture(path: String) -> Result<tauri::ipc::Response, String> {
+    const MAX: u64 = 20 << 20;
+    let ext = std::path::Path::new(&path).extension().map(|e| e.to_string_lossy().to_lowercase()).unwrap_or_default();
+    if !["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"].contains(&ext.as_str()) {
+        return Err("Only pictures can be attached.".into());
+    }
+    let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
+    if !meta.is_file() || meta.len() > MAX {
+        return Err("That picture is too large (20 MB at most).".into());
+    }
+    std::fs::read(&path).map(tauri::ipc::Response::new).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub fn write_file(path: String, content: String) -> Result<(), String> {
     if let Some(parent) = std::path::Path::new(&path).parent() {

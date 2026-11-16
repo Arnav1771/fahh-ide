@@ -108,10 +108,9 @@ pub fn run() {
             formatter::format_file,
             // Plugin registry (Phase 2)
             plugin::get_plugins,
-            plugin::get_themes,
-            plugin::get_language_packs,
-            plugin::get_formatter_plugins,
-            plugin::get_snippet_plugins,
+            workspace::read_picture,
+            core::trust::workspace_trust_get,
+            core::trust::workspace_trust_set,
             // Git / source control
             git::git_status,
             git::git_current_branch,

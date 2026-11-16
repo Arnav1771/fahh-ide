@@ -14,6 +14,8 @@ export type NotebookOutput =
   | { type: "error"; ename: string; evalue: string; traceback: string };
 
 export interface NotebookCell {
+  /** nbformat 4.5 cell id: the stable key runs and saved outputs use (absent in older files). */
+  id?: string;
   type: "markdown" | "code" | "raw";
   source: string;
   executionCount: number | null;
@@ -93,6 +95,7 @@ export function parseNotebook(json: string): ParsedNotebook {
     const c = obj(raw);
     const type = c.cell_type === "markdown" || c.cell_type === "code" ? c.cell_type : "raw";
     return {
+      ...(typeof c.id === "string" && c.id ? { id: c.id } : {}),
       type,
       source: text(c.source),
       executionCount: typeof c.execution_count === "number" ? c.execution_count : null,

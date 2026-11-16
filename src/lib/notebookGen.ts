@@ -181,11 +181,53 @@ const dump = (nb: Nb) => JSON.stringify(nb, null, 1) + "\n";
 export const toLines = (s: string): string[] => (s ? s.split(/(?<=\n)/) : []);
 
 /** A new code cell at `at` (clamped). nbformat 4.5+ cells need an id. */
-export function insertCodeCell(json: string, at: number, source: string, id = Math.random().toString(16).slice(2, 10)): string {
+export function insertCodeCell(json: string, at: number, source: string, id = newId()): string {
   const nb = load(json);
   const cell: Record<string, unknown> = { cell_type: "code", execution_count: null, metadata: {}, outputs: [], source: toLines(source) };
   if ((nb.nbformat ?? 4) > 4 || (nb.nbformat_minor ?? 0) >= 5) cell.id = id;
   nb.cells.splice(Math.max(0, Math.min(at, nb.cells.length)), 0, cell);
+  return dump(nb);
+}
+
+const newId = () => Math.random().toString(16).slice(2, 10);
+
+/**
+ * Give every cell a stable nbformat 4.5 id (Jupyter does the same on save). Runs and their
+ * saved outputs are keyed by it, never by position, so a move or an outside change while
+ * cells are queued cannot put outputs into the wrong cell. Unchanged text when all have one.
+ */
+export function ensureCellIds(json: string): string {
+  const nb = load(json);
+  const seen = new Set<string>();
+  let changed = false;
+  for (const c of nb.cells) {
+    if (typeof c.id !== "string" || !c.id || seen.has(c.id)) {
+      let id = newId();
+      while (seen.has(id)) id = newId();
+      c.id = id;
+      changed = true;
+    }
+    seen.add(c.id as string);
+  }
+  if (!changed) return json;
+  if ((nb.nbformat ?? 4) === 4 && (nb.nbformat_minor ?? 0) < 5) nb.nbformat_minor = 5;
+  return dump(nb);
+}
+
+/**
+ * A finished run's outputs into the cell with that id. The notebook view is the only writer
+ * of the .ipynb (the kernel runner just reports), so this always edits the latest text.
+ * Unchanged when the cell is gone or is no longer code.
+ */
+export function setCellOutputs(json: string, id: string, outputs: unknown[], count: number | null): string {
+  const nb = load(json);
+  const c = nb.cells.find((x: { id?: unknown }) => x.id === id);
+  if (!c || c.cell_type !== "code") return json;
+  c.outputs = outputs.map((o) => {
+    const out = o as Record<string, unknown>;
+    return out && out.output_type === "execute_result" ? { ...out, execution_count: count } : out;
+  });
+  c.execution_count = count;
   return dump(nb);
 }
 
