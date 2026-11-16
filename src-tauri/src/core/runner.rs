@@ -292,10 +292,14 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
     Ok(cmd)
 }
 
-/// The notebook kernel runner (see assets/fahh_kernel.py), written next to the temp dir once per version.
+/// The notebook kernel runner (see assets/fahh_kernel.py), written to the app data dir once per version.
 fn kernel_script() -> Result<String, String> {
     const SCRIPT: &str = include_str!("../../assets/fahh_kernel.py");
-    let path = std::env::temp_dir().join(format!("fahh_kernel_{}.py", env!("CARGO_PKG_VERSION")));
+    // In the user's own data dir, not the shared temp dir: on a multi-user /tmp another user
+    // could plant a script at the predictable name and have it run as this user.
+    let dir = crate::agent::store::data_dir().join("runtime");
+    std::fs::create_dir_all(&dir).map_err(|e| format!("Could not create {}: {e}", dir.display()))?;
+    let path = dir.join(format!("fahh_kernel_{}.py", env!("CARGO_PKG_VERSION")));
     if std::fs::read_to_string(&path).ok().as_deref() != Some(SCRIPT) {
         std::fs::write(&path, SCRIPT).map_err(|e| format!("Could not write the notebook runner to {}: {e}", path.display()))?;
     }
