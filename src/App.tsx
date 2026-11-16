@@ -716,7 +716,6 @@ export default function App() {
       {isSpatialMode ? (
         <div className="fahh-canvas-host flex-1 min-h-0 relative overflow-hidden">
           <LspBridge />
-          <WorkspaceTrustGate />
           <SpatialCanvas />
         </div>
       ) : (
@@ -812,6 +811,8 @@ export default function App() {
       {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
       {showSetup && <CheckSetupDialog onClose={() => setShowSetup(false)} />}
       <DialogHost />
+      {/* Always mounted (docked and canvas): asks about trust for each folder that opens. */}
+      <WorkspaceTrustGate />
       <Toasts />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} commands={commands} />
       <CommandPalette

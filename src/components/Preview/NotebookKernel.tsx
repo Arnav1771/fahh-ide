@@ -106,14 +106,16 @@ export function useNotebookKernel(path: string) {
   kernelRef.current = kernel;
 
   // Default kernel: the workspace interpreter (Run's pick) unless this notebook remembers one.
+  const trustedFolder = useTrustStore((s) => s.trusted === true);
   useEffect(() => {
-    if (readChoice(path)) return;
+    // Restricted mode: no default from the folder (its .venv); picking one stays explicit.
+    if (readChoice(path) || !trustedFolder) return;
     let live = true;
     void workspacePython().then((p) => live && setKernel({ program: p.program, name: p.label }));
     return () => {
       live = false;
     };
-  }, [path, root, pythonPath]);
+  }, [path, root, pythonPath, trustedFolder]);
 
   const trusted = useTrustStore((s) => s.trusted);
   useEffect(() => {
