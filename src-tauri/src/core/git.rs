@@ -814,7 +814,7 @@ pub fn git_resolve_conflict(path: String, file: String, choice: String) -> Resul
     let repo = require_repo(&path)?;
     let abs = workdir(&repo).join(&file);
     let text = std::fs::read_to_string(&abs).map_err(|e| e.to_string())?;
-    std::fs::write(&abs, resolve_markers(&text, &choice)?).map_err(|e| e.to_string())?;
+    super::fsutil::write_atomic(&abs, resolve_markers(&text, &choice)?.as_bytes()).map_err(|e| e.to_string())?;
     let mut index = repo.index().map_err(map_err)?;
     index.add_path(Path::new(&file)).map_err(map_err)?;
     index.write().map_err(map_err)

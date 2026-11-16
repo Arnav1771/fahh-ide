@@ -1,5 +1,6 @@
 pub mod editor;
 pub mod workspace;
+pub mod fsutil;
 pub mod terminal;
 pub mod lsp;
 pub mod plugin;

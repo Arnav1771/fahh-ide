@@ -89,7 +89,9 @@ pub fn write_file(path: String, content: String) -> Result<(), String> {
     if let Some(parent) = std::path::Path::new(&path).parent() {
         std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
-    std::fs::write(&path, content).map_err(|e| e.to_string())
+    let p = std::path::Path::new(&path);
+    let bytes = super::fsutil::save_bytes(p, &content)?;
+    super::fsutil::write_atomic(p, &bytes).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
@@ -477,8 +479,13 @@ pub fn replace_in_workspace(
         if let Ok(content) = std::fs::read_to_string(&file_path) {
             let count = re.find_iter(&content).count();
             if count > 0 {
-                let replaced = re.replace_all(&content, replacement.as_str());
-                if std::fs::write(&file_path, replaced.as_bytes()).is_ok() {
+                // A literal replacement is literal: "$price" must not expand as a capture group.
+                let replaced = if is_reg {
+                    re.replace_all(&content, replacement.as_str())
+                } else {
+                    re.replace_all(&content, regex::NoExpand(&replacement))
+                };
+                if super::fsutil::write_atomic(&file_path, replaced.as_bytes()).is_ok() {
                     files_modified += 1;
                     total_replacements += count;
                 }
@@ -513,6 +520,31 @@ mod tests {
     }
 
     use super::*;
+
+    #[test]
+    fn literal_replace_does_not_expand_dollar_signs() {
+        let d = tempfile::tempdir().unwrap();
+        let f = d.path().join("price.txt");
+        std::fs::write(&f, "cost = PRICE\r\n").unwrap();
+        let r = replace_in_workspace(d.path().to_string_lossy().into(), "PRICE".into(), "$price".into(), None, None, Some(false), None, None, None).unwrap();
+        assert_eq!(r.total_replacements, 1);
+        assert_eq!(std::fs::read_to_string(&f).unwrap(), "cost = $price\r\n");
+    }
+
+    #[test]
+    fn write_file_keeps_bom_and_refuses_non_utf8() {
+        let d = tempfile::tempdir().unwrap();
+        let bom = d.path().join("bom.txt");
+        std::fs::write(&bom, b"\xEF\xBB\xBFold").unwrap();
+        let text = read_file(bom.to_string_lossy().into()).unwrap();
+        assert_eq!(text, "old");
+        write_file(bom.to_string_lossy().into(), "new".into()).unwrap();
+        assert_eq!(std::fs::read(&bom).unwrap(), b"\xEF\xBB\xBFnew");
+        let latin = d.path().join("l1.txt");
+        std::fs::write(&latin, b"na\xEFve").unwrap();
+        assert!(write_file(latin.to_string_lossy().into(), "na\u{FFFD}ve".into()).is_err());
+        assert_eq!(std::fs::read(&latin).unwrap(), b"na\xEFve");
+    }
 
     fn s(p: &Path) -> String {
         p.to_string_lossy().to_string()

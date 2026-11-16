@@ -39,7 +39,7 @@ pub fn load_config(state: State<AppState>) -> Result<FahhConfig, String> {
 pub fn save_config(state: State<AppState>, config: FahhConfig) -> Result<(), String> {
     let path = config_path().map_err(|e| e.to_string())?;
     let json = serde_json::to_string_pretty(&config).map_err(|e| e.to_string())?;
-    std::fs::write(&path, json).map_err(|e| e.to_string())?;
+    super::fsutil::write_atomic(&path, json.as_bytes()).map_err(|e| e.to_string())?;
     *state.config.lock().unwrap() = config;
     Ok(())
 }
