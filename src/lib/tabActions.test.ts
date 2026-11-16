@@ -9,6 +9,7 @@ import { useDialogStore } from "../store/dialogStore";
 import {
   closeTabsUnder,
   dirtyPaths,
+  flushAutoSave,
   rememberClosed,
   renameTabs,
   requestClose,
@@ -184,5 +185,52 @@ describe("saveAll", () => {
     expect(await saveAll()).toBe(true);
     expect(writeFile.mock.calls.map((c) => c[0]).sort()).toEqual(["/p/a.ts", "/p/b.ts"]);
     expect(useEditorStore.getState().openTabs.every((t) => !t.dirty)).toBe(true);
+  });
+});
+
+describe("auto-save on: closing never asks about what it can save", () => {
+  beforeEach(() => useEditorStore.setState({ autoSave: true }));
+
+  it("a dirty tab is saved and closed with no prompt", async () => {
+    useEditorStore.getState().openFile(doc("/w/a.ts", true), "edited");
+    useEditorStore.setState({ activeTab: null });
+    writeFile.mockResolvedValue(undefined);
+    expect(await requestClose("/w/a.ts")).toBe(true);
+    expect(dialog()).toBeUndefined();
+    expect(writeFile).toHaveBeenCalledWith("/w/a.ts", "edited");
+    expect(tabs()).toEqual([]);
+    useEditorStore.setState({ autoSave: false });
+  });
+
+  it("a save that fails still asks (with Save to retry)", async () => {
+    useEditorStore.getState().openFile(doc("/w/b.ts", true), "x");
+    useEditorStore.setState({ activeTab: null });
+    writeFile.mockRejectedValue(new Error("disk full"));
+    const closing = requestClose("/w/b.ts");
+    await tick(); await tick();
+    expect(dialog()?.title).toMatch(/Save changes/);
+    press("cancel");
+    expect(await closing).toBe(false);
+    expect(tabs()).toEqual(["/w/b.ts"]);
+    useEditorStore.setState({ autoSave: false });
+  });
+
+  it("window close: flushAutoSave leaves nothing to ask about", async () => {
+    useEditorStore.getState().openFile(doc("/w/c.ts", true), "c");
+    useEditorStore.setState({ activeTab: null });
+    writeFile.mockResolvedValue(undefined);
+    await flushAutoSave();
+    expect(unsavedMessage()).toBeNull();
+    useEditorStore.setState({ autoSave: false });
+  });
+
+  it("auto-save off: unchanged, it asks", async () => {
+    useEditorStore.setState({ autoSave: false });
+    useEditorStore.getState().openFile(doc("/w/d.ts", true), "d");
+    const closing = requestClose("/w/d.ts");
+    await tick();
+    expect(dialog()).toBeDefined();
+    press("cancel");
+    expect(await closing).toBe(false);
   });
 });

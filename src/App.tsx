@@ -12,7 +12,7 @@ import { runDebugAction, runWithoutDebugging } from "./lib/debugActions";
 import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
 import { Toasts } from "./components/Toasts";
-import { saveActive, saveAll, unsavedMessage } from "./lib/tabActions";
+import { flushAutoSave, saveActive, saveAll, unsavedMessage } from "./lib/tabActions";
 import { handleOpenRequest, restoresSession } from "./lib/openRequest";
 import { installCli, openNewWindow, readFile, takePendingOpen } from "./lib/tauri";
 import { useToastStore } from "./store/toastStore";
@@ -657,6 +657,7 @@ export default function App() {
       .then(({ getCurrentWindow }) =>
         // Tauri waits for this handler before it closes the window, so the dialog can be awaited.
         getCurrentWindow().onCloseRequested(async (e) => {
+          await flushAutoSave(); // auto-save on: save now instead of asking
           const msg = unsavedMessage();
           if (msg && !(await confirmDialog({ title: "Close Fahh Editor?", message: msg, ok: "Close and discard", danger: true }))) e.preventDefault();
         })
