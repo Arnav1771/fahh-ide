@@ -82,6 +82,7 @@ import type { SidebarTab, BottomTab } from "../../App";
 import { closeActiveEditor, closeAllEditors, resetLayout, revealView, splitActiveEditor, toggleZone } from "../../lib/workbench";
 import { canGoBack, canGoForward, goBack, goForward, reopenClosedTab } from "../../lib/navigation";
 import { clearRecent, loadRecent } from "../../lib/recent";
+import { copyText } from "../../lib/clipboard";
 
 export interface MenuItem {
   label: string;
@@ -188,15 +189,15 @@ export function MenuBar({
   };
 
   const handleCopyPath = () => {
-    if (activeTab) navigator.clipboard.writeText(activeTab);
+    if (activeTab) void copyText(activeTab);
   };
 
   const handleCopyRelativePath = () => {
     if (activeTab && root) {
       const rel = activeTab.replace(root, "").replace(/^[\\/]/, "");
-      navigator.clipboard.writeText(rel);
+      void copyText(rel);
     } else if (activeTab) {
-      navigator.clipboard.writeText(activeTab);
+      void copyText(activeTab);
     }
   };
 

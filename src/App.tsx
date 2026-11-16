@@ -13,7 +13,7 @@ import { InstallerWizard } from "./components/InstallerWizard";
 import { Welcome } from "./components/Welcome";
 import { Toasts } from "./components/Toasts";
 import { saveActive, saveAll, unsavedMessage } from "./lib/tabActions";
-import { handleOpenRequest } from "./lib/openRequest";
+import { handleOpenRequest, restoresSession } from "./lib/openRequest";
 import { installCli, openNewWindow, readFile, takePendingOpen } from "./lib/tauri";
 import { useToastStore } from "./store/toastStore";
 import type { OpenRequest } from "./lib/types";
@@ -70,6 +70,7 @@ import {
   toggleZone,
   visibleViewIds,
 } from "./lib/workbench";
+import { copyText } from "./lib/clipboard";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -190,8 +191,14 @@ export default function App() {
     let off: (() => void) | undefined;
     let gone = false;
     // Session restore: nothing asked for on the command line, so reopen the last folder (or workspace).
-    const restoreLast = () => {
+    const restoreLast = async () => {
       if (!useSettingsStore.getState().restoreSession || useFileStore.getState().root) return;
+      try {
+        const { getCurrentWebviewWindow } = await import("@tauri-apps/api/webviewWindow");
+        if (!restoresSession(getCurrentWebviewWindow().label)) return;
+      } catch {
+        // not in Tauri (tests, browser preview): behave like the first window
+      }
       // "Reset session and reload" (ErrorBoundary): skip one restore so a crash can't loop.
       try {
         if (localStorage.getItem("fahh-skip-restore")) return void localStorage.removeItem("fahh-skip-restore");
@@ -201,7 +208,7 @@ export default function App() {
     };
     takePendingOpen()
       .then((req) => (req ? run(req) : restoreLast()))
-      .catch(restoreLast);
+      .catch(() => restoreLast());
     import("@tauri-apps/api/webviewWindow")
       .then(({ getCurrentWebviewWindow }) =>
         getCurrentWebviewWindow().listen<OpenRequest>("fahh://open", (e) => void run(e.payload))
@@ -332,15 +339,15 @@ export default function App() {
       { id: "file.saveAll", group: "File", label: "Save All Files", keys: ["Ctrl", "K", "S"], keywords: "save all write dirty", run: () => void saveAll() },
       { id: "file.copyPath", group: "File", label: "Copy Active File Path", keywords: "copy full absolute path clipboard", run: () => {
         const tab = useEditorStore.getState().activeTab;
-        if (tab) navigator.clipboard.writeText(tab);
+        if (tab) void copyText(tab);
       } },
       { id: "file.copyRelativePath", group: "File", label: "Copy Relative File Path", keywords: "copy relative path clipboard", run: () => {
         const tab = useEditorStore.getState().activeTab;
         const rootPath = useFileStore.getState().root;
         if (tab && rootPath) {
-          navigator.clipboard.writeText(tab.replace(rootPath, "").replace(/^[\\/]/, ""));
+          void copyText(tab.replace(rootPath, "").replace(/^[\\/]/, ""));
         } else if (tab) {
-          navigator.clipboard.writeText(tab);
+          void copyText(tab);
         }
       } },
       { id: "file.closeTab", group: "File", label: "Close Active Tab", keys: ["Ctrl", "W"], keywords: "close tab window", run: () => void closeActiveEditor() },

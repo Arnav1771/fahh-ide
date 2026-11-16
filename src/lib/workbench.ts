@@ -38,7 +38,18 @@ const nameOf = (p: string) => p.split(/[\\/]/).pop() ?? p;
 const pathOf = (p: IDockviewPanel): string | undefined => (p.params as { path?: string } | undefined)?.path;
 const isEditorPanel = (p: IDockviewPanel) => p.id.startsWith(EDITOR_PREFIX);
 const isHome = (p: IDockviewPanel) => p.id.startsWith(HOME_PREFIX);
-const isEditorGroup = (g: DockviewGroupPanel) => g.panels.some((p) => isEditorPanel(p) || isHome(p));
+/**
+ * Is a group (by its panel ids) part of the editor area? Files and Home make it one; so does
+ * holding only views that live with the editors (Settings). Without that, a group with just
+ * Settings in it was placed by geometry, could count as the side bar, and clicking the
+ * Settings button again hid the whole side bar, Explorer included.
+ */
+export function isEditorArea(panelIds: readonly string[], isEditorView: (id: string) => boolean): boolean {
+  if (panelIds.some((id) => id.startsWith(EDITOR_PREFIX) || id.startsWith(HOME_PREFIX))) return true;
+  return panelIds.length > 0 && panelIds.every(isEditorView);
+}
+const isEditorLocationView = (id: string) => id.startsWith(VIEW_PREFIX) && getView(id.slice(VIEW_PREFIX.length))?.defaultLocation === "editor";
+const isEditorGroup = (g: DockviewGroupPanel) => isEditorArea(g.panels.map((p) => p.id), isEditorLocationView);
 const isShown = (g: DockviewGroupPanel) => g.api.isVisible && g.element.getBoundingClientRect().width > 0;
 /** Tell the activity bar (and anyone else) that what is on screen changed. */
 const announce = () => window.dispatchEvent(new Event("fahh-dock-active"));
@@ -243,6 +254,11 @@ function addView(def: ViewDef, sizes = legacySizes(store())): IDockviewPanel | u
   const anyEditor = api.groups.find(isEditorGroup);
   if (zone === "primary") return api.addPanel({ ...base, initialWidth: sizes.sidebar, position: { direction: "left" } });
   if (zone === "secondary") return api.addPanel({ ...base, initialWidth: SECONDARY_W, position: { direction: "right" } });
+  // No editor group at all: next to the side bar, never into whatever group is active (the Explorer's).
+  if (zone === "editor") {
+    const side = groupsIn("primary")[0];
+    return api.addPanel({ ...base, position: side ? { referenceGroup: side, direction: "right" } : { direction: "right" } });
+  }
   if (zone === "panel") {
     return api.addPanel({
       ...base,
