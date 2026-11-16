@@ -59,6 +59,25 @@ export function markersToDiagnostics(markers: readonly MarkerLike[], root: strin
   return out;
 }
 
+/**
+ * Errors and warnings the Problems panel lists for one file: the status bar and the
+ * breadcrumb count from here so all three always agree. `null` when the file is not
+ * inside the open folder (the Problems panel does not list it).
+ */
+export function problemCounts(diagnostics: readonly DiagnosticItem[], path: string | null, root: string | null): { errors: number; warnings: number } | null {
+  if (!path || !root) return null;
+  const p = norm(path);
+  if (!p.startsWith(norm(root) + "/")) return null;
+  let errors = 0;
+  let warnings = 0;
+  for (const d of diagnostics) {
+    if (norm(d.path) !== p) continue;
+    if (d.severity === "error") errors++;
+    else if (d.severity === "warning") warnings++;
+  }
+  return { errors, warnings };
+}
+
 export const useDiagnosticsStore = create<DiagnosticsStore>((set) => ({
   diagnostics: [],
   clearAll: () => set({ diagnostics: [] }),

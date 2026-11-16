@@ -249,10 +249,10 @@ export default function App() {
 
   // Apply theme CSS vars on mount and whenever the active theme changes
   const installedThemes = useExtensionThemes((s) => s.themes);
+  const activeThemeDef = useMemo(() => allThemes(installedThemes).find((d) => d.id === activeTheme), [activeTheme, installedThemes]);
   useEffect(() => {
-    const def = allThemes(installedThemes).find((d) => d.id === activeTheme);
-    if (def) applyThemeCssVars(def);
-  }, [activeTheme, installedThemes]);
+    if (activeThemeDef) applyThemeCssVars(activeThemeDef);
+  }, [activeThemeDef]);
 
   // Fahh SFX. Errors from the backend (builds, language servers) go through
   // the HUD store, which owns the cooldown, the combo and the mute.
@@ -784,8 +784,8 @@ export default function App() {
           <HudControls />
 
           {/* Active theme indicator */}
-          <span className="text-fahh-muted capitalize max-[860px]:hidden">
-            {activeTheme.replace(/-/g, " ")}
+          <span className="text-fahh-muted max-[860px]:hidden">
+            {activeThemeDef?.name ?? activeTheme}
           </span>
 
           <span className="max-[680px]:hidden font-mono">v{__APP_VERSION__}</span>
