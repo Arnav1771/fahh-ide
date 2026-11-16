@@ -14,6 +14,7 @@ import {
   requestClose,
   requestCloseMany,
   saveActive,
+  saveAll,
   takeClosed,
   unsavedMessage,
 } from "./tabActions";
@@ -171,5 +172,17 @@ describe("saveActive", () => {
   it("does nothing with no file open", async () => {
     expect(await saveActive()).toBe(false);
     expect(writeFile).not.toHaveBeenCalled();
+  });
+});
+
+describe("saveAll", () => {
+  it("writes every unsaved tab, not just the one on screen", async () => {
+    writeFile.mockResolvedValue(undefined);
+    useEditorStore.getState().openFile(doc("/p/a.ts", true), "aaa");
+    useEditorStore.getState().openFile(doc("/p/b.ts", true), "bbb");
+    useEditorStore.getState().openFile(doc("/p/c.ts", false), "ccc");
+    expect(await saveAll()).toBe(true);
+    expect(writeFile.mock.calls.map((c) => c[0]).sort()).toEqual(["/p/a.ts", "/p/b.ts"]);
+    expect(useEditorStore.getState().openTabs.every((t) => !t.dirty)).toBe(true);
   });
 });

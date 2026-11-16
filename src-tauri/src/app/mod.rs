@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod clipboard_permission;
 
 use anyhow::Result;
 use tauri::{App, Emitter, Manager};

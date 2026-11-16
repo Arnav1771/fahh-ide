@@ -1,7 +1,8 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import DOMPurify from "dompurify";
 import { convertFileSrc } from "@tauri-apps/api/core";
-import { AppWindow, Code, ExternalLink, FileText, Play, RotateCw, ShieldAlert, X } from "lucide-react";
+import { AppWindow, ArrowDown, ArrowUp, Code, ExternalLink, FileText, Play, Plus, RotateCw, ShieldAlert, Trash2, X } from "lucide-react";
+import { cellKeyCommand, insertCell, moveCell, removeCell, setCellType } from "../../lib/notebookGen";
 import { renderMarkdown, SAFE_URL } from "../../lib/markdown";
 import { dirOf, extOf, formatBytes, nextZoom, normalizeUrl, parseCsv, resolvePath, syncTarget, type PreviewKind } from "../../lib/preview";
 import { openExternal, openInWindow } from "../../lib/browser";
@@ -557,7 +558,13 @@ function NotebookCellView({
     return (
       <div className="fahh-nb-cell flex gap-3" data-cell="markdown">
         <div className={prompt} />
-        <div className="min-w-0 flex-1"><NotebookMarkdown source={cell.source} path={path} /></div>
+        {onEdit ? (
+          <EditableCode source={cell.source} onSave={onEdit}>
+            <div className="min-w-0 flex-1">{cell.source.trim() ? <NotebookMarkdown source={cell.source} path={path} /> : <p className="py-1 text-xs italic text-fahh-muted">Empty markdown cell. Click to write.</p>}</div>
+          </EditableCode>
+        ) : (
+          <div className="min-w-0 flex-1"><NotebookMarkdown source={cell.source} path={path} /></div>
+        )}
       </div>
     );
   }
@@ -638,14 +645,84 @@ function NotebookPreview({ path, content, onShowSource }: { path: string; conten
   return <NotebookBody nb={nb} path={path} k={k} />;
 }
 
+const addBtn = "flex items-center gap-1 rounded border border-fahh-surface px-2 py-0.5 text-[11px] text-fahh-muted hover:border-fahh-accent hover:text-fahh-text disabled:cursor-not-allowed disabled:opacity-40";
+const cellBtn = "rounded p-1 text-fahh-muted hover:bg-fahh-surface hover:text-fahh-text disabled:cursor-not-allowed disabled:opacity-30";
+
 function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: NotebookKernel }) {
   const g = useNotebookGenerate(nb.cells, k);
   // ponytail: Python kernels only; other notebook languages stay a read-only view.
   const python = nb.language === "python";
   const code = nb.cells.flatMap((c, index) => (c.type === "code" && c.source.trim() ? [{ index, code: c.source }] : []));
   const selected = g.gen.phase === "done" && nb.cells.length >= g.gen.len ? g.gen.at : -1;
+  // Command mode, as in Jupyter: the selected cell (picked with a click, not while typing in a
+  // text box) takes A/B/M/Y and Alt+Up/Down. Tracked as state with a window key listener rather
+  // than DOM focus, because the dock moves focus around after a click in the installed app.
+  const rootRef = useRef<HTMLDivElement>(null);
+  const cellRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [cur, setCur] = useState<number | null>(null);
+  const [editError, setEditError] = useState<string | null>(null);
+  const select = (i: number | null) => {
+    setCur(i);
+    if (i !== null) cellRefs.current[i]?.scrollIntoView({ block: "nearest" });
+  };
+  const edit = (mutate: (json: string) => string, selectAt?: number) => {
+    if (g.locked) return setEditError("Wait for the running cells to finish (or interrupt them) before changing cells.");
+    setEditError(null);
+    k.editNotebook(mutate).then(
+      () => {
+        if (selectAt !== undefined) setCur(selectAt);
+      },
+      (e) => {
+        console.error("notebook cell edit failed", e);
+        setEditError(String(e).replace(/^Error:\s*/, ""));
+      },
+    );
+  };
+  const editRef = useRef(edit);
+  editRef.current = edit;
+  const count = nb.cells.length;
+  useEffect(() => {
+    if (cur === null) return;
+    const onKey = (e: globalThis.KeyboardEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.("input, textarea, select, [contenteditable=true], .monaco-editor, .xterm")) return; // typing somewhere
+      if (!rootRef.current?.offsetParent) return; // this notebook is not on screen
+      const cmd = cellKeyCommand(e.key, e.altKey, e.ctrlKey || e.metaKey);
+      if (!cmd) return;
+      e.preventDefault();
+      const i = Math.min(cur, count - 1);
+      const run = editRef.current;
+      if (cmd === "above") run((j) => insertCell(j, i, "code"), i);
+      else if (cmd === "below") run((j) => insertCell(j, i + 1, "code"), i + 1);
+      else if (cmd === "markdown" || cmd === "code") run((j) => setCellType(j, i, cmd), i);
+      else if (cmd === "moveUp" && i > 0) run((j) => moveCell(j, i, -1), i - 1);
+      else if (cmd === "moveDown" && i < count - 1) run((j) => moveCell(j, i, 1), i + 1);
+      else if (cmd === "prev" && i > 0) select(i - 1);
+      else if (cmd === "next" && i < count - 1) select(i + 1);
+    };
+    // A click anywhere outside the notebook leaves command mode.
+    const onDown = (e: MouseEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) setCur(null);
+    };
+    window.addEventListener("keydown", onKey);
+    window.addEventListener("mousedown", onDown, true);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      window.removeEventListener("mousedown", onDown, true);
+    };
+  }, [cur, count]);
+  const addBar = (at: number) => (
+    <div className="fahh-nb-add flex items-center gap-2 pl-[76px] opacity-40 transition-opacity focus-within:opacity-100 hover:opacity-100">
+      <button type="button" disabled={g.locked} onClick={() => edit((j) => insertCell(j, at, "code"), at)} className={addBtn} aria-label={`Add code cell ${at === nb.cells.length ? "at the end" : "here"}`}>
+        <Plus size={11} aria-hidden="true" /> Code
+      </button>
+      <button type="button" disabled={g.locked} onClick={() => edit((j) => insertCell(j, at, "markdown"), at)} className={addBtn} aria-label={`Add markdown cell ${at === nb.cells.length ? "at the end" : "here"}`}>
+        <Plus size={11} aria-hidden="true" /> Markdown
+      </button>
+    </div>
+  );
   return (
-    <div className="fahh-notebook absolute inset-0 flex flex-col">
+    <div ref={rootRef} className="fahh-notebook absolute inset-0 flex flex-col">
       {python && (
         <KernelToolbar k={k} cells={code}>
           <GenerateButton g={g} at={nb.cells.length} />
@@ -653,24 +730,51 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
       )}
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="flex flex-col gap-4 p-4 pr-6">
+          {editError && <p role="alert" className="pl-[76px] text-[11px] text-fahh-error">{editError}</p>}
           {nb.cells.map((cell, i) => (
             <Fragment key={i}>
               {python && <GenerateSlot g={g} at={i} cellCount={nb.cells.length} />}
-              <div className={i === selected ? "fahh-nb-selected -m-1 rounded-md p-1 ring-1 ring-fahh-accent/70" : undefined}>
+              {i > 0 && addBar(i)}
+              <div
+                ref={(el) => {
+                  cellRefs.current[i] = el;
+                }}
+                data-testid="nb-cell"
+                aria-selected={cur === i}
+                onMouseDownCapture={() => setCur(i)}
+                className={`group/cell relative rounded-md ${i === selected ? "fahh-nb-selected -m-1 p-1 ring-1 ring-fahh-accent/70" : cur === i ? "ring-1 ring-fahh-accent/40" : ""}`}
+              >
+                <div className="absolute right-0 top-0 z-10 flex gap-0.5 rounded border border-fahh-surface bg-fahh-sidebar opacity-0 transition-opacity focus-within:opacity-100 group-hover/cell:opacity-100 group-aria-selected/cell:opacity-100">
+                  {python && cell.type === "code" && (
+                    <button type="button" disabled={g.locked} onClick={() => void k.runCells([{ index: i, code: cell.source }])} className={cellBtn} title="Run cell (Ctrl+Enter while editing)" aria-label="Run this cell">
+                      <Play size={12} aria-hidden="true" />
+                    </button>
+                  )}
+                  <button type="button" disabled={g.locked || i === 0} onClick={() => edit((j) => moveCell(j, i, -1), i - 1)} className={cellBtn} title="Move cell up (Alt+Up)" aria-label="Move cell up">
+                    <ArrowUp size={12} aria-hidden="true" />
+                  </button>
+                  <button type="button" disabled={g.locked || i === nb.cells.length - 1} onClick={() => edit((j) => moveCell(j, i, 1), i + 1)} className={cellBtn} title="Move cell down (Alt+Down)" aria-label="Move cell down">
+                    <ArrowDown size={12} aria-hidden="true" />
+                  </button>
+                  <button type="button" disabled={g.locked} onClick={() => edit((j) => removeCell(j, i))} className={`${cellBtn} hover:text-fahh-error`} title="Delete cell" aria-label="Delete cell">
+                    <Trash2 size={12} aria-hidden="true" />
+                  </button>
+                </div>
                 <NotebookCellView
                   cell={cell}
                   language={nb.language}
                   path={path}
                   run={k.runs[i]}
                   onRun={python && cell.type === "code" ? () => void k.runCells([{ index: i, code: cell.source }]) : undefined}
-                  onEdit={cell.type === "code" ? (src, run) => g.saveCell(i, src, run && python) : undefined}
+                  onEdit={cell.type === "code" ? (src, run) => g.saveCell(i, src, run && python) : cell.type === "markdown" ? (src) => g.saveCell(i, src, false) : undefined}
                 />
               </div>
             </Fragment>
           ))}
           {python && <GenerateSlot g={g} at={nb.cells.length} cellCount={nb.cells.length} />}
+          {addBar(nb.cells.length)}
           <p className="pl-[76px] text-[11px] text-fahh-muted">
-            {nb.cells.length} cells · {python ? kernelLabel(k.kernel) : nb.language}. Click a code cell to edit it; edits and outputs are saved into the notebook.
+            {nb.cells.length} cells · {python ? kernelLabel(k.kernel) : nb.language}. Click a cell to edit it; edits and outputs are saved into the notebook. Click a cell, then, then A / B add a cell above / below, M / Y make it markdown / code, Alt+Up / Alt+Down move it.
           </p>
         </div>
       </div>

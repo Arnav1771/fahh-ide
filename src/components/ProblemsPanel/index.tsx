@@ -3,11 +3,13 @@ import { AlertCircle, AlertTriangle, Info, Search, FileCode, CheckCircle2 } from
 import { useDiagnosticsStore, type DiagnosticItem } from "../../store/diagnosticsStore";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { openAt } from "../../lib/navigation";
+import { useFileStore } from "../../store/fileStore";
 
 export function ProblemsPanel() {
   const diagnostics = useDiagnosticsStore((s) => s.diagnostics);
   const [filter, setFilter] = useState("");
   const { openFileInEditor } = useWorkspace();
+  const root = useFileStore((s) => s.root);
 
   const filtered = useMemo(() => {
     if (!filter.trim()) return diagnostics;
@@ -85,7 +87,7 @@ export function ProblemsPanel() {
                 >
                   <FileCode size={12} className="text-fahh-accent" />
                   <span className="font-medium text-fahh-text text-[11px]">{fileName}</span>
-                  <span className="text-[10px] text-fahh-muted font-mono truncate">{filePath}</span>
+                  <span className="text-[10px] text-fahh-muted font-mono truncate">{root && filePath.startsWith(root) ? filePath.slice(root.length + 1) : filePath}</span>
                   <span className="ml-auto text-[10px] text-fahh-muted">({items.length})</span>
                 </div>
 

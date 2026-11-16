@@ -21,6 +21,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        .plugin(app::clipboard_permission::init())
         .manage(state::AppState::default())
         .manage(app::cli::PendingOpen::default())
         .manage(lsp_client::LspState::default())

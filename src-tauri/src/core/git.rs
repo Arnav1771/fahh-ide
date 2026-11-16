@@ -999,7 +999,7 @@ mod tests {
 
     /// Run the git CLI in `dir`, panicking with its output on failure.
     fn git(dir: &Path, args: &[&str]) -> String {
-        let out = std::process::Command::new("git").args(args).current_dir(dir).output().unwrap();
+        let out = crate::core::proc::cmd("git").args(args).current_dir(dir).output().unwrap();
         let text = format!("{}{}", String::from_utf8_lossy(&out.stdout), String::from_utf8_lossy(&out.stderr));
         assert!(out.status.success(), "git {args:?}: {text}");
         text
@@ -1146,7 +1146,7 @@ mod tests {
         write(&dir, "a.txt", "top\nours\nbottom\n");
         stage_commit(&p, "a.txt", "ours");
 
-        let out = std::process::Command::new("git").args(["merge", "other"]).current_dir(&dir).output().unwrap();
+        let out = crate::core::proc::cmd("git").args(["merge", "other"]).current_dir(&dir).output().unwrap();
         assert!(!out.status.success(), "merge must conflict");
         let st = git_status(p.clone()).unwrap();
         assert_eq!(st.unstaged.iter().map(|c| c.status).collect::<Vec<_>>(), [GitChangeStatus::Conflicted]);
