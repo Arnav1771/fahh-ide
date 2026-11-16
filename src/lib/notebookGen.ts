@@ -234,3 +234,13 @@ export function setCellType(json: string, index: number, type: "code" | "markdow
   nb.cells[index] = type === "code" ? { cell_type: "code", execution_count: null, outputs: [], ...keep } : { cell_type: "markdown", ...keep };
   return dump(nb);
 }
+
+export type CellKeyCommand = "above" | "below" | "markdown" | "code" | "moveUp" | "moveDown" | "prev" | "next";
+
+/** Jupyter command-mode keys on a selected cell; null for anything else (left to the app). */
+export function cellKeyCommand(key: string, alt: boolean, ctrlOrMeta: boolean): CellKeyCommand | null {
+  if (ctrlOrMeta) return null;
+  if (alt) return key === "ArrowUp" ? "moveUp" : key === "ArrowDown" ? "moveDown" : null;
+  const map: Record<string, CellKeyCommand> = { a: "above", b: "below", m: "markdown", y: "code", ArrowUp: "prev", ArrowDown: "next", k: "prev", j: "next" };
+  return map[key.length === 1 ? key.toLowerCase() : key] ?? null;
+}

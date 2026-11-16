@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildGeneratePrompt, describeKernel, insertCell, insertCodeCell, moveCell, parseInspect, removeCell, setCellSource, setCellType, stripFences, toLines } from "./notebookGen";
+import { buildGeneratePrompt, cellKeyCommand, describeKernel, insertCell, insertCodeCell, moveCell, parseInspect, removeCell, setCellSource, setCellType, stripFences, toLines } from "./notebookGen";
 import { parseNotebook, type NotebookCell } from "./notebook";
 import { parseKernelLine } from "./python";
 
@@ -147,5 +147,22 @@ describe("notebook cell toolbar edits", () => {
     const code = JSON.parse(setCellType(nb, 1, "code")).cells[1];
     expect(code).toMatchObject({ cell_type: "code", execution_count: null, outputs: [], source: ["# hi"], id: "b" });
     expect(() => setCellType(nb, 5, "code")).toThrow(/no longer/);
+  });
+});
+
+describe("notebook command-mode keys", () => {
+  it("maps Jupyter's keys and leaves everything else to the app", () => {
+    expect(cellKeyCommand("a", false, false)).toBe("above");
+    expect(cellKeyCommand("B", false, false)).toBe("below");
+    expect(cellKeyCommand("m", false, false)).toBe("markdown");
+    expect(cellKeyCommand("y", false, false)).toBe("code");
+    expect(cellKeyCommand("ArrowUp", true, false)).toBe("moveUp");
+    expect(cellKeyCommand("ArrowDown", true, false)).toBe("moveDown");
+    expect(cellKeyCommand("ArrowDown", false, false)).toBe("next");
+    expect(cellKeyCommand("k", false, false)).toBe("prev");
+    expect(cellKeyCommand("a", false, true)).toBeNull(); // Ctrl+A stays select-all
+    expect(cellKeyCommand("b", true, false)).toBeNull();
+    expect(cellKeyCommand("x", false, false)).toBeNull();
+    expect(cellKeyCommand("Enter", false, false)).toBeNull();
   });
 });

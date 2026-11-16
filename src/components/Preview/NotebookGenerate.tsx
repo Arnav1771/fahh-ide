@@ -432,10 +432,6 @@ export function EditableCode({ source, onSave, children }: { source: string; onS
             e.preventDefault();
             setDraft(null);
             setError(null);
-            // Back to command mode on this cell (A/B/M/Y, Alt+Up/Down), as in Jupyter. After the
-            // text box is gone, so its blur does not save the edit Esc just threw away.
-            const cell = e.currentTarget.closest<HTMLElement>("[data-testid=nb-cell]");
-            requestAnimationFrame(() => cell?.focus());
           } else if (e.key === "Enter" && (e.ctrlKey || e.metaKey || e.shiftKey)) {
             e.preventDefault();
             void save(true);
