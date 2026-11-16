@@ -732,7 +732,7 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
         <div className="flex flex-col gap-4 p-4 pr-6">
           {editError && <p role="alert" className="pl-[76px] text-[11px] text-fahh-error">{editError}</p>}
           {nb.cells.map((cell, i) => (
-            <Fragment key={cell.id ?? `i${i}`}>
+            <Fragment key={i}>
               {python && <GenerateSlot g={g} at={i} cellCount={nb.cells.length} />}
               {i > 0 && addBar(i)}
               <div
