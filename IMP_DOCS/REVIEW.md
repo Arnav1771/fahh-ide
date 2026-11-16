@@ -18,6 +18,7 @@ Status legend: **Fixed (PR)** · **Open** (not fixed in this round).
 | #141 | Dependency CVEs: dompurify, markdown-it |
 | #142 | Backend robustness: Windows .cmd shims, .vsix zip bomb, kernel script path |
 | #140 | Perf and a11y: cursor status isolated, leaked listeners, palette label |
+| #144 | Review follow-ups: WSL --exec, Windows cmd runs, workspace trust, safer saves, process containment, CSP, fs plugin off |
 
 ## P0
 
@@ -38,7 +39,7 @@ Status legend: **Fixed (PR)** · **Open** (not fixed in this round).
 | P1-5 | Saves not atomic; non-UTF-8 files mangled with U+FFFD; BOM dropped | `core/workspace.rs:82,92`, `git.rs:817`, `state.rs:42` | Data loss on a crash or full disk; Latin-1 and UTF-16 files destroyed on save; spurious git diffs | **Fixed: #138** |
 | P1-6 | Literal search-and-replace expands `$1` / `$name` | `core/workspace.rs:480` | Replacing with `$price` wrote empty strings across the workspace | **Fixed: #138** |
 | P1-7 | Over-broad Tauri capabilities: `shell:allow-execute/spawn/stdin-write/kill`, `fs:write-all/remove/rename`, unused `execute_command` IPC (runs any shell string) | `capabilities/default.json`, `lib.rs:52` | Any script injection becomes full code execution | **Fixed: #139.** Trimmed to what the frontend uses: shell `open`, fs read |
-| P1-8 | No CSP (`"csp": null`) | `tauri.conf.json:47` | No containment for injected script | **Open.** Needs GUI verification before it can ship: the browser viewport, previews, Monaco workers and BYO-key AI hosts all need checking. The draft policy is below |
+| P1-8 | No CSP (`"csp": null`) | `tauri.conf.json:47` | No containment for injected script | **Fixed: #144** (no page errors in the real-app run) |
 | P1-9 | Status-bar error count stale vs Problems; breadcrumb counted by file-name suffix | `EditorPane.tsx:345-360`, `StatusHud.tsx:20`, `Breadcrumbs/index.tsx:77` | Wrong numbers on screen | **Fixed: #134** |
 | P1-10 | Known CVEs in shipped JS deps: dompurify ≤3.4.16 (critical/high sanitizer bypasses; it sanitizes notebook and Markdown HTML), markdown-it <14.3.3 (high, DoS) | `package.json` | XSS through a crafted notebook or Markdown file | **Fixed: #141** |
 | P1-11 | Heavy sync commands run on the UI thread: `search_workspace`, `replace_in_workspace`, `get_file_tree`, `git_status`, `git_file_log`, `get_tool_status` | `workspace.rs:69,213,366`, `git.rs:440,664,862,901`, `installer.rs:66` | The window freezes on large repos and WSL paths | **Open.** Make them `async` + `spawn_blocking` (git.rs already has `off_thread`) |
@@ -85,3 +86,15 @@ Checked and fine: PTY lifecycle (job object, process-group kill), git network co
 
 ## Draft CSP (P1-8, not shipped)
 `default-src 'self'; script-src 'self' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: asset: http://asset.localhost https:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost https: http://localhost:* http://127.0.0.1:*; worker-src 'self' blob:; frame-src *; object-src 'none'; base-uri 'self'`. `'unsafe-eval'` is needed by `welcome.ts` `syntaxError` (`new Function`).
+
+## Review round 2 (independent review of #132–#143), fixed in #144
+
+| Sev | Finding | file:line | Status |
+|---|---|---|---|
+| HIGH | WSL runs and agent commands: `wsl.exe … -- bash -lc` let the default shell expand `$(…)` in file names | `core/wsl.rs:70`, `terminal.rs:60` | **Fixed: #144** (`--exec`). Real app: a file named `x$(touch PWNED)y.py` runs as Python, and no `PWNED` file appears |
+| HIGH | Windows Run (Java/C/C++/Kotlin) broken: argv-escaped quotes inside `cmd /C` | `runner.rs:178/201/261` | **Fixed: #144** (`/D /V:OFF /S /C` + `raw_arg`) |
+| HIGH | Opening a notebook probed (ran) the repo's `.venv` python | `NotebookKernel.tsx:118`, `runner.rs:432-459` | **Fixed: #144.** Workspace trust: `.venv` probing and language servers are refused in Rust until the folder is trusted; tasks ask first |
+| MED | `write_atomic` broke exec bit / hard links / owner on WSL and UNC paths, failed on locked files or no-create folders | `fsutil.rs:23-30` | **Fixed: #144** (in-place for those cases, rename retry). Real app: exec bit 755 kept on a WSL save |
+| MED | fs plugin `read-all` + home-recursive; CSP null | `capabilities/default.json`, `tauri.conf.json` | **Fixed: #144.** The fs plugin has no permissions (Roundtable uses `read_picture`); CSP is set. A path scope on `write_file` was not done: every saved path comes from the webview, so the page could extend any scope itself |
+| MED | Children outlive a crashed Fahh; Unix Stop is SIGTERM only | `proc.rs`, `runner.rs`, `lsp_client.rs`, `debugger.rs`, `formatter.rs`, `agent/tools.rs` | **Fixed: #144.** Windows kill-on-close job object; Unix SIGKILL after 3 s. PR_SET_PDEATHSIG was not used (it fires on the spawning thread's exit) |
+| LOW | pid reuse window in `stop_run`; runs inherit stdin; TS problems listed twice; tests wrote the real data dir; relative data-dir fallback; dev-origin clipboard allow in release; kernel script non-atomic; unbounded .vsix stream; kernel docstring | various | **Fixed: #144** |
