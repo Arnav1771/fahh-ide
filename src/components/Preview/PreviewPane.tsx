@@ -715,6 +715,10 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
                 tabIndex={0}
                 data-testid="nb-cell"
                 onKeyDown={onCellKey(i)}
+                // The panel takes focus back on mousedown, so a click on the gutter or an output selects the cell here.
+                onClick={(e) => {
+                  if (!(e.target as HTMLElement).closest("button, textarea, input, select, a, [role=button]")) e.currentTarget.focus();
+                }}
                 className={`group/cell relative rounded-md outline-none focus:ring-1 focus:ring-fahh-accent/50 ${i === selected ? "fahh-nb-selected -m-1 p-1 ring-1 ring-fahh-accent/70" : ""}`}
               >
                 <div className="absolute right-0 top-0 z-10 flex gap-0.5 rounded border border-fahh-surface bg-fahh-sidebar opacity-0 transition-opacity focus-within:opacity-100 group-focus/cell:opacity-100 group-hover/cell:opacity-100">
