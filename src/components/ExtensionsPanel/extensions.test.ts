@@ -5,8 +5,16 @@ import {
   sortExtensions,
   filterExtensions,
   isPdfExtension,
-  CURATED_MARKETPLACE,
+  fromOpenVsx,
+  openVsxSearchUrl,
+  type MarketplaceExtension,
 } from "./index";
+
+// Test fixtures only (the panel itself ships no extension list).
+const ext = (id: string, downloadCount: number, averageRating: number | undefined, verified = false): MarketplaceExtension => ({
+  id, namespace: id.split(".")[0], name: id.split(".")[1], displayName: id.split(".")[1], description: id, version: "1.0.0", downloadCount, averageRating, verified,
+});
+const LIST = [ext("a.zeta", 10, 4.2, true), ext("b.alpha", 500, undefined), ext("c.python", 90, 4.9, true)];
 
 describe("ExtensionsPanel Utilities", () => {
   it("formats download counts with M and k suffixes", () => {
@@ -24,41 +32,30 @@ describe("ExtensionsPanel Utilities", () => {
     );
   });
 
-  it("sorts extensions by downloads, rating, and name", () => {
-    const sortedByDownloads = sortExtensions(CURATED_MARKETPLACE, "downloads");
-    expect(sortedByDownloads[0].downloadCount).toBeGreaterThanOrEqual(
-      sortedByDownloads[1].downloadCount
-    );
-
-    const sortedByRating = sortExtensions(CURATED_MARKETPLACE, "rating");
-    expect(sortedByRating[0].averageRating).toBeGreaterThanOrEqual(
-      sortedByRating[sortedByRating.length - 1].averageRating
-    );
-
-    const sortedByName = sortExtensions(CURATED_MARKETPLACE, "name");
-    expect(
-      sortedByName[0].displayName.localeCompare(sortedByName[1].displayName)
-    ).toBeLessThanOrEqual(0);
+  it("sorts by downloads, rating (unrated last) and name", () => {
+    expect(sortExtensions(LIST, "downloads").map((e) => e.id)).toEqual(["b.alpha", "c.python", "a.zeta"]);
+    expect(sortExtensions(LIST, "rating").map((e) => e.id)).toEqual(["c.python", "a.zeta", "b.alpha"]);
+    expect(sortExtensions(LIST, "name")[0].id).toBe("b.alpha");
   });
 
-  it("filters extensions by query, category, and verified status", () => {
-    const pythonResults = filterExtensions(CURATED_MARKETPLACE, "python", "All", false);
-    expect(pythonResults.some((e) => e.name === "python")).toBe(true);
-
-    const themeResults = filterExtensions(CURATED_MARKETPLACE, "", "Themes", false);
-    expect(themeResults.every((e) => e.category === "Themes")).toBe(true);
-
-    const verifiedResults = filterExtensions(CURATED_MARKETPLACE, "", "All", true);
-    expect(verifiedResults.every((e) => e.verified)).toBe(true);
+  it("filters by query and verified status", () => {
+    expect(filterExtensions(LIST, "python", "All", false).map((e) => e.id)).toEqual(["c.python"]);
+    expect(filterExtensions(LIST, "", "All", true).every((e) => e.verified)).toBe(true);
   });
 
-  it("contains high-relevance curated extensions across languages, formatters, and tools", () => {
-    expect(CURATED_MARKETPLACE.length).toBeGreaterThanOrEqual(10);
-    const ids = CURATED_MARKETPLACE.map((e) => e.id);
-    expect(ids).toContain("ms-python.python");
-    expect(ids).toContain("rust-lang.rust-analyzer");
-    expect(ids).toContain("esbenp.prettier-vscode");
-    expect(ids).toContain("golang.go");
+  it("maps Open VSX entries without inventing a rating or version", () => {
+    const e = fromOpenVsx({ namespace: "dracula-theme", name: "theme-dracula", downloadCount: 7, files: { icon: "i.png" } });
+    expect(e).toMatchObject({ id: "dracula-theme.theme-dracula", displayName: "theme-dracula", version: "", downloadCount: 7, iconUrl: "i.png", verified: false });
+    expect(e.averageRating).toBeUndefined();
+  });
+
+  it("asks the registry for a category's most downloaded, or a query", () => {
+    const themes = new URL(openVsxSearchUrl("", "Themes"));
+    expect(themes.searchParams.get("category")).toBe("Themes");
+    expect(themes.searchParams.get("query")).toBeNull();
+    const q = new URL(openVsxSearchUrl(" dracula ", "All"));
+    expect(q.searchParams.get("query")).toBe("dracula");
+    expect(q.searchParams.get("category")).toBeNull();
   });
 
   it("identifies PDF-related extensions for native feature banners", () => {

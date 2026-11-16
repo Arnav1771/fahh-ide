@@ -36,10 +36,7 @@ export function StickyNoteNodeView({ node }: { node: SpatialNodeData }) {
   const { updateNodeMeta } = useSpatialStore();
   const colorKey = node.meta?.noteColor || "amber";
   const color = NOTE_COLORS[colorKey] || NOTE_COLORS.amber;
-  const [content, setContent] = useState(
-    node.meta?.noteText ||
-      "Spatial mapping of open files, terminals, and AI agents.\n\nCode the way you think — float spatially across code, live tests, and terminal outputs."
-  );
+  const [content, setContent] = useState(node.meta?.noteText ?? "");
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;

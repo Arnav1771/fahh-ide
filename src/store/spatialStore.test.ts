@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from "vitest";
-import { useSpatialStore, calculateCenterPan } from "./spatialStore";
+import { useSpatialStore, calculateCenterPan, isSeededNote } from "./spatialStore";
 
 describe("spatialStore", () => {
   beforeEach(() => {
@@ -50,5 +50,21 @@ describe("spatialStore", () => {
 
     store.setZoom(0.1);
     expect(useSpatialStore.getState().zoom).toBe(0.3);
+  });
+});
+
+describe("no sample content on the canvas", () => {
+  it("a new canvas has no seeded note and no shell- or provider-specific titles", () => {
+    const nodes = useSpatialStore.getState().nodes;
+    expect(nodes.some((n) => n.type === "note")).toBe(false);
+    expect(nodes.map((n) => n.title).join(" ")).not.toMatch(/PowerShell|Fahh Local/);
+  });
+
+  it("drops the old seeded note from saved layouts unless someone wrote in it", () => {
+    const old = "Spatial mapping of open files, terminals, and AI agents.\n\nCode the way you think — float spatially across code, live tests, and terminal outputs.";
+    const note = (noteText?: string) => ({ id: "spatial-note-1", type: "note" as const, title: "Architecture Map", x: 0, y: 0, w: 1, h: 1, zIndex: 1, meta: { noteText } });
+    expect(isSeededNote(note(old))).toBe(true);
+    expect(isSeededNote(note(undefined))).toBe(true);
+    expect(isSeededNote(note("my own plan"))).toBe(false);
   });
 });
