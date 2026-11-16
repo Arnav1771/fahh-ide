@@ -5,6 +5,20 @@ Method: I read the code, ran unit and integration tests (vitest, cargo test, cli
 
 Status legend: **Fixed (PR)** · **Open** (not fixed in this round).
 
+## PRs (priority order, all open, none merged)
+| PR | Scope |
+|---|---|
+| #139 | Security: a repo can no longer pre-approve agent commands, no shell injection in Run, stop_run limits, orphaned processes, least-privilege capabilities (stacked on #138) |
+| #135 | Notebook: single writer for .ipynb, outputs keyed by stable cell id (report items 4 and 5) |
+| #138 | Safe saves: atomic writes, BOM kept, non-UTF-8 never mangled, literal replace |
+| #133 | TS completion and hover hang without typescript-language-server (item 1) |
+| #137 | Removes the shipped fake data (extension stats, invented plugins, seeded canvas note) |
+| #134 | Status-bar count matches Problems; theme display names (items 2 and 3) |
+| #136 | New Window opens empty; Settings no longer hides the Explorer; clipboard failures surface (items 6, 7, 9) |
+| #141 | Dependency CVEs: dompurify, markdown-it |
+| #142 | Backend robustness: Windows .cmd shims, .vsix zip bomb, kernel script path |
+| #140 | Perf and a11y: cursor status isolated, leaked listeners, palette label |
+
 ## P0
 
 | # | Finding | file:line | Impact | Status |
@@ -28,7 +42,7 @@ Status legend: **Fixed (PR)** · **Open** (not fixed in this round).
 | P1-9 | Status-bar error count stale vs Problems; breadcrumb counted by file-name suffix | `EditorPane.tsx:345-360`, `StatusHud.tsx:20`, `Breadcrumbs/index.tsx:77` | Wrong numbers on screen | **Fixed: #134** |
 | P1-10 | Known CVEs in shipped JS deps: dompurify ≤3.4.16 (critical/high sanitizer bypasses; it sanitizes notebook and Markdown HTML), markdown-it <14.3.3 (high, DoS) | `package.json` | XSS through a crafted notebook or Markdown file | **Fixed: #141** |
 | P1-11 | Heavy sync commands run on the UI thread: `search_workspace`, `replace_in_workspace`, `get_file_tree`, `git_status`, `git_file_log`, `get_tool_status` | `workspace.rs:69,213,366`, `git.rs:440,664,862,901`, `installer.rs:66` | The window freezes on large repos and WSL paths | **Open.** Make them `async` + `spawn_blocking` (git.rs already has `off_thread`) |
-| P1-12 | Windows `.cmd` shims (npm, npx, ts-node) never found by `Command::new` | `installer.rs:35-50`, `runner.rs:132-143` | TS Run and npm-based tool installs fail on Windows | **Open.** Resolve with `which::which` as lsp_client does |
+| P1-12 | Windows `.cmd` shims (npm, npx, ts-node) never found by `Command::new` | `installer.rs:35-50`, `runner.rs:132-143` | TS Run and npm-based tool installs fail on Windows | **Fixed: #142.** `proc::cmd` resolves bare names through PATH+PATHEXT on Windows (one fix for every caller) |
 | P1-13 | LSP lifecycle: check-then-spawn race (two servers), servers keyed by language only (a second window reuses the first root), messages emitted to all windows, a crashed server never restarted | `lsp_client.rs:150-230` | Duplicate diagnostics, wrong project in window 2 | **Open** |
 
 ## P2
@@ -45,8 +59,8 @@ Status legend: **Fixed (PR)** · **Open** (not fixed in this round).
 | P2-8 | No code splitting: 5.1 MB main chunk, every panel eager | `src/views/index.tsx:12-30`, `vite.config.ts` | Startup time | **Open.** `React.lazy` for the panels that start hidden |
 | P2-9 | Tauri `listen` leak when a panel unmounts before `listen()` resolves | `RunPanel/index.tsx:145-160`, `NotebookKernel.tsx:195` | Duplicate handlers after fast toggles | **Fixed: #140** |
 | P2-10 | Doubled TS/CSS/HTML suggestions while a language server is ready (Monaco 0.52 cannot switch its built-in providers off at runtime) | `monacoLsp.ts` | Duplicate completion items | **Open.** Needs a provider wrapper or a Monaco upgrade |
-| P2-11 | Kernel runner script written to a predictable shared temp path | `runner.rs:296-303` | On a multi-user `/tmp`, code can be planted | **Open.** Move it to the app data dir |
-| P2-12 | .vsix zip bomb: unbounded `read_to_string` of an entry | `extensions.rs:43-47` | Memory exhaustion | **Open.** `take(4 MB)` |
+| P2-11 | Kernel runner script written to a predictable shared temp path | `runner.rs:296-303` | On a multi-user `/tmp`, code can be planted | **Fixed: #142.** Written to the app data dir |
+| P2-12 | .vsix zip bomb: unbounded `read_to_string` of an entry | `extensions.rs:43-47` | Memory exhaustion | **Fixed: #142.** Entries capped at 8 MB |
 | P2-13 | Smart-mode judge sees the raw command, which can carry "reply SAFE" text | `agent/runner.rs:217-224` | Auto-run of a bad command | **Open.** Fence the command as data; keep the deny floor |
 | P2-14 | AppleScript injection through folder name | `terminal.rs:227-230` | macOS: code run on "open in terminal" | **Open** |
 | P2-15 | Debug sessions not reaped when the adapter exits by itself | `debugger.rs:203-206` | Zombie until `debug_stop` | **Open** |
