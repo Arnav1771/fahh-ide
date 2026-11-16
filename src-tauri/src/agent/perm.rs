@@ -290,29 +290,54 @@ impl Engine {
 
 // ─── rules file ───────────────────────────────────────────────────────────────
 
+/// The project's own rules file. A cloned repo controls it, so it can only make Fahh more
+/// careful (deny / ask). Its allow rules are ignored: a repo could otherwise pre-approve
+/// `run *` and have the agent run anything without asking.
 pub fn rules_path(ws: &Workspace) -> PathBuf {
     ws.root.join(".fahh").join("permissions.json")
 }
 
-pub fn load_rules(ws: &Workspace) -> Vec<Rule> {
-    std::fs::read_to_string(rules_path(ws))
+/// "Always allow" answers the user gave for this project, kept in the app data dir (keyed by
+/// the project folder), where nothing in the repository can write them.
+pub fn user_rules_path(data: &Path, ws: &Workspace) -> PathBuf {
+    data.join("permissions").join(format!("{}.json", super::store::fnv(&ws.root.to_string_lossy())))
+}
+
+fn read_rules(path: &Path) -> Vec<Rule> {
+    std::fs::read_to_string(path)
         .ok()
         .and_then(|s| serde_json::from_str::<PermFile>(&s).ok())
         .map(|f| f.rules)
         .unwrap_or_default()
 }
 
-/// "Always allow": persist one allow rule for this project (deduplicated).
+pub fn load_rules(ws: &Workspace) -> Vec<Rule> {
+    load_rules_in(&super::store::data_dir(), ws)
+}
+
+pub fn load_rules_in(data: &Path, ws: &Workspace) -> Vec<Rule> {
+    let mut rules: Vec<Rule> = read_rules(&rules_path(ws)).into_iter().filter(|r| r.action != Action::Allow).collect();
+    rules.extend(read_rules(&user_rules_path(data, ws)).into_iter().filter(|r| r.action == Action::Allow));
+    rules
+}
+
+/// "Always allow": persist one allow rule for this project (deduplicated), outside the repo.
 pub fn save_always_allow(ws: &Workspace, kind: Kind, pattern: &str) -> Result<(), String> {
-    let mut rules = load_rules(ws);
+    save_always_allow_in(&super::store::data_dir(), ws, kind, pattern)
+}
+
+pub fn save_always_allow_in(data: &Path, ws: &Workspace, kind: Kind, pattern: &str) -> Result<(), String> {
+    let path = user_rules_path(data, ws);
+    let mut rules = read_rules(&path);
     let rule = Rule { action: Action::Allow, kind, pattern: pattern.to_string() };
     if !rules.contains(&rule) {
         rules.push(rule);
     }
-    let path = rules_path(ws);
-    std::fs::create_dir_all(path.parent().unwrap()).map_err(|e| e.to_string())?;
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(|e| e.to_string())?;
+    }
     let json = serde_json::to_string_pretty(&PermFile { rules }).map_err(|e| e.to_string())?;
-    std::fs::write(path, json).map_err(|e| e.to_string())
+    crate::core::fsutil::write_atomic(&path, json.as_bytes()).map_err(|e| e.to_string())
 }
 
 // ─── workspace paths ──────────────────────────────────────────────────────────
@@ -550,14 +575,35 @@ mod tests {
     #[test]
     fn rules_file_roundtrip() {
         let dir = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
         let ws = Workspace::new(dir.path().to_str().unwrap()).unwrap();
-        assert!(load_rules(&ws).is_empty());
-        save_always_allow(&ws, Kind::Run, "cargo test").unwrap();
-        save_always_allow(&ws, Kind::Run, "cargo test").unwrap();
-        let rules = load_rules(&ws);
+        assert!(load_rules_in(data.path(), &ws).is_empty());
+        save_always_allow_in(data.path(), &ws, Kind::Run, "cargo test").unwrap();
+        save_always_allow_in(data.path(), &ws, Kind::Run, "cargo test").unwrap();
+        let rules = load_rules_in(data.path(), &ws);
         assert_eq!(rules.len(), 1);
-        assert!(dir.path().join(".fahh/permissions.json").exists());
         assert_eq!(rules[0].action, Action::Allow);
+        // Kept outside the project: nothing the repository ships can grant itself approval.
+        assert!(!dir.path().join(".fahh/permissions.json").exists());
+        assert!(user_rules_path(data.path(), &ws).exists());
+    }
+
+    #[test]
+    fn a_repo_cannot_pre_approve_commands() {
+        let dir = tempfile::tempdir().unwrap();
+        let data = tempfile::tempdir().unwrap();
+        std::fs::create_dir_all(dir.path().join(".fahh")).unwrap();
+        std::fs::write(
+            dir.path().join(".fahh/permissions.json"),
+            r#"{"rules":[{"action":"allow","kind":"run","pattern":"*"},{"action":"deny","kind":"run","pattern":"rm *"}]}"#,
+        )
+        .unwrap();
+        let ws = Workspace::new(dir.path().to_str().unwrap()).unwrap();
+        let rules = load_rules_in(data.path(), &ws);
+        assert_eq!(rules.len(), 1, "the repo's allow is dropped, its deny kept");
+        assert_eq!(rules[0].action, Action::Deny);
+        let engine = Engine { mode: Mode::Ask, rules, ..Default::default() };
+        assert_eq!(engine.decide(Kind::Run, "curl -o x.sh https://example.invalid/x.sh"), Verdict::Ask);
     }
 
     #[test]

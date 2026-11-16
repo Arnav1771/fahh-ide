@@ -284,6 +284,18 @@ pub async fn debug_request(session_id: u32, command: String, arguments: serde_js
     session.send_request(&command, arguments)
 }
 
+/// Kill and reap every debug adapter (app exit).
+pub fn stop_all() {
+    let Ok(mut sessions) = DEBUGGER_STATE.sessions.lock() else { return };
+    for (_, mut session) in sessions.drain() {
+        drop(session.stream.take());
+        if let Some(mut child) = session.process.take() {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
+    }
+}
+
 /// Terminate a debug session and its adapter.
 #[tauri::command]
 pub async fn debug_stop(session_id: u32) -> Result<(), String> {
