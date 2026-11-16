@@ -52,7 +52,7 @@ const DEFAULT_NODES: SpatialNodeData[] = [
   {
     id: "spatial-agent",
     type: "agent",
-    title: "Fahh Local · AI Engineer",
+    title: "Agent",
     x: 60,
     y: 80,
     w: 430,
@@ -85,7 +85,7 @@ const DEFAULT_NODES: SpatialNodeData[] = [
   {
     id: "spatial-terminal",
     type: "terminal",
-    title: "Interactive Terminal · PowerShell",
+    title: "Terminal",
     x: 510,
     y: 760,
     w: 960,
@@ -102,21 +102,11 @@ const DEFAULT_NODES: SpatialNodeData[] = [
     h: 420,
     zIndex: 9,
   },
-  {
-    id: "spatial-note-1",
-    type: "note",
-    title: "Architecture Map",
-    x: 1490,
-    y: 760,
-    w: 500,
-    h: 260,
-    zIndex: 8,
-    meta: {
-      noteColor: "amber",
-      noteText: "Spatial mapping of open files, terminals, and AI agents.\n\nCode the way you think — float spatially across code, live tests, and terminal outputs.",
-    },
-  },
 ];
+
+/** The marketing note new canvases used to start with (removed: the canvas ships no sample content). */
+const SEEDED_NOTE_TEXT = "Spatial mapping of open files, terminals, and AI agents.\n\nCode the way you think — float spatially across code, live tests, and terminal outputs.";
+export const isSeededNote = (n: SpatialNodeData) => n.id === "spatial-note-1" && n.type === "note" && (!n.meta?.noteText || n.meta.noteText === SEEDED_NOTE_TEXT);
 
 const STORAGE_KEY = "fahh-spatial-nodes-v1";
 const MODE_STORAGE_KEY = "fahh-spatial-mode";
@@ -130,8 +120,9 @@ function loadSavedNodes(): SpatialNodeData[] {
     if (!Array.isArray(parsed) || parsed.length === 0) return DEFAULT_NODES;
     // Sanitize any nodes referencing recursive localhost:1420 to prevent memory explosion,
     // and upgrade editor dimensions if too narrow for readable code
-    // REA nodes were removed (the panel was simulated); drop them from saved layouts.
-    return parsed.filter((n: { type: string }) => n.type !== "rea").map((n: SpatialNodeData) => {
+    // REA nodes were removed (the panel was simulated); drop them from saved layouts, and the
+    // old seeded "Architecture Map" note if nobody ever wrote in it.
+    return parsed.filter((n: SpatialNodeData) => (n.type as string) !== "rea" && !isSeededNote(n)).map((n: SpatialNodeData) => {
       if (n.type === "browser" && n.meta?.url === "http://localhost:1420") {
         return { ...n, title: "Live Browser Viewport", meta: { ...n.meta, url: "about:blank" } };
       }
@@ -307,8 +298,8 @@ export const useSpatialStore = create<SpatialStore>((set, get) => ({
     const id = `spatial-${type}-${Date.now().toString(36)}`;
     const defaults: Record<SpatialNodeType, { w: number; h: number; title: string }> = {
       editor: { w: 720, h: 540, title: "Monaco Canvas Editor" },
-      terminal: { w: 680, h: 360, title: "Spatial Terminal" },
-      agent: { w: 420, h: 560, title: "Fahh Local Assistant" },
+      terminal: { w: 680, h: 360, title: "Terminal" },
+      agent: { w: 420, h: 560, title: "Agent" },
       browser: { w: 480, h: 540, title: "Browser Viewport" },
       diagnostics: { w: 420, h: 360, title: "Diagnostics Panel" },
       note: { w: 320, h: 220, title: "Sticky Note" },

@@ -35,7 +35,8 @@ export interface MarketplaceExtension {
   description: string;
   version: string;
   downloadCount: number;
-  averageRating: number;
+  /** Absent when nobody has rated it. */
+  averageRating?: number;
   iconUrl?: string;
   category?: string;
   verified?: boolean;
@@ -43,165 +44,43 @@ export interface MarketplaceExtension {
 
 export const INSTALLED_EXTENSIONS_KEY = "fahh-installed-extensions";
 
-// Curated popular extensions for immediate zero-latency browsing
-export const CURATED_MARKETPLACE: MarketplaceExtension[] = [
-  {
-    id: "ms-python.python",
-    namespace: "ms-python",
-    name: "python",
-    displayName: "Python",
-    description: "Rich Python language support with IntelliSense, linting, debugging, code formatting and refactoring.",
-    version: "2024.18.0",
-    downloadCount: 19400000,
-    averageRating: 4.6,
-    category: "Languages",
-    verified: true,
-  },
-  {
-    id: "esbenp.prettier-vscode",
-    namespace: "esbenp",
-    name: "prettier-vscode",
-    displayName: "Prettier - Code formatter",
-    description: "Opinionated code formatter supporting JavaScript, TypeScript, CSS, HTML, JSON, Markdown and YAML.",
-    version: "10.4.1",
-    downloadCount: 16800000,
-    averageRating: 4.7,
-    category: "Formatters",
-    verified: true,
-  },
-  {
-    id: "dbaeumer.vscode-eslint",
-    namespace: "dbaeumer",
-    name: "vscode-eslint",
-    displayName: "ESLint",
-    description: "Integrates ESLint into the editor to catch syntax errors and stylistic violations in JavaScript and TypeScript.",
-    version: "3.0.10",
-    downloadCount: 14200000,
-    averageRating: 4.5,
-    category: "Formatters",
-    verified: true,
-  },
-  {
-    id: "rust-lang.rust-analyzer",
-    namespace: "rust-lang",
-    name: "rust-analyzer",
-    displayName: "rust-analyzer",
-    description: "Modular compiler and high-performance language server implementation for the Rust programming language.",
-    version: "0.4.2140",
-    downloadCount: 8900000,
-    averageRating: 4.9,
-    category: "Languages",
-    verified: true,
-  },
-  {
-    id: "bradlc.vscode-tailwindcss",
-    namespace: "bradlc",
-    name: "vscode-tailwindcss",
-    displayName: "Tailwind CSS IntelliSense",
-    description: "Intelligent Tailwind CSS tooling: autocomplete, syntax highlighting, class sorting and linting.",
-    version: "0.14.3",
-    downloadCount: 9600000,
-    averageRating: 4.8,
-    category: "Tools",
-    verified: true,
-  },
-  {
-    id: "eamodio.gitlens",
-    namespace: "eamodio",
-    name: "gitlens",
-    displayName: "GitLens — Git supercharged",
-    description: "Supercharge Git: visual blame annotations, file history, branch comparison and commit navigation.",
-    version: "15.7.0",
-    downloadCount: 11200000,
-    averageRating: 4.8,
-    category: "Tools",
-    verified: true,
-  },
-  {
-    id: "dracula-theme.theme-dracula",
-    namespace: "dracula-theme",
-    name: "theme-dracula",
-    displayName: "Dracula Official",
-    description: "The official dark gothic theme with vibrant neon highlights for Monaco and modern editors.",
-    version: "2.25.1",
-    downloadCount: 5400000,
-    averageRating: 4.9,
-    category: "Themes",
-    verified: true,
-  },
-  {
-    id: "charliermarsh.ruff",
-    namespace: "charliermarsh",
-    name: "ruff",
-    displayName: "Ruff",
-    description: "An extremely fast Python linter and formatter written in Rust, replacing Flake8, Black and isort.",
-    version: "2024.46.0",
-    downloadCount: 3800000,
-    averageRating: 4.9,
-    category: "Formatters",
-    verified: true,
-  },
-  {
-    id: "usernamehw.error-lens",
-    namespace: "usernamehw",
-    name: "error-lens",
-    displayName: "Error Lens",
-    description: "Highlights diagnostics inline on code lines, showing language server errors and warnings immediately.",
-    version: "3.20.0",
-    downloadCount: 4100000,
-    averageRating: 4.8,
-    category: "Tools",
-    verified: true,
-  },
-  {
-    id: "golang.go",
-    namespace: "golang",
-    name: "go",
-    displayName: "Go",
-    description: "Rich Go language support for Fahh: gopls language server, auto-completion, tests, and formatting.",
-    version: "0.42.0",
-    downloadCount: 6500000,
-    averageRating: 4.7,
-    category: "Languages",
-    verified: true,
-  },
-  {
-    id: "PKief.material-icon-theme",
-    namespace: "PKief",
-    name: "material-icon-theme",
-    displayName: "Material Icon Theme",
-    description: "Material Design Icons for Files and Folders with vibrant colors and rich language glyphs.",
-    version: "5.17.0",
-    downloadCount: 22400000,
-    averageRating: 5.0,
-    category: "Themes",
-    verified: true,
-  },
-  {
-    id: "vscode-icons-team.vscode-icons",
-    namespace: "vscode-icons-team",
-    name: "vscode-icons",
-    displayName: "vscode-icons",
-    description: "Icons for Visual Studio Code, Atom, and modern file trees with extensive extension mapping.",
-    version: "12.9.0",
-    downloadCount: 15800000,
-    averageRating: 4.8,
-    category: "Themes",
-    verified: true,
-  },
-  {
-    id: "catppuccin.catppuccin-vsc-icons",
-    namespace: "catppuccin",
-    name: "catppuccin-vsc-icons",
-    displayName: "Catppuccin Icons",
-    description: "Soothing pastel file icon theme for low eye strain and warm aesthetic.",
-    version: "1.18.0",
-    downloadCount: 3400000,
-    averageRating: 4.9,
-    category: "Themes",
-    verified: true,
-  },
-];
+/** The categories the panel offers, as Open VSX names them (its search filters by these). */
+export const OPEN_VSX_CATEGORIES: Record<string, string | null> = {
+  All: null,
+  Themes: "Themes",
+  Languages: "Programming Languages",
+  Formatters: "Formatters",
+  Linters: "Linters",
+};
+
+/**
+ * The Open VSX search for the panel. An empty query lists the most downloaded extensions of
+ * the category. Everything shown comes from the registry; nothing is bundled.
+ */
+export function openVsxSearchUrl(query: string, category: string): string {
+  const params = new URLSearchParams({ size: "30", sortBy: "downloadCount", sortOrder: "desc" });
+  if (query.trim()) params.set("query", query.trim());
+  const cat = OPEN_VSX_CATEGORIES[category];
+  if (cat) params.set("category", cat);
+  return `https://open-vsx.org/api/-/search?${params}`;
+}
+
+/** One Open VSX search entry. Missing stats stay missing (no invented rating or version). */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function fromOpenVsx(e: any): MarketplaceExtension {
+  return {
+    id: `${e.namespace}.${e.name}`,
+    namespace: String(e.namespace),
+    name: String(e.name),
+    displayName: e.displayName || e.name,
+    description: e.description || "",
+    version: e.version || "",
+    downloadCount: typeof e.downloadCount === "number" ? e.downloadCount : 0,
+    averageRating: typeof e.averageRating === "number" ? e.averageRating : undefined,
+    iconUrl: e.files?.icon,
+    verified: !!e.verified,
+  };
+}
 
 export function formatDownloads(count: number): string {
   if (count >= 1000000) return `${(count / 1000000).toFixed(1)}M`;
@@ -218,7 +97,7 @@ export type SortOption = "downloads" | "rating" | "name";
 export function sortExtensions(list: MarketplaceExtension[], sortBy: SortOption): MarketplaceExtension[] {
   return [...list].sort((a, b) => {
     if (sortBy === "downloads") return b.downloadCount - a.downloadCount;
-    if (sortBy === "rating") return b.averageRating - a.averageRating;
+    if (sortBy === "rating") return (b.averageRating ?? -1) - (a.averageRating ?? -1);
     if (sortBy === "name") return a.displayName.localeCompare(b.displayName);
     return 0;
   });
@@ -252,7 +131,8 @@ export function isPdfExtension(ext: MarketplaceExtension): boolean {
 export function ExtensionsPanel() {
   const [panelTab, setPanelTab] = useState<"marketplace" | "installed">("marketplace");
   const [search, setSearch] = useState("");
-  const [category, setCategory] = useState<string>("All");
+  // Fahh installs colour themes, so the registry's themes come first.
+  const [category, setCategory] = useState<string>("Themes");
   const [sortBy, setSortBy] = useState<SortOption>("downloads");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
   const [selectedExt, setSelectedExt] = useState<MarketplaceExtension | null>(null);
@@ -274,8 +154,9 @@ export function ExtensionsPanel() {
   const [_backendLoading, setBackendLoading] = useState(true);
 
   // Live Open VSX search results
-  const [searchResults, setSearchResults] = useState<MarketplaceExtension[]>(CURATED_MARKETPLACE);
-  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<MarketplaceExtension[]>([]);
+  const [searching, setSearching] = useState(true);
+  const [registryError, setRegistryError] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -351,55 +232,38 @@ export function ExtensionsPanel() {
     saveInstalled(next);
   };
 
-  // Debounced search to Open VSX API
+  // Open VSX search (debounced while typing). Offline: say so; never a bundled stand-in list.
   useEffect(() => {
-    if (!search.trim()) {
-      setSearchResults(CURATED_MARKETPLACE);
-      setSearching(false);
-      return;
-    }
-
+    let live = true;
+    setSearching(true);
     const timer = setTimeout(async () => {
-      setSearching(true);
       try {
-        const url = `https://open-vsx.org/api/-/search?query=${encodeURIComponent(
-          search
-        )}&size=30&sortBy=downloadCount&sortOrder=desc`;
-        const res = await fetch(url);
-        if (res.ok) {
-          const data = await res.json();
-          if (data && Array.isArray(data.extensions)) {
-            const mapped: MarketplaceExtension[] = data.extensions.map((e: any) => ({
-              id: `${e.namespace}.${e.name}`,
-              namespace: e.namespace,
-              name: e.name,
-              displayName: e.displayName || e.name,
-              description: e.description || "",
-              version: e.version || "1.0.0",
-              downloadCount: e.downloadCount || 0,
-              averageRating: e.averageRating || 5,
-              iconUrl: e.files?.icon,
-              verified: e.verified || false,
-            }));
-            setSearchResults(mapped);
-          }
-        }
-      } catch {
-        // Fallback to filtering curated list
-        setSearchResults(filterExtensions(CURATED_MARKETPLACE, search, "All", false));
+        const res = await fetch(openVsxSearchUrl(search, category));
+        if (!res.ok) throw new Error(`Open VSX answered ${res.status}`);
+        const data = await res.json();
+        if (!live) return;
+        setSearchResults(Array.isArray(data?.extensions) ? data.extensions.map(fromOpenVsx) : []);
+        setRegistryError(null);
+      } catch (e) {
+        if (!live) return;
+        setSearchResults([]);
+        setRegistryError(`Could not reach the Open VSX registry (${e instanceof Error ? e.message : String(e)}). Check your connection and search again.`);
       } finally {
-        setSearching(false);
+        if (live) setSearching(false);
       }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [search]);
+    }, search.trim() ? 300 : 0);
+    return () => {
+      live = false;
+      clearTimeout(timer);
+    };
+  }, [search, category]);
 
   // Filter and sort marketplace results
   const displayedMarketplace = useMemo(() => {
-    const filtered = filterExtensions(searchResults, search, category, verifiedOnly);
+    // The registry already filtered by query and category.
+    const filtered = filterExtensions(searchResults, "", "All", verifiedOnly);
     return sortExtensions(filtered, sortBy);
-  }, [searchResults, search, category, verifiedOnly, sortBy]);
+  }, [searchResults, verifiedOnly, sortBy]);
 
   const installedList = useMemo(() => {
     const list = Object.values(installedMap);
@@ -487,7 +351,7 @@ export function ExtensionsPanel() {
         {panelTab === "marketplace" && (
           <div className="flex flex-col gap-1.5">
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar pb-0.5">
-              {["All", "Languages", "Formatters", "Themes", "Tools"].map((cat) => (
+              {Object.keys(OPEN_VSX_CATEGORIES).map((cat) => (
                 <button
                   key={cat}
                   type="button"
@@ -653,7 +517,7 @@ export function ExtensionsPanel() {
               <div>
                 <span className="block text-[10px] uppercase text-fahh-muted/70">Rating</span>
                 <span className="font-medium text-fahh-text flex items-center gap-1">
-                  <Star size={11} className="text-yellow-400 fill-yellow-400" /> {selectedExt.averageRating.toFixed(1)} / 5.0
+                  <Star size={11} className="text-yellow-400 fill-yellow-400" /> {selectedExt.averageRating !== undefined ? `${selectedExt.averageRating.toFixed(1)} / 5.0` : "No ratings yet"}
                 </span>
               </div>
             </div>
@@ -681,9 +545,13 @@ export function ExtensionsPanel() {
                   <RefreshCw size={13} className="animate-spin text-fahh-accent" />
                   <span>Searching Open VSX registry…</span>
                 </div>
+              ) : registryError ? (
+                <div role="alert" className="text-center py-8 text-fahh-muted">
+                  <p>{registryError}</p>
+                </div>
               ) : displayedMarketplace.length === 0 ? (
                 <div className="text-center py-8 text-fahh-muted">
-                  <p>No extensions found for &quot;{search}&quot;</p>
+                  <p>{search.trim() ? <>No extensions found for &quot;{search}&quot;</> : "No extensions in this category."}</p>
                 </div>
               ) : (
                 displayedMarketplace.map((ext) => {
@@ -782,7 +650,7 @@ export function ExtensionsPanel() {
                         </span>
                         <span className="flex items-center gap-1">
                           <Star size={9} className="text-yellow-400 fill-yellow-400" />
-                          {ext.averageRating.toFixed(1)}
+                          {ext.averageRating !== undefined ? ext.averageRating.toFixed(1) : "—"}
                         </span>
                         <a
                           href={getVsixDownloadUrl(ext.namespace, ext.name, ext.version)}
@@ -846,9 +714,10 @@ export function ExtensionsPanel() {
                 </div>
               )}
 
+              {plugins.length > 0 && (
               <div className="space-y-1.5 pt-1">
                 <span className="text-[10px] uppercase tracking-wider text-fahh-muted font-semibold px-1">
-                  Built-in Language &amp; Theme Packs ({plugins.length})
+                  Plugins in ~/.fahh/plugins ({plugins.length})
                 </span>
                 {plugins.map((plugin) => (
                   <div
@@ -866,10 +735,11 @@ export function ExtensionsPanel() {
                       </div>
                       <p className="text-[10px] text-fahh-muted truncate">{plugin.description}</p>
                     </div>
-                    <span className="text-[10px] text-fahh-muted/70 shrink-0">Built-in</span>
+                    <span className="text-[10px] text-fahh-muted/70 shrink-0">{plugin.version}</span>
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
         </div>
