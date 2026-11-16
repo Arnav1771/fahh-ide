@@ -90,3 +90,12 @@ export function createRunRouter(sinks: RunRouterSinks): RunRouter {
     },
   };
 }
+
+/**
+ * For `listen(...).then(...)` in an effect: `listen` resolves later, possibly after the
+ * component unmounted; then the handler must be removed at once instead of kept forever.
+ */
+export const keepWhileMounted = (mounted: () => boolean, keep: (unlisten: () => void) => void) => (unlisten: () => void) => {
+  if (mounted()) keep(unlisten);
+  else unlisten();
+};

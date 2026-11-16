@@ -8,7 +8,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { Copy, Loader2, Play, RotateCw, Square, SquareTerminal, X } from "lucide-react";
-import { createRunRouter, type RunRouter } from "../../lib/runEvents";
+import { createRunRouter, keepWhileMounted, type RunRouter } from "../../lib/runEvents";
 import { pythonKernels, readFile, runFile, runStdin, stopRun, writeFile, type PythonEnv } from "../../lib/tauri";
 import type { RunOutputEvent } from "../../lib/types";
 import { ensureCellIds, setCellOutputs, type KernelState } from "../../lib/notebookGen";
@@ -193,8 +193,9 @@ export function useNotebookKernel(path: string) {
   useEffect(() => {
     let live = true;
     const offs: Array<() => void> = [];
-    void listen<RunOutputEvent>("runner://output", (e) => live && router.current!.output(e.payload)).then((f) => offs.push(f));
-    void listen<{ pid: number; exit_code: number | null; duration_ms: number }>("runner://exit", (e) => live && router.current!.exit(e.payload)).then((f) => offs.push(f));
+    const keep = keepWhileMounted(() => live, (f) => offs.push(f));
+    void listen<RunOutputEvent>("runner://output", (e) => live && router.current!.output(e.payload)).then(keep);
+    void listen<{ pid: number; exit_code: number | null; duration_ms: number }>("runner://exit", (e) => live && router.current!.exit(e.payload)).then(keep);
     return () => {
       live = false;
       offs.forEach((f) => f());

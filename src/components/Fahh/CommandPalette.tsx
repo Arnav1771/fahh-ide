@@ -154,9 +154,11 @@ function PaletteBody({
                 setQuery("");
                 setSelected(0);
               }}
+              aria-label="Clear the search"
+              title="Clear"
               className="p-1 rounded text-fahh-muted hover:text-fahh-text transition-colors"
             >
-              <X size={12} />
+              <X size={12} aria-hidden="true" />
             </button>
           )}
         </div>

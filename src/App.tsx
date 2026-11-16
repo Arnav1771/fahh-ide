@@ -170,7 +170,6 @@ export default function App() {
     [sessionSearch]
   );
   const [quickOpen, setQuickOpen] = useState(false);
-  const cursorPosition = useEditorStore((s) => s.cursorPosition);
   const activeTab = useEditorStore((s) => s.activeTab);
   const tree = useFileStore((s) => s.tree);
   const { openFileInEditor, openFolder } = useWorkspace();
@@ -778,10 +777,7 @@ export default function App() {
               title="Go to Line/Column (Ctrl+G)"
               className="hover:text-fahh-text transition-colors font-mono text-[11px] flex items-center gap-1"
             >
-              <span>Ln {cursorPosition.line}, Col {cursorPosition.column}</span>
-              {cursorPosition.totalLines && (
-                <span className="text-fahh-muted/50">({cursorPosition.totalLines} lines)</span>
-              )}
+              <CursorStatus />
             </button>
           )}
 
@@ -877,5 +873,19 @@ function LocalServerItem() {
     >
       <Globe size={12} aria-hidden="true" /> {label}
     </button>
+  );
+}
+
+/**
+ * Ln/Col in the status bar. Its own component: the cursor moves on every keystroke, and
+ * subscribing the whole App shell to it re-rendered everything each time.
+ */
+function CursorStatus() {
+  const cursorPosition = useEditorStore((s) => s.cursorPosition);
+  return (
+    <>
+      <span>Ln {cursorPosition.line}, Col {cursorPosition.column}</span>
+      {cursorPosition.totalLines && <span className="text-fahh-muted/50">({cursorPosition.totalLines} lines)</span>}
+    </>
   );
 }
