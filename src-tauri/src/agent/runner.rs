@@ -921,9 +921,14 @@ mod tests {
     async fn always_allow_is_saved_and_skips_the_next_prompt() {
         let h = harness(|_| Decision { allow: true, always: true, command: None });
         run(&h, mock(vec![turn("", vec![call("1", "run_command", json!({"command": "echo hi"}))]), turn("ok", vec![])]), Mode::Ask, "x", 1).await;
-        assert!(std::fs::read_to_string(h.dir.path().join(".fahh/permissions.json")).unwrap().contains("echo hi"));
+        // Saved in the app data dir, never in the project (a repo must not be able to grant itself approval).
+        let ws = Workspace::new(h.dir.path().to_str().unwrap()).unwrap();
+        let saved = perm::user_rules_path(&super::super::store::data_dir(), &ws);
+        assert!(std::fs::read_to_string(&saved).unwrap().contains("echo hi"));
+        assert!(!h.dir.path().join(".fahh/permissions.json").exists());
         run(&h, mock(vec![turn("", vec![call("2", "run_command", json!({"command": "echo hi"}))]), turn("ok", vec![])]), Mode::Ask, "again", 2).await;
         assert_eq!(count(&h, |e| matches!(e, AgentEvent::ApprovalRequest { .. })), 1);
+        let _ = std::fs::remove_file(saved);
     }
 
     #[tokio::test]

@@ -16,7 +16,7 @@ pub fn data_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from(".fahh-data"))
 }
 
-fn fnv(s: &str) -> String {
+pub(crate) fn fnv(s: &str) -> String {
     let mut h: u64 = 0xcbf29ce484222325;
     for b in s.to_lowercase().replace('\\', "/").bytes() {
         h ^= b as u64;

@@ -6,6 +6,7 @@ mod core;
 mod app;
 pub mod agent;
 
+use tauri::Manager;
 use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, pty, remote, extensions, watch, account, formatter, plugin, error_detector, git, preview, syntax, setup};
 
 pub fn run() {
@@ -49,8 +50,6 @@ pub fn run() {
             editor::close_document,
             editor::get_open_documents,
             // Terminal
-            terminal::execute_command,
-            terminal::write_stdin,
             terminal::launch_agy_terminal,
             // Fahh SFX trigger (core feature)
             error_detector::trigger_error_sound,
@@ -176,6 +175,15 @@ pub fn run() {
             app::setup(app)?;
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running Fahh Editor");
+        .build(tauri::generate_context!())
+        .expect("error while running Fahh Editor")
+        .run(|app, event| {
+            // Language servers, debug adapters, runs and notebook kernels are plain child
+            // processes: without this they outlived Fahh (orphaned node, rust-analyzer, python).
+            if let tauri::RunEvent::Exit = event {
+                lsp_client::stop_all(&app.state::<lsp_client::LspState>());
+                debugger::stop_all();
+                runner::stop_all_runs();
+            }
+        });
 }
