@@ -543,6 +543,27 @@ fn cmd_c_args(line: &str) -> Vec<String> {
     vec!["/D".into(), "/V:OFF".into(), "/S".into(), "/C".into(), format!("{CMD_RAW}\"{line}\"")]
 }
 
+/// The process for a local run; a `CMD_RAW` entry reaches cmd verbatim.
+fn to_command(run_cmd: &RunCommand) -> std::process::Command {
+    let mut c = crate::core::proc::cmd(&run_cmd.program);
+    for a in &run_cmd.args {
+        match a.strip_prefix(CMD_RAW) {
+            #[cfg(windows)]
+            Some(raw) => {
+                std::os::windows::process::CommandExt::raw_arg(&mut c, raw);
+            }
+            #[cfg(not(windows))]
+            Some(raw) => {
+                c.arg(raw);
+            }
+            None => {
+                c.arg(a);
+            }
+        }
+    }
+    c
+}
+
 /// Marks a `cmd_c_args` line that must reach cmd verbatim (`raw_arg`), not argv-quoted.
 const CMD_RAW: &str = "\u{0}raw:";
 
@@ -604,22 +625,7 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
         None => {
             let run_cmd = build_run_command(&language, &config.path, &config.args, false, config.interpreter.as_deref())?;
             debug!("Executing: {} {:?}", run_cmd.program, run_cmd.args);
-            let mut c = crate::core::proc::cmd(&run_cmd.program);
-            for a in &run_cmd.args {
-                match a.strip_prefix(CMD_RAW) {
-                    #[cfg(windows)]
-                    Some(raw) => {
-                        std::os::windows::process::CommandExt::raw_arg(&mut c, raw);
-                    }
-                    #[cfg(not(windows))]
-                    Some(raw) => {
-                        c.arg(raw);
-                    }
-                    None => {
-                        c.arg(a);
-                    }
-                }
-            }
+            let mut c = to_command(&run_cmd);
             c.current_dir(&cwd);
             (c, run_cmd.program)
         }
@@ -819,6 +825,38 @@ mod tests {
         let raw = args[4].strip_prefix(CMD_RAW).expect("raw marker");
         assert_eq!(raw, r#""javac "C:\my files\a&b\Main.java" && java -cp "C:\my files\a&b" Main""#);
         assert!(!raw.contains(r#"\""#), "no argv escaping inside the cmd line");
+    }
+
+    /// Kotlin Run end to end through the real shell (cmd on Windows, sh elsewhere), with
+    /// kotlinc and java stand-ins on PATH (on Windows they are .bat shims, as kotlinc is),
+    /// in a folder whose name has a space and an `&`: both steps run, with the right paths.
+    #[test]
+    fn kotlin_run_compiles_then_runs_the_jar() {
+        let dir = std::env::temp_dir().join(format!("fahh kt&{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let shim = |name: &str| {
+            #[cfg(windows)]
+            std::fs::write(dir.join(format!("{name}.bat")), format!("@echo off\r\necho {name} %*\r\n")).unwrap();
+            #[cfg(not(windows))]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let f = dir.join(name);
+                std::fs::write(&f, format!("#!/bin/sh\necho {name} \"$@\"\n")).unwrap();
+                std::fs::set_permissions(&f, std::fs::Permissions::from_mode(0o755)).unwrap();
+            }
+        };
+        shim("kotlinc");
+        shim("java");
+        let kt = dir.join("Main.kt").to_string_lossy().to_string();
+        let run = build_run_command("kotlin", &kt, &["a b".into()], false, None).unwrap();
+        let path = std::env::join_paths(std::iter::once(dir.clone()).chain(std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()))).unwrap();
+        let out = to_command(&run).env("PATH", path).output().unwrap();
+        let _ = std::fs::remove_dir_all(&dir);
+        let text = String::from_utf8_lossy(&out.stdout).replace('"', "");
+        assert!(out.status.success(), "{text}{}", String::from_utf8_lossy(&out.stderr));
+        let jar = format!("{}/Main.jar", dir.to_string_lossy());
+        let lines: Vec<&str> = text.lines().map(str::trim).collect();
+        assert_eq!(lines, [format!("kotlinc {kt} -include-runtime -d {jar}"), format!("java -jar {jar} a b")]);
     }
 
     #[test]
