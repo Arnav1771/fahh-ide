@@ -63,6 +63,6 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
           cache-on-failure: true
-      - name: Run and process tests
-        run: cargo test --lib core::
+      - name: Run command tests
+        run: cargo test --lib -- kotlin_run windows_compile
         working-directory: src-tauri
