@@ -66,3 +66,14 @@ jobs:
       - name: Run command tests
         run: cargo test --lib -- kotlin_run windows_compile
         working-directory: src-tauri
+
+  # Known vulnerabilities in the Rust dependency tree (RustSec). Fails on vulnerabilities;
+  # unmaintained / yanked crates are listed as warnings.
+  cargo-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-audit
+      - run: cargo audit
