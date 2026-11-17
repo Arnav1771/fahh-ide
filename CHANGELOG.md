@@ -70,6 +70,19 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.3] — 2026-11-17
+
+### Security
+
+- Fixed 9 known vulnerabilities in Fahh's Rust dependencies (zlib, rustls-webpki, webpki-roots, plist, zip); every build is now checked with cargo audit.
+
+### Fixed
+
+- Search, replace, the file tree and git status no longer freeze the window while they run.
+- Language servers: one per window and language, no duplicates when several start at once, and closing a window ends its own language servers, runs and kernels while other windows keep theirs.
+- Notebook keys A, B, M, Y and Alt+Up/Down act on the selected cell, also while another cell is running; clicking a cell no longer runs it.
+- Kotlin Run on Windows is covered by tests on a Windows build machine.
+
 ## [0.8.2] — 2026-11-17
 
 ### Security
