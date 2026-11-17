@@ -666,17 +666,17 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
     if (i !== null) cellRefs.current[i]?.scrollIntoView({ block: "nearest" });
   };
   const edit = (mutate: (json: string) => string, selectAt?: number) => {
-    if (g.locked) return setEditError("Wait for the running cells to finish (or interrupt them) before changing cells.");
+    // Not refused while cells run: runs and their outputs are keyed by cell id (#135), so adding,
+    // moving or retyping cells meanwhile is safe, as in Jupyter. Refusing it made the command
+    // keys look like they hit the wrong cell after a click on the gutter Run button.
     setEditError(null);
-    k.editNotebook(mutate).then(
-      () => {
-        if (selectAt !== undefined) setCur(selectAt);
-      },
-      (e) => {
-        console.error("notebook cell edit failed", e);
-        setEditError(String(e).replace(/^Error:\s*/, ""));
-      },
-    );
+    // Select now, not when the write lands: a key pressed right after (B then Alt+Up) must act
+    // on the new selection. Edits queue and each reads the latest file, so indexes line up.
+    if (selectAt !== undefined) setCur(selectAt);
+    k.editNotebook(mutate).catch((e) => {
+      console.error("notebook cell edit failed", e);
+      setEditError(String(e).replace(/^Error:\s*/, ""));
+    });
   };
   const editRef = useRef(edit);
   editRef.current = edit;
@@ -690,7 +690,7 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
       const cmd = cellKeyCommand(e.key, e.altKey, e.ctrlKey || e.metaKey);
       if (!cmd) return;
       e.preventDefault();
-      const i = Math.min(cur, count - 1);
+      const i = cur; // not clamped to a count that may not include the edit just queued
       const run = editRef.current;
       if (cmd === "above") run((j) => insertCell(j, i, "code"), i);
       else if (cmd === "below") run((j) => insertCell(j, i + 1, "code"), i + 1);
@@ -713,10 +713,10 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
   }, [cur, count]);
   const addBar = (at: number) => (
     <div className="fahh-nb-add flex items-center gap-2 pl-[76px] opacity-40 transition-opacity focus-within:opacity-100 hover:opacity-100">
-      <button type="button" disabled={g.locked} onClick={() => edit((j) => insertCell(j, at, "code"), at)} className={addBtn} aria-label={`Add code cell ${at === nb.cells.length ? "at the end" : "here"}`}>
+      <button type="button" onClick={() => edit((j) => insertCell(j, at, "code"), at)} className={addBtn} aria-label={`Add code cell ${at === nb.cells.length ? "at the end" : "here"}`}>
         <Plus size={11} aria-hidden="true" /> Code
       </button>
-      <button type="button" disabled={g.locked} onClick={() => edit((j) => insertCell(j, at, "markdown"), at)} className={addBtn} aria-label={`Add markdown cell ${at === nb.cells.length ? "at the end" : "here"}`}>
+      <button type="button" onClick={() => edit((j) => insertCell(j, at, "markdown"), at)} className={addBtn} aria-label={`Add markdown cell ${at === nb.cells.length ? "at the end" : "here"}`}>
         <Plus size={11} aria-hidden="true" /> Markdown
       </button>
     </div>
@@ -750,13 +750,13 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
                       <Play size={12} aria-hidden="true" />
                     </button>
                   )}
-                  <button type="button" disabled={g.locked || i === 0} onClick={() => edit((j) => moveCell(j, i, -1), i - 1)} className={cellBtn} title="Move cell up (Alt+Up)" aria-label="Move cell up">
+                  <button type="button" disabled={i === 0} onClick={() => edit((j) => moveCell(j, i, -1), i - 1)} className={cellBtn} title="Move cell up (Alt+Up)" aria-label="Move cell up">
                     <ArrowUp size={12} aria-hidden="true" />
                   </button>
-                  <button type="button" disabled={g.locked || i === nb.cells.length - 1} onClick={() => edit((j) => moveCell(j, i, 1), i + 1)} className={cellBtn} title="Move cell down (Alt+Down)" aria-label="Move cell down">
+                  <button type="button" disabled={i === nb.cells.length - 1} onClick={() => edit((j) => moveCell(j, i, 1), i + 1)} className={cellBtn} title="Move cell down (Alt+Down)" aria-label="Move cell down">
                     <ArrowDown size={12} aria-hidden="true" />
                   </button>
-                  <button type="button" disabled={g.locked} onClick={() => edit((j) => removeCell(j, i))} className={`${cellBtn} hover:text-fahh-error`} title="Delete cell" aria-label="Delete cell">
+                  <button type="button" onClick={() => edit((j) => removeCell(j, i))} className={`${cellBtn} hover:text-fahh-error`} title="Delete cell" aria-label="Delete cell">
                     <Trash2 size={12} aria-hidden="true" />
                   </button>
                 </div>
