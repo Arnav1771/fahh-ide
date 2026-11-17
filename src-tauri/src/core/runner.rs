@@ -306,8 +306,9 @@ fn kernel_script() -> Result<String, String> {
 lazy_static::lazy_static! {
     /// stdin of `kernel` runs, by pid: the notebook sends its commands there.
     static ref KERNEL_STDIN: Mutex<HashMap<u32, std::process::ChildStdin>> = Mutex::new(HashMap::new());
-    /// Runs (and notebook kernels) started by run_file and still running.
-    static ref RUN_PIDS: Mutex<std::collections::HashSet<u32>> = Mutex::new(std::collections::HashSet::new());
+    /// Runs (and notebook kernels) started by run_file and still running, with the window
+    /// that started them (closing it stops them).
+    static ref RUN_PIDS: Mutex<HashMap<u32, String>> = Mutex::new(HashMap::new());
 }
 
 /// Send one line to a running notebook kernel (see assets/fahh_kernel.py for the commands).
@@ -580,7 +581,7 @@ pub struct RunnerState {
 
 /// Run a file and stream output back to the frontend.
 #[tauri::command]
-pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, String> {
+pub async fn run_file(app: AppHandle, window: tauri::Window, config: RunConfig) -> Result<RunResult, String> {
     let path = std::path::Path::new(&config.path);
 
     // Detect language from extension if not explicitly provided.
@@ -645,7 +646,7 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
     crate::core::proc::own(&child);
     let pid = child.id();
     if let Ok(mut runs) = RUN_PIDS.lock() {
-        runs.insert(pid);
+        runs.insert(pid, window.label().to_string());
     }
     if let Some(stdin) = child.stdin.take() {
         KERNEL_STDIN.lock().map_err(|e| e.to_string())?.insert(pid, stdin);
@@ -759,7 +760,7 @@ pub async fn run_file(app: AppHandle, config: RunConfig) -> Result<RunResult, St
 pub fn stop_run(pid: u32) -> Result<(), String> {
     // Only a run this app started and that is still running: the webview must not be able to
     // kill any process (and a recycled pid must not take an unrelated process tree with it).
-    if !RUN_PIDS.lock().map_err(|e| e.to_string())?.contains(&pid) {
+    if !RUN_PIDS.lock().map_err(|e| e.to_string())?.contains_key(&pid) {
         return Err(format!("No run with process id {pid} is running."));
     }
     info!("stop_run: killing PID={pid}");
@@ -768,7 +769,7 @@ pub fn stop_run(pid: u32) -> Result<(), String> {
     #[cfg(unix)]
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_secs(3));
-        if RUN_PIDS.lock().map(|r| r.contains(&pid)).unwrap_or(false) {
+        if RUN_PIDS.lock().map(|r| r.contains_key(&pid)).unwrap_or(false) {
             // SAFETY: signals our own run's process group.
             unsafe { libc::kill(-(pid as libc::pid_t), libc::SIGKILL) };
         }
@@ -778,7 +779,16 @@ pub fn stop_run(pid: u32) -> Result<(), String> {
 
 /// Every process tree that should die with the app: called on exit.
 pub fn stop_all_runs() {
-    let pids: Vec<u32> = RUN_PIDS.lock().map(|r| r.iter().copied().collect()).unwrap_or_default();
+    stop_runs(|_| true);
+}
+
+/// A closed window's runs and notebook kernels (other windows keep theirs).
+pub fn stop_window_runs(window: &str) {
+    stop_runs(|w| w == window);
+}
+
+fn stop_runs(of: impl Fn(&str) -> bool) {
+    let pids: Vec<u32> = RUN_PIDS.lock().map(|r| r.iter().filter(|(_, w)| of(w)).map(|(p, _)| *p).collect()).unwrap_or_default();
     for pid in &pids {
         let _ = kill_pid(*pid);
     }
