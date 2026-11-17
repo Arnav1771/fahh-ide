@@ -53,6 +53,20 @@ jobs:
         run: cargo clippy -- -D warnings
         working-directory: src-tauri
 
+  # Run builds go through cmd on Windows (quoting, .bat shims like kotlinc): test them there.
+  rust-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "./src-tauri -> target"
+          cache-on-failure: true
+      - name: Run command tests
+        run: cargo test --lib -- kotlin_run windows_compile
+        working-directory: src-tauri
+
   # Known vulnerabilities in the Rust dependency tree (RustSec). Fails on vulnerabilities;
   # unmaintained / yanked crates are listed as warnings.
   cargo-audit:
