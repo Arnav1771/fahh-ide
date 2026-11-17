@@ -62,8 +62,14 @@ impl OptionalTool {
     }
 }
 
+/// Off the UI thread: Tauri runs sync commands on the main thread, so a big or WSL
+/// folder froze the window.
 #[tauri::command]
-pub fn get_tool_status() -> Vec<ToolStatus> {
+pub async fn get_tool_status() -> Result<Vec<ToolStatus>, String> {
+    crate::core::proc::blocking(move || Ok(get_tool_status_blocking())).await
+}
+
+pub fn get_tool_status_blocking() -> Vec<ToolStatus> {
     let tools = [
         OptionalTool::N8n,
         OptionalTool::BrowserUse,

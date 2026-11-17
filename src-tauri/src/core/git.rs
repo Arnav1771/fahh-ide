@@ -436,8 +436,14 @@ fn resolve_markers(text: &str, choice: &str) -> Result<String, String> {
 // ─── Commands ─────────────────────────────────────────────────────────────────
 
 /// Full status snapshot for the folder open in the editor.
+/// Off the UI thread: Tauri runs sync commands on the main thread, so a big or WSL
+/// folder froze the window.
 #[tauri::command]
-pub fn git_status(path: String) -> Result<GitStatus, String> {
+pub async fn git_status(path: String) -> Result<GitStatus, String> {
+    crate::core::proc::blocking(move || git_status_blocking(path)).await
+}
+
+pub fn git_status_blocking(path: String) -> Result<GitStatus, String> {
     let Some(repo) = discover(&path)? else {
         return Ok(GitStatus::default());
     };
@@ -660,8 +666,14 @@ pub async fn git_push(path: String) -> Result<String, String> {
 
 /// Every repository in the open folder: the one enclosing it (if any), then the ones
 /// up to two levels below it, for the Repositories picker.
+/// Off the UI thread: Tauri runs sync commands on the main thread, so a big or WSL
+/// folder froze the window.
 #[tauri::command]
-pub fn git_repositories(path: String) -> Result<Vec<GitRepoInfo>, String> {
+pub async fn git_repositories(path: String) -> Result<Vec<GitRepoInfo>, String> {
+    crate::core::proc::blocking(move || git_repositories_blocking(path)).await
+}
+
+pub fn git_repositories_blocking(path: String) -> Result<Vec<GitRepoInfo>, String> {
     let base = Path::new(&path);
     let base_key = path_key(&path);
     let mut roots: Vec<PathBuf> = discover(&path)?.map(|r| workdir(&r)).into_iter().collect();
@@ -858,8 +870,14 @@ pub fn git_stash_pop(path: String, index: usize) -> Result<(), String> {
 /// Commits that changed `file`, newest first, for the Timeline view.
 // ponytail: compares the blob at one path per commit, so history stops at a rename
 // (no --follow); scans at most 5000 commits.
+/// Off the UI thread: Tauri runs sync commands on the main thread, so a big or WSL
+/// folder froze the window.
 #[tauri::command]
-pub fn git_file_log(path: String, file: String, limit: Option<usize>) -> Result<Vec<GitCommitInfo>, String> {
+pub async fn git_file_log(path: String, file: String, limit: Option<usize>) -> Result<Vec<GitCommitInfo>, String> {
+    crate::core::proc::blocking(move || git_file_log_blocking(path, file, limit)).await
+}
+
+pub fn git_file_log_blocking(path: String, file: String, limit: Option<usize>) -> Result<Vec<GitCommitInfo>, String> {
     let Some(repo) = discover(&path)? else { return Ok(Vec::new()) };
     let rel = repo_relative(&repo, &file);
     let limit = limit.unwrap_or(50);
@@ -897,8 +915,14 @@ pub fn git_file_log(path: String, file: String, limit: Option<usize>) -> Result<
 
 /// Lines of `content` (the editor text) that differ from the file in HEAD. Empty when the
 /// folder is not a repo or the file is not committed yet.
+/// Off the UI thread: Tauri runs sync commands on the main thread, so a big or WSL
+/// folder froze the window.
 #[tauri::command]
-pub fn git_line_changes(path: String, file: String, content: String) -> Result<Vec<LineChange>, String> {
+pub async fn git_line_changes(path: String, file: String, content: String) -> Result<Vec<LineChange>, String> {
+    crate::core::proc::blocking(move || git_line_changes_blocking(path, file, content)).await
+}
+
+pub fn git_line_changes_blocking(path: String, file: String, content: String) -> Result<Vec<LineChange>, String> {
     let Some(repo) = discover(&path)? else { return Ok(Vec::new()) };
     let rel = repo_relative(&repo, &file);
     let Ok(head) = repo.head().and_then(|h| h.peel_to_tree()) else { return Ok(Vec::new()) };
@@ -962,12 +986,12 @@ mod tests {
         let f = dir.join("a.txt").to_string_lossy().to_string();
         // two changed, a line added after four, three removed
         let now = "one\nTWO\nfour\nfive\n".to_string();
-        let ch = git_line_changes(p.clone(), f.clone(), now).unwrap();
+        let ch = git_line_changes_blocking(p.clone(), f.clone(), now).unwrap();
         let kinds: Vec<(&str, u32, u32)> = ch.iter().map(|c| (c.kind.as_str(), c.start, c.end)).collect();
         assert!(kinds.contains(&("modified", 2, 2)) || kinds.contains(&("modified", 2, 3)), "{kinds:?}");
         assert!(kinds.iter().any(|k| k.0 == "added" && k.1 == 4), "{kinds:?}");
-        assert!(git_line_changes(p.clone(), f.clone(), "one\ntwo\nthree\nfour\n".into()).unwrap().is_empty());
-        assert!(git_line_changes(p, dir.join("new.txt").to_string_lossy().to_string(), "x".into()).unwrap().is_empty(), "untracked: no markers");
+        assert!(git_line_changes_blocking(p.clone(), f.clone(), "one\ntwo\nthree\nfour\n".into()).unwrap().is_empty());
+        assert!(git_line_changes_blocking(p, dir.join("new.txt").to_string_lossy().to_string(), "x".into()).unwrap().is_empty(), "untracked: no markers");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
@@ -983,14 +1007,14 @@ mod tests {
         let p = dir.to_string_lossy().to_string();
 
         let abs = dir.join("a.txt").to_string_lossy().to_string();
-        let log = git_file_log(p.clone(), abs.clone(), None).unwrap();
+        let log = git_file_log_blocking(p.clone(), abs.clone(), None).unwrap();
         let msgs: Vec<&str> = log.iter().map(|c| c.summary.as_str()).collect();
         assert_eq!(msgs, ["edit a", "add a"], "b.txt commit must be skipped");
 
         let diff = git_file_commit_diff(p.clone(), log[0].oid.clone(), abs).unwrap();
         assert!(diff.contains("-one") && diff.contains("+two"), "{diff}");
 
-        let st = git_status(p).unwrap();
+        let st = git_status_blocking(p).unwrap();
         assert_eq!((st.upstream, st.ahead, st.behind), (None, 0, 0));
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -1026,24 +1050,24 @@ mod tests {
     }
 
     fn head_branch(p: &str) -> String {
-        git_status(p.into()).unwrap().branch.unwrap()
+        git_status_blocking(p.into()).unwrap().branch.unwrap()
     }
 
     #[test]
     fn init_stage_unstage_commit_amend() {
         let tmp = tempfile::tempdir().unwrap();
         let dir = tmp.path().join("r");
-        assert!(!git_status(tmp.path().to_string_lossy().into()).unwrap().is_repo, "plain folder is not a repo");
+        assert!(!git_status_blocking(tmp.path().to_string_lossy().into()).unwrap().is_repo, "plain folder is not a repo");
         let p = new_repo(&dir);
-        let st = git_status(p.clone()).unwrap();
+        let st = git_status_blocking(p.clone()).unwrap();
         assert!(st.is_repo && st.unborn);
 
         write(&dir, "a.txt", "hello\n");
-        assert_eq!(git_status(p.clone()).unwrap().unstaged[0].status, GitChangeStatus::Untracked);
+        assert_eq!(git_status_blocking(p.clone()).unwrap().unstaged[0].status, GitChangeStatus::Untracked);
         git_stage(p.clone(), "a.txt".into()).unwrap();
-        assert_eq!(git_status(p.clone()).unwrap().staged.len(), 1);
+        assert_eq!(git_status_blocking(p.clone()).unwrap().staged.len(), 1);
         git_unstage(p.clone(), "a.txt".into()).unwrap();
-        assert!(git_status(p.clone()).unwrap().staged.is_empty(), "unstage on an unborn branch");
+        assert!(git_status_blocking(p.clone()).unwrap().staged.is_empty(), "unstage on an unborn branch");
         stage_commit(&p, "a.txt", "first");
         assert!(isclean(&p));
 
@@ -1058,7 +1082,7 @@ mod tests {
     }
 
     fn isclean(p: &str) -> bool {
-        let st = git_status(p.into()).unwrap();
+        let st = git_status_blocking(p.into()).unwrap();
         st.staged.is_empty() && st.unstaged.is_empty()
     }
 
@@ -1148,14 +1172,14 @@ mod tests {
 
         let out = crate::core::proc::cmd("git").args(["merge", "other"]).current_dir(&dir).output().unwrap();
         assert!(!out.status.success(), "merge must conflict");
-        let st = git_status(p.clone()).unwrap();
+        let st = git_status_blocking(p.clone()).unwrap();
         assert_eq!(st.unstaged.iter().map(|c| c.status).collect::<Vec<_>>(), [GitChangeStatus::Conflicted]);
         assert!(st.staged.is_empty(), "a conflict is not a staged change");
         assert!(git_commit(p.clone(), "merge".into(), None).is_err(), "commit refused while conflicted");
 
         git_resolve_conflict(p.clone(), "a.txt".into(), "both".into()).unwrap();
         assert_eq!(std::fs::read_to_string(dir.join("a.txt")).unwrap(), "top\nours\ntheirs\nbottom\n");
-        let st = git_status(p.clone()).unwrap();
+        let st = git_status_blocking(p.clone()).unwrap();
         assert!(st.unstaged.is_empty() && st.staged.len() == 1, "resolved file is staged");
         git_commit(p, "merge other".into(), None).unwrap();
     }
@@ -1213,7 +1237,7 @@ mod tests {
         assert!(pull_blocking(&pa).is_err(), "pull before publish");
         push_blocking(&pa).unwrap(); // publish
         let branch = head_branch(&pa);
-        assert_eq!(git_status(pa.clone()).unwrap().upstream, Some(format!("origin/{branch}")));
+        assert_eq!(git_status_blocking(pa.clone()).unwrap().upstream, Some(format!("origin/{branch}")));
 
         // A second clone pushes a commit; `a` sees it after a fetch and gets it with pull.
         git(tmp.path(), &["clone", "-q", bare.to_str().unwrap(), "b"]);
@@ -1221,9 +1245,9 @@ mod tests {
         git(&b, &["-c", "user.name=B", "-c", "user.email=b@x", "commit", "-q", "--allow-empty", "-m", "from b"]);
         git(&b, &["push", "-q"]);
         tauri::async_runtime::block_on(git_fetch(pa.clone())).unwrap();
-        assert_eq!(git_status(pa.clone()).unwrap().behind, 1);
+        assert_eq!(git_status_blocking(pa.clone()).unwrap().behind, 1);
         pull_blocking(&pa).unwrap();
-        assert_eq!(git_status(pa.clone()).unwrap().behind, 0);
+        assert_eq!(git_status_blocking(pa.clone()).unwrap().behind, 0);
 
         // Both sides commit: a plain push is rejected, sync merges then pushes.
         git(&b, &["-c", "user.name=B", "-c", "user.email=b@x", "commit", "-q", "--allow-empty", "-m", "b again"]);
@@ -1233,7 +1257,7 @@ mod tests {
         let err = push_blocking(&pa).unwrap_err();
         assert!(err.contains("rejected"), "non-fast-forward reported: {err}");
         sync_blocking(&pa).unwrap();
-        let st = git_status(pa).unwrap();
+        let st = git_status_blocking(pa).unwrap();
         assert_eq!((st.ahead, st.behind), (0, 0));
         git(&b, &["pull", "-q", "--no-rebase"]);
         assert_eq!(std::fs::read_to_string(b.join("a.txt")).unwrap(), "2\n", "b received a's commit");
@@ -1247,15 +1271,15 @@ mod tests {
         new_repo(&base.join("libs").join("ui"));
         new_repo(&base.join("node_modules").join("dep"));
         write(&base.join("api"), "x.txt", "x\n");
-        let repos = git_repositories(base.to_string_lossy().into()).unwrap();
+        let repos = git_repositories_blocking(base.to_string_lossy().into()).unwrap();
         let names: Vec<(&str, usize)> = repos.iter().map(|r| (r.name.as_str(), r.changes)).collect();
         assert_eq!(names, [("api", 1), ("libs/ui", 0)]);
 
         // Opening a repo's own folder (or a folder inside it) lists it once.
         let api = base.join("api");
-        assert_eq!(git_repositories(api.to_string_lossy().into()).unwrap().len(), 1);
+        assert_eq!(git_repositories_blocking(api.to_string_lossy().into()).unwrap().len(), 1);
         std::fs::create_dir_all(api.join("src")).unwrap();
-        let inner = git_repositories(api.join("src").to_string_lossy().into()).unwrap();
+        let inner = git_repositories_blocking(api.join("src").to_string_lossy().into()).unwrap();
         assert_eq!(inner.iter().map(|r| r.name.as_str()).collect::<Vec<_>>(), ["api"]);
     }
 }

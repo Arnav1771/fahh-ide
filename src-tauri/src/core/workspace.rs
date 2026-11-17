@@ -65,8 +65,14 @@ fn build_tree_capped(path: &Path, depth: usize, budget: &mut usize) -> Result<Fi
     })
 }
 
+/// Off the UI thread: Tauri runs sync commands on the main thread, so a big or WSL
+/// folder froze the window.
 #[tauri::command]
-pub fn get_file_tree(root: String) -> Result<FileEntry, String> {
+pub async fn get_file_tree(root: String) -> Result<FileEntry, String> {
+    crate::core::proc::blocking(move || get_file_tree_blocking(root)).await
+}
+
+pub fn get_file_tree_blocking(root: String) -> Result<FileEntry, String> {
     let path = PathBuf::from(&root);
     if !path.exists() {
         return Err(format!("path does not exist: {root}"));
@@ -226,9 +232,25 @@ pub struct ReplaceResult {
 }
 
 // Tauri commands take flat named arguments from the frontend, so the list cannot shrink without changing the IPC contract.
+/// Off the UI thread: Tauri runs sync commands on the main thread, so a big or WSL
+/// folder froze the window.
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
-pub fn search_workspace(
+pub async fn search_workspace(
+    root: String,
+    query: String,
+    case_sensitive: Option<bool>,
+    whole_word: Option<bool>,
+    is_regex: Option<bool>,
+    include_glob: Option<String>,
+    exclude_glob: Option<String>,
+    max_results: Option<usize>,
+) -> Result<SearchResult, String> {
+    crate::core::proc::blocking(move || search_workspace_blocking(root, query, case_sensitive, whole_word, is_regex, include_glob, exclude_glob, max_results)).await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn search_workspace_blocking(
     root: String,
     query: String,
     case_sensitive: Option<bool>,
@@ -379,9 +401,26 @@ pub fn search_workspace(
 }
 
 // Tauri commands take flat named arguments from the frontend, so the list cannot shrink without changing the IPC contract.
+/// Off the UI thread: Tauri runs sync commands on the main thread, so a big or WSL
+/// folder froze the window.
 #[allow(clippy::too_many_arguments)]
 #[tauri::command]
-pub fn replace_in_workspace(
+pub async fn replace_in_workspace(
+    root: String,
+    query: String,
+    replacement: String,
+    case_sensitive: Option<bool>,
+    whole_word: Option<bool>,
+    is_regex: Option<bool>,
+    include_glob: Option<String>,
+    exclude_glob: Option<String>,
+    files: Option<Vec<String>>,
+) -> Result<ReplaceResult, String> {
+    crate::core::proc::blocking(move || replace_in_workspace_blocking(root, query, replacement, case_sensitive, whole_word, is_regex, include_glob, exclude_glob, files)).await
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn replace_in_workspace_blocking(
     root: String,
     query: String,
     replacement: String,
@@ -526,7 +565,7 @@ mod tests {
         std::fs::write(deep.join("deep.rs"), "").unwrap();
         for f in [".env", ".gitignore"] { std::fs::write(d.join(f), "").unwrap(); }
         for dir in [".github/workflows", ".git/objects", "node_modules/x"] { std::fs::create_dir_all(d.join(dir)).unwrap(); }
-        let t = super::get_file_tree(d.to_string_lossy().to_string()).unwrap();
+        let t = super::get_file_tree_blocking(d.to_string_lossy().to_string()).unwrap();
         let names: Vec<String> = t.children.clone().unwrap().iter().map(|c| c.name.clone()).collect();
         assert!(names.contains(&".env".into()) && names.contains(&".github".into()) && names.contains(&".gitignore".into()), "{names:?}");
         assert!(!names.contains(&".git".into()) && !names.contains(&"node_modules".into()), "{names:?}");
@@ -542,7 +581,7 @@ mod tests {
         let d = tempfile::tempdir().unwrap();
         let f = d.path().join("price.txt");
         std::fs::write(&f, "cost = PRICE\r\n").unwrap();
-        let r = replace_in_workspace(d.path().to_string_lossy().into(), "PRICE".into(), "$price".into(), None, None, Some(false), None, None, None).unwrap();
+        let r = replace_in_workspace_blocking(d.path().to_string_lossy().into(), "PRICE".into(), "$price".into(), None, None, Some(false), None, None, None).unwrap();
         assert_eq!(r.total_replacements, 1);
         assert_eq!(std::fs::read_to_string(&f).unwrap(), "cost = $price\r\n");
     }

@@ -73,6 +73,12 @@ fn resolve_program(program: &std::ffi::OsStr, lookup: impl Fn(&std::ffi::OsStr) 
     bare.then(|| lookup(program)).flatten().map(|p| p.into_os_string()).unwrap_or_else(|| program.to_os_string())
 }
 
+/// Run blocking work (disk walks, git, process probes) on Tauri's blocking pool, so async
+/// commands never hold the UI thread or an async worker.
+pub async fn blocking<T: Send + 'static>(f: impl FnOnce() -> Result<T, String> + Send + 'static) -> Result<T, String> {
+    tauri::async_runtime::spawn_blocking(f).await.map_err(|e| e.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
