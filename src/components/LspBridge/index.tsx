@@ -14,7 +14,7 @@
 
 import { useEffect, useRef } from "react";
 import * as monaco from "monaco-editor";
-import { listen } from "@tauri-apps/api/event";
+import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { invoke } from "@tauri-apps/api/core";
 import { useEditorStore } from "../../store/editorStore";
 import { useFileStore } from "../../store/fileStore";
@@ -152,7 +152,8 @@ export function LspBridge() {
   useEffect(() => {
     let mounted = true;
     let unlisten: (() => void) | null = null;
-    listen<LspMessage>("lsp://message", (event) => {
+    // This window's servers only: each window runs its own (Rust emits to the window).
+    Promise.resolve().then(() => getCurrentWebviewWindow().listen<LspMessage>("lsp://message", (event) => {
       if (!mounted) return;
       const { language: server, payload } = event.payload;
       let parsed: unknown;
@@ -163,7 +164,7 @@ export function LspBridge() {
         return;
       }
       service().client.handleMessage(server, parsed);
-    }).then((fn) => {
+    })).then((fn) => {
       if (mounted) unlisten = fn;
       else fn();
     }).catch(() => {});

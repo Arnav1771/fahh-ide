@@ -13,11 +13,13 @@ use tracing::{debug, error, info, warn};
 /// A running LSP server process together with its stdin handle.
 pub struct LspServer {
     pub language: String,
+    pub workspace: String,
     pub process: Child,
     pub stdin: ChildStdin,
 }
 
-/// All active LSP server instances, keyed by language identifier.
+/// All active LSP server instances, keyed by `key(window, language)`: each window has its
+/// own folder, so a second window must never reuse (or stop) the first window's servers.
 #[derive(Default)]
 pub struct LspManager {
     pub servers: HashMap<String, LspServer>,
@@ -27,6 +29,21 @@ pub struct LspManager {
 #[derive(Default)]
 pub struct LspState {
     pub manager: Mutex<LspManager>,
+    /// Held for a whole `lsp_start`: two editors opening at once both saw "not running"
+    /// and spawned two servers. ponytail: one start at a time across languages (each
+    /// waits up to 400 ms for exited_on_start); per-key locks if that ever shows.
+    starting: Mutex<()>,
+}
+
+fn key(window: &str, language: &str) -> String {
+    format!("{window}\u{0}{language}")
+}
+
+fn kill(language: &str, mut server: LspServer) {
+    if let Err(e) = server.process.kill() {
+        warn!("lsp[{language}]: kill() error (possibly already dead): {e}");
+    }
+    let _ = server.process.wait();
 }
 
 // ---------------------------------------------------------------------------
@@ -142,16 +159,25 @@ fn read_one_message<R: Read>(reader: &mut BufReader<R>) -> std::io::Result<Strin
 #[tauri::command]
 pub async fn lsp_start(
     app: AppHandle,
+    window: tauri::Window,
     language: String,
     workspace: String,
     state: State<'_, LspState>,
 ) -> Result<(), String> {
-    // Check if a server for this language is already running.
+    let label = window.label().to_string();
+    let id = key(&label, &language);
+    let _one_start = state.starting.lock().map_err(|e| e.to_string())?;
+    // Already running for this window and folder: keep it. Dead, or another folder: replace it.
     {
-        let manager = state.manager.lock().map_err(|e| e.to_string())?;
-        if manager.servers.contains_key(&language) {
-            info!("lsp_start: server for '{language}' is already running, skipping");
-            return Ok(());
+        let mut manager = state.manager.lock().map_err(|e| e.to_string())?;
+        if let Some(server) = manager.servers.get_mut(&id) {
+            if server.workspace == workspace && matches!(server.process.try_wait(), Ok(None)) {
+                info!("lsp_start: server for '{language}' is already running, skipping");
+                return Ok(());
+            }
+            if let Some(old) = manager.servers.remove(&id) {
+                kill(&language, old);
+            }
         }
     }
 
@@ -197,14 +223,15 @@ pub async fn lsp_start(
 
     // Spawn a reader thread that forwards server → frontend.
     let lang_clone = language.clone();
+    let label = label.clone();
     std::thread::spawn(move || {
         let mut reader = BufReader::new(stdout);
         loop {
             match read_one_message(&mut reader) {
                 Ok(msg) => {
                     debug!("lsp[{lang_clone}] → frontend: {}", &msg[..msg.len().min(200)]);
-                    let _ = app.emit(
-                        "lsp://message",
+                    // To this window only: every window runs its own server for a language.
+                    let _ = app.emit_to(label.as_str(), "lsp://message",
                         serde_json::json!({ "language": lang_clone, "payload": msg }),
                     );
                 }
@@ -222,6 +249,7 @@ pub async fn lsp_start(
 
     let server = LspServer {
         language: language.clone(),
+        workspace,
         process: child,
         stdin,
     };
@@ -231,7 +259,7 @@ pub async fn lsp_start(
         .lock()
         .map_err(|e| e.to_string())?
         .servers
-        .insert(language.clone(), server);
+        .insert(id, server);
 
     info!("lsp_start: '{language}' server is ready");
     Ok(())
@@ -282,6 +310,7 @@ fn exited_on_start(child: &mut Child, stderr_head: &Arc<Mutex<String>>, grace: s
 /// Send a raw JSON-RPC message string to the LSP server for the given language.
 #[tauri::command]
 pub async fn lsp_send(
+    window: tauri::Window,
     language: String,
     message: String,
     state: State<'_, LspState>,
@@ -289,7 +318,7 @@ pub async fn lsp_send(
     let mut manager = state.manager.lock().map_err(|e| e.to_string())?;
     let server = manager
         .servers
-        .get_mut(&language)
+        .get_mut(&key(window.label(), &language))
         .ok_or_else(|| format!("No LSP server running for language: {language}"))?;
 
     let encoded = encode_message(&message);
@@ -311,31 +340,33 @@ pub async fn lsp_send(
 /// Kill and reap every language server (app exit: `std::process::Child` does not kill on drop).
 pub fn stop_all(state: &LspState) {
     let Ok(mut manager) = state.manager.lock() else { return };
-    for (language, mut server) in manager.servers.drain() {
-        if let Err(e) = server.process.kill() {
-            warn!("lsp stop_all[{language}]: kill() error (possibly already dead): {e}");
+    for (_, server) in manager.servers.drain() {
+        kill(&server.language.clone(), server);
+    }
+}
+
+/// Kill a closed window's servers (the others keep theirs).
+pub fn stop_window(state: &LspState, window: &str) {
+    let Ok(mut manager) = state.manager.lock() else { return };
+    let prefix = key(window, "");
+    let ids: Vec<String> = manager.servers.keys().filter(|k| k.starts_with(&prefix)).cloned().collect();
+    for id in ids {
+        if let Some(server) = manager.servers.remove(&id) {
+            kill(&server.language.clone(), server);
         }
-        let _ = server.process.wait();
     }
 }
 
 /// Stop the LSP server for the given language.
 #[tauri::command]
-pub fn lsp_stop(language: String, state: State<'_, LspState>) -> Result<(), String> {
+pub fn lsp_stop(window: tauri::Window, language: String, state: State<'_, LspState>) -> Result<(), String> {
     let mut manager = state.manager.lock().map_err(|e| e.to_string())?;
 
-    let mut server = manager
+    let server = manager
         .servers
-        .remove(&language)
+        .remove(&key(window.label(), &language))
         .ok_or_else(|| format!("No LSP server running for language: {language}"))?;
-
-    // Best-effort kill; if already dead that's fine.
-    if let Err(e) = server.process.kill() {
-        warn!("lsp_stop[{language}]: kill() error (possibly already dead): {e}");
-    }
-
-    // Reap the process to avoid zombies.
-    let _ = server.process.wait();
+    kill(&language, server);
 
     info!("lsp_stop: '{language}' server stopped");
     Ok(())
@@ -357,6 +388,30 @@ mod tests {
         let err = exited_on_start(&mut child, &head, Duration::from_millis(1500)).unwrap_err();
         assert!(err.contains("exited as soon as it started"), "{err}");
         assert!(err.contains("Unknown binary 'rust-analyzer'"), "{err}");
+    }
+
+    fn server(language: &str) -> LspServer {
+        let mut process = crate::core::proc::cmd("sleep").arg("30").stdin(Stdio::piped()).spawn().unwrap();
+        let stdin = process.stdin.take().unwrap();
+        LspServer { language: language.into(), workspace: "/w".into(), process, stdin }
+    }
+
+    #[test]
+    fn closing_a_window_stops_only_its_servers() {
+        let state = LspState::default();
+        {
+            let mut m = state.manager.lock().unwrap();
+            m.servers.insert(key("main", "rust"), server("rust"));
+            m.servers.insert(key("main", "python"), server("python"));
+            m.servers.insert(key("main-2", "rust"), server("rust"));
+            // "main" must not match "main-2"'s keys by prefix
+            assert_ne!(key("main", "rust"), key("main-2", "rust"));
+        }
+        stop_window(&state, "main");
+        let left: Vec<String> = state.manager.lock().unwrap().servers.keys().cloned().collect();
+        assert_eq!(left, vec![key("main-2", "rust")]);
+        stop_all(&state);
+        assert!(state.manager.lock().unwrap().servers.is_empty());
     }
 
     #[test]

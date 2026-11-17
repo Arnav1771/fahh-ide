@@ -163,11 +163,13 @@ pub fn run() {
             agent::agent_generate,
             agent::agent_generate_stop,
         ])
-        // A closed window's terminals and folder watch end with it (the job object covers Fahh exiting).
+        // A closed window's terminals, folder watch, language servers, runs and kernels end with it (the job object covers Fahh exiting).
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::Destroyed = event {
                 pty::kill_window(window.label());
                 watch::stop(window.label());
+                lsp_client::stop_window(&window.state::<lsp_client::LspState>(), window.label());
+                runner::stop_window_runs(window.label());
             }
         })
         .setup(|app| {
