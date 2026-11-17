@@ -670,15 +670,13 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
     // moving or retyping cells meanwhile is safe, as in Jupyter. Refusing it made the command
     // keys look like they hit the wrong cell after a click on the gutter Run button.
     setEditError(null);
-    k.editNotebook(mutate).then(
-      () => {
-        if (selectAt !== undefined) setCur(selectAt);
-      },
-      (e) => {
-        console.error("notebook cell edit failed", e);
-        setEditError(String(e).replace(/^Error:\s*/, ""));
-      },
-    );
+    // Select now, not when the write lands: a key pressed right after (B then Alt+Up) must act
+    // on the new selection. Edits queue and each reads the latest file, so indexes line up.
+    if (selectAt !== undefined) setCur(selectAt);
+    k.editNotebook(mutate).catch((e) => {
+      console.error("notebook cell edit failed", e);
+      setEditError(String(e).replace(/^Error:\s*/, ""));
+    });
   };
   const editRef = useRef(edit);
   editRef.current = edit;
@@ -692,7 +690,7 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
       const cmd = cellKeyCommand(e.key, e.altKey, e.ctrlKey || e.metaKey);
       if (!cmd) return;
       e.preventDefault();
-      const i = Math.min(cur, count - 1);
+      const i = cur; // not clamped to a count that may not include the edit just queued
       const run = editRef.current;
       if (cmd === "above") run((j) => insertCell(j, i, "code"), i);
       else if (cmd === "below") run((j) => insertCell(j, i + 1, "code"), i + 1);
