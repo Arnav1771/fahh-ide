@@ -141,7 +141,6 @@ export function useNotebookGenerate(cells: NotebookCell[], k: NotebookKernel) {
 
   /** Save an edited code cell (and run it with Ctrl/Shift+Enter). */
   const saveCell = async (index: number, source: string, andRun: boolean) => {
-    if (busyRef.current) throw new Error(BUSY);
     if (source !== cellsRef.current[index]?.source) await k.editNotebook((json) => setCellSource(json, index, source));
     if (andRun) void k.runCells([{ index, code: source }]);
   };
