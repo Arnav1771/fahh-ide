@@ -300,6 +300,12 @@ fn spawn_raw(
     cmd.env("TERM", "xterm-256color");
     cmd.env("COLORTERM", "truecolor");
     cmd.env("TERM_PROGRAM", "fahh");
+    if let Some(v) = crate::core::proc::host_ld_library_path() {
+        match v {
+            Some(v) => cmd.env("LD_LIBRARY_PATH", v),
+            None => cmd.env_remove("LD_LIBRARY_PATH"),
+        }
+    }
     allow_ctrl_c();
     let mut child = pair.slave.spawn_command(cmd).map_err(|e| format!("Could not start {program}: {e}"))?;
     drop(pair.slave);

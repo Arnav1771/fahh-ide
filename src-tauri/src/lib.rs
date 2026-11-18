@@ -5,6 +5,7 @@
 mod core;
 mod app;
 pub mod agent;
+pub use core::proc;
 
 use tauri::Manager;
 use core::{editor, workspace, terminal, installer, state, runner, lsp_client, debugger, pty, remote, extensions, watch, account, formatter, plugin, error_detector, git, preview, syntax, setup};

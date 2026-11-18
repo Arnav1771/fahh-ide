@@ -12,6 +12,12 @@ pub fn cmd<S: AsRef<std::ffi::OsStr>>(program: S) -> Command {
     #[cfg(windows)]
     let program = resolve_program(program.as_ref(), |n| which::which(n).ok());
     let mut c = Command::new(program);
+    if let Some(v) = host_ld_library_path() {
+        match v {
+            Some(v) => c.env("LD_LIBRARY_PATH", v),
+            None => c.env_remove("LD_LIBRARY_PATH"),
+        };
+    }
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;
@@ -65,6 +71,20 @@ pub fn own_raw(handle: std::os::windows::io::RawHandle) {
 #[cfg(not(windows))]
 pub fn own<T>(_child: &T) {}
 
+/// LD_LIBRARY_PATH for host programs started from inside an AppImage: AppRun points it at the
+/// bundled libs, and host tools must not load those (#153: `git push` died on the old bundled
+/// libnghttp2). The value without the AppImage's entries (inner None = unset it); outer None =
+/// not in an AppImage, leave it alone.
+pub fn host_ld_library_path() -> Option<Option<String>> {
+    let appdir = std::env::var("APPDIR").ok().filter(|d| !d.is_empty())?;
+    Some(strip_dir(&std::env::var("LD_LIBRARY_PATH").ok()?, &appdir))
+}
+
+fn strip_dir(paths: &str, dir: &str) -> Option<String> {
+    let kept: Vec<&str> = paths.split(':').filter(|p| !p.is_empty() && !std::path::Path::new(p).starts_with(dir)).collect();
+    (!kept.is_empty()).then(|| kept.join(":"))
+}
+
 /// A bare program name resolved by `lookup` (PATH + PATHEXT); a path, or a name not found,
 /// is left alone so the spawn error still names what the user asked for.
 #[cfg_attr(not(windows), allow(dead_code))]
@@ -92,6 +112,15 @@ mod tests {
         assert_eq!(resolve_program(OsStr::new("nope"), lookup), "nope");
         assert_eq!(resolve_program(OsStr::new(r"C:\py\python.exe"), lookup), r"C:\py\python.exe");
         assert_eq!(resolve_program(OsStr::new("/usr/bin/npm"), lookup), "/usr/bin/npm");
+    }
+
+    #[test]
+    fn appimage_lib_dirs_are_dropped_for_host_programs() {
+        let a = "/tmp/.mount_Fahh1";
+        assert_eq!(strip_dir("/tmp/.mount_Fahh1/usr/lib/:/tmp/.mount_Fahh1/lib/:", a), None);
+        assert_eq!(strip_dir("/tmp/.mount_Fahh1/usr/lib/:/opt/cuda/lib64", a).as_deref(), Some("/opt/cuda/lib64"));
+        assert_eq!(strip_dir("/opt/x:/opt/y", a).as_deref(), Some("/opt/x:/opt/y"));
+        assert_eq!(strip_dir("/tmp/.mount_Fahh10/usr/lib", a).as_deref(), Some("/tmp/.mount_Fahh10/usr/lib"));
     }
 
     #[test]
