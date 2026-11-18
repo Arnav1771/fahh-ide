@@ -79,7 +79,12 @@ fn appimage_use_system_wayland() {
         "fahh: AppImage: preloading {} over the bundled libwayland-client (#153)",
         system.unwrap_or_default()
     );
-    let err = fahh_editor_lib::proc::cmd("/proc/self/exe")
+    let mut c = fahh_editor_lib::proc::cmd("/proc/self/exe");
+    // proc::cmd strips the AppImage lib dirs for host tools; Fahh itself still needs them.
+    if let Some(v) = std::env::var_os("LD_LIBRARY_PATH") {
+        c.env("LD_LIBRARY_PATH", v);
+    }
+    let err = c
         .args(std::env::args_os().skip(1))
         .env("LD_PRELOAD", preload)
         .exec();

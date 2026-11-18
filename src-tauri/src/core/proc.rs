@@ -81,7 +81,7 @@ pub fn host_ld_library_path() -> Option<Option<String>> {
 }
 
 fn strip_dir(paths: &str, dir: &str) -> Option<String> {
-    let kept: Vec<&str> = paths.split(':').filter(|p| !p.is_empty() && !p.starts_with(dir)).collect();
+    let kept: Vec<&str> = paths.split(':').filter(|p| !p.is_empty() && !std::path::Path::new(p).starts_with(dir)).collect();
     (!kept.is_empty()).then(|| kept.join(":"))
 }
 
@@ -120,6 +120,7 @@ mod tests {
         assert_eq!(strip_dir("/tmp/.mount_Fahh1/usr/lib/:/tmp/.mount_Fahh1/lib/:", a), None);
         assert_eq!(strip_dir("/tmp/.mount_Fahh1/usr/lib/:/opt/cuda/lib64", a).as_deref(), Some("/opt/cuda/lib64"));
         assert_eq!(strip_dir("/opt/x:/opt/y", a).as_deref(), Some("/opt/x:/opt/y"));
+        assert_eq!(strip_dir("/tmp/.mount_Fahh10/usr/lib", a).as_deref(), Some("/tmp/.mount_Fahh10/usr/lib"));
     }
 
     #[test]
