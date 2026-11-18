@@ -79,7 +79,7 @@ fn appimage_use_system_wayland() {
         "fahh: AppImage: preloading {} over the bundled libwayland-client (#153)",
         system.unwrap_or_default()
     );
-    let err = std::process::Command::new("/proc/self/exe")
+    let err = fahh_editor_lib::proc::cmd("/proc/self/exe")
         .args(std::env::args_os().skip(1))
         .env("LD_PRELOAD", preload)
         .exec();
