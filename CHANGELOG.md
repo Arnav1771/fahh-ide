@@ -70,6 +70,13 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.4] — 2026-11-18
+
+### Fixed
+
+- Linux AppImage: the window no longer opens blank on newer distributions (for example Ubuntu 26.04 and WSL). Fahh now uses the system libwayland-client instead of the older bundled copy, which newer Mesa could not load ("Could not create default EGL display: EGL_BAD_PARAMETER").
+- Linux AppImage: git push over https, the terminal and language servers no longer load Fahh's bundled libraries, which made `git push` fail from Source Control.
+
 ## [0.8.3] — 2026-11-17
 
 ### Security
