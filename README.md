@@ -189,6 +189,26 @@ wsl -d Ubuntu -u root bash -c "
 
 ---
 
+## Troubleshooting
+
+### Linux AppImage: `Could not create default EGL display: EGL_BAD_PARAMETER` or a blank window
+
+Seen on Ubuntu 26.04, including WSL2/WSLg ([#153](https://github.com/Arnav1771/fahh-ide/issues/153)). The AppImage
+bundles `libwayland-client` from its older build host, and newer Mesa (built against wayland 1.24+) cannot load
+against it, so EGL has no driver and WebKit's web process aborts. Graphics env vars (`WEBKIT_DISABLE_DMABUF_RENDERER`,
+`LIBGL_ALWAYS_SOFTWARE`, `GDK_BACKEND`, ...) do not help, and `/dev/dri` is not involved.
+
+From the release after v0.8.3 the AppImage handles it itself: it re-launches once with the system `libwayland-client` preloaded and
+prints `fahh: AppImage: preloading ... over the bundled libwayland-client (#153)`. On v0.8.3 or older, either run
+
+```bash
+LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libwayland-client.so.0 fahh .
+```
+
+or install the `.deb`/`.rpm`, which use the system libraries.
+
+---
+
 ## The Fahh SFX
 
 `src-tauri/assets/fahh.mp3` — **never rename it.**
