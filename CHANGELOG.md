@@ -70,6 +70,21 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.5] — 2026-11-19
+
+### Added
+
+- Fahh Local: /usage is a card with the session total, an in/out split and the call counts; /context and /model show tiles. Clicking the token badge opens it.
+- Fahh Local: while it works, the panel lists each step as it happens, with elapsed time and a step count.
+- Fahh Local: at the 25-step limit you get Continue, Summarise so far and Usage instead of a red line.
+- Status bar: a gold Update button appears when a newer Fahh is out, with Download update, What's new and Later.
+
+### Fixed
+
+- Fahh Local replies render real markdown: tables, lists, headings, quotes and links (sanitised; links open in your browser).
+- Side bars such as Fahh Local are easy to resize: the drag handle's grab area is 12px instead of 4px.
+- The effects toggle reads Epic effects / Subtle effects / Effects off, and its tooltip says what each does.
+
 ## [0.8.4] — 2026-11-18
 
 ### Fixed
