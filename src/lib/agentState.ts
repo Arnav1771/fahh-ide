@@ -1,3 +1,4 @@
+import type { AgentUsage } from "./types";
 /**
  * Fahh Local panel state: a pure reducer over the backend's agent events plus
  * the user's own actions. No React, no Tauri, so it runs under vitest.
@@ -47,7 +48,10 @@ export type Item =
       items: Item[];
     }
   | { kind: "sessions"; sessions: AgentSessionInfo[]; current: string | null }
-  | { kind: "notice"; level: "error" | "info"; text: string };
+  | { kind: "notice"; level: "error" | "info"; text: string; title?: string; stats?: Stat[]; usage?: AgentUsage; resume?: boolean };
+
+/** One tile in a command card (/context, /model). */
+export type Stat = { label: string; value: string; hint?: string };
 
 type ApprovalItem = Extract<Item, { kind: "approval" }>;
 type ToolItem = Extract<Item, { kind: "tool" }>;
@@ -87,7 +91,7 @@ export type AgentAction =
   | { type: "file_reverted"; turn: number; path: string }
   | { type: "turn_reverted"; turn: number }
   | { type: "errors_added"; turn: number; count: number }
-  | { type: "notice"; level: "error" | "info"; text: string }
+  | { type: "notice"; level: "error" | "info"; text: string; title?: string; stats?: Stat[]; usage?: AgentUsage; resume?: boolean }
   | { type: "sessions"; sessions: AgentSessionInfo[] }
   | { type: "loaded"; loaded: AgentLoaded }
   | { type: "renamed"; title: string }
@@ -119,7 +123,7 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
     case "started":
       return withTurn({ ...state, session: action.session }, turnOf(state, action.turn));
     case "notice":
-      return { ...state, items: [...state.items, { kind: "notice", level: action.level, text: action.text }] };
+      return { ...state, items: [...state.items, { kind: "notice", level: action.level, text: action.text, title: action.title, stats: action.stats, usage: action.usage }] };
     case "sessions":
       return { ...state, items: [...state.items, { kind: "sessions", sessions: action.sessions, current: state.session }] };
     case "renamed":
@@ -288,7 +292,11 @@ function applyEvent(state: AgentState, ev: AgentEvent): AgentState {
           ...state.items.map((i): Item =>
             i.kind === "tool" && i.status === "running" ? { ...i, status: "error" } : i.kind === "sub" && i.status === "running" ? { ...i, status: "failed" } : i
           ),
-          { kind: "notice", level: "error", text: ev.message === "stopped" ? "Stopped." : ev.message },
+          ev.message === "stopped"
+            ? { kind: "notice", level: "error", text: "Stopped." }
+            : /^stopped after \d+ steps/.test(ev.message)
+              ? { kind: "notice", level: "error", text: ev.message, resume: true }
+              : { kind: "notice", level: "error", text: ev.message },
         ],
       };
   }

@@ -1,4 +1,7 @@
 import React, { useState } from "react";
+import DOMPurify from "dompurify";
+import { renderMarkdown, SAFE_URL } from "../../lib/markdown";
+import { openExternal } from "../../lib/browser";
 import { Check, Copy, FileInput } from "lucide-react";
 import { useEditorStore } from "../../store/editorStore";
 import { copyText } from "../../lib/clipboard";
@@ -127,53 +130,28 @@ export function ChatMessageContent({ text, large }: ChatMessageContentProps) {
           );
         }
 
-        // Inline formatting for text (bold, inline code, line breaks)
-        return (
-          <div key={index} className="whitespace-pre-wrap break-words text-fahh-text/95">
-            {renderInlineMarkdown(part.content)}
-          </div>
-        );
+        return <MarkdownText key={index} source={part.content} />;
       })}
     </div>
   );
 }
 
-/** Render inline `code` and **bold** elements */
-function renderInlineMarkdown(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  // Tokenize by `inline code` and **bold**
-  const regex = /(`[^`]+`|\*\*[^*]+\*\*)/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  let key = 0;
+// No images (a reply could load a tracking pixel), no styles or forms; links open in the browser.
+const CHAT_PURIFY = {
+  FORBID_TAGS: ["img", "style", "form", "iframe", "object", "embed", "script", "link", "meta", "base", "input"],
+  FORBID_ATTR: ["style"],
+  ALLOWED_URI_REGEXP: SAFE_URL,
+};
 
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-    const token = match[1];
-    if (token.startsWith("`") && token.endsWith("`")) {
-      parts.push(
-        <code
-          key={key++}
-          className="px-1.5 py-0.5 rounded bg-fahh-surface/80 text-fahh-accent font-mono text-[11px] select-text"
-        >
-          {token.slice(1, -1)}
-        </code>
-      );
-    } else if (token.startsWith("**") && token.endsWith("**")) {
-      parts.push(
-        <strong key={key++} className="font-semibold text-fahh-text">
-          {token.slice(2, -2)}
-        </strong>
-      );
-    }
-    lastIndex = regex.lastIndex;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts;
+/** Markdown between code fences: tables, lists, headings, quotes, links, bold, inline code. */
+function MarkdownText({ source }: { source: string }) {
+  const html = React.useMemo(() => DOMPurify.sanitize(renderMarkdown(source, { docPath: "" }), CHAT_PURIFY), [source]);
+  const onClick = (e: React.MouseEvent) => {
+    const a = (e.target as HTMLElement).closest("a");
+    if (!a) return;
+    e.preventDefault();
+    const href = a.getAttribute("href") ?? "";
+    if (/^(https?:|mailto:)/i.test(href)) void openExternal(href);
+  };
+  return <div className="fahh-chat-md break-words text-fahh-text/95" onClick={onClick} dangerouslySetInnerHTML={{ __html: html }} />;
 }

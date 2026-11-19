@@ -210,7 +210,7 @@ describe("context, usage, workspace, help", () => {
     await t.run("/compact");
     expect(t.notices().at(-1)).toMatch(/Compacted 4 messages: about 1000 to 200/);
     await t.run("/context");
-    expect(t.notices().at(-1)).toMatch(/about 5000 of 128000 tokens \(3%\)/);
+    expect(t.notices().at(-1)).toMatch(/^Used: 3%\nMessages: /);
     await t.run("/usage");
     expect(t.notices().at(-1)).toMatch(/Model calls: 3\nTool calls: 2/);
   });

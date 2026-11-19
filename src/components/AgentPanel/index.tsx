@@ -333,13 +333,15 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
         </div>
         <div className="mt-1 flex items-center justify-between text-[10px] text-fahh-muted">
           <span className="truncate">{settings.model || "no model"} · {turnsLabel(Object.keys(turns).length)}</span>
-          <span
-            className="shrink-0 px-1.5 py-0.5 rounded bg-fahh-surface/60 font-mono text-[9px] text-fahh-muted hover:text-fahh-text transition-colors cursor-help"
-            title={`Context estimate:\n- Prompt: ~${tokenBreakdown.promptTokens} tok\n- Active file: ~${tokenBreakdown.activeFileTokens} tok\n- Selection: ~${tokenBreakdown.selectionTokens} tok\nTotal: ~${tokenBreakdown.totalTokens} tokens (/context shows the whole session)`}
+          <button
+            type="button"
+            onClick={() => void store.handleInput("/usage")}
+            className="shrink-0 px-1.5 py-0.5 rounded bg-fahh-surface/60 font-mono text-[9px] text-fahh-muted hover:text-fahh-text transition-colors"
+            title={`Context estimate:\n- Prompt: ~${tokenBreakdown.promptTokens} tok\n- Active file: ~${tokenBreakdown.activeFileTokens} tok\n- Selection: ~${tokenBreakdown.selectionTokens} tok\nTotal: ~${tokenBreakdown.totalTokens} tokens\nClick for this session's usage.`}
             data-testid="context-tokens-badge"
           >
             ~{tokenBreakdown.formatted} tok
-          </span>
+          </button>
         </div>
       </div>
     </div>
