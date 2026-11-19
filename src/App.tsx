@@ -24,7 +24,7 @@ import { useTrustStore } from "./store/trustStore";
 import { initFahhSfx, teardownFahhSfx } from "./lib/fahh";
 import { useThemeStore } from "./store/themeStore";
 import { useFahhStore, type Intensity } from "./store/fahhStore";
-import { StatusHud, HudControls, CleanSweep, LspStatusItem } from "./components/Fahh/StatusHud";
+import { StatusHud, HudControls, CleanSweep, LspStatusItem, UpdatePill } from "./components/Fahh/StatusHud";
 import { useGitStore } from "./store/gitStore";
 import { GitStatusItem } from "./components/GitSidebar/GitStatusItem";
 import { AccountMenu } from "./components/AccountMenu";
@@ -44,7 +44,7 @@ import { saveWorkspaceAs, openWorkspaceFromFile, applyWorkspaceConfig, openRecen
 import { DialogHost } from "./components/Dialog";
 import { AboutDialog } from "./components/Dialog/AboutDialog";
 import { CheckSetupDialog } from "./components/Dialog/CheckSetupDialog";
-import { launchUpdateCheck } from "./lib/updates";
+import { launchUpdateCheck, UPDATE_EVENT } from "./lib/updates";
 import { showWhatsNew } from "./lib/account";
 import { alertDialog, confirmDialog, promptDialog } from "./store/dialogStore";
 import { cycleTabs, endCycle, goBack, goForward, initNavigation, reopenClosedTab } from "./lib/navigation";
@@ -279,6 +279,7 @@ export default function App() {
     }
     void launchUpdateCheck(useSettingsStore.getState().checkUpdatesOnLaunch, store, __APP_VERSION__).then((msg) => {
       if (msg) useToastStore.getState().show(msg);
+      window.dispatchEvent(new Event(UPDATE_EVENT));
     });
   }, []);
 
@@ -796,6 +797,7 @@ export default function App() {
             {activeThemeDef?.name ?? activeTheme}
           </span>
 
+          <UpdatePill />
           <span className="max-[680px]:hidden font-mono">v{__APP_VERSION__}</span>
         </div>
       </div>

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { assetFor, checkForUpdates, compareVersions, launchUpdateCheck } from "./updates";
+import { assetFor, checkForUpdates, compareVersions, launchUpdateCheck, pendingUpdate, UPDATE_DISMISSED_KEY, UPDATE_LATEST_KEY } from "./updates";
 
 describe("compareVersions", () => {
   it("compares numerically, ignores a leading v, and puts pre-releases first", () => {
@@ -69,5 +69,20 @@ describe("launchUpdateCheck", () => {
     expect(await launchUpdateCheck(true, mem(), "0.6.4", release("v0.6.4"))).toBeNull();
     const offline = vi.fn(async () => { throw new Error("offline"); }) as unknown as typeof fetch;
     expect(await launchUpdateCheck(true, mem(), "0.6.4", offline)).toBeNull();
+  });
+});
+
+describe("pendingUpdate", () => {
+  const kv = (o: Record<string, string>) => ({ getItem: (k: string) => o[k] ?? null });
+  const saved = JSON.stringify({ latest: "0.8.5", newer: true, url: "https://example.test/r" });
+  it("shows a newer saved release", () => {
+    expect(pendingUpdate(kv({ [UPDATE_LATEST_KEY]: saved }), "0.8.4")?.latest).toBe("0.8.5");
+  });
+  it("hides it once this build is that version or newer", () => {
+    expect(pendingUpdate(kv({ [UPDATE_LATEST_KEY]: saved }), "0.8.5")).toBeNull();
+  });
+  it("hides a version the user said Later to, and survives junk", () => {
+    expect(pendingUpdate(kv({ [UPDATE_LATEST_KEY]: saved, [UPDATE_DISMISSED_KEY]: "0.8.5" }), "0.8.4")).toBeNull();
+    expect(pendingUpdate(kv({ [UPDATE_LATEST_KEY]: "{oops" }), "0.8.4")).toBeNull();
   });
 });
