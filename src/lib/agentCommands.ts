@@ -79,6 +79,15 @@ const WARN_BYPASS = "Bypass mode auto-approves every prompt. Deny rules in .fahh
 
 export async function runSlash(api: CommandApi, cmd: ParsedSlash): Promise<void> {
   const note = (text: string, level: "error" | "info" = "info") => api.dispatch({ type: "notice", level, text });
+  // A command card: tiles in the panel, the same "Label: value" lines kept as text (copy, tests).
+  const card = (title: string, stats: { label: string; value: string | number; hint?: string }[]) =>
+    api.dispatch({
+      type: "notice",
+      level: "info",
+      title,
+      stats: stats.map((x) => ({ ...x, value: typeof x.value === "number" ? x.value.toLocaleString() : x.value })),
+      text: stats.map((x) => `${x.label}: ${x.value}`).join("\n"),
+    });
   const { arg } = cmd;
   const s = api.settings();
   const root = api.root();
@@ -122,7 +131,11 @@ export async function runSlash(api: CommandApi, cmd: ParsedSlash): Promise<void>
         ].join("\n")
       );
     case "model":
-      if (!arg) return note(`Model: ${s.model || "(none)"}${api.usingFast() ? " (fast is on)" : ""}`);
+      if (!arg)
+        return card("Model", [
+          { label: "Model", value: s.model || "(none)", hint: api.usingFast() ? "fast model in use" : undefined },
+          ...(s.fastModel ? [{ label: "Fast model", value: s.fastModel, hint: "/fast switches" }] : []),
+        ]);
       api.update({ model: arg });
       api.setUsingFast(false);
       return note(`Model: ${arg}`);
@@ -202,14 +215,23 @@ export async function runSlash(api: CommandApi, cmd: ParsedSlash): Promise<void>
         const id = needSession();
         if (!id) return;
         const c = await api.ipc.context(id, api.provider().model);
-        note(`Context: about ${c.used} of ${c.window} tokens (${c.percent}%), ${c.messages} messages. Estimated; the window size is a guess from the model name.`);
+        card("Context", [
+          { label: "Used", value: `${c.percent}%`, hint: `about ${c.used.toLocaleString()} of ${c.window.toLocaleString()} tokens` },
+          { label: "Messages", value: c.messages, hint: "window size guessed from the model" },
+        ]);
       });
     case "usage":
       return guard(async () => {
         const id = needSession();
         if (!id) return;
         const u = await api.ipc.usage(id);
-        note(`Model calls: ${u.model_calls}\nTool calls: ${u.tool_calls}\nTokens in: about ${u.tokens_in}\nTokens out: about ${u.tokens_out} (estimated)`);
+        api.dispatch({
+          type: "notice",
+          level: "info",
+          title: "Session usage",
+          usage: u,
+          text: `Model calls: ${u.model_calls}\nTool calls: ${u.tool_calls}\nTokens in: about ${u.tokens_in}\nTokens out: about ${u.tokens_out} (estimated)`,
+        });
       });
     case "ls":
     case "resume":
