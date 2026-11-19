@@ -1,5 +1,8 @@
-import { useEffect, useState } from "react";
-import { Braces, CircleX, Sparkles, TriangleAlert, Volume2, VolumeX, Zap } from "lucide-react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import { ArrowUpCircle, Braces, CircleX, Sparkles, TriangleAlert, Volume2, VolumeX, Zap } from "lucide-react";
+import { pendingUpdate, UPDATE_DISMISSED_KEY, UPDATE_EVENT, type UpdateCheck } from "../../lib/updates";
+import { openExternal } from "../../lib/browser";
 import { useEditorStore } from "../../store/editorStore";
 import { useLspStore } from "../../store/lspStore";
 import { useFahhStore, INTENSITIES } from "../../store/fahhStore";
@@ -110,12 +113,12 @@ export function HudControls() {
       <button
         type="button"
         onClick={() => setIntensity(next)}
-        title={`Effects: ${intensity}. Click for ${next}.`}
+        title={`What happens when your code breaks. ${intensity === "epic" ? "Epic: the fahh sound, a shake, a line pulse and a glow" : intensity === "subtle" ? "Subtle: the fahh sound and a soft glow" : "Off: no visual effects"}. Click for ${next}.`}
         aria-label={`Effects intensity ${intensity}. Switch to ${next}`}
         className={`flex items-center gap-1 transition-colors hover:text-fahh-text ${intensity === "epic" ? "text-fahh-accent" : ""}`}
       >
         <Zap size={12} aria-hidden="true" />
-        {intensity}
+        {intensity === "off" ? "Effects off" : intensity === "subtle" ? "Subtle effects" : "Epic effects"}
       </button>
       <button
         type="button"
@@ -137,4 +140,91 @@ export function CleanSweep() {
   const intensity = useFahhStore((s) => s.intensity);
   if (!impact || impact.kind !== "clean" || intensity === "off") return null;
   return <span key={impact.seq} className="fahh-sweep" aria-hidden="true" />;
+}
+
+function readPending(): UpdateCheck | null {
+  try {
+    return pendingUpdate(localStorage, __APP_VERSION__);
+  } catch {
+    return null;
+  }
+}
+
+/** A gold "Update" button in the status bar, only while a newer release exists; its card has the download. */
+export function UpdatePill() {
+  const [r, setR] = useState<UpdateCheck | null>(readPending);
+  const [open, setOpen] = useState(false);
+  const pillRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const on = () => setR(readPending());
+    window.addEventListener(UPDATE_EVENT, on);
+    return () => window.removeEventListener(UPDATE_EVENT, on);
+  }, []);
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [open]);
+  if (!r) return null;
+  const later = () => {
+    try {
+      localStorage.setItem(UPDATE_DISMISSED_KEY, r.latest);
+    } catch {
+      /* storage blocked: hidden for this session only */
+    }
+    setOpen(false);
+    setR(null);
+  };
+  const btn = "rounded-md px-2.5 py-1 text-[11.5px]";
+  return (
+    <span className="relative">
+      <button
+        type="button"
+        ref={pillRef}
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="dialog"
+        title={`Fahh ${r.latest} is out`}
+        className="fahh-primary flex items-center gap-1 rounded-full bg-fahh-accent px-2 py-px text-[11px] font-semibold text-fahh-bg hover:opacity-90"
+        data-testid="update-pill"
+      >
+        <ArrowUpCircle size={12} aria-hidden="true" />
+        Update to v{r.latest}
+      </button>
+      {open && createPortal(
+        // On <body>: the dock is its own stacking context and would cover a card drawn inside the status bar.
+        <div
+          role="dialog"
+          aria-label={`Fahh ${r.latest}`}
+          className="fahh-pop fixed z-[1000] w-80 rounded-lg border border-fahh-surface bg-fahh-sidebar p-3 text-left shadow-xl"
+          style={cardPos(pillRef.current)}
+        >
+          <p className="text-[13px] font-semibold text-fahh-text">Fahh {r.latest} is out</p>
+          <p className="mt-1 text-[11.5px] leading-snug text-fahh-muted">
+            You have v{__APP_VERSION__}. {r.download ? "Download the installer and run it" : "Get it from the release page"}; your files and settings stay as they are.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <button type="button" autoFocus onClick={() => void openExternal(r.download ?? r.url)} className={`${btn} fahh-primary bg-fahh-accent font-semibold text-fahh-bg hover:opacity-90`}>
+              Download update
+            </button>
+            <button type="button" onClick={() => void openExternal(r.url)} className={`${btn} border border-fahh-surface text-fahh-text hover:bg-fahh-surface`}>
+              What's new
+            </button>
+            <button type="button" onClick={later} className={`${btn} text-fahh-muted hover:text-fahh-text`}>
+              Later
+            </button>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </span>
+  );
+}
+
+/** Above the pill, its right edge lined up with the pill, kept inside the window. */
+function cardPos(el: HTMLElement | null): CSSProperties {
+  if (!el) return { right: 8, bottom: 32 };
+  const r = el.getBoundingClientRect();
+  return { right: Math.max(8, window.innerWidth - r.right), bottom: window.innerHeight - r.top + 8 };
 }

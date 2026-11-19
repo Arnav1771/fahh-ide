@@ -63,6 +63,12 @@ export async function checkForUpdates(current: string, fetcher: typeof fetch = f
 
 export const UPDATE_CHECKED_KEY = "fahh-update-checked";
 export const UPDATE_TOLD_KEY = "fahh-update-told";
+/** The last check's answer, so the status-bar update button survives a restart without asking GitHub again. */
+export const UPDATE_LATEST_KEY = "fahh-update-latest";
+/** A version the user said "Later" to: its button stays hidden until a newer one comes out. */
+export const UPDATE_DISMISSED_KEY = "fahh-update-dismissed";
+/** Fired on window after a launch check finds a newer release. */
+export const UPDATE_EVENT = "fahh-update-found";
 const DAY = 24 * 60 * 60 * 1000;
 
 type KV = Pick<Storage, "getItem" | "setItem">;
@@ -84,10 +90,24 @@ export async function launchUpdateCheck(
     if (last > 0 && now >= last && now - last < DAY) return null;
     store.setItem(UPDATE_CHECKED_KEY, String(now));
     const r = await checkForUpdates(current, fetcher);
+    store.setItem(UPDATE_LATEST_KEY, JSON.stringify(r));
     if (!r.newer || store.getItem(UPDATE_TOLD_KEY) === r.latest) return null;
     store.setItem(UPDATE_TOLD_KEY, r.latest);
-    return `Fahh ${r.latest} is out. Help > About Fahh Editor has the download.`;
+    return `Fahh ${r.latest} is out. Click "Update" in the status bar.`;
   } catch {
     return null; // offline or rate-limited: say nothing, try again tomorrow
+  }
+}
+
+/** The newer release the last check found, unless it is not newer than this build or the user dismissed it. */
+export function pendingUpdate(store: Pick<Storage, "getItem">, current: string): UpdateCheck | null {
+  try {
+    const r = JSON.parse(store.getItem(UPDATE_LATEST_KEY) ?? "null") as UpdateCheck | null;
+    if (!r || typeof r.latest !== "string" || typeof r.url !== "string") return null;
+    if (compareVersions(r.latest, current) <= 0) return null;
+    if (store.getItem(UPDATE_DISMISSED_KEY) === r.latest) return null;
+    return r;
+  } catch {
+    return null;
   }
 }
