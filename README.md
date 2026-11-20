@@ -2,7 +2,7 @@
 
 > A spatial AI code editor with loud opinions. Built with Tauri 2, Rust, Monaco, and React.
 
-**[Download v0.8.5](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.8.5)** · **[Website](https://fahhide.duckdns.org)** · **[Wiki Docs](https://github.com/Arnav1771/fahh-ide/wiki)** · **[Playground](https://fahhide.duckdns.org/play.html)**
+**[Download v0.8.6](https://github.com/Arnav1771/fahh-ide/releases/tag/v0.8.6)** · **[Website](https://fahhide.duckdns.org)** · **[Wiki Docs](https://github.com/Arnav1771/fahh-ide/wiki)** · **[Playground](https://fahhide.duckdns.org/play.html)**
 
 ---
 
@@ -14,7 +14,7 @@ Coupled with a **2D infinite spatial canvas**, the **Fahh Local coding agent**, 
 
 ---
 
-## Download v0.8.5
+## Download v0.8.6
 
 **Install from a terminal (one line, always the latest release):**
 
@@ -32,19 +32,19 @@ Or download an installer:
 
 | Platform | Installer | Size |
 |----------|-----------|------|
-| Windows 10/11 (x64) | [Fahh.Editor_0.8.5_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.5/Fahh.Editor_0.8.5_x64-setup.exe) | ~10.6MB |
-| Windows (MSI) | [Fahh.Editor_0.8.5_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.5/Fahh.Editor_0.8.5_x64_en-US.msi) | ~13.8MB |
-| macOS (Apple Silicon) | [Fahh.Editor_0.8.5_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.5/Fahh.Editor_0.8.5_aarch64.dmg) | ~13.2MB |
-| macOS (Intel) | [Fahh.Editor_0.8.5_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.5/Fahh.Editor_0.8.5_x64.dmg) | ~13.6MB |
-| Linux (AppImage) | [Fahh.Editor_0.8.5_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.5/Fahh.Editor_0.8.5_amd64.AppImage) | ~89.5MB |
-| Linux (Debian/Ubuntu) | [Fahh.Editor_0.8.5_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.5/Fahh.Editor_0.8.5_amd64.deb) | ~15.9MB |
-| Linux (Fedora/RHEL) | [Fahh.Editor-0.8.5-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.5/Fahh.Editor-0.8.5-1.x86_64.rpm) | ~15.9MB |
+| Windows 10/11 (x64) | [Fahh.Editor_0.8.6_x64-setup.exe](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.6/Fahh.Editor_0.8.6_x64-setup.exe) | ~10.6MB |
+| Windows (MSI) | [Fahh.Editor_0.8.6_x64_en-US.msi](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.6/Fahh.Editor_0.8.6_x64_en-US.msi) | ~13.8MB |
+| macOS (Apple Silicon) | [Fahh.Editor_0.8.6_aarch64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.6/Fahh.Editor_0.8.6_aarch64.dmg) | ~13.2MB |
+| macOS (Intel) | [Fahh.Editor_0.8.6_x64.dmg](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.6/Fahh.Editor_0.8.6_x64.dmg) | ~13.6MB |
+| Linux (AppImage) | [Fahh.Editor_0.8.6_amd64.AppImage](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.6/Fahh.Editor_0.8.6_amd64.AppImage) | ~89.5MB |
+| Linux (Debian/Ubuntu) | [Fahh.Editor_0.8.6_amd64.deb](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.6/Fahh.Editor_0.8.6_amd64.deb) | ~15.9MB |
+| Linux (Fedora/RHEL) | [Fahh.Editor-0.8.6-1.x86_64.rpm](https://github.com/Arnav1771/fahh-ide/releases/download/v0.8.6/Fahh.Editor-0.8.6-1.x86_64.rpm) | ~15.9MB |
 
 > **Native Performance**: Built on Tauri 2 with native OS web engines (WebView2 on Windows, WebKitGTK on Linux, WebKit on macOS). Not Electron — 10× lighter memory footprint and instant startup.
 
 ---
 
-## What's in Fahh Editor v0.8.5
+## What's in Fahh Editor v0.8.6
 
 | Capability | Hotkey / Status | What It Does |
 |------------|-----------------|--------------|
@@ -198,8 +198,8 @@ bundles `libwayland-client` from its older build host, and newer Mesa (built aga
 against it, so EGL has no driver and WebKit's web process aborts. Graphics env vars (`WEBKIT_DISABLE_DMABUF_RENDERER`,
 `LIBGL_ALWAYS_SOFTWARE`, `GDK_BACKEND`, ...) do not help, and `/dev/dri` is not involved.
 
-From the release after v0.8.5 the AppImage handles it itself: it re-launches once with the system `libwayland-client` preloaded and
-prints `fahh: AppImage: preloading ... over the bundled libwayland-client (#153)`. On v0.8.5 or older, either run
+From the release after v0.8.6 the AppImage handles it itself: it re-launches once with the system `libwayland-client` preloaded and
+prints `fahh: AppImage: preloading ... over the bundled libwayland-client (#153)`. On v0.8.6 or older, either run
 
 ```bash
 LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libwayland-client.so.0 fahh .
