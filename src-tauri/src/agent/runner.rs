@@ -106,11 +106,44 @@ impl Hist {
         }
     }
     fn snapshot(&self) -> Vec<Msg> {
-        match self {
+        heal(match self {
             Hist::Session(s) => s.history.lock().unwrap().clone(),
             Hist::Local(v) => v.clone(),
+        })
+    }
+}
+
+/// Every tool call must be answered by a result right after it, or providers reject the whole
+/// request (Anthropic: "tool_use ids were found without tool_result blocks"). A turn that ended
+/// between the call and its result (step limit, Stop, an error, a crash before the save) left
+/// such a call in the saved session, and Continue then failed every time. Answer any orphan
+/// with a short "not run" result, so old sessions recover too.
+fn heal(history: Vec<Msg>) -> Vec<Msg> {
+    let mut out = Vec::with_capacity(history.len());
+    let mut it = history.into_iter().peekable();
+    while let Some(m) = it.next() {
+        let calls = match &m {
+            Msg::Assistant { calls, .. } if !calls.is_empty() => calls.clone(),
+            _ => {
+                out.push(m);
+                continue;
+            }
+        };
+        out.push(m);
+        let mut answered = std::collections::HashSet::new();
+        while let Some(Msg::ToolResult { id, .. }) = it.peek() {
+            answered.insert(id.clone());
+            out.push(it.next().unwrap());
+        }
+        for c in calls.iter().filter(|c| !answered.contains(&c.id)) {
+            out.push(Msg::ToolResult {
+                id: c.id.clone(),
+                name: c.name.clone(),
+                content: "Not run: the previous turn stopped before this tool ran.".into(),
+            });
         }
     }
+    out
 }
 
 // ─── prompts ──────────────────────────────────────────────────────────────────
@@ -296,6 +329,11 @@ fn drive(ctx: Arc<RunCtx>, ac: Arc<AgentCtx>, system: String, specs: Vec<ToolSpe
             for (call, r) in reply.calls.iter().zip(results) {
                 let (_, output) = r.unwrap_or((false, String::new()));
                 hist.push(Msg::ToolResult { id: call.id.clone(), name: call.name.clone(), content: tools::truncate(&output, 30_000) });
+            }
+            // Save the results too: the save above only covered the call, so a turn that ended
+            // here left an unanswered tool call on disk.
+            if main {
+                ctx.s.save();
             }
         }
         Err(format!("stopped after {max_steps} steps without a final answer"))
@@ -726,6 +764,24 @@ fn git_dirty(root: &std::path::Path) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn heal_answers_orphan_tool_calls_and_keeps_answered_ones() {
+        let call = |id: &str| ToolCall { id: id.into(), name: "list_dir".into(), args: json!({}), ..Default::default() };
+        let h = vec![
+            Msg::User { text: "go".into() },
+            Msg::Assistant { text: String::new(), calls: vec![call("a"), call("b")] },
+            Msg::ToolResult { id: "a".into(), name: "list_dir".into(), content: "ok".into() },
+            Msg::User { text: "Continue".into() },
+        ];
+        let out = heal(h);
+        let ids: Vec<String> = out.iter().filter_map(|m| if let Msg::ToolResult { id, .. } = m { Some(id.clone()) } else { None }).collect();
+        assert_eq!(ids, vec!["a", "b"], "b gets a not-run result, a keeps its own");
+        assert!(matches!(&out[3], Msg::ToolResult { id, content, .. } if id == "b" && content.starts_with("Not run")));
+        assert!(matches!(&out[4], Msg::User { .. }), "the result sits before the next user message");
+        let clean = vec![Msg::User { text: "hi".into() }, Msg::Assistant { text: "yo".into(), calls: vec![] }];
+        assert_eq!(heal(clean.clone()), clean);
+    }
+
     use super::*;
     use crate::agent::perm::Mode;
     use crate::agent::provider::ModelTurn;
