@@ -2,7 +2,7 @@
  * The saved Fahh Local sessions of the open folder, for Agent mode's sidebar and the
  * Ctrl+Shift+A session search.
  */
-import { agentSessions } from "./agent";
+import { agentSessions, agentSessionsAll } from "./agent";
 import { useFileStore } from "../store/fileStore";
 import type { AgentSessionInfo } from "./types";
 
@@ -15,6 +15,21 @@ export async function listSessions(): Promise<AgentSessionInfo[]> {
   } catch {
     return [];
   }
+}
+
+/** Every folder's sessions, newest first, each with its folder. */
+export async function listAllSessions(): Promise<AgentSessionInfo[]> {
+  try {
+    return (await agentSessionsAll()).slice().sort((a, b) => b.updated - a.updated);
+  } catch {
+    return [];
+  }
+}
+
+/** Same folder, whatever the slashes or case (Windows) say. */
+export function sameFolder(a: string, b: string): boolean {
+  const n = (p: string) => p.replace(/\\/g, "/").replace(/\/+$/, "").toLowerCase();
+  return n(a) === n(b);
 }
 
 /** "just now", "5m ago", "3h ago", "4d ago", "2 wks ago", "3 mo ago". `updated` is in ms or s. */

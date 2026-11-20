@@ -146,6 +146,7 @@ pub fn run() {
             agent::agent_stop_child,
             agent::agent_list_models,
             agent::agent_sessions,
+            agent::agent_sessions_all,
             agent::agent_session_load,
             agent::agent_session_fork,
             agent::agent_session_revert,

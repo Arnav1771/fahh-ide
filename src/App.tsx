@@ -283,6 +283,11 @@ export default function App() {
     });
   }, []);
 
+  // Start on Fahh Local's home (recent sessions from every folder) unless turned off in settings.
+  useEffect(() => {
+    if (useSettingsStore.getState().startInAgentMode) useLayoutModeStore.getState().setMode("agent");
+  }, []);
+
   // "What's new": the newest announcement from Fahh Cloud, once, a few seconds after launch.
   useEffect(() => {
     const t = window.setTimeout(() => void showWhatsNew((url) => void openExternal(url)), 4000);

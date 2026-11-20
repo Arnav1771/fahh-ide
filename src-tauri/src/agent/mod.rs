@@ -460,6 +460,12 @@ pub fn agent_sessions(state: State<'_, AgentState>, workspace: String) -> Result
     Ok(store::list(&state.dir_for(&Workspace::new(&workspace)?.root)))
 }
 
+/// Every folder's saved sessions, newest first (Agent mode's home and "All folders").
+#[tauri::command]
+pub fn agent_sessions_all(state: State<'_, AgentState>) -> Vec<store::SessionEntry> {
+    store::list_all(&state.data_dir)
+}
+
 /// Open a saved session (the newest when `id` is absent) and make it the live one.
 #[tauri::command]
 pub fn agent_session_load(state: State<'_, AgentState>, workspace: String, id: Option<String>, extra_dirs: Option<Vec<String>>) -> Result<Loaded, String> {

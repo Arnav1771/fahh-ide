@@ -14,7 +14,9 @@ import { confirmDialog } from "../../store/dialogStore";
 import { agentSessionRemove, settingsProblem, type ModelList } from "../../lib/agent";
 import { starterPrompts } from "../../lib/agentStarters";
 import { pendingFiles, pendingReview, type AgentStatus } from "../../lib/agentState";
-import { ago, listSessions } from "../../lib/agentSessionsList";
+import { ago, listAllSessions, listSessions, sameFolder } from "../../lib/agentSessionsList";
+import { useWorkspace } from "../../hooks/useWorkspace";
+import { useToastStore } from "../../store/toastStore";
 import { OPEN_FOLDER_EVENT } from "../../lib/commands";
 import { revealView } from "../../lib/workbench";
 import type { AgentMode as Mode, AgentSessionInfo } from "../../lib/types";
@@ -47,37 +49,68 @@ const MODE_SENTENCE: Record<Mode, string> = {
 const folderName = (root: string) => root.replace(/[\\/]+$/, "").split(/[\\/]/).pop() || root;
 const focusRing = "focus-visible:outline focus-visible:outline-1 focus-visible:outline-fahh-accent";
 
-function SessionsSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+type Scope = "all" | "folder";
+const SCOPE_KEY = "fahh-agent-sessions-scope";
+const readScope = (): Scope => {
+  try {
+    return localStorage.getItem(SCOPE_KEY) === "folder" ? "folder" : "all";
+  } catch {
+    return "all";
+  }
+};
+
+/** Open a session from any folder: switch to its folder first when it is not the open one. */
+function useOpenSession() {
+  const { openFolder } = useWorkspace();
+  const loadSession = useAgentStore((s) => s.loadSession);
+  return async (s: AgentSessionInfo) => {
+    const root = useFileStore.getState().root;
+    if (s.workspace && !(root && sameFolder(s.workspace, root))) {
+      try {
+        await openFolder(s.workspace);
+      } catch {
+        useToastStore.getState().show(`Folder not found: ${s.workspace}`, "error");
+        return;
+      }
+    }
+    await loadSession(s.id);
+  };
+}
+
+function SessionsSidebar({ open, onClose, scope, setScope }: { open: boolean; onClose: () => void; scope: Scope; setScope: (s: Scope) => void }) {
   const root = useFileStore((s) => s.root);
   const session = useAgentStore((s) => s.session);
   const status = useAgentStore((s) => s.status);
   const title = useAgentStore((s) => s.title);
   const firstPrompt = useAgentStore((s) => s.items.find((i) => i.kind === "user"));
-  const loadSession = useAgentStore((s) => s.loadSession);
+  const openSession = useOpenSession();
   const newChat = useAgentStore((s) => s.newChat);
   const [sessions, setSessions] = useState<AgentSessionInfo[]>([]);
+  const list = () => (scope === "all" ? listAllSessions() : listSessions());
 
   // A turn that finished (or a new session) changes titles and order.
   useEffect(() => {
     if (status === "running") return;
     let live = true;
-    void listSessions().then((s) => live && setSessions(s));
+    void list().then((s) => live && setSessions(s));
     return () => {
       live = false;
     };
-  }, [root, session, status]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [root, session, status, scope]);
 
   const remove = async (s: AgentSessionInfo) => {
-    if (!root || !(await confirmDialog({ title: `Delete "${s.title || "Untitled"}"?`, message: "The session and its history are removed. This cannot be undone.", ok: "Delete", danger: true }))) return;
-    await agentSessionRemove(root, s.id).catch(() => {});
+    const folder = s.workspace ?? root;
+    if (!folder || !(await confirmDialog({ title: `Delete "${s.title || "Untitled"}"?`, message: "The session and its history are removed. This cannot be undone.", ok: "Delete", danger: true }))) return;
+    await agentSessionRemove(folder, s.id).catch(() => {});
     if (s.id === session) newChat();
-    setSessions(await listSessions());
+    setSessions(await list());
   };
 
   // The live session is listed before the backend has saved it.
   const current =
     firstPrompt?.kind === "user" && !sessions.some((s) => s.id === session)
-      ? { id: session ?? "new", title: title || firstPrompt.text, updated: Date.now(), steps: 0 }
+      ? { id: session ?? "new", title: title || firstPrompt.text, updated: Date.now(), steps: 0, workspace: root ?? undefined }
       : null;
   const rows = current ? [current, ...sessions] : sessions;
 
@@ -102,10 +135,25 @@ function SessionsSidebar({ open, onClose }: { open: boolean; onClose: () => void
           <span className="ml-auto shrink-0 fahh-kbd">Ctrl+Shift+A</span>
         </button>
       </div>
-      <h2 className="px-3.5 pt-3 pb-1 text-[11px] font-medium text-fahh-muted truncate">{root ? `Sessions in ${folderName(root)}` : "Sessions"}</h2>
+      <div className="mx-2 mt-2 grid grid-cols-2 gap-0.5 rounded-md bg-fahh-surface/50 p-0.5 text-[11.5px]" role="tablist" aria-label="Which sessions">
+        {(["all", "folder"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            role="tab"
+            aria-selected={scope === k}
+            onClick={() => setScope(k)}
+            className={`rounded px-2 py-1 ${scope === k ? "bg-fahh-bg text-fahh-text shadow-sm" : "text-fahh-muted hover:text-fahh-text"} ${focusRing}`}
+            data-testid={`sessions-scope-${k}`}
+          >
+            {k === "all" ? "All folders" : "This folder"}
+          </button>
+        ))}
+      </div>
+      <h2 className="px-3.5 pt-3 pb-1 text-[11px] font-medium text-fahh-muted truncate">{scope === "all" ? "Sessions in every folder" : root ? `Sessions in ${folderName(root)}` : "Sessions"}</h2>
       <div className="flex-1 overflow-y-auto px-1.5 pb-2" role="list" aria-label="Sessions">
-        {!root && <p className="px-2 py-2 text-[12px] leading-5 text-fahh-muted">Open a folder: sessions are saved per folder.</p>}
-        {root && rows.length === 0 && <p className="px-2 py-2 text-[12px] leading-5 text-fahh-muted">No sessions yet. Your first prompt starts one.</p>}
+        {scope === "folder" && !root && <p className="px-2 py-2 text-[12px] leading-5 text-fahh-muted">Open a folder to see its sessions, or switch to All folders.</p>}
+        {(scope === "all" || root) && rows.length === 0 && <p className="px-2 py-2 text-[12px] leading-5 text-fahh-muted">No sessions yet. Your first prompt starts one.</p>}
         {rows.map((s) => {
           const isCurrent = s === current || (!!session && s.id === session);
           const st = isCurrent ? STATUS[status] : null;
@@ -114,7 +162,7 @@ function SessionsSidebar({ open, onClose }: { open: boolean; onClose: () => void
               <button
                 type="button"
                 onClick={() => {
-                  if (s !== current) void loadSession(s.id);
+                  if (s !== current) void openSession(s);
                   onClose();
                 }}
                 aria-current={isCurrent ? "true" : undefined}
@@ -127,6 +175,12 @@ function SessionsSidebar({ open, onClose }: { open: boolean; onClose: () => void
                   {st ? <span className="text-fahh-text/80">{st.label}</span> : <span>{ago(s.updated)}</span>}
                   {s.steps > 0 && <span className="ml-auto">{s.steps} {s.steps === 1 ? "step" : "steps"}</span>}
                 </span>
+                {scope === "all" && s.workspace && (
+                  <span className="mt-0.5 flex items-center gap-1 text-[11px] text-fahh-muted truncate" title={s.workspace}>
+                    <FolderOpen size={11} className="shrink-0" aria-hidden="true" />
+                    <span className="truncate">{folderName(s.workspace)}</span>
+                  </span>
+                )}
               </button>
               {s !== current && (
                 <button
@@ -151,7 +205,42 @@ function SessionsSidebar({ open, onClose }: { open: boolean; onClose: () => void
 }
 
 /** The start screen: what the agent can do here, and first prompts that fit this folder. */
-function EmptyStart({ onPick, onSettings }: { onPick: (prompt: string) => void; onSettings: () => void }) {
+/** The home screen's "Recent sessions": the newest five from every folder, like a chat app's history. */
+function RecentSessions({ onViewAll }: { onViewAll: () => void }) {
+  const [rows, setRows] = useState<AgentSessionInfo[] | null>(null);
+  const openSession = useOpenSession();
+  useEffect(() => {
+    let live = true;
+    void listAllSessions().then((s) => live && setRows(s.slice(0, 5)));
+    return () => {
+      live = false;
+    };
+  }, []);
+  if (!rows || rows.length === 0) return null;
+  return (
+    <section className="mt-10" aria-label="Recent sessions" data-testid="recent-sessions">
+      <div className="mb-2 flex items-center justify-between">
+        <h2 className="text-[13px] font-medium text-fahh-muted">Recent sessions</h2>
+        <button type="button" onClick={onViewAll} className={`text-[13px] text-fahh-accent hover:underline ${focusRing}`}>
+          View all
+        </button>
+      </div>
+      <ul className="divide-y divide-fahh-surface rounded-lg border border-fahh-surface">
+        {rows.map((s) => (
+          <li key={`${s.workspace}:${s.id}`}>
+            <button type="button" onClick={() => void openSession(s)} title={s.workspace} className={`flex w-full items-baseline gap-2 px-4 py-2.5 text-left hover:bg-fahh-surface/50 ${focusRing}`}>
+              <span className="min-w-0 flex-1 truncate text-[14px] text-fahh-text">{s.title || "Untitled"}</span>
+              {s.workspace && <span className="shrink-0 max-w-[30%] truncate text-[12px] text-fahh-muted">{folderName(s.workspace)}</span>}
+              <span className="shrink-0 text-[12px] text-fahh-muted">{ago(s.updated)}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function EmptyStart({ onPick, onSettings, onViewAll }: { onPick: (prompt: string) => void; onSettings: () => void; onViewAll: () => void }) {
   const root = useFileStore((s) => s.root);
   const tree = useFileStore((s) => s.tree);
   const settings = useAgentStore((s) => s.settings);
@@ -211,6 +300,7 @@ function EmptyStart({ onPick, onSettings }: { onPick: (prompt: string) => void; 
             </p>
           </>
         )}
+        <RecentSessions onViewAll={onViewAll} />
       </div>
     </div>
   );
@@ -322,6 +412,15 @@ export function AgentMode() {
   const [inspector, setInspector] = useState<InspectorTab | null>(() => (wide() && items.length > 0 ? "changes" : null));
   const [lastTab, setLastTab] = useState<InspectorTab>("changes");
   const [sessionsOpen, setSessionsOpen] = useState(false);
+  const [scope, setScopeState] = useState<Scope>(readScope);
+  const setScope = (s: Scope) => {
+    setScopeState(s);
+    try {
+      localStorage.setItem(SCOPE_KEY, s);
+    } catch {
+      /* storage blocked: this session only */
+    }
+  };
   const [showSettings, setShowSettings] = useState(false);
   const [models, reloadModels] = useModelList();
   const waiting = pendingReview(store).reduce((n, t) => n + pendingFiles(t).length, 0);
@@ -354,7 +453,7 @@ export function AgentMode() {
 
   return (
     <div className="fahh-agent-mode relative flex flex-1 min-h-0 overflow-hidden bg-fahh-bg" data-testid="agent-mode">
-      <SessionsSidebar open={sessionsOpen} onClose={() => setSessionsOpen(false)} />
+      <SessionsSidebar open={sessionsOpen} onClose={() => setSessionsOpen(false)} scope={scope} setScope={setScope} />
       {sessionsOpen && <div className="min-[900px]:hidden absolute inset-0 z-20 bg-fahh-bg/60" onClick={() => setSessionsOpen(false)} aria-hidden="true" />}
 
       <main className="flex-1 min-w-0 flex flex-col" data-testid="agent-panel">
@@ -398,7 +497,7 @@ export function AgentMode() {
           </div>
         )}
 
-        {items.length === 0 ? <EmptyStart onPick={pick} onSettings={() => setShowSettings(true)} /> : <Transcript workspace onReview={() => openTab("changes")} />}
+        {items.length === 0 ? <EmptyStart onPick={pick} onSettings={() => setShowSettings(true)} onViewAll={() => { setScope("all"); setSessionsOpen(true); }} /> : <Transcript workspace onReview={() => openTab("changes")} />}
         <WorkspaceComposer c={c} models={models} />
       </main>
 
