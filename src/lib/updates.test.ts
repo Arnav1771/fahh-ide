@@ -55,13 +55,13 @@ describe("launchUpdateCheck", () => {
     expect(f).not.toHaveBeenCalled();
   });
 
-  it("tells once per new version and checks at most once a day", async () => {
+  it("tells once per new version and checks at most once an hour", async () => {
     const s = mem();
     const f = release("v9.0.0");
     expect(await launchUpdateCheck(true, s, "0.6.4", f, 1_000)).toContain("Fahh 9.0.0 is out");
-    expect(await launchUpdateCheck(true, s, "0.6.4", f, 2_000)).toBeNull(); // same day: no request
+    expect(await launchUpdateCheck(true, s, "0.6.4", f, 2_000)).toBeNull(); // same hour: no request
     expect(f).toHaveBeenCalledTimes(1);
-    expect(await launchUpdateCheck(true, s, "0.6.4", f, 1_000 + 25 * 3600_000)).toBeNull(); // already told about 9.0.0
+    expect(await launchUpdateCheck(true, s, "0.6.4", f, 1_000 + 2 * 3600_000)).toBeNull(); // an hour later it asks again, but already told about 9.0.0
     expect(f).toHaveBeenCalledTimes(2);
   });
 

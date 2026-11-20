@@ -69,12 +69,13 @@ export const UPDATE_LATEST_KEY = "fahh-update-latest";
 export const UPDATE_DISMISSED_KEY = "fahh-update-dismissed";
 /** Fired on window after a launch check finds a newer release. */
 export const UPDATE_EVENT = "fahh-update-found";
-const DAY = 24 * 60 * 60 * 1000;
+/** How often GitHub is asked at most. A day hid same-day releases until tomorrow. */
+export const CHECK_EVERY = 60 * 60 * 1000;
 
 type KV = Pick<Storage, "getItem" | "setItem">;
 
 /**
- * At most once a day, and a toast once per new version: never a popup, never a nag.
+ * At most once an hour, and a toast once per new version: never a popup, never a nag.
  * Resolves to the toast text, or null when there is nothing to say (or the check failed).
  */
 export async function launchUpdateCheck(
@@ -87,7 +88,7 @@ export async function launchUpdateCheck(
   if (!enabled) return null;
   try {
     const last = Number(store.getItem(UPDATE_CHECKED_KEY));
-    if (last > 0 && now >= last && now - last < DAY) return null;
+    if (last > 0 && now >= last && now - last < CHECK_EVERY) return null;
     store.setItem(UPDATE_CHECKED_KEY, String(now));
     const r = await checkForUpdates(current, fetcher);
     store.setItem(UPDATE_LATEST_KEY, JSON.stringify(r));
