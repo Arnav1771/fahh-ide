@@ -70,6 +70,17 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.7] — 2026-11-20
+
+### Added
+
+- Fahh opens on Fahh Local's home with recent sessions from every folder, and View all. The sessions sidebar has All folders / This folder; opening a session from another folder opens that folder first. Settings > Startup turns it off.
+
+### Fixed
+
+- Current Claude models (Opus/Sonnet 4.6 and later, the 5 family, Fable) get their 1M context window: /context no longer over-reports and auto-compaction no longer starts at 160K.
+- The Update button appears the same day a release comes out: Fahh checks at launch and every few hours, at most once an hour.
+
 ## [0.8.6] — 2026-11-20
 
 ### Fixed

@@ -1021,7 +1021,7 @@ dependencies = [
 
 [[package]]
 name = "fahh-editor"
-version = "0.8.6"
+version = "0.8.7"
 dependencies = [
  "anyhow",
  "dirs 5.0.1",
