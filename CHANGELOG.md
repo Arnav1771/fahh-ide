@@ -70,6 +70,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.6] — 2026-11-20
+
+### Fixed
+
+- Fahh Local: Continue (and any message after a turn that stopped mid-step) no longer fails with "tool_use ids were found without tool_result blocks". Sessions already stuck in that state recover by themselves.
+
 ## [0.8.5] — 2026-11-19
 
 ### Added
