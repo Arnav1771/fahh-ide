@@ -32,7 +32,14 @@ pub fn window_for(model: &str) -> u64 {
     if m.contains("gemini") {
         1_000_000
     } else if m.contains("claude") {
-        200_000
+        // Opus/Sonnet 4.6 and later, the 5 family, Fable and Mythos take 1M tokens by default;
+        // Haiku 4.5 and older models stay at 200K.
+        const MILLION: [&str; 8] = ["fable", "mythos", "opus-5", "sonnet-5", "haiku-5", "-4-6", "-4-7", "-4-8"];
+        if MILLION.iter().any(|k| m.contains(k)) {
+            1_000_000
+        } else {
+            200_000
+        }
     } else if m.contains("gpt-oss") || m.contains("llama-3") || m.contains("qwen") || m.contains("gpt-4") {
         128_000
     } else {
@@ -146,6 +153,12 @@ mod tests {
         assert_eq!(est_tokens(""), 0);
         assert!(history_tokens(&convo()) > 1000);
         assert_eq!(window_for("gemini-2.5-flash"), 1_000_000);
+        assert_eq!(window_for("claude-opus-5-5"), 1_000_000);
+        assert_eq!(window_for("claude-sonnet-5-5"), 1_000_000);
+        assert_eq!(window_for("claude-fable-5-2"), 1_000_000);
+        assert_eq!(window_for("claude-sonnet-4-6"), 1_000_000);
+        assert_eq!(window_for("claude-haiku-4-5"), 200_000);
+        assert_eq!(window_for("claude-3-5-sonnet-latest"), 200_000);
         assert_eq!(window_for("openai/gpt-oss-120b"), 128_000);
         assert_eq!(window_for("mystery"), 32_000);
         let c = context_info(&convo(), 100, "mystery");
