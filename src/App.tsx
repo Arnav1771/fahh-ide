@@ -269,7 +269,8 @@ export default function App() {
     return () => teardownFahhSfx();
   }, []);
 
-  // A quiet update check at launch: once a day, a toast once per new version (Settings > Updates).
+  // A quiet update check at launch and then every few hours while Fahh stays open (GitHub is
+  // asked at most once an hour); a toast once per new version, and the status-bar Update button.
   useEffect(() => {
     let store: Storage | undefined;
     try {
@@ -277,10 +278,15 @@ export default function App() {
     } catch {
       return;
     }
-    void launchUpdateCheck(useSettingsStore.getState().checkUpdatesOnLaunch, store, __APP_VERSION__).then((msg) => {
-      if (msg) useToastStore.getState().show(msg);
-      window.dispatchEvent(new Event(UPDATE_EVENT));
-    });
+    const kv = store;
+    const check = () =>
+      void launchUpdateCheck(useSettingsStore.getState().checkUpdatesOnLaunch, kv, __APP_VERSION__).then((msg) => {
+        if (msg) useToastStore.getState().show(msg);
+        window.dispatchEvent(new Event(UPDATE_EVENT));
+      });
+    check();
+    const t = window.setInterval(check, 3 * 60 * 60 * 1000);
+    return () => window.clearInterval(t);
   }, []);
 
   // Start on Fahh Local's home (recent sessions from every folder) unless turned off in settings.

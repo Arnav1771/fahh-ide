@@ -331,7 +331,7 @@ export function SettingsPanel() {
         </Section>
 
         <Section title="Updates" keywords="version release">
-          <Row label="Check for updates at launch" hint="Once a day; a small note when a new version is out, never a popup. Help > About checks now." htmlFor="set-updates">
+          <Row label="Check for updates" hint="At launch and every few hours; an Update button in the status bar when a new version is out, never a popup. Help > About checks now." htmlFor="set-updates">
             <Toggle id="set-updates" value={s.checkUpdatesOnLaunch} onChange={(v) => s.set("checkUpdatesOnLaunch", v)} />
           </Row>
         </Section>
