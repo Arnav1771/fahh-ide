@@ -324,6 +324,12 @@ export function SettingsPanel() {
           </Row>
         </Section>
 
+        <Section title="Startup" keywords="launch open agent mode sessions home">
+          <Row label="Start in Agent mode" hint="Fahh opens on Fahh Local with recent sessions from every folder. Off: it opens in the editor." htmlFor="set-start-agent">
+            <Toggle id="set-start-agent" value={s.startInAgentMode} onChange={(v) => s.set("startInAgentMode", v)} />
+          </Row>
+        </Section>
+
         <Section title="Updates" keywords="version release">
           <Row label="Check for updates at launch" hint="Once a day; a small note when a new version is out, never a popup. Help > About checks now." htmlFor="set-updates">
             <Toggle id="set-updates" value={s.checkUpdatesOnLaunch} onChange={(v) => s.set("checkUpdatesOnLaunch", v)} />

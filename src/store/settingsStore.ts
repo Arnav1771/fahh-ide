@@ -30,6 +30,8 @@ export interface Settings {
   fahhSound: string;
   /** Look for a new release at launch (at most once a day; a toast, never a popup). */
   checkUpdatesOnLaunch: boolean;
+  /** Open in Agent mode, with every folder's recent sessions, instead of the editor. */
+  startInAgentMode: boolean;
   /** Line numbers relative to the cursor line (Vim-style). */
   relativeLineNumbers: boolean;
   /** Keep the enclosing function/class header pinned at the top while scrolling. */
@@ -73,6 +75,7 @@ export const DEFAULT_SETTINGS: Settings = {
   restoreSession: true,
   fahhSound: "",
   checkUpdatesOnLaunch: true,
+  startInAgentMode: true,
   relativeLineNumbers: false,
   stickyScroll: true,
   bracketPairs: true,
@@ -116,6 +119,7 @@ export function parseSettings(raw: string | null | undefined): Settings {
     restoreSession: bool(o.restoreSession, d.restoreSession),
     fahhSound: typeof o.fahhSound === "string" ? o.fahhSound.slice(0, 200) : d.fahhSound,
     checkUpdatesOnLaunch: bool(o.checkUpdatesOnLaunch, d.checkUpdatesOnLaunch),
+    startInAgentMode: bool(o.startInAgentMode, d.startInAgentMode),
     relativeLineNumbers: bool(o.relativeLineNumbers, d.relativeLineNumbers),
     stickyScroll: bool(o.stickyScroll, d.stickyScroll),
     bracketPairs: bool(o.bracketPairs, d.bracketPairs),

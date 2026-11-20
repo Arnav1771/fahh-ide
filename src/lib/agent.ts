@@ -35,6 +35,7 @@ export const agentStopChild = (session: string, child: string) => invoke<void>("
 
 // sessions, steps, context
 export const agentSessions = (workspace: string) => invoke<AgentSessionInfo[]>("agent_sessions", { workspace });
+export const agentSessionsAll = () => invoke<AgentSessionInfo[]>("agent_sessions_all");
 export const agentSessionLoad = (workspace: string, id?: string | null, extraDirs?: string[]) =>
   invoke<AgentLoaded>("agent_session_load", { workspace, id: id ?? null, extraDirs: extraDirs ?? [] });
 export const agentSessionFork = (session: string, step?: number | null) => invoke<AgentLoaded>("agent_session_fork", { session, step: step ?? null });

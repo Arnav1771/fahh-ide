@@ -132,6 +132,44 @@ pub fn list(dir: &Path) -> Vec<SessionInfo> {
     out
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct SessionEntry {
+    pub id: String,
+    pub title: String,
+    pub updated: u64,
+    pub steps: usize,
+    /// The folder the session belongs to, as it was opened.
+    pub workspace: String,
+}
+
+/// Every saved session of every folder, newest first, for Agent mode's home and its
+/// "All folders" list. Unreadable files are skipped.
+// ponytail: reads each session file whole; keep a small index file if this ever lists thousands.
+pub fn list_all(data: &Path) -> Vec<SessionEntry> {
+    let mut out: Vec<SessionEntry> = std::fs::read_dir(data.join("sessions"))
+        .into_iter()
+        .flatten()
+        .filter_map(Result::ok)
+        .filter(|d| d.path().is_dir())
+        .flat_map(|d| {
+            let dir = d.path();
+            std::fs::read_dir(&dir)
+                .into_iter()
+                .flatten()
+                .filter_map(Result::ok)
+                .filter(|e| e.path().extension().map(|x| x == "json").unwrap_or(false))
+                .filter_map(move |e| {
+                    let id = e.path().file_stem()?.to_string_lossy().into_owned();
+                    let f = load(&dir, &id).ok()?;
+                    Some(SessionEntry { id: f.id, title: f.title, updated: f.updated, steps: f.turns.len(), workspace: f.workspace })
+                })
+                .collect::<Vec<_>>()
+        })
+        .collect();
+    out.sort_by(|a, b| b.updated.cmp(&a.updated).then(b.id.cmp(&a.id)));
+    out
+}
+
 pub fn remove(dir: &Path, id: &str) -> Result<(), String> {
     std::fs::remove_file(file_of(dir, id)?).map_err(|_| format!("no saved session `{id}`"))
 }
@@ -148,6 +186,23 @@ pub fn title_from(prompt: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn list_all_spans_every_folder_newest_first() {
+        let data = std::env::temp_dir().join(format!("fahh-all-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&data);
+        let mk = |ws: &str, id: &str, updated: u64| {
+            let f = SessionFile { id: id.into(), title: id.into(), workspace: ws.into(), created: 1, updated, next_turn: 1, turns: vec![], history: vec![], checkpoints: Default::default(), usage: Default::default() };
+            save(&sessions_dir(&data, Path::new(ws)), &f).unwrap();
+        };
+        mk("/a", "s1", 10);
+        mk("/b", "s2", 30);
+        mk("/a", "s3", 20);
+        let all = list_all(&data);
+        assert_eq!(all.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(), vec!["s2", "s3", "s1"]);
+        assert_eq!(all[0].workspace, "/b");
+        std::fs::remove_dir_all(&data).unwrap();
+    }
+
     use super::*;
 
     fn file(id: &str, updated: u64) -> SessionFile {

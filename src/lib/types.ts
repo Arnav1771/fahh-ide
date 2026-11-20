@@ -292,6 +292,8 @@ export interface AgentSessionInfo {
   title: string;
   updated: number;
   steps: number;
+  /** Set in the all-folders list: the folder the session belongs to. */
+  workspace?: string;
 }
 
 export interface AgentLoaded {
