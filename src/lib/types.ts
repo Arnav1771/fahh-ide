@@ -301,6 +301,8 @@ export interface AgentLoaded {
   title: string;
   history: AgentMsg[];
   turns: AgentTurnRec[];
+  /** A turn is still running (left working in the background). */
+  running?: boolean;
 }
 
 export interface AgentRevertResult {

@@ -131,7 +131,7 @@ export function agentReducer(state: AgentState, action: AgentAction): AgentState
     case "loaded": {
       const turns: Record<number, TurnInfo> = {};
       for (const t of action.loaded.turns) turns[t.id] = { turn: t.id, files: [], accepted: [], reverted: [], finished: true, errorsAdded: 0 };
-      return { session: action.loaded.session, title: action.loaded.title, status: "idle", items: itemsFromHistory(action.loaded.history), turns };
+      return { session: action.loaded.session, title: action.loaded.title, status: action.loaded.running ? "running" : "idle", items: itemsFromHistory(action.loaded.history), turns };
     }
     case "approval_answered": {
       const items = mapDeep(

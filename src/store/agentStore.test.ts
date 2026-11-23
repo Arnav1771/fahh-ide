@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { useAgentStore } from "./agentStore";
+import { onEnvelope, useAgentStore } from "./agentStore";
 
 describe("agentStore prompt queueing & steering", () => {
   beforeEach(() => {
@@ -60,5 +60,39 @@ describe("agentStore prompt queueing & steering", () => {
     store.enqueue("Task Z");
     store.newChat();
     expect(useAgentStore.getState().queue).toEqual([]);
+  });
+});
+
+describe("agentStore background sessions", () => {
+  beforeEach(() => {
+    useAgentStore.setState({ background: {} });
+    useAgentStore.getState().newChat();
+  });
+
+  it("switching to a new session keeps the running one working in the background", () => {
+    useAgentStore.setState({ session: "A", status: "running", title: "Refactor the parser", items: [{ kind: "user", text: "Refactor the parser" }] });
+    useAgentStore.getState().newChat();
+    const s = useAgentStore.getState();
+    expect(s.session).toBeNull();
+    expect(s.background.A).toEqual({ title: "Refactor the parser", status: "running" });
+  });
+
+  it("an idle session is not parked", () => {
+    useAgentStore.setState({ session: "B", status: "done", title: "Old", items: [] });
+    useAgentStore.getState().newChat();
+    expect(useAgentStore.getState().background.B).toBeUndefined();
+  });
+
+  it("events from a background session update its status, not the session on screen", () => {
+    useAgentStore.setState({ session: "A", status: "running", title: "Task A", items: [{ kind: "user", text: "Task A" }] });
+    useAgentStore.getState().newChat();
+    useAgentStore.setState({ session: "C", status: "idle", items: [] });
+    onEnvelope({ session: "A", event: { type: "approval_request", turn: 1, id: "p1", tool: "run", kind: "run", summary: "npm test", command: "npm test", path: null, old_text: null, new_text: null } } as never);
+    expect(useAgentStore.getState().background.A.status).toBe("needs_input");
+    onEnvelope({ session: "A", event: { type: "done", turn: 1, files: [] } } as never);
+    const s = useAgentStore.getState();
+    expect(s.background.A.status).toBe("done");
+    expect(s.session).toBe("C");
+    expect(s.items).toEqual([]);
   });
 });

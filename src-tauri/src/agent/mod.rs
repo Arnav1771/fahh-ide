@@ -161,6 +161,8 @@ pub struct Loaded {
     pub title: String,
     pub history: Vec<Msg>,
     pub turns: Vec<TurnRec>,
+    /// A turn is still running (the session was left working in the background).
+    pub running: bool,
 }
 
 impl Session {
@@ -230,7 +232,7 @@ impl Session {
 
     pub fn loaded(&self) -> Loaded {
         let f = self.snapshot();
-        Loaded { session: f.id, title: f.title, history: f.history, turns: f.turns }
+        Loaded { session: f.id, title: f.title, history: f.history, turns: f.turns, running: self.running.load(Ordering::SeqCst) }
     }
 
     /// Answer a pending approval. False if there is none with that id.
@@ -475,6 +477,11 @@ pub fn agent_session_load(state: State<'_, AgentState>, workspace: String, id: O
         Some(i) => i,
         None => store::latest(&dir).ok_or("no saved sessions for this workspace yet")?,
     };
+    // A session still in memory (often one left working in the background) is the live one:
+    // reading the file again would replace it with an older copy and orphan the running turn.
+    if let Some(live) = state.sessions.lock().unwrap().get(&id).cloned() {
+        return Ok(live.loaded());
+    }
     let s = Arc::new(Session::from_file(store::load(&dir, &id)?, ws, state.diagnostics.clone(), Some(dir)));
     let loaded = s.loaded();
     state.sessions.lock().unwrap().insert(s.id.clone(), s);
