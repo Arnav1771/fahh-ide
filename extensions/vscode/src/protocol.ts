@@ -57,7 +57,10 @@ export function findAgent(setting: string, env: NodeJS.ProcessEnv = process.env,
   if (platform === "win32") {
     const local = env.LOCALAPPDATA ?? "";
     const pf = env.ProgramFiles ?? "C:\\Program Files";
-    candidates.push(path.win32.join(local, "Fahh Editor", "fahh-editor.exe"), path.win32.join(local, "Programs", "Fahh Editor", "fahh-editor.exe"), path.win32.join(pf, "Fahh Editor", "fahh-editor.exe"));
+    // fahh-agent.exe first: fahh-editor.exe is a windowed program and gives no output over pipes.
+    for (const dir of [path.win32.join(local, "Fahh Editor"), path.win32.join(local, "Programs", "Fahh Editor"), path.win32.join(pf, "Fahh Editor")]) {
+      candidates.push(path.win32.join(dir, "fahh-agent.exe"));
+    }
   } else if (platform === "darwin") {
     candidates.push("/Applications/Fahh Editor.app/Contents/MacOS/fahh-editor");
   } else {
