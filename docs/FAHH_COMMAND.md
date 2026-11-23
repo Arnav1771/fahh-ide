@@ -26,7 +26,7 @@ The first launch parks its path in `PendingOpen` and the UI collects it on start
 
 ## `fahh agent`
 
-Reserved. The shims forward `fahh agent <args>` to `fahh-agent` (next to the shim, or on PATH). If it is missing they print `fahh: 'fahh-agent' is not installed` and exit 1.
+Runs Fahh Local in this terminal. See [Fahh Local in a terminal](wiki/Fahh-Agent-Terminal.md) for starting it, keys, modes, `--json` and how it is tested. The shell shims forward `fahh agent` to `fahh-agent`; the program itself runs it too (0.8.9), so it also works where `fahh` is the AppImage.
 
 ## How it was checked
 
