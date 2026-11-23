@@ -85,6 +85,7 @@ function SessionsSidebar({ open, onClose, scope, setScope }: { open: boolean; on
   const firstPrompt = useAgentStore((s) => s.items.find((i) => i.kind === "user"));
   const openSession = useOpenSession();
   const newChat = useAgentStore((s) => s.newChat);
+  const background = useAgentStore((s) => s.background);
   const [sessions, setSessions] = useState<AgentSessionInfo[]>([]);
   const list = () => (scope === "all" ? listAllSessions() : listSessions());
 
@@ -156,7 +157,8 @@ function SessionsSidebar({ open, onClose, scope, setScope }: { open: boolean; on
         {(scope === "all" || root) && rows.length === 0 && <p className="px-2 py-2 text-[12px] leading-5 text-fahh-muted">No sessions yet. Your first prompt starts one.</p>}
         {rows.map((s) => {
           const isCurrent = s === current || (!!session && s.id === session);
-          const st = isCurrent ? STATUS[status] : null;
+          const bg = background[s.id];
+          const st = isCurrent ? STATUS[status] : bg ? STATUS[bg.status] : null;
           return (
             <div key={s.id} role="listitem" className={`group relative rounded-md ${isCurrent ? "bg-fahh-surface" : "hover:bg-fahh-surface/50"}`}>
               <button

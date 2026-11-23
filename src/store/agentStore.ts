@@ -85,6 +85,8 @@ interface AgentStore extends AgentState {
   usingFast: boolean;
   /** Called when /exit is typed: the panel's host decides what leaving means. */
   onExit: (() => void) | null;
+  /** Sessions working out of view, by id: switching sessions never stops a run. */
+  background: Record<string, { title: string; status: "running" | "needs_input" | "done" | "error" }>;
   send: (prompt: string, opts?: SendOpts) => Promise<void>;
   /** What the user typed: a slash command runs as one, anything else is a prompt. */
   handleInput: (text: string) => Promise<void>;
@@ -132,6 +134,7 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   baseline: 0,
   usingFast: false,
   onExit: null,
+  background: {},
 
   enqueue: (prompt: string) => {
     const text = prompt.trim();
@@ -286,9 +289,15 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   loadSession: async (id) => {
     const root = useFileStore.getState().root;
     if (!root) return;
+    parkCurrent();
     try {
       const loaded = await agentSessionLoad(root, id, get().settings.extraDirs);
       get().dispatch({ type: "loaded", loaded });
+      // It is on screen again: no longer a background session.
+      useAgentStore.setState((s) => {
+        const { [loaded.session]: _gone, ...rest } = s.background;
+        return { background: rest };
+      });
     } catch (e) {
       get().dispatch({ type: "notice", level: "error", text: String(e) });
     }
@@ -343,7 +352,8 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
   },
 
   newChat: () => {
-    void get().stop();
+    // Switching away never stops the session on screen: it keeps working in the background.
+    parkCurrent();
     set({ ...initialAgentState, queue: [], usingFast: false });
   },
 }));
@@ -352,9 +362,31 @@ export const useAgentStore = create<AgentStore>((set, get) => ({
 
 let settleTimer: number | undefined;
 
-function onEnvelope({ session, event: outer }: AgentEnvelope): void {
+/** Before leaving the session on screen: if it is mid-turn, remember it as a background session. */
+function parkCurrent(): void {
+  const s = useAgentStore.getState();
+  if (!s.session || (s.status !== "running" && s.status !== "needs_input")) return;
+  const first = s.items.find((i) => i.kind === "user");
+  const title = s.title || (first?.kind === "user" ? first.text.slice(0, 60) : "Session");
+  useAgentStore.setState({ background: { ...s.background, [s.session]: { title, status: s.status } } });
+}
+
+/** An event from a session that is not on screen: keep its status, and say when it ends. */
+function onBackground(session: string, event: AgentEnvelope["event"]): void {
+  const { background } = useAgentStore.getState();
+  const known = background[session];
+  if (!known) return; // a session we never started here
+  const inner = event.type === "sub" ? event.event : event;
+  const status = inner.type === "done" && event.type !== "sub" ? "done" : inner.type === "error" && event.type !== "sub" ? "error" : inner.type === "approval_request" ? "needs_input" : known.status === "needs_input" && inner.type === "tool_call" ? "running" : known.status;
+  if (status === known.status) return;
+  useAgentStore.setState({ background: { ...background, [session]: { ...known, status } } });
+  if (status === "done") notify(`Finished: ${known.title}`);
+  else if (status === "needs_input") notify(`Needs your OK: ${known.title}`);
+}
+
+export function onEnvelope({ session, event: outer }: AgentEnvelope): void {
   const store = useAgentStore.getState();
-  if (store.session && session !== store.session) return;
+  if (store.session && session !== store.session) return onBackground(session, outer);
   store.dispatch({ type: "event", event: outer });
   // a subagent's edit or approval needs the same reactions as the parent's
   const event = outer.type === "sub" ? outer.event : outer;
