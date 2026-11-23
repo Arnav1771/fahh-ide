@@ -70,6 +70,12 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.9] — 2026-11-20
+
+### Fixed
+
+- `fahh agent` in a terminal works where `fahh` is the program itself (the Linux AppImage): it printed nothing when a Fahh window was already open, because the arguments were handed to that window.
+
 ## [0.8.8] — 2026-11-20
 
 ### Added
