@@ -70,6 +70,22 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.8.8] — 2026-11-20
+
+### Added
+
+- Fahh Local for VS Code (in extensions/vscode): a side-bar chat that drives `fahh agent --json` in the open folder, with Allow / Always / Deny on edits and commands.
+- `fahh agent --json`: one JSON line per event out, one JSON line per prompt or approval answer in.
+
+### Fixed
+
+- Agent mode: switching sessions (or starting a new one) no longer stops the agent that is working; it carries on in the background, the sidebar shows its status, and you are told when it finishes or needs an OK.
+- Selecting text in a Fahh Local reply no longer highlights the whole composer.
+
+### Security
+
+- cookie 0.18.3 and url 2.5.9 (RUSTSEC-2026-0594, RUSTSEC-2026-0592).
+
 ## [0.8.7] — 2026-11-20
 
 ### Added
