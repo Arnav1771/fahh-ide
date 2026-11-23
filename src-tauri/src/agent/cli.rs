@@ -183,6 +183,42 @@ pub fn build_provider(cli: &Cli, get_env: impl Fn(&str) -> Option<String>) -> Re
     Ok(Provider::Http(http_config(cli, &get_env, cli.model.clone())?))
 }
 
+/// Colour and glyphs on a real terminal; plain ASCII for pipes, NO_COLOR and old Windows consoles.
+static FANCY: std::sync::LazyLock<bool> = std::sync::LazyLock::new(|| {
+    use std::io::IsTerminal;
+    std::env::var_os("NO_COLOR").is_none()
+        && std::io::stdout().is_terminal()
+        && (cfg!(not(windows)) || std::env::var_os("WT_SESSION").is_some() || std::env::var_os("TERM").is_some())
+});
+
+fn paint(code: &str, s: &str) -> String {
+    if *FANCY { format!("\x1b[{code}m{s}\x1b[0m") } else { s.to_string() }
+}
+
+fn glyph(fancy: &'static str, plain: &'static str) -> &'static str {
+    if *FANCY { fancy } else { plain }
+}
+
+/// The box shown when the REPL starts.
+fn welcome(fancy: bool, model: &str, mode: &str, cwd: &str) -> String {
+    let rows = [
+        format!("{} Fahh agent", if fancy { "\u{273b}" } else { "*" }),
+        format!("  model  {model}"),
+        format!("  mode   {mode}"),
+        format!("  cwd    {cwd}"),
+        "  /help lists commands, Ctrl-D leaves".to_string(),
+    ];
+    if !fancy {
+        return rows.join("\n");
+    }
+    let w = rows.iter().map(|r| r.chars().count()).max().unwrap_or(0) + 2;
+    let mut out = format!("\u{256d}{}\u{256e}\n", "\u{2500}".repeat(w));
+    for r in &rows {
+        out += &format!("\u{2502} {r}{} \u{2502}\n", " ".repeat(w - 2 - r.chars().count()));
+    }
+    out + &format!("\u{2570}{}\u{256f}", "\u{2500}".repeat(w))
+}
+
 fn read_line() -> Option<String> {
     let mut s = String::new();
     match std::io::stdin().lock().read_line(&mut s) {
@@ -204,15 +240,15 @@ fn one_line(s: &str, max: usize) -> String {
 
 fn answer(ev: &AgentEvent, tag: &str) -> Decision {
     let AgentEvent::ApprovalRequest { summary, command, old_text, new_text, tool, .. } = ev else { return Decision { allow: false, always: false, command: None } };
-    eprintln!("\n? {tag}{summary}");
+    eprintln!("\n{} {tag}{}", paint("33;1", glyph("\u{25c6}", "?")), paint("1", summary));
     if let Some(c) = command {
-        eprintln!("    $ {c}");
+        eprintln!("    {}", paint("2", &format!("$ {c}")));
     } else {
         for l in old_text.iter().flat_map(|t| t.lines().take(12)) {
-            eprintln!("    - {l}");
+            eprintln!("    {}", paint("31", &format!("- {l}")));
         }
         for l in new_text.iter().flat_map(|t| t.lines().take(12)) {
-            eprintln!("    + {l}");
+            eprintln!("    {}", paint("32", &format!("+ {l}")));
         }
     }
     let opts = if tool == "run_command" { "[y]es / [N]o / [a]lways / [e]dit" } else { "[y]es / [N]o / [a]lways" };
@@ -251,12 +287,15 @@ fn show(ev: &AgentEvent, indent: &str, tag: &str, quiet: bool, out: &mut Outcome
                 // a child's prose is its own business: the parent gets the summary
             }
         }
-        AgentEvent::ToolCall { name, args, .. } => line!("\n{indent}  > {tag}{name} {}", one_line(&args.to_string(), 100)),
+        AgentEvent::ToolCall { name, args, .. } => {
+            line!("\n{indent}{} {tag}{}", paint("36", glyph("\u{23fa}", "  >")), paint("1", &format!("{name}({})", one_line(&args.to_string(), 100))))
+        }
         AgentEvent::ToolResult { ok, output, elapsed_ms, .. } => {
             let dur = elapsed_ms.map(|ms| format!(" ({ms}ms)")).unwrap_or_default();
-            line!("{indent}    {} {}{dur}", if *ok { "ok" } else { "failed:" }, if *ok { String::new() } else { one_line(output, 120) })
+            let what = if *ok { paint("32", &format!("ok{dur}")) } else { paint("31", &format!("failed: {}{dur}", one_line(output, 120))) };
+            line!("{indent}  {} {what}", paint("2", glyph("\u{23bf}", "  ")))
         }
-        AgentEvent::FileChanged { path, .. } => line!("{indent}    changed {path}"),
+        AgentEvent::FileChanged { path, .. } => line!("{indent}  {} {}", paint("2", glyph("\u{23bf}", "  ")), paint("33", &format!("changed {path}"))),
         AgentEvent::PlanWritten { path, .. } => {
             line!("\n  plan written to {path}");
             out.plan = Some(path.clone());
@@ -268,13 +307,13 @@ fn show(ev: &AgentEvent, indent: &str, tag: &str, quiet: bool, out: &mut Outcome
         AgentEvent::LoopRound { round, max, approved, notes, .. } => {
             line!("\n  loop round {round}/{max}: {}", if *approved { "reviewer approved".to_string() } else { format!("changes requested: {}", one_line(notes, 100)) })
         }
-        AgentEvent::Notice { text, .. } => line!("\n  note: {text}"),
+        AgentEvent::Notice { text, .. } => line!("\n  {} {text}", paint("33", "note:")),
         AgentEvent::Compacted { before, after, .. } => line!("\n  compacted context: ~{before} -> ~{after} tokens"),
         AgentEvent::Done { steps, files, .. } => {
-            line!("\n[done in {steps} step(s); changed: {}]", if files.is_empty() { "nothing".into() } else { files.join(", ") });
+            line!("\n{}", paint("2", &format!("[done in {steps} step(s); changed: {}]", if files.is_empty() { "nothing".into() } else { files.join(", ") })));
             out.ok = true;
         }
-        AgentEvent::Error { message, .. } => eprintln!("\nerror: {message}"),
+        AgentEvent::Error { message, .. } => eprintln!("\n{} {message}", paint("31;1", "error:")),
         AgentEvent::TurnStarted { .. } | AgentEvent::ApprovalRequest { .. } => {}
     }
 }
@@ -795,7 +834,9 @@ pub async fn main_cli(args: Vec<String>, provider_override: Option<Provider>) ->
             None => repl.prompt(p, repl.mode, RunSpec::Turn, quiet).await,
         }
     } else {
-        while let Some(line) = prompt_user("\nfahh> ") {
+        println!("{}", welcome(*FANCY, &model_of(&repl.provider), repl.mode.label(), &repl.ws_root.display().to_string()));
+        let prompt = if *FANCY { format!("\n{} ", paint("36;1", "\u{203a}")) } else { "\nfahh> ".to_string() };
+        while let Some(line) = prompt_user(&prompt) {
             if matches!(line.as_str(), "" | "exit" | "quit") {
                 break;
             }
@@ -824,6 +865,15 @@ pub async fn main_cli(args: Vec<String>, provider_override: Option<Provider>) ->
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn welcome_box_lines_line_up() {
+        let b = welcome(true, "mock", "normal", "/home/me/a-longer-project-folder");
+        let widths: Vec<usize> = b.lines().map(|l| l.chars().count()).collect();
+        assert_eq!(widths.len(), 7);
+        assert!(widths.iter().all(|w| *w == widths[0]), "{b}");
+        assert!(!welcome(false, "mock", "normal", "/x").contains('\u{2502}'));
+    }
 
     fn a(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| s.to_string()).collect()
