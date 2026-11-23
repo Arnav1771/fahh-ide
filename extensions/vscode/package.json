@@ -2,7 +2,7 @@
   "name": "fahh-local",
   "displayName": "Fahh Local",
   "description": "The Fahh Local coding agent in VS Code: it reads, edits and runs things in your workspace, and asks before it changes anything.",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "publisher": "stealth-keqing",
   "license": "MIT",
   "repository": { "type": "git", "url": "https://github.com/Arnav1771/fahh-ide" },
