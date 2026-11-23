@@ -321,7 +321,7 @@ function WorkspaceComposer({ c, models }: { c: Composer; models: ModelList }) {
     <div className="shrink-0 px-6 pb-4 pt-2">
       <div className="max-w-[712px] mx-auto">
         <ComposerExtras c={c} />
-        <div className="rounded-xl border border-fahh-surface bg-fahh-sidebar focus-within:border-fahh-accent/70 transition-colors" data-testid="agent-composer">
+        <div className="rounded-xl border border-fahh-surface bg-fahh-sidebar focus-within:border-fahh-accent/70 transition-colors select-none" data-testid="agent-composer">
           {chips.length > 0 && (
             <div className="flex flex-wrap gap-1 px-3 pt-2.5" aria-label="Context">
               {chips.map((ch) => (

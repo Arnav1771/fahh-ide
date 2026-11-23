@@ -252,7 +252,7 @@ export function AgentPanel({ onClose }: { onClose?: () => void }) {
 
       <Transcript />
 
-      <div className="p-2 border-t border-fahh-surface shrink-0">
+      <div className="p-2 border-t border-fahh-surface shrink-0 select-none">
         <div className="flex items-center gap-1 overflow-x-auto pb-1" role="group" aria-label="Quick actions">
           {QUICK_ACTIONS.map((a) => (
             <button
