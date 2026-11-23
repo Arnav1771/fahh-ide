@@ -1,0 +1,67 @@
+{
+  "name": "fahh-local",
+  "displayName": "Fahh Local",
+  "description": "The Fahh Local coding agent in VS Code: it reads, edits and runs things in your workspace, and asks before it changes anything.",
+  "version": "0.1.0",
+  "publisher": "stealth-keqing",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/Arnav1771/fahh-ide" },
+  "engines": { "vscode": "^1.90.0" },
+  "categories": ["AI", "Programming Languages", "Other"],
+  "keywords": ["agent", "ai", "fahh", "groq", "ollama"],
+  "icon": "media/icon.png",
+  "main": "./out/extension.js",
+  "activationEvents": [],
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [{ "id": "fahhLocal", "title": "Fahh Local", "icon": "media/bot.svg" }]
+    },
+    "views": {
+      "fahhLocal": [{ "type": "webview", "id": "fahhLocal.chat", "name": "Chat" }]
+    },
+    "commands": [
+      { "command": "fahhLocal.newSession", "title": "Fahh Local: New Session", "icon": "$(add)" },
+      { "command": "fahhLocal.setApiKey", "title": "Fahh Local: Set API Key", "icon": "$(key)" },
+      { "command": "fahhLocal.stop", "title": "Fahh Local: Stop", "icon": "$(debug-stop)" }
+    ],
+    "menus": {
+      "view/title": [
+        { "command": "fahhLocal.newSession", "when": "view == fahhLocal.chat", "group": "navigation@1" },
+        { "command": "fahhLocal.setApiKey", "when": "view == fahhLocal.chat", "group": "navigation@2" }
+      ]
+    },
+    "configuration": {
+      "title": "Fahh Local",
+      "properties": {
+        "fahhLocal.provider": {
+          "type": "string",
+          "enum": ["groq", "gemini", "nvidia", "openrouter", "anthropic", "ollama"],
+          "default": "groq",
+          "description": "Which model provider the agent uses. Keys are kept in VS Code's secret storage (Fahh Local: Set API Key)."
+        },
+        "fahhLocal.model": { "type": "string", "default": "", "description": "Model id. Empty uses the provider's default." },
+        "fahhLocal.mode": {
+          "type": "string",
+          "enum": ["normal", "accept-edits", "smart", "plan", "bypass"],
+          "default": "normal",
+          "description": "Permission mode for new prompts: normal asks before every edit and command."
+        },
+        "fahhLocal.binary": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the Fahh Editor program (fahh-editor.exe) or to fahh-agent. Empty finds the installed Fahh Editor."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p .",
+    "test": "node --test out/test/*.test.js",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.90.0",
+    "typescript": "^5.5.0"
+  }
+}
