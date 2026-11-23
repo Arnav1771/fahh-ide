@@ -289,6 +289,7 @@ export function ComposerInput({ c, className, rows = 3 }: { c: Composer; classNa
         onKeyDown={c.onKeyDown}
         placeholder={c.placeholder}
         rows={rows}
+        style={{ userSelect: "text", WebkitUserSelect: "text" }}
         disabled={c.status === "needs_input"}
         aria-label="Message or slash command"
         aria-expanded={c.menuOpen}
