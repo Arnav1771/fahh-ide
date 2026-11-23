@@ -4,6 +4,18 @@ fn main() {
     #[cfg(target_os = "linux")]
     appimage_use_system_wayland();
 
+    // `fahh agent ...` runs Fahh Local in this terminal. The `fahh` shell shim forwards it to the
+    // separate fahh-agent program, but where `fahh` is this program itself (the AppImage, or a
+    // copy on PATH) it reached the window code, which handed it to an already-open window and
+    // printed nothing. Not on Windows, where this is a windowed program with no console output:
+    // there fahh-agent.exe is the terminal command.
+    #[cfg(not(windows))]
+    if std::env::args().nth(1).as_deref() == Some("agent") {
+        let args: Vec<String> = std::env::args().skip(2).collect();
+        let rt = tokio::runtime::Runtime::new().expect("tokio runtime");
+        std::process::exit(rt.block_on(fahh_editor_lib::agent::cli::main_cli(args, None)));
+    }
+
     // On Windows, set the process description visible in Task Manager.
     // std::env::set_var is not a reliable way to do this; instead we call
     // SetConsoleTitleW via a raw extern block. This only affects the
