@@ -45,6 +45,27 @@ pub struct Cli {
     pub export: Option<String>,
     pub fast_model: Option<String>,
     pub judge_model: Option<String>,
+    /// `--json`: a machine interface for editors (the VS Code extension). Every event is one
+    /// JSON line on stdout; stdin takes one JSON line per prompt or approval answer.
+    pub json: bool,
+}
+
+/// Set once by `--json`; the sink and the main loop read it.
+static JSON: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// One JSON line on stdout (the `--json` protocol).
+fn emit(v: &serde_json::Value) {
+    let mut out = std::io::stdout().lock();
+    let _ = writeln!(out, "{v}");
+    let _ = out.flush();
+}
+
+/// `--json` approval answer: `{"allow": true, "always": false, "command": "..."}` on stdin.
+/// A closed stdin or a line that is not such an answer denies.
+fn json_decision() -> Decision {
+    read_line()
+        .and_then(|l| serde_json::from_str::<Decision>(&l).ok())
+        .unwrap_or(Decision { allow: false, always: false, command: None })
 }
 
 pub struct Preset {
@@ -96,6 +117,7 @@ pub fn parse_args(args: &[String]) -> Result<Cli, String> {
             "--export" => cli.export = Some(val("--export")?),
             "--fast-model" => cli.fast_model = Some(val("--fast-model")?),
             "--judge-model" => cli.judge_model = Some(val("--judge-model")?),
+            "--json" => cli.json = true,
             "-h" | "--help" => return Err(String::new()),
             s if s.starts_with('-') && s.len() > 1 => return Err(format!("unknown option {s}")),
             _ => {
@@ -274,6 +296,21 @@ fn inner_request(ev: &AgentEvent) -> &AgentEvent {
 
 fn make_sink(s: Arc<Session>, out: Arc<Mutex<Outcome>>, quiet: bool) -> Sink {
     Arc::new(move |ev| {
+        if JSON.load(Ordering::Relaxed) {
+            emit(&serde_json::json!({ "type": "event", "event": &ev }));
+            if let Some((id, _)) = approval(&ev) {
+                s.resolve(id, json_decision());
+                return;
+            }
+            let mut o = out.lock().unwrap();
+            match &ev {
+                AgentEvent::TextDelta { text, .. } => o.text.push_str(text),
+                AgentEvent::PlanWritten { path, .. } => o.plan = Some(path.clone()),
+                AgentEvent::Done { .. } => o.ok = true,
+                _ => {}
+            }
+            return;
+        }
         if let Some((id, tag)) = approval(&ev) {
             let d = answer(inner_request(&ev), &tag);
             s.resolve(id, d);
@@ -727,6 +764,26 @@ pub async fn main_cli(args: Vec<String>, provider_override: Option<Provider>) ->
         repl.set_mode(Mode::Bypass);
     }
 
+    if repl.cli.json {
+        JSON.store(true, Ordering::Relaxed);
+        emit(&serde_json::json!({ "type": "ready", "session": repl.session.id, "model": model_of(&repl.provider), "mode": repl.mode.label(), "cwd": repl.ws_root.display().to_string() }));
+        // One JSON object per line: {"prompt": "...", "mode": "smart"} starts a turn. Plain text
+        // is taken as a prompt too. Slash commands are not part of this interface.
+        while let Some(line) = read_line() {
+            if line.is_empty() {
+                continue;
+            }
+            let v: serde_json::Value = serde_json::from_str(&line).unwrap_or_else(|_| serde_json::json!({ "prompt": line }));
+            let Some(text) = v.get("prompt").and_then(|p| p.as_str()).map(str::to_string) else {
+                emit(&serde_json::json!({ "type": "error", "message": "expected {\"prompt\": \"...\"}" }));
+                continue;
+            };
+            let mode = v.get("mode").and_then(|m| m.as_str()).and_then(Mode::parse).unwrap_or(repl.mode);
+            let (ok, plan) = repl.run_once(text, mode, RunSpec::Turn, None, true).await;
+            emit(&serde_json::json!({ "type": "turn_end", "ok": ok, "plan": plan, "text": repl.last }));
+        }
+        return 0;
+    }
     if let Some(p) = repl.cli.prompt.clone() {
         // one shot: a slash command is run as a command, anything else as a prompt
         let quiet = repl.cli.print;
@@ -770,6 +827,14 @@ mod tests {
 
     fn a(v: &[&str]) -> Vec<String> {
         v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn json_flag_and_decision_lines() {
+        assert!(parse_args(&a(&["--json", "--cwd", "/x"])).unwrap().json);
+        assert!(!parse_args(&[]).unwrap().json);
+        let d: Decision = serde_json::from_str(r#"{"allow": true, "command": "ls"}"#).unwrap();
+        assert!(d.allow && !d.always && d.command.as_deref() == Some("ls"));
     }
 
     #[test]
