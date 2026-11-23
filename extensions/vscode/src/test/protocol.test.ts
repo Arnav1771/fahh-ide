@@ -23,8 +23,8 @@ test("findAgent prefers the setting, then the installed editor, then PATH", () =
   assert.equal(findAgent("D:\\fahh.exe", {}, "win32", has(["D:\\fahh.exe"])), "D:\\fahh.exe");
   assert.equal(findAgent("D:\\missing.exe", {}, "win32", has([])), undefined);
   const local = "C:\\Users\\u\\AppData\\Local";
-  const agent = `${local}\Fahh Editor\fahh-agent.exe`;
-  assert.equal(findAgent("", { LOCALAPPDATA: local }, "win32", has([`${local}\Fahh Editor\fahh-editor.exe`, agent])), agent, "the console agent, not the windowed editor");
+  const agent = `${local}\\Fahh Editor\\fahh-agent.exe`;
+  assert.equal(findAgent("", { LOCALAPPDATA: local }, "win32", has([`${local}\\Fahh Editor\\fahh-editor.exe`, agent])), agent, "the console agent, not the windowed editor");
   assert.equal(findAgent("", { HOME: "/h", PATH: "/opt/bin" }, "linux", has(["/opt/bin/fahh-agent"])), "/opt/bin/fahh-agent");
   assert.equal(findAgent("", { PATH: "" }, "linux", has([])), undefined);
 });
