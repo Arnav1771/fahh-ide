@@ -1,5 +1,5 @@
 {
-  "version": "0.3.1",
-  "url": "https://fahhide.duckdns.org/vscode/fahh-local-chat-0.3.1.vsix",
-  "notes": "Checks for updates on start (once a day) and via Fahh Local Chat: Check for Updates, then installs the new .vsix for you."
+  "version": "0.4.0",
+  "url": "https://fahhide.duckdns.org/vscode/fahh-local-chat-0.4.0.vsix",
+  "notes": "fahh-local-chat 0.4.0"
 }
