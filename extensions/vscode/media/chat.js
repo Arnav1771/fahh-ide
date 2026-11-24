@@ -208,7 +208,7 @@
     const e = el("section", "empty");
     const hero = e.appendChild(el("div", "hero"));
     hero.append(icon("mark", "logo"));
-    hero.append(el("h1", "", "Fahh Local"));
+    hero.append(el("h1", "", "Fahh Local Chat"));
     const p = hero.appendChild(el("p"));
     if (state.folder) p.append("Reads, edits and runs things in ", el("strong", "", state.folder), ". It shows you every edit and command first, unless you pick a mode that doesn't.");
     else p.append("A coding agent for the open folder. It shows you every edit and command first.");
