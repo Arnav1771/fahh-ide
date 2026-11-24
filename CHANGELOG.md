@@ -71,6 +71,25 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.9.0] — 2026-11-24
+
+### Added
+
+- **`fahh agent` looks like a proper terminal app:** a welcome box (model, mode, folder), a › prompt, ⏺ for each tool call and ⎿ for its result, green/red results, a coloured diff in approvals and a dim step summary. Pipes, `NO_COLOR`, `-p` and `--json` keep plain text. (#174)
+- **Fahh Local Chat for VS Code (0.3.1):** the VS Code extension (renamed from "Fahh Local"; the in-editor agent keeps the Fahh Local name) has slash commands (/new, /model, /provider, /mode, /resume, /clear, /help, /settings), every provider fahh-agent supports with a key per provider, a model picker, a chat with streaming markdown, tool cards and approval cards, and it updates itself from the Fahh site. (#177, #179, #182)
+- Docs: running and testing `fahh agent` in a terminal (wiki page Fahh-Agent-Terminal). (#173)
+
+### Changed
+
+- **Faster start:** the startup script is 0.95 MB instead of 5.3 MB. Monaco, xterm and dockview load as separate chunks, and rarely used panels and dialogs load on first use. DOM ready comes about 25% sooner on Windows. (#176)
+- Fonts (Inter, JetBrains Mono, Architects Daughter) ship with the app instead of loading from Google Fonts, so they work offline and no longer trip the content security policy. (#181)
+
+### Fixed
+
+- Explorer: if a mouse release was missed (released outside the window, or a native drag took over), plain hovering kept dragging a file and the next click moved it. A drag now ends on cancel, Escape, or any move with no button held. (#178)
+- The bundled fahh sound is loaded from the app itself, so the asset-protocol 403 on startup is gone. (#181)
+- Notebook hint under every notebook: "Click a cell, then press A / B to add a cell above / below". (#175)
+
 ## [0.8.9] — 2026-11-20
 
 ### Fixed
