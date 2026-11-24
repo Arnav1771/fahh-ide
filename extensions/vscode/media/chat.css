@@ -108,6 +108,7 @@ pre.table { margin-bottom: 8px; }
 .error { color: var(--bad); white-space: pre-wrap; overflow-wrap: anywhere; padding: 6px 9px; border-radius: var(--r); border: 1px solid var(--vscode-inputValidation-errorBorder, var(--bad)); background: var(--vscode-inputValidation-errorBackground, transparent); }
 .done { font-size: 0.85em; color: var(--muted); display: flex; align-items: center; gap: 8px; }
 .done::before, .done::after { content: ""; flex: 1; border-top: 1px solid var(--border); }
+.undo-row { font-size: 0.85em; color: var(--muted); text-align: center; margin-top: -4px; }
 
 /* ── empty state ───────────────────────────────────────────────────────── */
 .empty { display: flex; flex-direction: column; gap: 8px; padding: 6px 0 10px; }

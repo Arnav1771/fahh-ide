@@ -10,6 +10,8 @@
   let state = { slash: [], modes: [], starters: [], mode: "normal", model: "", provider: "", providerLabel: "", key: "none-needed", folder: null, agentFound: true };
   let busy = false, waiting = false, turnStart = 0, toolCount = 0, ticker = 0;
   let reply = null, replyText = "", queued = false;
+  let currentApproval = null; // finishes the approval card that is waiting
+  let histIdx = -1, draft = ""; // ↑/↓ through earlier prompts
   const tools = new Map();
 
   // ─── small helpers ──────────────────────────────────────────────────────────
@@ -172,9 +174,11 @@
   send.append(icon("send"));
   stop.append(icon("stop"));
   function paintBar() {
-    const m = modeOf(state.mode);
-    modeBtn.replaceChildren(icon(m && m.warn ? "warn" : "shield"), el("span", "", m ? m.label : state.mode), icon("chevron", "chev"));
+    const eff = state.effectiveMode || state.mode;
+    const m = modeOf(eff);
+    modeBtn.replaceChildren(icon(m && m.warn ? "warn" : "shield"), el("span", "", m ? m.label : eff), icon("chevron", "chev"));
     modeBtn.classList.toggle("warn", !!(m && m.warn));
+    modeBtn.title = eff !== state.mode ? `Permission mode: ${m ? m.label : eff}, raised from ${modeOf(state.mode)?.label || state.mode} by your auto-approve rules (/permissions)` : "Permission mode";
     const missing = !state.model && state.provider !== "mock";
     modelBtn.replaceChildren(el("span", "prov", state.providerLabel), el("span", "sep", "/"), el("span", "mdl", missing ? "choose a model" : state.model || "scripted"));
     modelBtn.classList.toggle("attention", missing || state.key === "missing");
@@ -208,7 +212,7 @@
     const e = el("section", "empty");
     const hero = e.appendChild(el("div", "hero"));
     hero.append(icon("mark", "logo"));
-    hero.append(el("h1", "", "Fahh Local Chat"));
+    hero.append(el("h1", "", "Fahh Familiar"));
     const p = hero.appendChild(el("p"));
     if (state.folder) p.append("Reads, edits and runs things in ", el("strong", "", state.folder), ". It shows you every edit and command first, unless you pick a mode that doesn't.");
     else p.append("A coding agent for the open folder. It shows you every edit and command first.");
@@ -249,7 +253,7 @@
     const m = modeOf(state.mode);
     row("Mode", m ? `${m.label}: ${m.desc}` : state.mode, ["Change", () => openModes()], !!(m && m.warn));
     const hint = e.appendChild(el("p", "hint"));
-    hint.append(el("kbd", "", "/"), " commands  ", el("kbd", "", "Enter"), " send  ", el("kbd", "", "Shift+Enter"), " new line");
+    hint.append(el("kbd", "", "/"), " commands  ", el("kbd", "", "@"), " files, selection, problems  ", el("kbd", "", "Enter"), " send  ", el("kbd", "", "Shift+Enter"), " new line  ", el("kbd", "", "↑"), " earlier prompts  ", el("kbd", "", "Ctrl+L"), " in the editor: ask about the selection");
     log.prepend(e);
   }
 
@@ -294,14 +298,20 @@
       part(ev.new_text, "ins", "+");
     }
     const row = card.appendChild(el("div", "ap-actions"));
-    const answer = (allow, always, command) => {
-      vscode.postMessage({ type: "approve", allow, always, command });
+    // finish: the card's own buttons, or Accept / Reject in the diff editor (approvalAnswered)
+    const finish = (allow, always, command) => {
+      currentApproval = null;
       waiting = false;
       paintActivity();
       card.classList.add(allow ? "allowed" : "denied");
       row.replaceWith(el("div", "ap-answer", allow ? (always ? "Allowed, and remembered" : command ? "Allowed with your edit" : "Allowed") : "Denied"));
       cmdBox?.setAttribute("readonly", "");
       input.focus();
+    };
+    currentApproval = finish;
+    const answer = (allow, always, command) => {
+      vscode.postMessage({ type: "approve", allow, always, command });
+      finish(allow, always, command);
     };
     const yes = row.appendChild(btn("Allow", "primary", () => answer(true, false, cmdBox ? cmdBox.value.trim() : undefined)));
     row.append(btn("Always", "secondary", () => answer(true, true), "Allow, and remember this rule in your own app data"));
@@ -318,6 +328,7 @@
       }));
     }
     row.append(btn("Deny", "secondary", () => answer(false, false)));
+    if (ev.kind === "edit" && ev.path) row.append(btn("Open diff", "secondary", () => vscode.postMessage({ type: "openDiff" }), "Compare the file with the proposed version in VS Code's diff editor; Accept or Reject from its title bar"));
     yes.focus({ preventScroll: true });
     log.scrollTop = log.scrollHeight;
   }
@@ -434,11 +445,40 @@
     }
     c.append(el("div", "card-title", "Keys"));
     const k = c.appendChild(el("p", "hint"));
-    k.append(el("kbd", "", "Enter"), " send  ", el("kbd", "", "Shift+Enter"), " new line  ", el("kbd", "", "↑ ↓"), " move in a menu  ", el("kbd", "", "Tab"), " complete a command  ", el("kbd", "", "Esc"), " close");
+    k.append(el("kbd", "", "Enter"), " send  ", el("kbd", "", "Shift+Enter"), " new line  ", el("kbd", "", "↑ ↓"), " move in a menu, or earlier prompts at the start of the box  ", el("kbd", "", "Tab"), " complete  ", el("kbd", "", "Esc"), " close  ", el("kbd", "", "@"), " mention a file, folder, the selection or the problems  ", el("kbd", "", "Ctrl+L"), " in the editor: ask about the selection");
   }
 
-  // ─── slash popup ─────────────────────────────────────────────────────────────
-  let slashItems = [], slashIdx = 0;
+  // ─── popup: / commands and @ mentions ────────────────────────────────────────
+  // slash items are {name, args, desc}; mention items {label, desc, insert?, action?} from the extension
+  let slashItems = [], slashIdx = 0, popKind = "slash";
+  /** The `@query` that ends at the cursor, if any. */
+  function mentionAt() {
+    const pos = input.selectionStart;
+    if (pos !== input.selectionEnd) return null;
+    const m = /(^|\s)@([^\s"@]*)$/.exec(input.value.slice(0, pos));
+    return m ? { q: m[2], start: pos - m[2].length - 1, end: pos } : null;
+  }
+  /** Inserts text at the cursor with a space on either side, as a mention needs. */
+  function insertAt(text) {
+    const pos = input.selectionStart ?? input.value.length;
+    const pre = input.value.slice(0, pos), post = input.value.slice(pos);
+    const head = pre + (pre && !/\s$/.test(pre) ? " " : "") + text;
+    input.value = head + (post.startsWith(" ") ? "" : " ") + post;
+    input.focus();
+    input.setSelectionRange(head.length + 1, head.length + 1);
+    hideSlash();
+    autoGrow();
+  }
+  function chooseMention(c) {
+    const at = mentionAt();
+    if (at) {
+      input.value = input.value.slice(0, at.start) + input.value.slice(at.end);
+      input.setSelectionRange(at.start, at.start);
+    }
+    hideSlash();
+    if (c.insert) insertAt(c.insert);
+    else vscode.postMessage({ type: "mentionAction", action: c.action });
+  }
   // same rule as filterSlash in src/protocol.ts
   const filterSlash = (q) => {
     q = q.toLowerCase();
@@ -452,7 +492,17 @@
   }
   function updateSlash() {
     const m = /^\/(\S*)$/.exec(input.value);
-    slashItems = m ? filterSlash(m[1]) : [];
+    if (m) {
+      popKind = "slash";
+      slashItems = filterSlash(m[1]);
+      return renderPopup();
+    }
+    const at = mentionAt();
+    if (at) return vscode.postMessage({ type: "mention", q: at.q }); // drawn when mentionOptions comes back
+    slashItems = [];
+    hideSlash();
+  }
+  function renderPopup() {
     if (!slashItems.length) return hideSlash();
     slashIdx = Math.max(0, Math.min(slashIdx, slashItems.length - 1));
     slashBox.replaceChildren();
@@ -461,13 +511,14 @@
       o.id = "slash-" + i;
       o.setAttribute("role", "option");
       o.setAttribute("aria-selected", String(i === slashIdx));
-      o.append(el("span", "name", "/" + c.name), el("span", "args", c.args || ""), el("span", "desc", c.desc));
+      if (popKind === "slash") o.append(el("span", "name", "/" + c.name), el("span", "args", c.args || ""), el("span", "desc", c.desc));
+      else o.append(el("span", "name", c.label), el("span", "desc", c.desc));
       o.onmousedown = (e) => e.preventDefault();
       o.onclick = () => chooseSlash(i, false);
       o.onmousemove = () => {
         if (slashIdx !== i) {
           slashIdx = i;
-          updateSlash();
+          renderPopup();
         }
       };
     });
@@ -479,6 +530,7 @@
   function chooseSlash(i, complete) {
     const c = slashItems[i];
     if (!c) return;
+    if (popKind === "mention") return chooseMention(c);
     // Tab, or a command whose argument is required, fills the input; otherwise it runs
     if (complete || (c.args && c.args.startsWith("<"))) {
       input.value = "/" + c.name + (c.args ? " " : "");
@@ -546,6 +598,8 @@
     if (!text) return;
     if (busy && !text.startsWith("/")) return;
     vscode.postMessage({ type: "prompt", text, mode: mode || state.mode });
+    state.history = [...(state.history || []).filter((x) => x !== text), text].slice(-50); // the extension keeps the real list
+    histIdx = -1;
     input.value = "";
     hideSlash();
     autoGrow();
@@ -560,6 +614,7 @@
   });
   input.addEventListener("input", () => {
     slashIdx = 0;
+    histIdx = -1;
     updateSlash();
     autoGrow();
   });
@@ -568,7 +623,7 @@
       if (e.key === "ArrowDown" || e.key === "ArrowUp") {
         e.preventDefault();
         slashIdx = (slashIdx + (e.key === "ArrowDown" ? 1 : slashItems.length - 1)) % slashItems.length;
-        return updateSlash();
+        return renderPopup();
       }
       if (e.key === "Tab") {
         e.preventDefault();
@@ -586,7 +641,27 @@
     if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
       e.preventDefault();
       submit(input.value);
+      return;
     }
+    // earlier prompts: ↑/↓ with the cursor at the very start (so an empty box too)
+    const arrow = e.key === "ArrowUp" || e.key === "ArrowDown";
+    if (!arrow || e.shiftKey || e.altKey || e.ctrlKey || e.metaKey || input.selectionStart !== 0 || input.selectionEnd !== 0) return;
+    const h = state.history || [];
+    if (e.key === "ArrowUp" && h.length) {
+      if (histIdx < 0) {
+        draft = input.value;
+        histIdx = h.length;
+      }
+      histIdx = Math.max(0, histIdx - 1);
+      input.value = h[histIdx];
+    } else if (e.key === "ArrowDown" && histIdx >= 0) {
+      histIdx++;
+      input.value = histIdx >= h.length ? draft : h[histIdx];
+      if (histIdx >= h.length) histIdx = -1;
+    } else return;
+    e.preventDefault();
+    input.setSelectionRange(0, 0);
+    autoGrow();
   });
   input.addEventListener("blur", () => setTimeout(hideSlash, 100));
   stop.addEventListener("click", () => vscode.postMessage({ type: "stop" }));
@@ -620,6 +695,33 @@
       case "turn_end":
         endReply();
         setBusy(false);
+        if (m.turn && m.changed && m.changed.length) {
+          const r = add(el("div", "undo-row"));
+          r.dataset.turn = String(m.turn);
+          r.append(btn("Undo this turn", "link", () => vscode.postMessage({ type: "undo", turn: m.turn }), "Restore: " + m.changed.join(", ")));
+        }
+        return;
+      case "undone": {
+        const r = log.querySelector(`.undo-row[data-turn="${Number(m.turn)}"]`);
+        const t = `Undone: ${m.files.length ? m.files.join(", ") : "no files"} restored.`;
+        if (r) r.replaceChildren(el("span", "", t));
+        else add(el("div", "line", t));
+        return;
+      }
+      case "approvalAnswered":
+        currentApproval?.(m.allow, false);
+        return;
+      case "mentionOptions": {
+        const at = mentionAt();
+        if (!at || at.q !== m.q) return; // typed on since
+        popKind = "mention";
+        slashItems = m.items;
+        return renderPopup();
+      }
+      case "insert":
+        return insertAt(m.text);
+      case "focusInput":
+        input.focus();
         return;
       case "error":
         add(el("div", "error", m.message));

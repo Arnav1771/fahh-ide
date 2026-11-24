@@ -2,6 +2,7 @@
 // No VS Code imports here, so it is unit-tested with plain node.
 import * as fs from "fs";
 import * as path from "path";
+import type { Usage } from "./qol";
 
 /** Every provider fahh-agent knows (src-tauri/src/agent/cli.rs `preset`). Empty keyEnv: no key. */
 export const PROVIDERS: { id: string; label: string; keyEnv: string; keyUrl?: string }[] = [
@@ -41,8 +42,11 @@ export const MODES: { id: string; label: string; desc: string; warn?: boolean }[
   { id: "bypass", label: "Bypass", desc: "Asks for nothing. Only deny rules in .fahh/permissions.json still apply.", warn: true },
 ];
 
-/** Slash commands the chat understands; the extension runs each of them (see extension.ts). */
-export const SLASH: { name: string; args?: string; desc: string }[] = [
+/**
+ * Slash commands the chat understands; the extension runs each of them (see extension.ts).
+ * `feature`: needs a fahh-agent whose --json ready line lists the command in "features".
+ */
+export const SLASH: { name: string; args?: string; desc: string; feature?: boolean }[] = [
   { name: "new", desc: "Start a fresh session" },
   { name: "model", args: "[id]", desc: "Pick or set the model" },
   { name: "provider", args: "[name]", desc: "Switch provider: Groq, Gemini, NVIDIA, OpenRouter, Anthropic, Ollama" },
@@ -51,11 +55,18 @@ export const SLASH: { name: string; args?: string; desc: string }[] = [
   { name: "ask", args: "<question>", desc: "Read-only question: nothing is changed" },
   { name: "plan", args: "[prompt]", desc: "Plan mode: research, then write a plan" },
   { name: "copy", desc: "Copy the last reply" },
+  { name: "export", desc: "Open the conversation, tool calls included, as Markdown" },
+  { name: "compact", feature: true, desc: "Fold older turns into a summary to free context" },
+  { name: "usage", feature: true, desc: "Model calls, tokens and context used" },
+  { name: "permissions", desc: "Auto-approve rules for edits and commands" },
   { name: "clear", desc: "Clear the chat view; the session continues" },
   { name: "keys", desc: "Add or remove a provider's API key" },
   { name: "settings", desc: "Provider, model, keys and the Fahh program path" },
   { name: "help", desc: "Commands and shortcuts" },
 ];
+
+/** The commands this agent supports: one that needs a feature is left out until the agent lists it. */
+export const slashFor = (features: string[] | undefined) => SLASH.filter((c) => !c.feature || !!features?.includes(c.name));
 
 /** `null`: not a command, send it as a prompt. A lone "/" and paths like "/usr/bin/x" are prompts. */
 export function parseSlash(text: string): { name: string; arg: string } | { error: string } | null {
@@ -129,9 +140,12 @@ export function starters(f: Facts): string[] {
 
 /** One line from the agent: ready, an agent event, or the end of a turn. */
 export type AgentLine =
-  | { type: "ready"; session: string; model: string; mode: string; cwd: string }
+  | { type: "ready"; session: string; model: string; mode: string; cwd: string; features?: string[] }
   | { type: "event"; event: { type: string; [k: string]: unknown } }
-  | { type: "turn_end"; ok: boolean; plan: string | null; text: string }
+  | { type: "turn_end"; ok: boolean; plan: string | null; text: string; usage?: Usage }
+  | ({ type: "usage" } & Usage)
+  | { type: "compacted"; messages: number; before: number; after: number }
+  | { type: "reverted"; turn: number; files: string[] }
   | { type: "error"; message: string };
 
 /** Splits a stdout chunk stream into JSON lines; anything that is not JSON is passed on as text. */

@@ -68,6 +68,58 @@ fn json_decision() -> Decision {
         .unwrap_or(Decision { allow: false, always: false, command: None })
 }
 
+/// What this agent's `--json` mode takes besides prompts; sent in the ready line so an editor
+/// can hide what an older agent does not support.
+const JSON_FEATURES: &[&str] = &["compact", "usage", "revert"];
+
+/// One stdin line in `--json` mode, between turns.
+#[derive(Debug, PartialEq)]
+enum JsonIn {
+    Empty,
+    Prompt(String, Mode),
+    Compact,
+    Usage,
+    /// Undo the file changes of one turn (the checkpoints the agent took before each edit).
+    Revert(u32),
+    Bad(String),
+}
+
+fn parse_json_input(line: &str, default_mode: Mode) -> JsonIn {
+    if line.trim().is_empty() {
+        return JsonIn::Empty;
+    }
+    let v: serde_json::Value = serde_json::from_str(line).unwrap_or_else(|_| serde_json::json!({ "prompt": line }));
+    if let Some(cmd) = v.get("command").and_then(|c| c.as_str()) {
+        return match cmd {
+            "compact" => JsonIn::Compact,
+            "usage" => JsonIn::Usage,
+            "revert" => match v.get("turn").and_then(|t| t.as_u64()).and_then(|t| u32::try_from(t).ok()) {
+                Some(t) => JsonIn::Revert(t),
+                None => JsonIn::Bad("revert needs {\"turn\": N}".into()),
+            },
+            other => JsonIn::Bad(format!("unknown command `{other}`; one of: {}", JSON_FEATURES.join(", "))),
+        };
+    }
+    match v.get("prompt").and_then(|p| p.as_str()) {
+        Some(text) => JsonIn::Prompt(text.to_string(), v.get("mode").and_then(|m| m.as_str()).and_then(Mode::parse).unwrap_or(default_mode)),
+        None => JsonIn::Bad("expected {\"prompt\": \"...\"} or {\"command\": \"...\"}".into()),
+    }
+}
+
+/// The REPL's /usage and /context numbers as one `--json` line.
+fn usage_json(s: &Session, model: &str) -> serde_json::Value {
+    let u = s.meta.lock().unwrap().usage.clone();
+    let c = context::context_info(&s.history.lock().unwrap(), 1_500, model);
+    serde_json::json!({
+        "type": "usage",
+        "model_calls": u.model_calls,
+        "tool_calls": u.tool_calls,
+        "tokens_in": u.tokens_in,
+        "tokens_out": u.tokens_out,
+        "context": { "used": c.used, "window": c.window, "percent": c.percent },
+    })
+}
+
 pub struct Preset {
     pub kind: ProviderKind,
     pub base_url: &'static str,
@@ -805,21 +857,33 @@ pub async fn main_cli(args: Vec<String>, provider_override: Option<Provider>) ->
 
     if repl.cli.json {
         JSON.store(true, Ordering::Relaxed);
-        emit(&serde_json::json!({ "type": "ready", "session": repl.session.id, "model": model_of(&repl.provider), "mode": repl.mode.label(), "cwd": repl.ws_root.display().to_string() }));
-        // One JSON object per line: {"prompt": "...", "mode": "smart"} starts a turn. Plain text
-        // is taken as a prompt too. Slash commands are not part of this interface.
+        emit(&serde_json::json!({ "type": "ready", "session": repl.session.id, "model": model_of(&repl.provider), "mode": repl.mode.label(), "cwd": repl.ws_root.display().to_string(), "features": JSON_FEATURES }));
+        // One JSON object per line: {"prompt": "...", "mode": "smart"} starts a turn, and
+        // {"command": "compact" | "usage" | "revert", "turn": N} runs one of those between turns.
+        // Plain text is taken as a prompt too. Other slash commands are not part of this interface.
         while let Some(line) = read_line() {
-            if line.is_empty() {
-                continue;
+            match parse_json_input(&line, repl.mode) {
+                JsonIn::Empty => {}
+                JsonIn::Bad(message) => emit(&serde_json::json!({ "type": "error", "message": message })),
+                JsonIn::Prompt(text, mode) => {
+                    let (ok, plan) = repl.run_once(text, mode, RunSpec::Turn, None, true).await;
+                    let usage = usage_json(&repl.session, &model_of(&repl.active()));
+                    emit(&serde_json::json!({ "type": "turn_end", "ok": ok, "plan": plan, "text": repl.last, "usage": usage }));
+                }
+                JsonIn::Compact => emit(&match repl.session.compact(&repl.active()).await {
+                    Ok((n, before, after)) => serde_json::json!({ "type": "compacted", "messages": n, "before": before, "after": after }),
+                    Err(e) => serde_json::json!({ "type": "error", "message": e }),
+                }),
+                JsonIn::Usage => emit(&usage_json(&repl.session, &model_of(&repl.active()))),
+                JsonIn::Revert(turn) => {
+                    let r = repl.session.checkpoints.lock().unwrap().revert_turn(turn);
+                    repl.session.save();
+                    emit(&match r {
+                        Ok(files) => serde_json::json!({ "type": "reverted", "turn": turn, "files": files }),
+                        Err(e) => serde_json::json!({ "type": "error", "message": e }),
+                    });
+                }
             }
-            let v: serde_json::Value = serde_json::from_str(&line).unwrap_or_else(|_| serde_json::json!({ "prompt": line }));
-            let Some(text) = v.get("prompt").and_then(|p| p.as_str()).map(str::to_string) else {
-                emit(&serde_json::json!({ "type": "error", "message": "expected {\"prompt\": \"...\"}" }));
-                continue;
-            };
-            let mode = v.get("mode").and_then(|m| m.as_str()).and_then(Mode::parse).unwrap_or(repl.mode);
-            let (ok, plan) = repl.run_once(text, mode, RunSpec::Turn, None, true).await;
-            emit(&serde_json::json!({ "type": "turn_end", "ok": ok, "plan": plan, "text": repl.last }));
         }
         return 0;
     }
@@ -885,6 +949,33 @@ mod tests {
         assert!(!parse_args(&[]).unwrap().json);
         let d: Decision = serde_json::from_str(r#"{"allow": true, "command": "ls"}"#).unwrap();
         assert!(d.allow && !d.always && d.command.as_deref() == Some("ls"));
+    }
+
+    #[test]
+    fn json_input_lines() {
+        assert_eq!(parse_json_input("  ", Mode::Ask), JsonIn::Empty);
+        assert_eq!(parse_json_input(r#"{"prompt": "hi", "mode": "smart"}"#, Mode::Ask), JsonIn::Prompt("hi".into(), Mode::Smart));
+        assert_eq!(parse_json_input(r#"{"prompt": "hi"}"#, Mode::Plan), JsonIn::Prompt("hi".into(), Mode::Plan));
+        assert_eq!(parse_json_input("plain text", Mode::Ask), JsonIn::Prompt("plain text".into(), Mode::Ask));
+        assert_eq!(parse_json_input(r#"{"command": "compact"}"#, Mode::Ask), JsonIn::Compact);
+        assert_eq!(parse_json_input(r#"{"command": "usage"}"#, Mode::Ask), JsonIn::Usage);
+        assert_eq!(parse_json_input(r#"{"command": "revert", "turn": 3}"#, Mode::Ask), JsonIn::Revert(3));
+        assert!(matches!(parse_json_input(r#"{"command": "revert"}"#, Mode::Ask), JsonIn::Bad(_)));
+        assert!(matches!(parse_json_input(r#"{"command": "rm"}"#, Mode::Ask), JsonIn::Bad(m) if m.contains("compact")));
+        assert!(matches!(parse_json_input(r#"{"nothing": 1}"#, Mode::Ask), JsonIn::Bad(_)));
+    }
+
+    #[test]
+    fn usage_line_has_counts_and_context() {
+        let dir = tempfile::tempdir().unwrap();
+        let ws = Workspace::new(dir.path().to_str().unwrap()).unwrap();
+        let s = Session::new("t".into(), ws, Default::default());
+        s.meta.lock().unwrap().usage.model_calls = 2;
+        s.meta.lock().unwrap().usage.tokens_in = 120;
+        let v = usage_json(&s, "llama-3.3-70b");
+        assert_eq!((v["type"].as_str(), v["model_calls"].as_u64(), v["tokens_in"].as_u64(), v["tool_calls"].as_u64()), (Some("usage"), Some(2), Some(120), Some(0)));
+        assert!(v["context"]["window"].as_u64().unwrap() > 0 && v["context"]["used"].as_u64().unwrap() >= 1_500);
+        assert_eq!(JSON_FEATURES, &["compact", "usage", "revert"]);
     }
 
     #[test]
