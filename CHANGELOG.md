@@ -9,9 +9,14 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- **Fahh Familiar 0.4.0** (the VS Code extension, renamed from Fahh Local Chat; ID and `fahhLocalChat.*` settings unchanged, so keys and settings carry over): `@` mentions (@file, @folder, @selection, @problems, fuzzy file matches), "Ask Fahh Familiar about this" in the editor menu and on `Ctrl+L`/`Cmd+L`, a real diff editor for edit approvals with Accept/Reject in its title bar, "Undo this turn", prompt history on `Up`/`Down`, a status bar item (model, mode, usage), auto-approve rules (`/permissions`), `/export` to Markdown, `/compact` and `/usage`.
+- `fahh agent --json` takes `{"command":"compact"}`, `{"command":"usage"}` and `{"command":"revert","turn":N}` between turns, lists them in the ready line's `features`, and puts usage in `turn_end`.
+
 ### Changed
 
-- The VS Code extension is now **Fahh Local Chat** 0.3.0 (`stealth-keqing.fahh-local-chat`, commands and settings `fahhLocalChat.*`), so it is not confused with Fahh Local, the agent panel inside Fahh Editor. Old `fahhLocal.*` settings are still read for one release; API keys need adding again.
+- The VS Code extension was **Fahh Local Chat** 0.3.0 (now Fahh Familiar 0.4.0) (`stealth-keqing.fahh-local-chat`, commands and settings `fahhLocalChat.*`), so it is not confused with Fahh Local, the agent panel inside Fahh Editor. Old `fahhLocal.*` settings are still read for one release; API keys need adding again.
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
 
 ### Added

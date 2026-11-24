@@ -1,8 +1,8 @@
 {
   "name": "fahh-local-chat",
-  "displayName": "Fahh Local Chat",
-  "description": "Fahh Editor's coding agent (fahh-agent) as a chat in VS Code: it reads, edits and runs things in your workspace, and asks before it changes anything. Groq, Gemini, NVIDIA, OpenRouter, Anthropic or a local Ollama.",
-  "version": "0.3.1",
+  "displayName": "Fahh Familiar",
+  "description": "Fahh Familiar: Fahh Editor's coding agent (fahh-agent) as a chat in VS Code. It reads, edits and runs things in your workspace, and asks before it changes anything. @ mentions, real diffs, undo per turn. Groq, Gemini, NVIDIA, OpenRouter, Anthropic or a local Ollama.",
+  "version": "0.4.0",
   "publisher": "stealth-keqing",
   "license": "MIT",
   "repository": {
@@ -20,12 +20,13 @@
   "keywords": [
     "agent",
     "ai",
-    "fahh",
-    "groq",
-    "gemini",
-    "openrouter",
     "anthropic",
-    "ollama"
+    "fahh",
+    "familiar",
+    "gemini",
+    "groq",
+    "ollama",
+    "openrouter"
   ],
   "icon": "media/icon.png",
   "main": "./out/extension.js",
@@ -37,7 +38,7 @@
       "activitybar": [
         {
           "id": "fahhLocalChat",
-          "title": "Fahh Local Chat",
+          "title": "Fahh Familiar",
           "icon": "media/bot.svg"
         }
       ]
@@ -54,41 +55,74 @@
     "commands": [
       {
         "command": "fahhLocalChat.newSession",
-        "title": "Fahh Local Chat: New Session",
+        "title": "Fahh Familiar: New Session",
         "icon": "$(add)"
       },
       {
         "command": "fahhLocalChat.resume",
-        "title": "Fahh Local Chat: Resume a Session",
+        "title": "Fahh Familiar: Resume a Session",
         "icon": "$(history)"
       },
       {
         "command": "fahhLocalChat.pickModel",
-        "title": "Fahh Local Chat: Choose Model",
+        "title": "Fahh Familiar: Choose Model",
         "icon": "$(server-environment)"
       },
       {
         "command": "fahhLocalChat.pickProvider",
-        "title": "Fahh Local Chat: Choose Provider"
+        "title": "Fahh Familiar: Choose Provider"
       },
       {
         "command": "fahhLocalChat.setApiKey",
-        "title": "Fahh Local Chat: Manage API Keys",
+        "title": "Fahh Familiar: Manage API Keys",
         "icon": "$(key)"
       },
       {
         "command": "fahhLocalChat.settings",
-        "title": "Fahh Local Chat: Settings",
+        "title": "Fahh Familiar: Settings",
         "icon": "$(settings-gear)"
       },
       {
         "command": "fahhLocalChat.stop",
-        "title": "Fahh Local Chat: Stop",
+        "title": "Fahh Familiar: Stop",
         "icon": "$(debug-stop)"
       },
       {
         "command": "fahhLocalChat.checkForUpdates",
-        "title": "Fahh Local Chat: Check for Updates"
+        "title": "Fahh Familiar: Check for Updates"
+      },
+      {
+        "command": "fahhLocalChat.askAboutSelection",
+        "title": "Fahh Familiar: Ask Fahh Familiar about this",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "fahhLocalChat.export",
+        "title": "Fahh Familiar: Export Chat to Markdown",
+        "icon": "$(markdown)"
+      },
+      {
+        "command": "fahhLocalChat.permissions",
+        "title": "Fahh Familiar: Auto-approve Rules",
+        "icon": "$(checklist)"
+      },
+      {
+        "command": "fahhLocalChat.pickMode",
+        "title": "Fahh Familiar: Choose Mode"
+      },
+      {
+        "command": "fahhLocalChat.statusMenu",
+        "title": "Fahh Familiar: Quick Menu"
+      },
+      {
+        "command": "fahhLocalChat.acceptEdit",
+        "title": "Fahh Familiar: Accept This Edit",
+        "icon": "$(check)"
+      },
+      {
+        "command": "fahhLocalChat.rejectEdit",
+        "title": "Fahh Familiar: Reject This Edit",
+        "icon": "$(close)"
       }
     ],
     "menus": {
@@ -117,11 +151,54 @@
           "command": "fahhLocalChat.setApiKey",
           "when": "view == fahhLocalChat.chat",
           "group": "more@2"
+        },
+        {
+          "command": "fahhLocalChat.export",
+          "when": "view == fahhLocalChat.chat",
+          "group": "more@3"
+        },
+        {
+          "command": "fahhLocalChat.permissions",
+          "when": "view == fahhLocalChat.chat",
+          "group": "more@4"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "fahhLocalChat.askAboutSelection",
+          "when": "editorHasSelection",
+          "group": "fahh@1"
+        }
+      ],
+      "editor/title": [
+        {
+          "command": "fahhLocalChat.acceptEdit",
+          "when": "resourceScheme == fahh-proposed",
+          "group": "navigation@1"
+        },
+        {
+          "command": "fahhLocalChat.rejectEdit",
+          "when": "resourceScheme == fahh-proposed",
+          "group": "navigation@2"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "fahhLocalChat.acceptEdit",
+          "when": "false"
+        },
+        {
+          "command": "fahhLocalChat.rejectEdit",
+          "when": "false"
+        },
+        {
+          "command": "fahhLocalChat.statusMenu",
+          "when": "false"
         }
       ]
     },
     "configuration": {
-      "title": "Fahh Local Chat",
+      "title": "Fahh Familiar",
       "properties": {
         "fahhLocalChat.provider": {
           "type": "string",
@@ -151,15 +228,49 @@
             "bypass"
           ],
           "default": "normal",
-          "description": "Permission mode for new prompts: normal asks before every edit and command."
+          "description": "Permission mode for new prompts: normal asks before every edit and command. The auto-approve rules can raise it."
         },
         "fahhLocalChat.binary": {
           "type": "string",
           "default": "",
           "description": "Path to the Fahh Editor program (fahh-editor.exe) or to fahh-agent. Empty finds the installed Fahh Editor."
+        },
+        "fahhLocalChat.autoApprove.edits": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always"
+          ],
+          "enumDescriptions": [
+            "Ask before every edit (with a diff)",
+            "Apply edits without asking (accept-edits mode)"
+          ],
+          "default": "ask",
+          "markdownDescription": "Auto-approve file edits. Reads are always allowed. Raises the mode to accept-edits; plan and /ask stay read-only. Also `/permissions` in the chat."
+        },
+        "fahhLocalChat.autoApprove.commands": {
+          "type": "string",
+          "enum": [
+            "ask",
+            "always"
+          ],
+          "enumDescriptions": [
+            "Ask before every command",
+            "Run commands and apply edits without asking (bypass mode)"
+          ],
+          "default": "ask",
+          "markdownDescription": "Auto-approve commands. A command can change any file, so **always** also applies edits without asking (the agent's bypass mode). The agent's built-in blocks and deny rules in `.fahh/permissions.json` still apply."
         }
       }
-    }
+    },
+    "keybindings": [
+      {
+        "command": "fahhLocalChat.askAboutSelection",
+        "key": "ctrl+l",
+        "mac": "cmd+l",
+        "when": "editorTextFocus"
+      }
+    ]
   },
   "scripts": {
     "compile": "tsc -p .",

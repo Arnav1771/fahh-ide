@@ -36,15 +36,18 @@ Every edit shows a diff, and every command is shown before it runs, with `allow?
 
 ## For editors: `--json`
 
-`fahh agent --json` turns the terminal session into a machine interface, which Fahh Local Chat (VS Code extension) uses:
+`fahh agent --json` turns the terminal session into a machine interface, which Fahh Familiar (VS Code extension) uses:
 
 - **Out (stdout), one JSON object per line:**
-  - `{"type":"ready","session":...}`, once, at start.
+  - `{"type":"ready","session":...,"features":["compact","usage","revert"]}`, once, at start. `features` lists the commands below (an agent without the field has none of them).
   - `{"type":"event","event":{...}}`, one per agent event: text, tool calls, approval requests, file changes, done.
-  - `{"type":"turn_end","ok":true,"text":"..."}`, when a turn ends.
+  - `{"type":"turn_end","ok":true,"text":"...","usage":{...}}`, when a turn ends. `usage` is the same object as the `usage` line.
+  - `{"type":"usage","model_calls":3,"tool_calls":5,"tokens_in":11800,"tokens_out":500,"context":{"used":9000,"window":128000,"percent":7}}`: the REPL's /usage and /context numbers (token counts are estimates).
+  - `{"type":"compacted","messages":12,"before":9000,"after":2100}` after a compact; `{"type":"reverted","turn":3,"files":["a.ts"]}` after a revert; `{"type":"error","message":"..."}` when a line or command fails.
 - **In (stdin), one JSON object per line:**
   - `{"prompt":"...","mode":"smart"}` starts a turn.
   - `{"allow":true,"always":false}` answers the approval that is waiting.
+  - Between turns: `{"command":"compact"}` (the REPL's /compact), `{"command":"usage"}`, and `{"command":"revert","turn":3}` (undo the file changes of that turn from the agent's checkpoints; the conversation is kept).
 
 ## Test it
 
@@ -72,4 +75,4 @@ FAHH_DATA_DIR=/tmp/try/.data FAHH_AGENT_MOCK_SCRIPT=/tmp/script.json \
 
 `FAHH_DATA_DIR` keeps the test's sessions out of your real ones. The same script works with `--json`: pipe `{"prompt":"..."}` and `{"allow":true}` lines in.
 
-**Fahh Local Chat (VS Code extension)** (`extensions/vscode`) is tested with `npm test`, which checks how it finds Fahh, the command line it builds, and how it reads the JSON lines.
+**Fahh Familiar (VS Code extension)** (`extensions/vscode`) is tested with `npm test`, which checks how it finds Fahh, the command line it builds, how it reads the JSON lines, @ mentions, prompt history, turn checkpoints, the auto-approve mapping and the Markdown export.
