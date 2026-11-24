@@ -6,6 +6,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { ChildProcessWithoutNullStreams, execFile, spawn } from "child_process";
 import { AgentLine, LineReader, MODES, PROVIDERS, SLASH, agentArgs, agentEnv, agentWord, detectFacts, findAgent, keyState, parseModels, parseSessions, parseSlash, providerLabel, starters } from "./protocol";
+import { registerSelfUpdate } from "./selfUpdate";
 
 const DOWNLOAD = "https://fahhide.duckdns.org/#download";
 const secretName = (provider: string) => `fahhLocalChat.key.${provider}`;
@@ -513,6 +514,7 @@ export function activate(ctx: vscode.ExtensionContext): void {
     vscode.commands.registerCommand("fahhLocalChat.setApiKey", () => chat.keys()),
     vscode.commands.registerCommand("fahhLocalChat.settings", () => chat.settings())
   );
+  registerSelfUpdate(ctx, "Fahh Local Chat", "fahhLocalChat.checkForUpdates");
 }
 
 export function deactivate(): void {}
