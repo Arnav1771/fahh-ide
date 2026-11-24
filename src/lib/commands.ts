@@ -11,3 +11,11 @@ export const OPEN_FILE_EVENT = "fahh-open-file";
 export function runCommand(id: string): void {
   window.dispatchEvent(new CustomEvent<string>(FAHH_COMMAND, { detail: id }));
 }
+
+/** Ctrl+Shift+A opens the session search (App owns the palette). */
+const SEARCH_EVENT = "fahh-search-sessions";
+export const openSessionSearch = () => window.dispatchEvent(new Event(SEARCH_EVENT));
+export const onSessionSearch = (fn: () => void) => {
+  window.addEventListener(SEARCH_EVENT, fn);
+  return () => window.removeEventListener(SEARCH_EVENT, fn);
+};

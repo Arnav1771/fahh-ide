@@ -1,16 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { initAgentEvents, useAgentStore } from "./store/agentStore";
 import { debugKeyAction, isAgentToggle, isSessionSearch } from "./lib/hotkeys";
 import { useLayoutModeStore } from "./store/layoutModeStore";
 import { initFsWatch } from "./lib/fsWatch";
-import { AgentMode, onSessionSearch } from "./components/AgentMode";
 import { ago, listSessions } from "./lib/agentSessionsList";
 import type { AgentSessionInfo } from "./lib/types";
 import { useDebugStore } from "./store/debugStore";
 import { createLaunchJson } from "./lib/debugSession";
 import { runDebugAction, runWithoutDebugging } from "./lib/debugActions";
-import { InstallerWizard } from "./components/InstallerWizard";
-import { Welcome } from "./components/Welcome";
 import { Toasts } from "./components/Toasts";
 import { flushAutoSave, saveActive, saveAll, unsavedMessage } from "./lib/tabActions";
 import { handleOpenRequest, restoresSession } from "./lib/openRequest";
@@ -29,7 +26,7 @@ import { useGitStore } from "./store/gitStore";
 import { GitStatusItem } from "./components/GitSidebar/GitStatusItem";
 import { AccountMenu } from "./components/AccountMenu";
 import { CommandPalette } from "./components/Fahh/CommandPalette";
-import { FAHH_COMMAND, OPEN_FOLDER_EVENT, OPEN_FILE_EVENT } from "./lib/commands";
+import { FAHH_COMMAND, OPEN_FOLDER_EVENT, OPEN_FILE_EVENT, onSessionSearch } from "./lib/commands";
 import { getActiveDocument, revealLine, runEditorAction } from "./lib/monacoBridge";
 import type { PaletteCommand } from "./lib/palette";
 import { usePreviewStore } from "./store/previewStore";
@@ -42,8 +39,6 @@ import { flattenTree } from "./lib/quickOpen";
 import { useWorkspace } from "./hooks/useWorkspace";
 import { saveWorkspaceAs, openWorkspaceFromFile, applyWorkspaceConfig, openRecentEntry } from "./lib/workspaceManager";
 import { DialogHost } from "./components/Dialog";
-import { AboutDialog } from "./components/Dialog/AboutDialog";
-import { CheckSetupDialog } from "./components/Dialog/CheckSetupDialog";
 import { launchUpdateCheck, UPDATE_EVENT } from "./lib/updates";
 import { showWhatsNew } from "./lib/account";
 import { alertDialog, confirmDialog, promptDialog } from "./store/dialogStore";
@@ -54,7 +49,6 @@ import { allThemes, applyThemeCssVars } from "./components/ThemePanel";
 import { useExtensionThemes } from "./store/extensionThemesStore";
 import { Settings, Play, Globe } from "lucide-react";
 import { MenuBar } from "./components/MenuBar";
-import { SpatialCanvas } from "./components/SpatialCanvas";
 import { useSpatialStore } from "./store/spatialStore";
 import { Workbench } from "./components/Workbench";
 import { getView, listViews } from "./lib/viewRegistry";
@@ -73,6 +67,14 @@ import {
   visibleViewIds,
 } from "./lib/workbench";
 import { copyText } from "./lib/clipboard";
+
+// Not on the first screen: loaded on first use to keep the startup bundle small.
+const AgentMode = lazy(() => import("./components/AgentMode").then((m) => ({ default: m.AgentMode })));
+const SpatialCanvas = lazy(() => import("./components/SpatialCanvas").then((m) => ({ default: m.SpatialCanvas })));
+const InstallerWizard = lazy(() => import("./components/InstallerWizard").then((m) => ({ default: m.InstallerWizard })));
+const Welcome = lazy(() => import("./components/Welcome").then((m) => ({ default: m.Welcome })));
+const AboutDialog = lazy(() => import("./components/Dialog/AboutDialog").then((m) => ({ default: m.AboutDialog })));
+const CheckSetupDialog = lazy(() => import("./components/Dialog/CheckSetupDialog").then((m) => ({ default: m.CheckSetupDialog })));
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -729,11 +731,11 @@ export default function App() {
       {isSpatialMode ? (
         <div className="fahh-canvas-host flex-1 min-h-0 relative overflow-hidden">
           <LspBridge />
-          <SpatialCanvas />
+          <Suspense fallback={null}><SpatialCanvas /></Suspense>
         </div>
       ) : (
         <>
-        {layoutMode === "agent" && <AgentMode />}
+        {layoutMode === "agent" && <Suspense fallback={null}><AgentMode /></Suspense>}
         {/* ── Workspace Area (Activity bar + the dock); kept mounted, hidden, in agent mode ── */}
         <div className="flex flex-1 min-h-0 overflow-hidden" style={layoutMode === "agent" ? { display: "none" } : undefined}>
           {/* Non-rendering LSP bridge */}
@@ -816,14 +818,16 @@ export default function App() {
         </>
       )}
 
-      {showInstaller && (
-        <InstallerWizard onClose={() => setShowInstaller(false)} />
-      )}
+      <Suspense fallback={null}>
+        {showInstaller && (
+          <InstallerWizard onClose={() => setShowInstaller(false)} />
+        )}
 
-      {showWelcome && <Welcome onClose={closeWelcome} />}
+        {showWelcome && <Welcome onClose={closeWelcome} />}
 
-      {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
-      {showSetup && <CheckSetupDialog onClose={() => setShowSetup(false)} />}
+        {showAbout && <AboutDialog onClose={() => setShowAbout(false)} />}
+        {showSetup && <CheckSetupDialog onClose={() => setShowSetup(false)} />}
+      </Suspense>
       <DialogHost />
       {/* Always mounted (docked and canvas): asks about trust for each folder that opens. */}
       <WorkspaceTrustGate />

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import {
   DockviewReact,
   type DockviewReadyEvent,
@@ -58,7 +58,10 @@ function ViewHost({ params }: IDockviewPanelProps<{ viewId: string }>) {
   return (
     <div className={`fahh-sidebar flex h-full w-full flex-col overflow-hidden ${def.defaultLocation === "panel" ? "bg-fahh-bg" : "bg-fahh-sidebar"}`}>
       <ErrorBoundary label={def.title ?? params.viewId}>
-        <C />
+        {/* Some views are lazy (src/views/index.tsx): they load on first show. */}
+        <Suspense fallback={null}>
+          <C />
+        </Suspense>
       </ErrorBoundary>
     </div>
   );
