@@ -24,5 +24,19 @@ export default defineConfig(async () => ({
         : "firefox115",
     minify: !process.env.TAURI_ENV_DEBUG ? "esbuild" : false,
     sourcemap: !!process.env.TAURI_ENV_DEBUG,
+    rollupOptions: {
+      output: {
+        // Big vendor libs in their own chunks: the app entry stays small and they cache across releases.
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return;
+          // Only the Monaco core goes in "monaco"; the per-language chunks stay lazy.
+          if (id.includes("/monaco-editor/") && !/\/(basic-languages|language)\//.test(id)) return "monaco";
+          if (id.includes("/@xterm/")) return "xterm";
+          if (id.includes("/dockview")) return "dockview";
+        },
+      },
+    },
+    // The Monaco core alone is ~3.7 MB minified and is needed at startup; the warning is for anything else.
+    chunkSizeWarningLimit: 4000,
   },
 }));

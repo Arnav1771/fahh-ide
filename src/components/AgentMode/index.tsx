@@ -17,17 +17,10 @@ import { pendingFiles, pendingReview, type AgentStatus } from "../../lib/agentSt
 import { ago, listAllSessions, listSessions, sameFolder } from "../../lib/agentSessionsList";
 import { useWorkspace } from "../../hooks/useWorkspace";
 import { useToastStore } from "../../store/toastStore";
-import { OPEN_FOLDER_EVENT } from "../../lib/commands";
+import { OPEN_FOLDER_EVENT, openSessionSearch } from "../../lib/commands";
 import { revealView } from "../../lib/workbench";
 import type { AgentMode as Mode, AgentSessionInfo } from "../../lib/types";
 
-/** Ctrl+Shift+A opens the session search (App owns the palette). */
-const SEARCH_EVENT = "fahh-search-sessions";
-export const openSessionSearch = () => window.dispatchEvent(new Event(SEARCH_EVENT));
-export const onSessionSearch = (fn: () => void) => {
-  window.addEventListener(SEARCH_EVENT, fn);
-  return () => window.removeEventListener(SEARCH_EVENT, fn);
-};
 
 const STATUS: Record<AgentStatus, { label: string; dot: string } | null> = {
   idle: null,

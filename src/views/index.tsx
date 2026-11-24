@@ -7,7 +7,7 @@
  * commands, and can be dragged anywhere. Layout code never needs to know about it.
  * Ids are saved in layouts: never rename a shipped one.
  */
-import { useMemo } from "react";
+import { lazy, useMemo } from "react";
 import { AlertCircle, Blocks, BookOpenText, Bot, Bug, BugPlay, ListTodo, FolderTree, MonitorCloud, GitBranch, History, ListTree, Palette, Play, Search, Settings as SettingsIcon, SquareTerminal, UsersRound } from "lucide-react";
 import { SettingsPanel } from "../components/SettingsPanel";
 import { FileTree } from "../components/FileTree/FileTree";
@@ -15,21 +15,23 @@ import { SearchSidebar } from "../components/SearchSidebar/SearchSidebar";
 import { GitSidebar } from "../components/GitSidebar";
 import { AgentPanel } from "../components/AgentPanel";
 import { ThemePanel } from "../components/ThemePanel";
-import { ExtensionsPanel } from "../components/ExtensionsPanel";
-import { DebugPanel } from "../components/DebugPanel";
-import { RunDebugView } from "../components/DebugPanel/RunDebugView";
-import { RemoteExplorer } from "../components/RemoteExplorer";
-import { DeepWiki } from "../components/DeepWiki";
-import { Roundtable } from "../components/Roundtable";
-import { Outline } from "../components/Outline";
-import { TodoView } from "../components/TodoView";
-import { Timeline } from "../components/Timeline";
-import { RunPanel } from "../components/RunPanel";
 import { ProblemsPanel } from "../components/ProblemsPanel";
 import { TerminalPanel } from "../components/Terminal/TerminalPanel";
 import { useDiagnosticsStore } from "../store/diagnosticsStore";
 import { registerView } from "../lib/viewRegistry";
 import { toggleView } from "../lib/workbench";
+
+// Views that are not on the default layout load on first show (the Workbench wraps every view in Suspense).
+const ExtensionsPanel = lazy(() => import("../components/ExtensionsPanel").then((m) => ({ default: m.ExtensionsPanel })));
+const DebugPanel = lazy(() => import("../components/DebugPanel").then((m) => ({ default: m.DebugPanel })));
+const RunDebugView = lazy(() => import("../components/DebugPanel/RunDebugView").then((m) => ({ default: m.RunDebugView })));
+const RemoteExplorer = lazy(() => import("../components/RemoteExplorer").then((m) => ({ default: m.RemoteExplorer })));
+const DeepWiki = lazy(() => import("../components/DeepWiki").then((m) => ({ default: m.DeepWiki })));
+const Roundtable = lazy(() => import("../components/Roundtable").then((m) => ({ default: m.Roundtable })));
+const Outline = lazy(() => import("../components/Outline").then((m) => ({ default: m.Outline })));
+const TodoView = lazy(() => import("../components/TodoView").then((m) => ({ default: m.TodoView })));
+const Timeline = lazy(() => import("../components/Timeline").then((m) => ({ default: m.Timeline })));
+const RunPanel = lazy(() => import("../components/RunPanel").then((m) => ({ default: m.RunPanel })));
 
 function ProblemsBadge() {
   const diagnostics = useDiagnosticsStore((s) => s.diagnostics);
