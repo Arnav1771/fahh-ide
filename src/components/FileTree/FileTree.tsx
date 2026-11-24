@@ -15,6 +15,7 @@ import { ChevronsDownUp, Copy, Edit2, ExternalLink, File, FilePlus, Folder, Fold
 import { FileIcon, FolderIcon } from "../../lib/iconTheme";
 import { ContextMenu, type MenuEntry } from "../ContextMenu";
 import { copyText } from "../../lib/clipboard";
+import { trackPointerDrag } from "../../lib/pointerDrag";
 
 type NewKind = "file" | "folder";
 interface NewEntry {
@@ -124,7 +125,7 @@ function FileNode(props: FileNodeProps) {
         }}
         data-drop-dir={entry.is_dir ? entry.path : parentDir(entry.path)}
         data-path={entry.path}
-        className={`file-item flex items-center gap-1.5 px-2 py-0.5 cursor-pointer text-sm text-fahh-text rounded transition-colors ${
+        className={`file-item flex select-none items-center gap-1.5 px-2 py-0.5 cursor-pointer text-sm text-fahh-text rounded transition-colors ${
           isDrop ? "bg-fahh-accent/20 outline outline-1 outline-fahh-accent" : "hover:bg-fahh-surface"
         }`}
         style={{ paddingLeft: `${8 + depth * 12}px` }}
@@ -291,35 +292,21 @@ export function FileTree() {
 
   const startDrag = (e: React.PointerEvent, entry: FileEntry) => {
     if (e.button !== 0 || !tree) return;
-    const x0 = e.clientX;
-    const y0 = e.clientY;
-    let dragging = false;
     let dir: string | null = null;
-    const move = (ev: PointerEvent) => {
-      if (!dragging && Math.hypot(ev.clientX - x0, ev.clientY - y0) < 5) return;
-      dragging = true;
-      const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-drop-dir]");
-      const target = el?.dataset.dropDir ?? null;
-      dir = target !== null && canDrop(entry.path, target) ? target : null;
-      setDrag({ from: entry, x: ev.clientX, y: ev.clientY, dir });
-    };
-    const up = () => {
-      document.removeEventListener("pointermove", move);
-      document.removeEventListener("pointerup", up);
-      document.removeEventListener("keydown", esc, true);
-      if (!dragging) return;
-      dragEndedAt.current = Date.now();
-      setDrag(null);
-      if (dir) void moveInto(entry, dir);
-    };
-    const esc = (ev: KeyboardEvent) => {
-      if (ev.key !== "Escape") return;
-      dir = null;
-      up();
-    };
-    document.addEventListener("pointermove", move);
-    document.addEventListener("pointerup", up);
-    document.addEventListener("keydown", esc, true);
+    trackPointerDrag(document, e.clientX, e.clientY, {
+      onMove: (ev) => {
+        const el = document.elementFromPoint(ev.clientX, ev.clientY)?.closest<HTMLElement>("[data-drop-dir]");
+        const target = el?.dataset.dropDir ?? null;
+        dir = target !== null && canDrop(entry.path, target) ? target : null;
+        setDrag({ from: entry, x: ev.clientX, y: ev.clientY, dir });
+      },
+      onEnd: (dragged, drop) => {
+        if (!dragged) return;
+        dragEndedAt.current = Date.now();
+        setDrag(null);
+        if (drop && dir) void moveInto(entry, dir);
+      },
+    });
   };
 
   const moveInto = async (entry: FileEntry, dir: string) => {
