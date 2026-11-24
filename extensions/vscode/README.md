@@ -1,6 +1,9 @@
-# Fahh Local for VS Code
+# Fahh Local Chat for VS Code
 
-The Fahh Local coding agent in VS Code's side bar. It reads, edits and runs things in the open
+Fahh Local Chat is the extension for VS Code-like editors. Fahh Local is the agent panel built
+into Fahh Editor; both run the same agent.
+
+Fahh Editor's coding agent (fahh-agent) as a chat in VS Code's side bar. It reads, edits and runs things in the open
 folder, and asks before every edit and command (unless you pick another mode).
 
 ## What you need
@@ -14,7 +17,7 @@ folder, and asks before every edit and command (unless you pick another mode).
 
 ## Use it
 
-Open a folder, click **Fahh Local** in the activity bar, and ask, or click one of the starter
+Open a folder, click **Fahh Local Chat** in the activity bar, and ask, or click one of the starter
 prompts built from what is in the folder. Edits show a diff and commands show the command line
 before they run: **Allow**, **Always**, **Deny**, or **Edit** the command first. Tool calls fold
 into one line each; click one for its input and output. Changed files appear as chips you can
@@ -43,6 +46,11 @@ asks for nothing (deny rules in `.fahh/permissions.json` still apply).
 
 ## Settings
 
-`fahhLocal.provider`, `fahhLocal.model`, `fahhLocal.mode`, and `fahhLocal.binary` (the Fahh
+`fahhLocalChat.provider`, `fahhLocalChat.model`, `fahhLocalChat.mode`, and `fahhLocalChat.binary` (the Fahh
 Editor program, when it is installed somewhere unusual). Changing the provider or model restarts
 the agent and resumes the same session.
+
+Upgrading from 0.2.x (published as `stealth-keqing.fahh-local`): `fahhLocal.*` settings are still
+read for this release when the matching `fahhLocalChat.*` one is not set; move them over. The
+extension ID changed, so VS Code keeps the old secret storage apart: add your keys again with
+`/keys`.

@@ -1,8 +1,8 @@
 {
-  "name": "fahh-local",
-  "displayName": "Fahh Local",
-  "description": "The Fahh Local coding agent in VS Code: it reads, edits and runs things in your workspace, and asks before it changes anything. Groq, Gemini, NVIDIA, OpenRouter, Anthropic or a local Ollama.",
-  "version": "0.2.0",
+  "name": "fahh-local-chat",
+  "displayName": "Fahh Local Chat",
+  "description": "Fahh Editor's coding agent (fahh-agent) as a chat in VS Code: it reads, edits and runs things in your workspace, and asks before it changes anything. Groq, Gemini, NVIDIA, OpenRouter, Anthropic or a local Ollama.",
+  "version": "0.3.0",
   "publisher": "stealth-keqing",
   "license": "MIT",
   "repository": {
@@ -34,90 +34,90 @@
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "fahhLocal",
-          "title": "Fahh Local",
+          "id": "fahhLocalChat",
+          "title": "Fahh Local Chat",
           "icon": "media/bot.svg"
         }
       ]
     },
     "views": {
-      "fahhLocal": [
+      "fahhLocalChat": [
         {
           "type": "webview",
-          "id": "fahhLocal.chat",
+          "id": "fahhLocalChat.chat",
           "name": "Chat"
         }
       ]
     },
     "commands": [
       {
-        "command": "fahhLocal.newSession",
-        "title": "Fahh Local: New Session",
+        "command": "fahhLocalChat.newSession",
+        "title": "Fahh Local Chat: New Session",
         "icon": "$(add)"
       },
       {
-        "command": "fahhLocal.resume",
-        "title": "Fahh Local: Resume a Session",
+        "command": "fahhLocalChat.resume",
+        "title": "Fahh Local Chat: Resume a Session",
         "icon": "$(history)"
       },
       {
-        "command": "fahhLocal.pickModel",
-        "title": "Fahh Local: Choose Model",
+        "command": "fahhLocalChat.pickModel",
+        "title": "Fahh Local Chat: Choose Model",
         "icon": "$(server-environment)"
       },
       {
-        "command": "fahhLocal.pickProvider",
-        "title": "Fahh Local: Choose Provider"
+        "command": "fahhLocalChat.pickProvider",
+        "title": "Fahh Local Chat: Choose Provider"
       },
       {
-        "command": "fahhLocal.setApiKey",
-        "title": "Fahh Local: Manage API Keys",
+        "command": "fahhLocalChat.setApiKey",
+        "title": "Fahh Local Chat: Manage API Keys",
         "icon": "$(key)"
       },
       {
-        "command": "fahhLocal.settings",
-        "title": "Fahh Local: Settings",
+        "command": "fahhLocalChat.settings",
+        "title": "Fahh Local Chat: Settings",
         "icon": "$(settings-gear)"
       },
       {
-        "command": "fahhLocal.stop",
-        "title": "Fahh Local: Stop",
+        "command": "fahhLocalChat.stop",
+        "title": "Fahh Local Chat: Stop",
         "icon": "$(debug-stop)"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "fahhLocal.newSession",
-          "when": "view == fahhLocal.chat",
+          "command": "fahhLocalChat.newSession",
+          "when": "view == fahhLocalChat.chat",
           "group": "navigation@1"
         },
         {
-          "command": "fahhLocal.resume",
-          "when": "view == fahhLocal.chat",
+          "command": "fahhLocalChat.resume",
+          "when": "view == fahhLocalChat.chat",
           "group": "navigation@2"
         },
         {
-          "command": "fahhLocal.settings",
-          "when": "view == fahhLocal.chat",
+          "command": "fahhLocalChat.settings",
+          "when": "view == fahhLocalChat.chat",
           "group": "navigation@3"
         },
         {
-          "command": "fahhLocal.pickModel",
-          "when": "view == fahhLocal.chat",
+          "command": "fahhLocalChat.pickModel",
+          "when": "view == fahhLocalChat.chat",
           "group": "more@1"
         },
         {
-          "command": "fahhLocal.setApiKey",
-          "when": "view == fahhLocal.chat",
+          "command": "fahhLocalChat.setApiKey",
+          "when": "view == fahhLocalChat.chat",
           "group": "more@2"
         }
       ]
     },
     "configuration": {
-      "title": "Fahh Local",
+      "title": "Fahh Local Chat",
       "properties": {
-        "fahhLocal.provider": {
+        "fahhLocalChat.provider": {
           "type": "string",
           "enum": [
             "groq",
@@ -130,12 +130,12 @@
           "default": "groq",
           "description": "Which model provider the agent uses (/provider in the chat). Keys are kept in VS Code secret storage, one per provider."
         },
-        "fahhLocal.model": {
+        "fahhLocalChat.model": {
           "type": "string",
           "default": "",
           "description": "Model id for the provider (/model in the chat lists what your key can use)."
         },
-        "fahhLocal.mode": {
+        "fahhLocalChat.mode": {
           "type": "string",
           "enum": [
             "normal",
@@ -147,7 +147,7 @@
           "default": "normal",
           "description": "Permission mode for new prompts: normal asks before every edit and command."
         },
-        "fahhLocal.binary": {
+        "fahhLocalChat.binary": {
           "type": "string",
           "default": "",
           "description": "Path to the Fahh Editor program (fahh-editor.exe) or to fahh-agent. Empty finds the installed Fahh Editor."

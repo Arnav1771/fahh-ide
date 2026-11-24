@@ -11,6 +11,7 @@ Versioning follows [Semantic Versioning](https://semver.org/).
 
 ### Changed
 
+- The VS Code extension is now **Fahh Local Chat** 0.3.0 (`stealth-keqing.fahh-local-chat`, commands and settings `fahhLocalChat.*`), so it is not confused with Fahh Local, the agent panel inside Fahh Editor. Old `fahhLocal.*` settings are still read for one release; API keys need adding again.
 - `fahh <file>` from a shell while Fahh is running opens the file as a tab in the window you used last (like `code file`), instead of a whole new window. Each extra window is a separate WebView renderer (~160 MB), so opening five files that way cost about 800 MB. Folders and workspace files still open their own window.
 
 ### Added

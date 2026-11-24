@@ -1,4 +1,4 @@
-// Fahh Local in VS Code: a chat view that drives `fahh agent --json` in the open folder.
+// Fahh Local Chat in VS Code: a chat view that drives `fahh agent --json` in the open folder.
 // JSON mode has no slash commands, so they live here: most of them change a setting, and a
 // setting change restarts the agent with new flags, resuming the same session.
 import * as vscode from "vscode";
@@ -8,7 +8,17 @@ import { ChildProcessWithoutNullStreams, execFile, spawn } from "child_process";
 import { AgentLine, LineReader, MODES, PROVIDERS, SLASH, agentArgs, agentEnv, agentWord, detectFacts, findAgent, keyState, parseModels, parseSessions, parseSlash, providerLabel, starters } from "./protocol";
 
 const DOWNLOAD = "https://fahhide.duckdns.org/#download";
-const secretName = (provider: string) => `fahhLocal.key.${provider}`;
+const secretName = (provider: string) => `fahhLocalChat.key.${provider}`;
+const SECTION = "fahhLocalChat";
+// ponytail: 0.2.x settings lived under "fahhLocal"; read them as a fallback for one release, drop in 0.4.
+const OLD_SECTION = "fahhLocal";
+
+/** A setting from fahhLocalChat.*, or the old fahhLocal.* value when the new one was never set. */
+function setting<T>(key: string, def: T): T {
+  const i = vscode.workspace.getConfiguration(SECTION).inspect<T>(key);
+  const own = i?.workspaceFolderValue ?? i?.workspaceValue ?? i?.globalValue;
+  return own !== undefined ? own : vscode.workspace.getConfiguration(OLD_SECTION).get<T>(key, def);
+}
 type Item<T> = vscode.QuickPickItem & { value?: T };
 
 /** Runs a short fahh-agent subcommand (models list, sessions ls). */
@@ -31,10 +41,10 @@ class ChatView implements vscode.WebviewViewProvider {
   private lastReply = "";
 
   constructor(private readonly ctx: vscode.ExtensionContext) {
-    this.session = ctx.workspaceState.get<string>("fahhLocal.session");
+    this.session = ctx.workspaceState.get<string>("fahhLocalChat.session");
     ctx.subscriptions.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
-        if (!e.affectsConfiguration("fahhLocal")) return;
+        if (!e.affectsConfiguration(SECTION) && !e.affectsConfiguration(OLD_SECTION)) return;
         // provider, model and binary are process flags: restart (the session resumes)
         if (this.busy) this.restartAfterTurn = true;
         else this.kill();
@@ -62,13 +72,12 @@ class ChatView implements vscode.WebviewViewProvider {
   }
 
   private cfg() {
-    const c = vscode.workspace.getConfiguration("fahhLocal");
-    return { provider: c.get<string>("provider", "groq"), model: c.get<string>("model", ""), mode: c.get<string>("mode", "normal"), binary: c.get<string>("binary", "") };
+    return { provider: setting("provider", "groq"), model: setting("model", ""), mode: setting("mode", "normal"), binary: setting("binary", "") };
   }
 
   /** Writes where the current value comes from, so a workspace setting is not silently shadowing it. */
   private async setCfg(key: string, value: string): Promise<void> {
-    const c = vscode.workspace.getConfiguration("fahhLocal");
+    const c = vscode.workspace.getConfiguration(SECTION);
     const target = c.inspect(key)?.workspaceValue !== undefined ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global;
     await c.update(key, value, target);
   }
@@ -326,14 +335,14 @@ class ChatView implements vscode.WebviewViewProvider {
         { label: "$(server-environment) Provider and model…", value: "provider" },
         { label: "$(key) API keys…", value: "keys" },
         { label: "$(file-binary) Fahh program path", value: "binary", description: findAgent(this.cfg().binary) ?? "not found" },
-        { label: "$(settings-gear) All Fahh Local settings", value: "all" },
+        { label: "$(settings-gear) All Fahh Local Chat settings", value: "all" },
       ] as Item<string>[],
-      { title: "Fahh Local settings" }
+      { title: "Fahh Local Chat settings" }
     );
     if (pick?.value === "provider") void this.pickProvider();
     if (pick?.value === "keys") void this.keys();
-    if (pick?.value === "binary") void vscode.commands.executeCommand("workbench.action.openSettings", "fahhLocal.binary");
-    if (pick?.value === "all") void vscode.commands.executeCommand("workbench.action.openSettings", "fahhLocal");
+    if (pick?.value === "binary") void vscode.commands.executeCommand("workbench.action.openSettings", "fahhLocalChat.binary");
+    if (pick?.value === "all") void vscode.commands.executeCommand("workbench.action.openSettings", "fahhLocalChat");
   }
 
   // ─── sessions ────────────────────────────────────────────────────────────────
@@ -357,7 +366,7 @@ class ChatView implements vscode.WebviewViewProvider {
     if (this.busy) return this.notice("Stop the running turn first.");
     this.kill();
     this.session = id;
-    await this.ctx.workspaceState.update("fahhLocal.session", id);
+    await this.ctx.workspaceState.update("fahhLocalChat.session", id);
     this.post({ type: "resumed", id, title: title ?? "", steps: steps ?? null });
     void this.pushState();
   }
@@ -369,15 +378,15 @@ class ChatView implements vscode.WebviewViewProvider {
     if (this.proc) return true;
     const folder = this.folder();
     if (!folder) {
-      this.post({ type: "error", message: "Open a folder first: Fahh Local works inside a workspace." });
+      this.post({ type: "error", message: "Open a folder first: Fahh Local Chat works inside a workspace." });
       return false;
     }
     let c = this.cfg();
     const exe = findAgent(c.binary);
     if (!exe) {
-      const pick = await vscode.window.showErrorMessage("Fahh Local needs Fahh Editor 0.8.8 or newer installed (it runs its agent).", "Download Fahh Editor", "Set path");
+      const pick = await vscode.window.showErrorMessage("Fahh Local Chat needs Fahh Editor 0.8.8 or newer installed (it runs its agent).", "Download Fahh Editor", "Set path");
       if (pick === "Download Fahh Editor") void vscode.env.openExternal(vscode.Uri.parse(DOWNLOAD));
-      if (pick === "Set path") void vscode.commands.executeCommand("workbench.action.openSettings", "fahhLocal.binary");
+      if (pick === "Set path") void vscode.commands.executeCommand("workbench.action.openSettings", "fahhLocalChat.binary");
       this.post({ type: "error", message: "Fahh Editor was not found." });
       return false;
     }
@@ -417,7 +426,7 @@ class ChatView implements vscode.WebviewViewProvider {
   private onLine(l: AgentLine): void {
     if (l.type === "ready") {
       this.session = l.session;
-      void this.ctx.workspaceState.update("fahhLocal.session", l.session);
+      void this.ctx.workspaceState.update("fahhLocalChat.session", l.session);
     }
     if (l.type === "turn_end") {
       this.busy = false;
@@ -453,7 +462,7 @@ class ChatView implements vscode.WebviewViewProvider {
 
   private async forgetSession(): Promise<void> {
     this.session = undefined;
-    await this.ctx.workspaceState.update("fahhLocal.session", undefined);
+    await this.ctx.workspaceState.update("fahhLocalChat.session", undefined);
   }
 
   async newSession(): Promise<void> {
@@ -495,14 +504,14 @@ class ChatView implements vscode.WebviewViewProvider {
 export function activate(ctx: vscode.ExtensionContext): void {
   const chat = new ChatView(ctx);
   ctx.subscriptions.push(
-    vscode.window.registerWebviewViewProvider("fahhLocal.chat", chat, { webviewOptions: { retainContextWhenHidden: true } }),
-    vscode.commands.registerCommand("fahhLocal.newSession", () => chat.newSession()),
-    vscode.commands.registerCommand("fahhLocal.stop", () => chat.stop()),
-    vscode.commands.registerCommand("fahhLocal.resume", () => chat.pickSession()),
-    vscode.commands.registerCommand("fahhLocal.pickModel", () => chat.pickModel()),
-    vscode.commands.registerCommand("fahhLocal.pickProvider", () => chat.pickProvider()),
-    vscode.commands.registerCommand("fahhLocal.setApiKey", () => chat.keys()),
-    vscode.commands.registerCommand("fahhLocal.settings", () => chat.settings())
+    vscode.window.registerWebviewViewProvider("fahhLocalChat.chat", chat, { webviewOptions: { retainContextWhenHidden: true } }),
+    vscode.commands.registerCommand("fahhLocalChat.newSession", () => chat.newSession()),
+    vscode.commands.registerCommand("fahhLocalChat.stop", () => chat.stop()),
+    vscode.commands.registerCommand("fahhLocalChat.resume", () => chat.pickSession()),
+    vscode.commands.registerCommand("fahhLocalChat.pickModel", () => chat.pickModel()),
+    vscode.commands.registerCommand("fahhLocalChat.pickProvider", () => chat.pickProvider()),
+    vscode.commands.registerCommand("fahhLocalChat.setApiKey", () => chat.keys()),
+    vscode.commands.registerCommand("fahhLocalChat.settings", () => chat.settings())
   );
 }
 

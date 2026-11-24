@@ -36,7 +36,7 @@ Every edit shows a diff, and every command is shown before it runs, with `allow?
 
 ## For editors: `--json`
 
-`fahh agent --json` turns the terminal session into a machine interface, which the VS Code extension uses:
+`fahh agent --json` turns the terminal session into a machine interface, which Fahh Local Chat (VS Code extension) uses:
 
 - **Out (stdout), one JSON object per line:**
   - `{"type":"ready","session":...}`, once, at start.
@@ -72,4 +72,4 @@ FAHH_DATA_DIR=/tmp/try/.data FAHH_AGENT_MOCK_SCRIPT=/tmp/script.json \
 
 `FAHH_DATA_DIR` keeps the test's sessions out of your real ones. The same script works with `--json`: pipe `{"prompt":"..."}` and `{"allow":true}` lines in.
 
-**The VS Code extension** (`extensions/vscode`) is tested with `npm test`, which checks how it finds Fahh, the command line it builds, and how it reads the JSON lines.
+**Fahh Local Chat (VS Code extension)** (`extensions/vscode`) is tested with `npm test`, which checks how it finds Fahh, the command line it builds, and how it reads the JSON lines.
