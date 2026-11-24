@@ -774,7 +774,7 @@ function NotebookBody({ nb, path, k }: { nb: Notebook; path: string; k: Notebook
           {python && <GenerateSlot g={g} at={nb.cells.length} cellCount={nb.cells.length} />}
           {addBar(nb.cells.length)}
           <p className="pl-[76px] text-[11px] text-fahh-muted">
-            {nb.cells.length} cells · {python ? kernelLabel(k.kernel) : nb.language}. Click a cell to edit it; edits and outputs are saved into the notebook. Click a cell, then, then A / B add a cell above / below, M / Y make it markdown / code, Alt+Up / Alt+Down move it.
+            {nb.cells.length} cells · {python ? kernelLabel(k.kernel) : nb.language}. Click a cell to edit it; edits and outputs are saved into the notebook. Click a cell, then press A / B to add a cell above / below, M / Y make it markdown / code, Alt+Up / Alt+Down move it.
           </p>
         </div>
       </div>
