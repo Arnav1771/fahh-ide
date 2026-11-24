@@ -1,8 +1,7 @@
 import { listen } from "@tauri-apps/api/event";
-import { resolveResource } from "@tauri-apps/api/path";
-import { convertFileSrc, invoke } from "@tauri-apps/api/core";
-// The same file, bundled by Vite: used when the Tauri resource is unavailable
-// (the browser preview, or a resource lookup that fails), so the bell still rings.
+import { invoke } from "@tauri-apps/api/core";
+// Bundled by Vite and served from the app itself, so no asset-protocol scope is needed
+// (loading the installed resource through asset.localhost was refused with a 403).
 import bundledFahhUrl from "../../src-tauri/assets/fahh.mp3?url";
 import { useSettingsStore } from "../store/settingsStore";
 import { SOUND_EXTENSIONS, type SoundDeps } from "./sound";
@@ -26,15 +25,10 @@ async function decode(url: string): Promise<AudioBuffer> {
 async function loadAudio(): Promise<void> {
   audioCtx = new AudioContext();
   try {
-    const resourcePath = await resolveResource("assets/fahh.mp3");
-    audioBuffer = await decode(convertFileSrc(resourcePath));
-  } catch {
-    try {
-      audioBuffer = await decode(bundledFahhUrl);
-    } catch (err) {
-      console.warn("Failed to load fahh sfx:", err);
-      audioBuffer = null;
-    }
+    audioBuffer = await decode(bundledFahhUrl);
+  } catch (err) {
+    console.warn("Failed to load fahh sfx:", err);
+    audioBuffer = null;
   }
 }
 
